@@ -1,0 +1,118 @@
+import GradientDescentPlayground from '../../../components/GradientDescentPlayground'
+import Link from 'next/link'
+
+# Optimizers Overview
+
+At the heart of every neural network lies an optimization problem. We have a loss function we want to minimize, and we need an algorithm to find the parameters that achieve this minimum. These algorithms are called **optimizers**.
+
+Training a neural network means adjusting parameters to minimize a loss function. Gradient-based optimizers decide **how** to move parameters from $w_t$ to $w_{t+1}$:
+
+$$
+w_{t+1} = w_t - \eta_t \nabla_w L(w_t)
+$$
+
+Here $\eta_t$ is the learning rate, and $\nabla_w L(w_t)$ is the gradient of the loss. Everything in modern optimization is about choosing an effective step direction and step size.
+
+---
+
+## The Basics: Gradient Descent
+
+Gradient descent is the foundation. The idea is simple: compute the gradient of the loss with respect to the parameters, then take a step in the opposite direction. The size of this step is controlled by the learning rate.
+
+Mathematically, the update rule is:
+
+$$
+\theta = \theta - \alpha \nabla L(\theta)
+$$
+
+Where $\theta$ represents our parameters, $\alpha$ is the learning rate, and $\nabla L(\theta)$ is the gradient of the loss.
+
+---
+
+## Stochastic Gradient Descent (SGD)
+
+In practice, computing the gradient over the entire dataset is expensive. SGD approximates the true gradient using a mini-batch of samples:
+
+$$
+w_{t+1} = w_t - \eta \nabla_w L_{B_t}(w_t)
+$$
+
+where $B_t$ is a random mini-batch at step $t$. This introduces noise, but often helps escape local minima and makes each step computationally cheaper.
+
+---
+
+## Momentum
+
+Plain SGD can zig-zag badly in valleys where gradients oscillate. SGD with momentum adds a velocity term that accumulates past gradients:
+
+$$
+\begin{aligned}
+v_{t+1} &= \beta v_t + \nabla_w L_{B_t}(w_t) \\
+w_{t+1} &= w_t - \eta v_{t+1}
+\end{aligned}
+$$
+
+Typical choice: $\beta \approx 0.9$. Think of it like a ball rolling down a hill, gaining momentum as it goes. Momentum averages gradients over time, damping oscillations and pushing the iterate in a consistent direction.
+
+Conceptually:
+
+- Like pushing a ball down a hillside
+- Small gradients accumulate if they point the same way
+- Noisy gradients that cancel out get averaged away
+
+---
+
+## Nesterov Momentum (NAG)
+
+Nesterov accelerated gradient (NAG) modifies where the gradient is evaluated:
+
+1. Peek ahead using current velocity
+2. Measure the gradient at the look-ahead point
+3. Update the velocity using that gradient
+
+This often gives slightly better convergence in practice, especially for convex-like regions of the loss.
+
+---
+
+## Families of Optimizers
+
+We can group common optimizers into a few families:
+
+- **Plain SGD** - Uses the raw gradient with a fixed learning rate
+- **Momentum / Nesterov** - Smooths gradients over time to follow a moving average direction
+- **Adaptive methods** - Keep per-parameter statistics to adapt learning rates (AdaGrad, RMSProp, <Link href="/concepts/optimizers/adamw">Adam, AdamW</Link>)
+- **Matrix-aware methods** - Treat weight matrices as geometric objects and update them with additional structure, e.g. the <Link href="/concepts/optimizers/muon">Muon optimizer</Link>
+
+---
+
+## Try It Yourself
+
+<GradientDescentPlayground />
+
+---
+
+## When to Use SGD + Momentum
+
+Strong choice when:
+
+- You have good learning-rate schedules (cosine decay, step decay)
+- Large-scale supervised tasks (vision, some language models)
+- You care a lot about final generalization, not just fast loss reduction
+
+Later, <Link href="/concepts/optimizers/adamw">AdamW</Link> and <Link href="/concepts/optimizers/muon">Muon</Link> build on these ideas by adding adaptive per-parameter scaling and, in Muon's case, matrix-structured updates.
+
+---
+
+## Choosing an Optimizer
+
+There's no universally best optimizer. Adam works well out of the box, but SGD with momentum often achieves better final performance with proper tuning. The landscape continues to evolve with newer algorithms like AdamW, LAMB, and Muon.
+
+The key insight is that optimization in deep learning is as much art as science. Understanding the mathematical foundations helps, but experimentation remains essential.
+
+---
+
+## Related
+
+- <Link href="/concepts/optimizers/adamw">AdamW</Link>
+- <Link href="/concepts/optimizers/muon">Muon</Link>
+- <Link href="/graph">Concept Graph</Link>

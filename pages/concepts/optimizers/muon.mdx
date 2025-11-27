@@ -1,0 +1,111 @@
+import MuonConceptualDemo from '../../../components/MuonConceptualDemo'
+import Link from 'next/link'
+
+# Muon Optimizer
+
+Muon is a modern optimizer designed specifically for **2D weight matrices in hidden layers** (e.g. linear/attention layers in transformers). Other parameters such as embeddings and biases are typically still optimized with AdamW.
+
+Instead of treating each weight entry independently, Muon treats the **whole matrix** as a geometric object and orthogonalizes its update. This improves the conditioning of the optimization problem and constrains the spectral norm of updates.
+
+---
+
+## High-Level Idea
+
+For a weight matrix $W \in \mathbb{R}^{m \times n}$, a standard optimizer would propose an update $\Delta W$ (for example, from momentum SGD or AdamW).
+
+Muon modifies this update in two key ways:
+
+1. **Momentum-like step** - Build a smoothed update for the matrix (similar in spirit to SGD with momentum)
+2. **Orthogonalize under a spectral norm constraint** - Apply a fast matrix iteration (a finite Newton-Schulz scheme) to transform the update so that it behaves like an orthogonal step with controlled norm
+
+Intuitively, Muon keeps updates that:
+
+- Avoid stretching the matrix too much in any one direction
+- Better respect the geometry of activations passing through the layer
+- Act a bit like a trust-region or constrained step under the spectral norm
+
+---
+
+## Where Muon Is Used
+
+Recent work shows Muon:
+
+- Achieves better **compute-time tradeoffs** than AdamW when training language models, reducing the tokens or wall-clock time needed to reach a target loss
+- Scales to **large LLMs** when combined with decoupled weight decay and careful per-parameter scaling
+- Can be combined with other ideas (e.g. neuron-wise normalization in NorMuon or MuonAll variants) to further improve efficiency
+
+In code, a typical pattern is:
+
+- Use Muon for 2D hidden matrices
+- Use AdamW for embeddings, layer norms, and biases
+
+---
+
+## Toy Intuition: Orthogonalizing Rows
+
+Muon's full algorithm uses a Newton-Schulz iteration to approximate an orthogonalized update under a spectral norm constraint. That's a bit heavy to show inline, so here's a toy 2D picture that captures the spirit.
+
+<MuonConceptualDemo />
+
+Think of the two row vectors of a $2 \times 2$ weight matrix:
+
+- When they are almost parallel, gradients can push them in tangled ways
+- Orthogonalizing them gives cleaner directions that are easier to optimize
+
+Muon effectively performs a *soft, approximate*, and **scaled** version of this idea for real hidden layers, not just two dimensions.
+
+---
+
+## Muon vs AdamW (Conceptually)
+
+Very roughly:
+
+**AdamW**
+- Elementwise adaptive scaling using running gradient statistics
+- Decoupled weight decay for better regularization
+- Ignores the matrix structure of $W$
+
+**Muon**
+- Momentum-like update plus matrix orthogonalization
+- Implicit spectral norm control on updates
+- Exploits the fact that $W$ is a matrix acting on activations, not just a bag of scalars
+
+Empirically, Muon often:
+
+- Converges in fewer steps or tokens for transformer models
+- Can match or beat AdamW in final perplexity with less compute, especially at scale
+
+---
+
+## Relationship to Newer Variants
+
+You may see related names in recent literature:
+
+- **Muon is Scalable for LLM Training** - Analyzes how to make Muon robust at large scale, emphasizing weight decay and per-parameter scaling
+- **NorMuon** - Adds neuron-wise normalization on top of Muon to balance row norms while preserving the conditioning benefits
+- **MuonAll / finetuning variants** - Adapt Muon for efficient finetuning in instruction tuning / SFT regimes
+
+The core ideas remain:
+
+> Use matrix-aware, orthogonalized updates with spectral norm control to improve both stability and efficiency.
+
+---
+
+## When to Consider Muon
+
+Muon is especially interesting when:
+
+- You train transformer-style models at moderate to large scale
+- Optimizer compute is a non-trivial chunk of your training budget
+- You're comfortable mixing optimizers (Muon + AdamW for different parameter groups)
+- You want to experiment with newer, geometry-aware optimizers
+
+For small models or quick experiments, AdamW is still a perfectly reasonable default, but Muon is increasingly used in cutting-edge LLM training setups.
+
+---
+
+## Related
+
+- <Link href="/concepts/optimizers/overview">Optimizers Overview</Link>
+- <Link href="/concepts/optimizers/adamw">AdamW</Link>
+- <Link href="/graph">Concept Graph</Link>

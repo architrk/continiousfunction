@@ -1,0 +1,33 @@
+{
+  "name": "ai-math-explainer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@mdx-js/loader": "^3.1.1",
+    "@mdx-js/react": "^3.1.1",
+    "@next/mdx": "^15.0.0",
+    "d3": "^7.9.0",
+    "d3-drag": "^3.0.0",
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
+    "katex": "^0.16.9",
+    "next": "^15.0.0",
+    "react": "^18.2.0",
+    "react-d3-graph": "^2.6.0",
+    "react-dom": "^18.2.0",
+    "rehype-katex": "^7.0.0",
+    "remark-math": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}

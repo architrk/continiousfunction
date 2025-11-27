@@ -1,0 +1,105 @@
+import Link from 'next/link'
+
+# AdamW
+
+Adam (Adaptive Moment Estimation) combines the best of momentum and adaptive learning rates. It maintains both a running average of gradients (first moment) and squared gradients (second moment), adapting the learning rate for each parameter individually.
+
+This makes Adam particularly effective for problems with sparse gradients or noisy data, and it's become the default choice for many deep learning applications.
+
+---
+
+## The Adam Algorithm
+
+Adam keeps moving averages of both the gradient and its squared values:
+
+$$
+\begin{aligned}
+m_t &= \beta_1 m_{t-1} + (1-\beta_1) g_t \\
+v_t &= \beta_2 v_{t-1} + (1-\beta_2) g_t^2
+\end{aligned}
+$$
+
+where $g_t = \nabla_w L_{B_t}(w_t)$. These estimates are biased towards zero early in training, so we apply bias correction:
+
+$$
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \quad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}
+$$
+
+The update rule is:
+
+$$
+w_{t+1} = w_t - \eta \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+$$
+
+Each parameter gets its own adaptive learning rate based on $\hat{v}_t$. Typical hyperparameters: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\epsilon = 10^{-8}$.
+
+---
+
+## AdamW: Fixing Weight Decay
+
+Original Adam implementations bundled $L_2$ regularization into the gradient, which does not behave like true weight decay for adaptive methods. AdamW decouples weight decay from the gradient update:
+
+1. Apply Adam step on the loss gradient
+2. Then shrink weights separately:
+
+$$
+w_{t+1} \leftarrow w_{t+1} - \eta \lambda w_t
+$$
+
+where $\lambda$ is the weight decay coefficient.
+
+This makes the effect of regularization more predictable and often improves generalization, especially in vision and language models. AdamW is now the standard variant used in most modern training pipelines.
+
+---
+
+## Pros and Cons
+
+**Pros**
+
+- Fast loss decrease out-of-the-box
+- Handles sparse gradients and varying scales well
+- Common default for many deep learning libraries
+- Less sensitive to learning rate than plain SGD
+
+**Cons**
+
+- Can overfit or converge to "sharp" minima if not tuned
+- For some tasks, SGD + momentum can generalize better
+- Step geometry is purely elementwise; ignores matrix structure
+- More memory overhead (stores $m$ and $v$ for each parameter)
+
+---
+
+## When to Use AdamW
+
+AdamW is a strong default when:
+
+- You want quick iteration and reasonable results without extensive tuning
+- Working with transformers, language models, or diffusion models
+- Training on noisy or sparse data
+- You need stable training without learning rate warmup gymnastics
+
+These limitations motivate structured optimizers like <Link href="/concepts/optimizers/muon">Muon</Link>, which modify updates for matrix parameters to have better conditioning and implicit regularization.
+
+---
+
+## Choosing Between SGD and Adam
+
+There's no universally best optimizer:
+
+| Aspect | SGD + Momentum | AdamW |
+|--------|---------------|-------|
+| Tuning effort | Higher (LR sensitive) | Lower (more forgiving) |
+| Final generalization | Often better with tuning | Good, sometimes sharp minima |
+| Convergence speed | Slower initially | Faster |
+| Memory | Lower | Higher (2x state) |
+
+The key insight is that optimization in deep learning is as much art as science. Understanding the mathematical foundations helps, but experimentation remains essential.
+
+---
+
+## Related
+
+- <Link href="/concepts/optimizers/overview">Optimizers Overview</Link>
+- <Link href="/concepts/optimizers/muon">Muon</Link>
+- <Link href="/graph">Concept Graph</Link>
