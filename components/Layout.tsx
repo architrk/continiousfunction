@@ -11,8 +11,8 @@ export default function Layout({ children }: Props) {
       <header className="app-header">
         <div className="app-header-inner">
           <Link href="/" className="brand">
-            <span className="brand-pill">&lambda;</span>
-            <span className="brand-text">Interactive DL Optimizers</span>
+            <span className="brand-pill">∇</span>
+            <span className="brand-text">Continuous Function</span>
           </Link>
           <nav className="nav">
             <Link href="/concepts/optimizers/overview" className="nav-link">
@@ -31,7 +31,7 @@ export default function Layout({ children }: Props) {
         <div className="app-main-inner">{children}</div>
       </main>
       <footer className="app-footer">
-        <p>Built for interactive AI/math explanations. Static-first, MDX-powered.</p>
+        <p>Explorable explanations of optimization in deep learning.</p>
       </footer>
     </div>
   )
