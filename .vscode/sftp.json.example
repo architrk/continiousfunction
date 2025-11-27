@@ -3,10 +3,10 @@
     "host": "ftp.continuousfunction.ai",
     "protocol": "ftp",
     "port": 21,
-    "username": "u908281807.u908281808",
-    "password": "D6jjf:a:8O??eb?n",
+    "username": "YOUR_USERNAME",
+    "password": "YOUR_PASSWORD",
     "remotePath": "/",
-    "uploadOnSave": true,
+    "uploadOnSave": false,
     "useTempFile": false,
     "openSsh": false,
     "ignore": [
@@ -14,6 +14,8 @@
         ".git",
         ".DS_Store",
         "node_modules",
-        ".qodo"
+        ".qodo",
+        ".next",
+        "out"
     ]
 }

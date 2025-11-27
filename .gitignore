@@ -35,6 +35,7 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.vscode/sftp.json
 
 # Testing
 coverage/
