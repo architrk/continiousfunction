@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>An Introduction to Optimizers | Continuous Function</title>
+    <meta name="description" content="Understanding SGD, Adam, and the landscape of optimization algorithms in deep learning.">
+    <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/" class="logo">Continuous Function</a>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/blog/">Blog</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <article class="blog-post">
+            <span class="meta">Optimization &bull; November 2024</span>
+            <h1>An Introduction to Optimizers</h1>
+
+            <div class="content">
+                <p>At the heart of every neural network lies an optimization problem. We have a loss function we want to minimize, and we need an algorithm to find the parameters that achieve this minimum. These algorithms are called optimizers.</p>
+
+                <h2>The Basics: Gradient Descent</h2>
+                <p>Gradient descent is the foundation. The idea is simple: compute the gradient of the loss with respect to the parameters, then take a step in the opposite direction. The size of this step is controlled by the learning rate.</p>
+
+                <p>Mathematically, the update rule is:</p>
+                <p><strong>&theta; = &theta; - &alpha; &nabla;L(&theta;)</strong></p>
+                <p>Where &theta; represents our parameters, &alpha; is the learning rate, and &nabla;L(&theta;) is the gradient of the loss.</p>
+
+                <h2>Stochastic Gradient Descent (SGD)</h2>
+                <p>In practice, computing the gradient over the entire dataset is expensive. SGD approximates the true gradient using a mini-batch of samples. This introduces noise, but often helps escape local minima.</p>
+
+                <h2>Momentum</h2>
+                <p>SGD with momentum adds a velocity term that accumulates past gradients. This helps accelerate convergence and dampens oscillations. Think of it like a ball rolling down a hill, gaining momentum as it goes.</p>
+
+                <h2>Adam: Adaptive Moment Estimation</h2>
+                <p>Adam combines the best of momentum and adaptive learning rates. It maintains both a running average of gradients (first moment) and squared gradients (second moment), adapting the learning rate for each parameter individually.</p>
+
+                <p>This makes Adam particularly effective for problems with sparse gradients or noisy data, and it's become the default choice for many deep learning applications.</p>
+
+                <h2>Choosing an Optimizer</h2>
+                <p>There's no universally best optimizer. Adam works well out of the box, but SGD with momentum often achieves better final performance with proper tuning. The landscape continues to evolve with newer algorithms like AdamW, LAMB, and others.</p>
+
+                <p>The key insight is that optimization in deep learning is as much art as science. Understanding the mathematical foundations helps, but experimentation remains essential.</p>
+            </div>
+        </article>
+
+        <a href="/blog/" class="back-link">&larr; Back to Blog</a>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Continuous Function. All rights reserved.</p>
+    </footer>
+</body>
+</html>
