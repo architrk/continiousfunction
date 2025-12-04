@@ -1,0 +1,357 @@
+import Link from 'next/link'
+
+# The Mathematical Foundations of Modern Intelligence
+
+*A Blueprint for Continuous Function*
+
+---
+
+## 1. Strategic Vision: The Pedagogical Imperative of Mathematical AI
+
+The rapid ascent of artificial intelligence, particularly in the domains of Large Language Models (LLMs) and generative diffusion systems, has created a bifurcation in technical education. On one side lies the pragmatic, code-first approach, which treats neural architectures as composable software modules—black boxes defined by their input-output APIs. On the other lies the theoretical literature, a dense landscape of high-dimensional probability, differential geometry, and spectral optimization theory that remains largely inaccessible to the broader engineering community.
+
+**Continuous Function** addresses this epistemic gap by treating deep learning not merely as software engineering, but as an **experimental natural science governed by rigorous mathematical laws**.
+
+To construct a "Brilliant.org for the AI age," we must abandon static representations of equations. Modern deep learning concepts—such as the trajectory of a loss landscape at the "Edge of Stability" or the gauge-equivariant convolution on a Riemannian manifold—are inherently dynamic. They involve time-evolution, geometric transformation, and high-dimensional flow.
+
+The vision is to transform these static formalisms into **"Dynamic Mathematical Objects"**: interactive, explorable entities where learners can manipulate parameters (curvature, learning rate, discretization step) and observe real-time systemic behavioral changes via WebGPU-accelerated visualizations.
+
+This document provides the comprehensive taxonomy and theoretical scaffolding required to build this hub. It dissects the field into **five foundational pillars**:
+
+1. **Sequence Modeling Dynamics** — SSMs, Recurrence, and Attention
+2. **Optimization Thermodynamics** — Muon, Edge of Stability, and Grokking
+3. **Generative Physics** — Diffusion, Flow Matching, and Optimal Transport
+4. **Geometric Deep Learning** — Symmetry, Equivariance, and Manifolds
+5. **Mechanistic Interpretability** — The Neuroscience of AI
+
+---
+
+## 2. Pillar I: The Renaissance of Sequence Modeling
+
+The dominance of the Transformer architecture and its attention mechanism has recently been challenged by a resurgence of recurrent formulations, specifically **Structured State Space Models (SSMs)** like S4 and Mamba. This shift is not merely architectural but mathematical: it represents a move from quadratic-complexity pairwise comparisons $O(L^2)$ to linear-complexity continuous signal processing $O(L)$.
+
+### 2.1 The Unified Primal-Dual Framework
+
+Recent theoretical advances have demonstrated that Linear Attention, Recurrent Neural Networks (RNNs), and State Space Models are **dual representations of the same underlying linear dynamical system**. This "Primal-Dual" framework debunks the notion that these are distinct species of models.
+
+**The Mathematical Narrative:**
+
+The core pedagogical insight lies in the **associativity of matrix multiplication**. Standard Self-Attention computes the output $Y$ as:
+
+$$
+Y = \text{softmax}(Q K^T) V
+$$
+
+Here, the computation of $(Q K^T)$ generates an $L \times L$ attention matrix, which scales quadratically with sequence length $L$. This is the **"Primal" view**—effective for dense retrieval but computationally expensive.
+
+However, if we remove the non-linear softmax (or linearize it via kernel feature maps $\phi$), we can exploit associativity to reorder the computation:
+
+$$
+Y = \phi(Q) (\phi(K)^T V)
+$$
+
+By computing $(\phi(K)^T V)$ first, we create a fixed-size state matrix (independent of $L$) that summarizes the history. This is the **"Dual" view**, which corresponds to a Recurrent Neural Network or a Linear Attention mechanism. This recurrence allows for constant-time inference per token.
+
+> **Interactive Visualization: The Associativity Switch**
+>
+> A visualization of the matrix multiplication chain $Q \cdot K^T \cdot V$:
+> - **Transformer Mode**: Parentheses around $(Q \cdot K^T)$ — explodes to reveal a massive $L \times L$ heatmap
+> - **RNN Mode**: Parentheses around $(K^T \cdot V)$ — collapses into a compact rolling state $H_t$
+
+### 2.2 The Theory of Structured State Spaces (S4)
+
+The S4 model introduces the crucial concept of modeling sequences as **continuous-time latent variables**. This connects deep learning to Control Theory and Signal Processing. The defining equations of an SSM are:
+
+$$
+h'(t) = A h(t) + B x(t)
+$$
+
+$$
+y(t) = C h(t) + D x(t)
+$$
+
+Here, $x(t)$ is the input signal, $h(t)$ is the latent state, and $y(t)$ is the output.
+
+**The HiPPO Matrix and Memory Compression:**
+
+A random transition matrix $A$ fails to remember long-range dependencies (the "vanishing gradient" problem). S4 solves this mathematically using **HiPPO (High-order Polynomial Projection Operator)** theory. The matrix $A$ is structured to optimally project the history of the signal $x(t)$ onto a set of orthogonal basis polynomials (Legendre or Laguerre). This proves that the state $h(t)$ is not just a "hidden vector" but a **compressed coefficient vector reconstructing the past history**.
+
+**Discretization — The Bridge to Digital Computation:**
+
+To implement continuous ODEs on discrete GPUs, one must apply discretization techniques:
+
+- **Bilinear Transform**: $\bar{A} = (I - \Delta/2 \cdot A)^{-1} (I + \Delta/2 \cdot A)$
+- **Zero-Order Hold**: $\bar{A} = \exp(\Delta A)$
+
+> **Interactive Visualization: The Discretization Lab**
+>
+> - Input: A continuous waveform signal (e.g., a chirp signal)
+> - Controls: Slider for sampling step $\Delta$, toggle for method (Euler vs. Bilinear vs. ZOH)
+> - Visual: As $\Delta$ increases, observe divergence and pole migration in the complex plane
+
+### 2.3 Mamba: Selection and the Parallel Scan
+
+**Mamba (S6)** represents a critical evolution: making the SSM parameters **time-varying (selective)**. In S4, $(A, B, C)$ are static (Linear Time-Invariant). In Mamba, they become functions of the current input $x_t$.
+
+**The Mechanics of Selection:**
+
+$$
+B_t = \text{Linear}(x_t), \quad C_t = \text{Linear}(x_t), \quad \Delta_t = \text{Softplus}(\text{Parameter} + \text{Linear}(x_t))
+$$
+
+The parameter $\Delta_t$ acts as a content-aware "gate":
+- **Large $\Delta_t$**: Focus on current input, "forget" previous state
+- **Small $\Delta_t$**: Ignore current input, preserve existing state
+
+This mechanism allows Mamba to solve tasks like "Selective Copying" (ignoring noise tokens to remember a password) which LTI models fail at.
+
+**The Hardware-Aware Parallel Scan:**
+
+To retain parallel training, Mamba utilizes a **Parallel Associative Scan** algorithm, computing the recurrent state in $O(\log L)$ parallel steps rather than $O(L)$ sequential steps.
+
+### 2.4 Mamba-2 and State Space Duality (SSD)
+
+**State Space Duality (SSD)** proves that Mamba's selective scan is mathematically equivalent to a specific form of Masked Linear Attention:
+
+$$
+y = \text{SSM}(x) \iff y = \text{MaskedAttention}(Q, K, V) \odot M_{\text{decay}}
+$$
+
+This insight bridges the gap completely: **Mamba is a structured attention mechanism with a causally decaying mask**.
+
+| Feature | Transformer | RNN | Linear Attention | Mamba (S6) | Mamba-2 |
+|---------|-------------|-----|------------------|------------|---------|
+| Inference | $O(L^2)$ | $O(L)$ | $O(L)$ | $O(L)$ | $O(L)$ |
+| Training Parallelism | Yes | No | Yes | Yes (Scan) | Yes |
+| State Size | Infinite (KV) | Fixed | Fixed | Fixed | Fixed |
+| Selection | Softmax | Gating | None | Input-dep $\Delta_t$ | Tensor Cores |
+
+---
+
+## 3. Pillar II: The Thermodynamics of Optimization
+
+Deep learning training is a dynamical process occurring on a high-dimensional, non-convex energy landscape. This pillar treats optimization not as a heuristic search, but as a **thermodynamic process** involving phase transitions, spectral evolution, and implicit regularization.
+
+### 3.1 The Edge of Stability (EoS)
+
+Classical convex optimization theory suggests that for gradient descent to converge, the learning rate $\eta$ must satisfy $\eta < 2/\lambda_{max}$, where $\lambda_{max}$ is the "sharpness" (largest eigenvalue of the Hessian). However, modern neural networks routinely violate this condition.
+
+They enter a regime known as the **Edge of Stability (EoS)**, where the sharpness hovers precisely at the stability threshold $2/\eta$.
+
+**Mechanism of Self-Stabilization:**
+
+1. **Progressive Sharpening**: Early in training, the model moves into progressively sharper regions
+2. **Instability**: As $\lambda_{max}$ exceeds $2/\eta$, the optimizer becomes unstable along the sharpest eigenvector
+3. **Bounce**: This instability causes parameters to "bounce" away from sharp valleys, implicitly regularizing toward flat minima
+
+> **Interactive Visualization: The Canyon Run**
+>
+> A 3D loss valley that narrows as it deepens. Watch the "ball" (parameters) bounce between walls at high learning rates, refusing to descend into sharp minima.
+
+### 3.2 The Muon Optimizer and Newton-Schulz Iteration
+
+**Muon (Momentum Orthogonalized by Newton-Schulz)** is a breakthrough optimizer that treats weight matrices as 2D operators rather than 1D vectors, applying orthogonalization updates.
+
+**Mathematical Formulation:**
+
+Instead of using SVD, Muon uses the **Newton-Schulz Iteration** to approximate the polar decomposition:
+
+$$
+X_0 = \frac{M_t}{\|M_t\|_F}, \quad X_{k+1} = \frac{1}{2} X_k (3I - X_k^T X_k)
+$$
+
+This iteration rapidly converges to an orthogonal matrix $O_t$ such that $O_t^T O_t = I$. This ensures the update is **isometric**, preserving activation scale and allowing massive learning rates.
+
+> **Interactive Visualization: The Matrix Orthogonalizer**
+>
+> Watch a deformed 2D grid snap back into a perfect square with each Newton-Schulz step—demonstrating how Muon "whitens" gradient information.
+
+### 3.3 Schedule-Free Optimization
+
+Traditional training relies on complex Learning Rate schedules (warmup, cosine decay). **Schedule-Free Optimization** eliminates these by unifying Polyak-Ruppert averaging with Primal-Dual averaging.
+
+**The Two-State Mechanism:**
+
+- $z_t$ **(The Explorer)**: Takes aggressive gradient steps
+- $x_t$ **(The Evaluator)**: A conservative moving average of $z_t$
+
+$$
+x_{t+1} = (1 - c_t)x_t + c_t z_{t+1}
+$$
+
+### 3.4 Grokking: Phase Transitions in Learning
+
+**Grokking** is the phenomenon where a network achieves 100% training accuracy but random validation accuracy, only to suddenly "grok" the general solution $10^5$ steps later.
+
+**The Modular Addition Case Study:**
+
+In learning modular addition $(a+b \mod P)$, the network initially memorizes the table. Later, it undergoes a **phase transition** where it learns to implement the Discrete Fourier Transform internally. The "Linear Representation Hypothesis" suggests the model learns to represent numbers as frequencies on a circle.
+
+> **Interactive Visualization: The Circle of Weights**
+>
+> Watch scattered embeddings suddenly snap into a perfect circle as the model "groks" the rotational symmetry of the modulus operator.
+
+---
+
+## 4. Pillar III: Generative Physics
+
+Generative AI has transitioned from ad-hoc probabilistic models to rigorous physics-based simulations. This pillar demystifies **Diffusion Models** and **Flow Matching** by framing them as differential equation solvers that transport probability mass.
+
+### 4.1 The Probability Flow ODE and Score Matching
+
+The forward diffusion process turns data into noise via an SDE:
+
+$$
+d\mathbf{x} = f(\mathbf{x}, t) dt + g(t) d\mathbf{w}
+$$
+
+For every SDE, there exists a deterministic **Probability Flow ODE** sharing the same marginal distributions:
+
+$$
+d\mathbf{x} = \left[ f(\mathbf{x}, t) - \frac{1}{2}g(t)^2 \nabla_{\mathbf{x}} \log p_t(\mathbf{x}) \right] dt
+$$
+
+The term $\nabla_{\mathbf{x}} \log p_t(\mathbf{x})$ is the **Score Function**: a vector field pointing towards higher data density.
+
+**Pedagogical Shift:** "Generating an image" is simply solving an ODE from $t=T$ (Noise) to $t=0$ (Data) by following the score vector field.
+
+> **Interactive Visualization: The Particle Shepherd**
+>
+> Watch particles condense from noise into data via both stochastic (jittery Langevin) and deterministic (smooth ODE) paths.
+
+### 4.2 Flow Matching and Optimal Transport
+
+Traditional diffusion paths are curved and inefficient. **Flow Matching** learns straight paths between noise and data, rooted in **Optimal Transport** theory.
+
+**The Rectification Mechanism:**
+
+Connect noise $x_0$ and data $x_1$ with a straight line. The velocity field is simply $v_t(x) = x_1 - x_0$.
+
+**Reflow/Rectification**: Take a pre-trained diffusion model, generate (noise, data) pairs, and re-train to follow straight lines connecting them.
+
+> **Interactive Visualization: The Flow Straightener**
+>
+> Watch tangled vector field lines untangle and straighten, reducing 50 integration steps to 1.
+
+---
+
+## 5. Pillar IV: The Geometry of Intelligence
+
+This pillar treats Neural Networks through the lens of the **Erlangen Program**: defining geometry via invariance and symmetry groups.
+
+### 5.1 The 5 Gs Blueprint
+
+| Domain | Symmetry | Architecture |
+|--------|----------|--------------|
+| **Grids** | Translation Invariance | CNNs |
+| **Groups** | Homogeneous Spaces | Spherical CNNs |
+| **Graphs** | Permutation Invariance | GNNs, Transformers |
+| **Geodesics** | Intrinsic Metrics | MeshCNNs |
+| **Gauges** | Local Frame Reference | Gauge Equivariant Networks |
+
+### 5.2 Parallel Transport and Gauge Equivariance
+
+Standard convolution fails on curved surfaces because there is no global grid. To define convolution on a manifold, one must define a local **"Gauge"** (coordinate frame).
+
+**Parallel Transport**: Sliding a vector along a geodesic without rotating it relative to the path. Due to curvature (**Holonomy**), moving a vector around a closed loop results in rotation.
+
+> **Interactive Visualization: The Tangent Bundle Traveler**
+>
+> Drag a vector around a curved surface and watch it rotate upon returning to the starting point—visualizing curvature via the Gauss-Bonnet theorem.
+
+### 5.3 Neural Tangent Kernel (NTK) and Infinite Width
+
+In the limit of infinite width, a neural network behaves like a **Gaussian Process** governed by the **Neural Tangent Kernel**:
+
+$$
+\Theta(x, x') = \langle \nabla_\theta f(x), \nabla_\theta f(x') \rangle
+$$
+
+The NTK describes the "geometric shape" of the function space the network can learn.
+
+---
+
+## 6. Pillar V: Mechanistic Interpretability
+
+The final pillar moves from the "how" of training to the "what" of representation. **Mechanistic Interpretability** aims to reverse-engineer the algorithms learned by the network, treating weights as compilable binary code.
+
+### 6.1 The Linear Representation Hypothesis
+
+How do LLMs represent concepts like "Truth," "Gender," or "Past Tense"? The **Linear Representation Hypothesis** states these concepts are encoded as directions (vectors) in activation space:
+
+$$
+v(\text{"King"}) - v(\text{"Man"}) + v(\text{"Woman"}) \approx v(\text{"Queen"})
+$$
+
+> **Interactive Visualization: The Concept Projector**
+>
+> Use a joystick to steer the "Honesty" or "Anger" vector, watching text output change tone in real-time.
+
+### 6.2 Superposition and Polysemanticity
+
+Neurons in large models are **Polysemantic**: they activate for multiple unrelated concepts. This is due to **Superposition**: the model packs more features than dimensions by storing them as non-orthogonal (overcomplete) vectors.
+
+> **Interactive Visualization: The Interference Demo**
+>
+> Store 5 features in 2D space. Watch interference create "ghost activations," then see how ReLU recovers the original features.
+
+### 6.3 Transformer Circuits: Induction Heads
+
+The fundamental unit of In-Context Learning is the **Induction Head**. It implements a precise 2-step algorithm:
+
+*"I saw context [A] in the past. I see [A] now. I should predict what followed [A]."*
+
+This requires composition of two attention heads:
+1. **Previous Token Head**: Moves information from $t-1$ to $t$
+2. **Induction Head**: Attends to the token following the current token's previous appearance
+
+> **Interactive Visualization: The Circuit Trace**
+>
+> Watch the wiring diagram light up as "Harry Potter... Harry [?]" predicts "Potter" via the induction circuit.
+
+### 6.4 Model Merging and Task Arithmetic
+
+Task-specific skills are stored as **Task Vectors** ($\tau_t = \theta_{\text{finetuned}} - \theta_{\text{pretrained}}$). These vectors can be added, subtracted, or combined to merge capabilities without retraining.
+
+> **Interactive Visualization: The Model Mixer**
+>
+> Blend "French Translation" and "Coding" vectors. Watch the model write Python comments in French.
+
+---
+
+## 7. Implementation Architecture
+
+To realize this vision, Continuous Function must push computation to the client.
+
+### 7.1 Technical Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **WebGPU** (wgpu/Burn) | Run lightweight Transformers in-browser |
+| **Three.js / R3F** | 3D manifolds, loss landscapes, vector fields |
+| **KaTeX** | Fast LaTeX rendering |
+| **Scrollytelling** | Synchronized derivation + visualization |
+
+### 7.2 The "Explorable Explanation" Philosophy
+
+Every mathematical claim must be **falsifiable by the user**:
+
+- **Claim**: "High learning rates cause instability"
+- **Widget**: Set $\eta = \infty$ and watch the loss explode to NaN
+
+- **Claim**: "SSMs are linear time"
+- **Widget**: Benchmark Attention vs SSM as sequence length grows from 1k to 100k
+
+---
+
+## 8. Conclusion
+
+The transformation of Continuous Function into a premier educational hub requires rigorous adherence to the mathematics of intelligence. By decomposing Deep Learning into its constituent fields—**Dynamics, Geometry, Probability, and Logic**—we provide learners with a robust mental model that survives the hype cycle.
+
+The curriculum proposed here moves beyond the "how" (PyTorch syntax) to the **"why"** (Spectral Dynamics, Gauge Theory, Differential Equations). By leveraging modern web technologies to visualize the invisible—the flow of probability, the curvature of optimization, the mechanics of attention—we can democratize access to the deepest ideas in Artificial Intelligence.
+
+We aim to create a generation of researchers who understand these systems not as black boxes, but as **elegant, understandable mathematical machines**.
+
+---
+
+<Link href="/">← Back to Home</Link>

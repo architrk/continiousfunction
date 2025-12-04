@@ -1,38 +1,60 @@
 import Link from 'next/link'
 import GradientDescentPlayground from '../components/GradientDescentPlayground'
 
+const pillars = [
+  { id: 'sequence-modeling', icon: '∿', title: 'Sequence Modeling', desc: 'Attention, SSMs, and Mamba' },
+  { id: 'optimization', icon: '∇', title: 'Optimization', desc: 'Gradient descent as physics' },
+  { id: 'generative-physics', icon: '∂', title: 'Generative Physics', desc: 'Diffusion and flow matching' },
+  { id: 'geometric-dl', icon: '◇', title: 'Geometric DL', desc: 'Symmetry and equivariance' },
+  { id: 'mech-interp', icon: '⊕', title: 'Mech Interp', desc: 'Reverse-engineering networks' },
+]
+
 export default function HomePage() {
   return (
     <div>
       <section className="hero">
         <h1>The Mathematics of Learning</h1>
         <p className="hero-tagline">
-          Interactive explorations of optimization algorithms that power modern deep learning.
-          From gradient descent fundamentals to cutting-edge methods like Muon.
+          Interactive explorations of the mathematical foundations of modern deep learning.
+          Scroll-synced labs with live visualizations. From gradient descent to Mamba.
         </p>
         <div className="hero-actions">
-          <Link href="/concepts/optimizers/overview" className="btn">
-            Begin with ∇L(θ)
+          <Link href="/pillars" className="btn">
+            Explore the Pillars
           </Link>
           <Link href="/graph" className="btn ghost">
-            Concept Graph
+            Knowledge Graph
           </Link>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: '2.5rem' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', marginBottom: '1rem' }}>
+          Five Mathematical Pillars
+        </h2>
+        <div className="pillars-nav">
+          {pillars.map((pillar) => (
+            <Link key={pillar.id} href={`/pillars/${pillar.id}`} className="pillar-link">
+              <span className="pillar-icon">{pillar.icon}</span>
+              <span>{pillar.title}</span>
+            </Link>
+          ))}
         </div>
       </section>
 
       <section className="grid">
         <article className="card">
-          <h2>Mathematical Foundations</h2>
+          <h2>Scroll-Synced Labs</h2>
           <p>
-            Rigorous explanations of gradient-based optimization with interactive
-            visualizations. KaTeX-rendered equations meet explorable demos.
+            Read the theory while the visualization updates in real-time.
+            Adjust parameters inline. See the math come alive.
           </p>
         </article>
         <article className="card">
           <h2>Connected Knowledge</h2>
           <p>
-            Concepts linked in a navigable graph structure. See how SGD leads to
-            momentum, Adam builds on RMSProp, and Muon rethinks everything.
+            Concepts linked in a navigable graph structure. See how attention
+            leads to SSMs, how diffusion connects to flow matching.
           </p>
           <p>
             Explore the <Link href="/graph">knowledge graph</Link>.

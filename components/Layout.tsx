@@ -15,14 +15,17 @@ export default function Layout({ children }: Props) {
             <span className="brand-text">Continuous Function</span>
           </Link>
           <nav className="nav">
+            <Link href="/pillars" className="nav-link">
+              Pillars
+            </Link>
             <Link href="/concepts/optimizers/overview" className="nav-link">
               Optimizers
             </Link>
-            <Link href="/concepts/optimizers/muon" className="nav-link">
-              Muon
-            </Link>
             <Link href="/graph" className="nav-link">
-              Concept Graph
+              Graph
+            </Link>
+            <Link href="/vision" className="nav-link">
+              Vision
             </Link>
           </nav>
         </div>
