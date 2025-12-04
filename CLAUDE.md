@@ -42,6 +42,30 @@ Interactive visualizations follow a consistent pattern:
 - Color palette defined in `lib/mathObjects.ts` as `MATH_COLORS`
 - MDX files import and render React components inline with prose
 
+## Content Strategy
+
+See `CONTENT_STRATEGY.md` for the full educational vision and roadmap.
+
+### Target Audience
+ML practitioners who've outgrown tutorials but aren't PhD researchers—the "intermediate wasteland."
+
+### Pedagogical Pattern
+Every concept follows: **Intuition → Math → Code → Interactive demo**
+
+### Five Core Pillars
+1. **Sequence Modeling** - Attention, SSMs, Mamba
+2. **Optimization** - Gradient descent as physics, Muon, Edge of Stability
+3. **Generative Physics** - Diffusion, Flow Matching, Optimal Transport
+4. **Geometric DL** - Symmetry, Equivariance, Manifolds
+5. **Mechanistic Interpretability** - Reverse-engineering networks
+
+### Priority Topics (Next to Build)
+- Grouped Query Attention (GQA) with KV cache visualization
+- RoPE geometric intuition with complex number animation
+- SwiGLU activation comparison
+- MoE routing visualization
+- DPO vs RLHF comparison
+
 ---
 
 ## Oracle CLI Integration
