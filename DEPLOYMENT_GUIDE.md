@@ -30,18 +30,34 @@ Run the build command in your terminal:
 npm run build
 ```
 
-This will create an `out` folder (or simply populate `.next` depending on version, but `out` is standard for static exports).
+This will create an `out` folder containing the static site.
 
 ## 4. Upload to Hostinger via FTP
-The contents of the **`out`** folder are what need to go to your server.
 
-1.  Open your FTP client (or use the configured Cursor SFTP).
-2.  Navigate to the `out` folder in your local project.
-3.  Upload **ALL** files and folders inside `out` to the `public_html` folder on your Hostinger server.
-    *   Do NOT upload the `out` folder itself, just its contents.
+### Important: FTP Root Path
+
+The Hostinger FTP account starts in `/public_html/` but the **actual web root is the parent directory**. This means:
+- When you connect via FTP, you land in `/public_html/`
+- You must `cd ..` to get to the actual web-serving directory
+- Use `remotePath: "/.."` or navigate up one level before uploading
+
+### Using lftp (Command Line)
+
+```bash
+cd /path/to/continiousfunction
+npm run build
+lftp -c "
+set ftp:ssl-allow no
+open -u u908281807.u908281808,'YOUR_PASSWORD' ftp://ftp.continuousfunction.ai
+cd ..
+mirror -R --verbose --exclude public_html/ out/ .
+bye
+"
+```
+
+Note: The `cd ..` navigates to the actual web root, and `--exclude public_html/` prevents overwriting the (empty) public_html folder.
 
 ### Using Cursor SFTP Extension
-If you want to use the Cursor SFTP extension, you need to map your local `out` folder to the remote server root.
 
 Update `.vscode/sftp.json`:
 
@@ -54,11 +70,58 @@ Update `.vscode/sftp.json`:
     "username": "u908281807.u908281808",
     "password": "YOUR_PASSWORD",
     "remotePath": "/",
-    "context": "out",  // <--- IMPORTANT: Only upload from the 'out' folder
-    "uploadOnSave": false // Disable auto-upload since you need to build first
+    "context": "out",
+    "uploadOnSave": false
 }
 ```
 
+**Key settings:**
+- `"remotePath": "/"` - Upload to FTP root (which IS public_html due to chroot)
+- `"context": "out"` - Only upload contents of the `out` folder
+
 Then, after building:
-1.  Right-click the `out` folder.
-2.  Select **SFTP: Upload**.
+1. Right-click the `out` folder
+2. Select **SFTP: Upload**
+
+### Common Mistakes
+
+| Mistake | Result | Fix |
+|---------|--------|-----|
+| Using `remotePath: "/public_html"` | Creates nested `public_html/public_html/` | Use `remotePath: "/"` |
+| Uploading the `out` folder itself | Site files in wrong location | Upload contents OF `out`, not `out` itself |
+| Forgetting to build first | Source files uploaded instead of compiled | Always run `npm run build` first |
+
+## 5. Enable Clean URLs (.htaccess)
+
+Next.js static export generates `.html` files, but the site uses clean URLs (e.g., `/pillars/optimization` not `/pillars/optimization.html`).
+
+Create `out/.htaccess` with this content (already included in the build):
+
+```apache
+# Enable clean URLs (remove .html extension)
+RewriteEngine On
+
+# If the request doesn't have an extension and isn't a directory
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.html -f
+
+# Serve the .html file
+RewriteRule ^(.*)$ $1.html [L]
+```
+
+This file must be uploaded to the web root along with the other files.
+
+## 6. Verify Deployment
+
+After uploading, verify these files exist at web root (FTP `cd ..`):
+- `index.html`
+- `404.html`
+- `.htaccess`
+- `_next/` folder (contains JS/CSS)
+- `pillars/` folder
+- `concepts/` folder
+
+Test URLs:
+- https://continuousfunction.ai/ (homepage)
+- https://continuousfunction.ai/pillars/optimization (should work without .html)
