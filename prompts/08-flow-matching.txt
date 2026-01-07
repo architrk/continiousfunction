@@ -1,0 +1,19 @@
+Create a React component visualizing Flow Matching vs traditional Diffusion paths.
+
+Key insight: Diffusion takes curved, noisy paths. Flow Matching learns straight optimal transport paths - fewer steps needed.
+
+Requirements:
+1. Show source distribution (noise) on left, target distribution (data) on right
+2. Diffusion mode: particles take curved, wandering paths
+3. Flow Matching mode: particles take straight lines (optimal transport)
+4. Toggle between modes to compare
+5. Show step counter: diffusion needs ~50 steps, flow matching needs ~1-4
+6. Visualize the velocity field v(x,t) as arrows
+7. Animate "rectification" - curved paths straightening over training
+
+The velocity field visualization is key - show how flow matching learns simpler fields.
+
+Colors: source in gray, target in teal (#14b8a6), paths in orange (#f59e0b).
+Dark background: #080c14
+
+Output TypeScript/TSX for Next.js with smooth animations.

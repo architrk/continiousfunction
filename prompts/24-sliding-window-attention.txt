@@ -1,0 +1,20 @@
+Create a React component visualizing Sliding Window Attention (used in Mistral, etc.).
+
+Key insight: Instead of attending to ALL previous tokens (O(L²)), attend only to a fixed window (O(L×W)). Long-range info propagates through stacked layers.
+
+Requirements:
+1. Show a long sequence with attention patterns
+2. Full attention: complete lower-triangular matrix (expensive)
+3. Sliding window: banded pattern (cheap)
+4. Animate info propagation: layer 1 sees window, layer 2 sees 2x window, etc.
+5. Show how L layers with window W gives effective context L×W
+6. Memory comparison bar chart
+
+Interactive: slider for window size, see pattern change.
+
+Mistral uses W=4096. Show that 32 layers × 4096 = 128K effective context.
+
+Colors: attention in orange gradient, window boundaries in teal.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3.

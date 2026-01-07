@@ -1,0 +1,20 @@
+Create a React component comparing RLHF and DPO for alignment.
+
+Key insight: RLHF needs a separate reward model + RL training. DPO directly optimizes on preference pairs, bypassing the reward model.
+
+Requirements:
+1. RLHF pipeline diagram: Pretrained → SFT → Train Reward Model → RL (PPO) → Aligned
+2. DPO pipeline: Pretrained → SFT → Direct Preference Optimization → Aligned
+3. Show the simplification: DPO removes an entire training stage
+4. Visualize preference pairs: (prompt, chosen response, rejected response)
+5. Show the DPO loss pushing chosen up, rejected down
+6. Compare: training stability (DPO more stable), compute cost (DPO cheaper)
+
+Interactive: toggle between pipelines, see component counts change.
+
+Keep it simple - focus on the conceptual difference, not math details.
+
+Colors: RLHF path in one color, DPO path in another (simpler = brighter).
+Background: #080c14
+
+Output TypeScript/TSX for Next.js.

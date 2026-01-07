@@ -1,0 +1,90 @@
+You are building an interactive visualization component for "Continuous Function", an educational site explaining mathematical foundations of deep learning through explorable explanations.
+
+## Project Context
+
+This is a Next.js + MDX site with D3/SVG-based visualizations. Components use React hooks, inline sliders, and follow this pattern:
+
+### Existing Component Pattern (GradientDescentPlayground.tsx):
+```tsx
+import { useMemo, useState } from 'react'
+
+const WIDTH = 320
+const HEIGHT = 220
+const PADDING = 24
+
+export default function ComponentName() {
+  const [param, setParam] = useState(0.5)
+  
+  const xToSvg = (x: number) => PADDING + (x / range) * (WIDTH - 2 * PADDING)
+  const yToSvg = (y: number) => HEIGHT - PADDING - (y / maxY) * (HEIGHT - 2 * PADDING)
+
+  return (
+    <section className="card interactive-card">
+      <h2>Title</h2>
+      <p className="muted">Description</p>
+      <div className="layout">
+        <svg width={WIDTH} height={HEIGHT} className="chart" role="img">
+          {/* D3/SVG visualization */}
+        </svg>
+        <div className="controls">
+          <label className="slider-label">
+            Parameter ({param.toFixed(2)})
+            <input type="range" min={0} max={1} step={0.01} value={param}
+              onChange={(e) => setParam(parseFloat(e.target.value))} />
+          </label>
+        </div>
+      </div>
+    </section>
+  )
+}
+```
+
+### Available utilities from lib/mathObjects.ts:
+```ts
+export const MATH_COLORS = {
+  primary: '#f59e0b',      // gradient-orange
+  secondary: '#14b8a6',    // convergence-teal
+  accent: '#8b5cf6',       // purple
+  positive: '#22c55e',     // green
+  negative: '#ef4444',     // red
+  neutral: '#6b7280',      // gray
+}
+
+export function softmax(values: number[]): number[]
+export function lerp(a: number, b: number, t: number): number
+export function clamp(value: number, min: number, max: number): number
+```
+
+## Your Task
+
+Create an interactive visualization component called `CrossEntropyKLDemo.tsx` that explains:
+
+### Concept: Maximum Likelihood, Cross-Entropy & KL Divergence
+
+**Core math to visualize:**
+1. Cross-entropy: H(p, q) = -E_p[log q(x)] = -Σ p(x) log q(x)
+2. KL divergence: KL(p || q) = Σ p(x) log(p(x)/q(x)) = H(p,q) - H(p)
+3. Show that minimizing cross-entropy = minimizing KL divergence (up to constant)
+
+**Missing intuition to address:**
+- Why KL direction matters: KL(p_data || p_model) vs KL(p_model || p_data)
+- Forward KL (mode-covering) vs Reverse KL (mode-seeking) behavior
+- How cross-entropy shapes hallucination behavior under distribution shift
+
+**Interactive elements needed:**
+1. Two discrete probability distributions (p_true and q_model) shown as bar charts
+2. Sliders to adjust q_model's distribution
+3. Real-time display of: H(p), H(p,q), KL(p||q), KL(q||p)
+4. Visual showing the "direction" of KL - which modes get covered/ignored
+5. Animation showing what happens when q assigns near-zero probability to a mode p cares about
+
+**Visualization requirements:**
+- Side-by-side bar charts for p and q distributions
+- Color-coded bars showing contribution to cross-entropy term
+- Highlight the asymmetry: KL(p||q) ≠ KL(q||p)
+- Show the "infinite penalty" when q(x)→0 but p(x)>0
+
+**Educational goal:**
+User should understand why LLMs trained with cross-entropy (forward KL) tend to "cover all modes" which can lead to hallucinations - the model would rather assign some probability to wrong answers than risk infinite loss by assigning zero.
+
+Generate the complete TypeScript React component following the patterns shown above.

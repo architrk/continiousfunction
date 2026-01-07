@@ -1,0 +1,85 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+export function softmax(values: number[]): number[]
+```
+
+## Your Task
+
+Create `InductionHeadsDemo.tsx` visualizing transformer circuits:
+
+### Concept: Transformer Circuits, Induction Heads & Mechanistic Interpretability
+
+**Core math:**
+```
+Residual stream decomposition:
+r_{l+1} = r_l + W^{attn}_l r_l + W^{mlp}_l r_l
+
+Induction head algorithm: [A][B]...[A] → [B]
+1. Previous token head: attend to position of previous [A]
+2. Induction head: copy the token that followed previous [A]
+
+QK circuit: which tokens to attend to
+OV circuit: what information to copy
+```
+
+**Missing intuition to address:**
+- How QK and OV matrices implement algorithms
+- Induction heads as "pattern completion" circuits
+- Phase transition: sudden appearance during training
+- Broader circuit motifs beyond induction
+
+**Interactive visualization:**
+
+1. **Sequence Input Panel:**
+   - Editable token sequence: "The cat sat on the mat. The cat"
+   - Highlight repeating patterns [A][B]...[A]
+   - Show predicted next token
+
+2. **Attention Pattern Heatmap:**
+   - Rows = query positions, Cols = key positions
+   - Show which positions attend to which
+   - Highlight diagonal patterns (previous token)
+   - Highlight induction pattern (attend to previous [A])
+
+3. **QK Circuit Visualization:**
+   - Show Q and K vectors for selected tokens
+   - Visualize dot product QK^T
+   - Explain: "This head looks for tokens that match pattern X"
+
+4. **OV Circuit Visualization:**
+   - Show what information gets copied when attending
+   - V vectors → O projection → residual stream
+   - Explain: "When attending to position i, copy info Y"
+
+5. **Two-Head Composition:**
+   - Previous token head (Layer L): attend to t-1
+   - Induction head (Layer L+1): use info from prev token head
+   - Show how they compose to implement [A][B]...[A]→[B]
+
+6. **Controls:**
+   - Editable input sequence
+   - Dropdown: Select attention head to visualize
+   - Toggle: Show QK attention vs OV value flow
+   - Slider: Temperature (sharpen/soften attention)
+
+7. **Training Dynamics Panel (optional):**
+   - Show loss curve with phase transition
+   - Mark when induction heads "click into place"
+   - Before vs after: random attention vs structured
+
+**Key insights:**
+- Transformers implement interpretable algorithms
+- Induction heads are key to in-context learning
+- Circuits compose across layers
+- This framework lets us reverse-engineer model behavior
+
+**Educational goal:**
+User sees attention heads as "programs" - they can understand WHAT algorithm a head implements by examining its QK (what to look at) and OV (what to copy) circuits.
+
+Generate complete TypeScript React component.

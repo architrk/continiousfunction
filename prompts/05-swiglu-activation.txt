@@ -1,0 +1,20 @@
+Create a React component comparing activation functions: ReLU, GELU, SiLU, and SwiGLU.
+
+Key insight: SwiGLU isn't just a different activation - it's a gating mechanism where one linear projection gates another.
+
+Requirements:
+1. Plot all activation functions on the same graph (-3 to 3 range)
+2. Interactive: hover to see exact values at each point
+3. Show the formulas updating as you move along x-axis
+4. For SwiGLU, show the two branches (gate and value) separately, then combined
+5. Visualize the "gating" concept with an animated gate metaphor
+6. Explain the 2/3 hidden dimension scaling (show parameter count comparison)
+
+Colors:
+- ReLU: gray (#6b7280)
+- GELU: blue (#3b82f6)
+- SiLU: purple (#8b5cf6)
+- SwiGLU: orange (#f59e0b)
+
+Dark background. Smooth curves with D3.js line interpolation.
+Output TypeScript/TSX for Next.js.

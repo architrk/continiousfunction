@@ -1,0 +1,94 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `FlowMatchingOTDemo.tsx` visualizing flow matching and optimal transport:
+
+### Concept: Flow Matching & Optimal Transport
+
+**Core math:**
+```
+Flow matching objective:
+Learn vector field v_θ(x, t) to transport noise → data
+
+Conditional flow matching loss:
+L = E_{t,x_0,x_1}[|v_θ(x_t, t) - u_t(x_t | x_0, x_1)|²]
+
+Where x_t = (1-t)x_0 + t·x_1 (straight line interpolation)
+u_t = (x_1 - x_0) (constant velocity along line)
+
+Optimal transport connection:
+Straight lines = OT displacement interpolation
+Minimizes transport cost (Wasserstein distance)
+```
+
+**Missing intuition to address:**
+- Why straight-line paths are optimal (OT theory)
+- Diffusion = curved paths, Flow matching = straight paths
+- Fewer steps needed for straight paths
+- Rectified flow: iteratively straighten paths
+
+**Interactive visualization:**
+
+1. **Transport Visualization (2D):**
+   - Source distribution (e.g., Gaussian noise)
+   - Target distribution (e.g., two moons, mixture)
+   - Show particles moving from source to target
+   - Toggle: Diffusion paths (curved) vs Flow paths (straight)
+
+2. **Vector Field View:**
+   - At time t, show v(x, t) as arrow field
+   - Animate t from 0 to 1
+   - Show how field guides particles
+   - Color by vector magnitude
+
+3. **Path Comparison Panel:**
+   - Same start and end points
+   - Diffusion: curved, stochastic path
+   - Flow matching: straight, deterministic path
+   - Show path length / transport cost
+
+4. **Optimal Transport Intuition:**
+   - Earth mover's problem visualization
+   - Show optimal coupling between distributions
+   - Animate mass being transported
+   - Total transport cost metric
+
+5. **Sampling Speed Comparison:**
+   - Diffusion: needs many steps (curved)
+   - Flow matching: needs few steps (straight)
+   - Show quality vs steps trade-off
+   - Rectified flow: even straighter
+
+6. **Controls:**
+   - Slider: Time t (0 to 1)
+   - Slider: Number of sampling steps
+   - Toggle: Diffusion vs Flow Matching
+   - Button: Sample new particles
+   - Toggle: Show OT coupling lines
+
+7. **Rectified Flow Panel:**
+   - Start with diffusion paths
+   - Iteratively "straighten" them
+   - Show improvement after each iteration
+   - Endpoint: nearly straight lines
+
+**Key insights:**
+- Diffusion paths are curved because of stochastic noise
+- Flow matching learns deterministic straight paths
+- Straight paths need fewer discretization steps
+- OT theory tells us straight paths minimize transport cost
+- This is why SDXL Turbo / Stable Diffusion 3 are fast
+
+**Educational goal:**
+User sees that flow matching is "diffusion done right" - by targeting straight-line transport paths, we get faster, more efficient generation.
+
+Generate complete TypeScript React component.

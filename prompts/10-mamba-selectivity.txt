@@ -1,0 +1,18 @@
+Create a React component visualizing Mamba's selective state space mechanism.
+
+Key insight: Unlike S4 (fixed A,B,C), Mamba makes B, C, and Δ input-dependent. Δ acts as a "gate" - large Δ focuses on current input, small Δ preserves state.
+
+Requirements:
+1. Show input sequence with some "important" tokens and some "noise" tokens
+2. Visualize the Δ (delta) values as bar heights - large for important, small for noise
+3. Show the hidden state updating: big jumps for important tokens, small for noise
+4. The "Selective Copying" task: input has a password surrounded by noise, output should copy only the password
+5. Compare LTI (Linear Time Invariant) vs Selective: LTI fails, Mamba succeeds
+6. Animate the parallel scan algorithm (optional advanced view)
+
+Interactive: toggle different input patterns to see how selectivity adapts.
+
+Colors: important tokens in orange (#f59e0b), noise in gray, state in teal (#14b8a6).
+Background: #080c14
+
+Output TypeScript/TSX for Next.js.

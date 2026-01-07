@@ -1,5 +1,10 @@
 import GradientDescentPlayground from '../../../components/GradientDescentPlayground'
 import Link from 'next/link'
+import Head from 'next/head'
+
+<Head>
+  <title>Optimizers Overview — Continuous Function</title>
+</Head>
 
 # Optimizers Overview
 
@@ -71,6 +76,22 @@ Nesterov accelerated gradient (NAG) modifies where the gradient is evaluated:
 3. Update the velocity using that gradient
 
 This often gives slightly better convergence in practice, especially for convex-like regions of the loss.
+
+---
+
+## RMSProp
+
+RMSProp (Root Mean Square Propagation) keeps an exponential moving average of squared gradients and scales updates by the RMS magnitude:
+
+$$
+v_t = \beta v_{t-1} + (1-\beta) g_t^2, \quad w_{t+1} = w_t - \eta \frac{g_t}{\sqrt{v_t} + \epsilon}
+$$
+
+where $g_t = \nabla_w L(w_t)$ is the gradient, $\beta \approx 0.9$ is the decay rate, and $\epsilon \approx 10^{-8}$ prevents division by zero.
+
+**Intuition:** Divide by a running estimate of "how big gradients usually are" per parameter. Parameters with consistently large gradients get smaller effective learning rates; parameters with small gradients get larger effective learning rates.
+
+This **adaptive learning rate** is the key idea that carries into Adam and AdamW.
 
 ---
 

@@ -1,0 +1,18 @@
+Create a React component visualizing backpropagation through an attention layer.
+
+Key insight: Gradients flow backward through softmax, through QK^T, through the linear projections. Understanding this flow is crucial for understanding training dynamics.
+
+Requirements:
+1. Forward pass: show activations flowing through Q, K, V projections → attention → output
+2. Backward pass: show gradients flowing in reverse
+3. Color intensity = gradient magnitude
+4. Highlight the softmax Jacobian (where most complexity is)
+5. Show gradient flow to all three projections W_Q, W_K, W_V
+6. Interactive: hover over any edge to see the gradient formula
+
+The "aha": why training attention is harder than training MLPs.
+
+Colors: forward in teal (#14b8a6), backward in orange (#f59e0b), high gradient = bright.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with animated SVG.

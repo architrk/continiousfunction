@@ -38,6 +38,16 @@ export default function TimeSeriesPlot({
       })
     })
 
+    // Handle empty data: provide sensible defaults to avoid NaN from mapRange
+    if (!Number.isFinite(tMin) || !Number.isFinite(tMax)) {
+      tMin = 0
+      tMax = 1
+    }
+    if (!Number.isFinite(vMin) || !Number.isFinite(vMax)) {
+      vMin = 0
+      vMax = 1
+    }
+
     // Add some padding
     const vPad = (vMax - vMin) * 0.1 || 1
     return { tMin, tMax, vMin: vMin - vPad, vMax: vMax + vPad }

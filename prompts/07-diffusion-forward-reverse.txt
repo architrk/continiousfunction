@@ -1,0 +1,20 @@
+Create a React component visualizing the diffusion process (forward noising and reverse denoising).
+
+Key insight: Forward process adds Gaussian noise step by step until pure noise. Reverse process learns to denoise, effectively generating data.
+
+Requirements:
+1. Start with a simple 2D distribution (e.g., two Gaussian blobs or a spiral)
+2. Show particles/points representing data samples
+3. Forward process: animate particles spreading into uniform noise
+4. Reverse process: animate noise condensing back into the original distribution
+5. Slider to control timestep t (0 = data, T = noise)
+6. Show the noise schedule β_t as a small graph
+7. Display the score function ∇log p(x) as vector arrows pointing toward data
+
+Interactive: drag the timestep slider to see intermediate states.
+Play/pause button for the full animation.
+
+Colors: data points in teal (#14b8a6), noise in gray, score vectors in orange (#f59e0b).
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3.js for particle simulation.

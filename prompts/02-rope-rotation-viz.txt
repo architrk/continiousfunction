@@ -1,0 +1,16 @@
+Create a React component that visualizes Rotary Position Embedding (RoPE) geometrically.
+
+The key insight: RoPE encodes position by rotating embedding vectors in 2D subspaces. The dot product of two rotated vectors depends only on their relative position.
+
+Requirements:
+1. Show 2D plane with vectors representing token embeddings
+2. Animate rotation as position increases (each position rotates by θ)
+3. Show two tokens at different positions - visualize how their dot product changes with relative distance
+4. Interactive slider to move token positions and see rotation in real-time
+5. Display the math: show Euler's formula e^(iθ) = cos(θ) + i·sin(θ) updating live
+6. Color: teal (#14b8a6) for vectors, orange (#f59e0b) for rotation arcs
+
+Use D3.js for the visualization, React for state management.
+Make it intuitive - someone who doesn't know complex numbers should still get the rotation idea.
+
+Output TypeScript/TSX code compatible with Next.js.

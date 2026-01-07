@@ -1,0 +1,24 @@
+Create a React component visualizing BPE (Byte Pair Encoding) tokenization.
+
+Key insight: BPE iteratively merges the most frequent character pairs. Common words become single tokens, rare words split into subwords.
+
+Requirements:
+1. Input text field where user can type
+2. Show the tokenization process step by step
+3. Color-code each token differently
+4. Display token IDs alongside the text
+5. Show vocabulary building: "e" + "r" → "er", "er" + "s" → "ers"
+6. Counter: number of tokens used (shorter = more efficient)
+7. Compare same text in different tokenizers (GPT-4 vs Llama)
+
+Edge cases to highlight:
+- "   " (spaces) as tokens
+- Numbers tokenized weirdly
+- Non-English text fragmentation
+
+Interactive: type text, see tokens update live.
+
+Colors: each token a different pastel shade against dark background.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js.

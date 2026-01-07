@@ -1,0 +1,19 @@
+Create a React component visualizing State Space Models (SSMs) and the recurrence mechanism.
+
+Key insight: SSMs process sequences through a hidden state that evolves via h'(t) = Ah(t) + Bx(t). This is linear, parallelizable, and O(L) complexity.
+
+Requirements:
+1. Show input sequence x(t) as a waveform on top
+2. Hidden state h(t) as a moving point in 2D state space
+3. Output y(t) as another waveform below
+4. Animate the state evolution as input flows through
+5. Show matrices A, B, C as small heatmaps that transform the state
+6. Compare to RNN: show the recurrence unrolling
+7. Interactive: change A matrix eigenvalues to see stability/oscillation
+
+Explain: A matrix controls memory decay, B controls input influence, C controls output.
+
+Colors: input in gray, state trajectory in orange (#f59e0b), output in teal (#14b8a6).
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with D3.js.

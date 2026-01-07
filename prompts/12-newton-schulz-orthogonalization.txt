@@ -1,0 +1,19 @@
+Create a React component visualizing the Newton-Schulz iteration for matrix orthogonalization (used in Muon optimizer).
+
+Key insight: Newton-Schulz rapidly converges to an orthogonal matrix: X_{k+1} = 0.5 * X_k * (3I - X_k^T X_k)
+
+Requirements:
+1. Start with a 2D grid of points (representing a matrix transformation)
+2. The grid is initially "squished" or "skewed" (non-orthogonal)
+3. Animate Newton-Schulz iterations snapping the grid back to orthogonal
+4. Show the matrix X and its product X^T X (should approach I)
+5. Display iteration count and convergence (||X^T X - I|| decreasing)
+6. Typically converges in 3-5 iterations - show this
+
+Interactive: drag grid corners to create different initial distortions.
+Reset button to try different starting points.
+
+Colors: original grid in gray, orthogonalized in teal (#14b8a6), animated path in orange.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with smooth GSAP animations.

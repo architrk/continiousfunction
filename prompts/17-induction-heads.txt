@@ -1,0 +1,21 @@
+Create a React component visualizing Induction Heads - the fundamental circuit for in-context learning.
+
+Key insight: Induction heads implement pattern completion: "I saw [A][B] before. I see [A] now. Predict [B]."
+
+Two-head circuit:
+1. Previous Token Head: copies info from position t-1 to t
+2. Induction Head: looks for previous occurrence of current token, attends to what followed
+
+Requirements:
+1. Show a sequence like "Harry Potter... Harry [?]"
+2. Visualize the two attention patterns as connection diagrams
+3. Step through the circuit: (1) find "Harry" earlier, (2) look at what followed, (3) predict "Potter"
+4. Show attention scores as line thickness
+5. Interactive: input different repeated patterns, watch the circuit activate
+
+This is THE core mechanism for in-context learning.
+
+Colors: previous token head in teal (#14b8a6), induction head in orange (#f59e0b).
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with animated attention lines.

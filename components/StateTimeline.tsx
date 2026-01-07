@@ -25,13 +25,18 @@ export default function StateTimeline({
   }, [states])
 
   const bounds = useMemo(() => {
-    let min = 0, max = 1
+    let min = Infinity, max = -Infinity
     states.forEach(s => {
       s.activations.forEach(a => {
         min = Math.min(min, a)
         max = Math.max(max, a)
       })
     })
+    // Fall back to sensible defaults when there's no activation data
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      min = 0
+      max = 1
+    }
     return { min, max }
   }, [states])
 

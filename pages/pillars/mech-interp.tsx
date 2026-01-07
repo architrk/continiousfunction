@@ -1,11 +1,25 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
+import Head from 'next/head'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import StateTimeline from '../../components/StateTimeline'
 import KernelHeatmap from '../../components/KernelHeatmap'
 import { NeuralState, Matrix2D, MATH_COLORS } from '../../lib/mathObjects'
+
+// Import visualization components from foundations (canonical source with gamification)
+const SuperpositionPolysemanticity = lazy(() => import('../../components/foundations/SuperpositionViz'))
+const InductionHeads = lazy(() => import('../../components/foundations/InductionHeadsViz'))
+const LinearProbes = lazy(() => import('../../components/foundations/LinearProbeViz'))
+
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 360, color: '#b8b0a0' }}>
+      Loading visualization...
+    </div>
+  )
+}
 
 function MechInterpVisualPanel() {
   const { activeSection, params } = useExplorable()
@@ -54,7 +68,33 @@ function MechInterpVisualPanel() {
     }
   }, [numFeatures])
 
-  if (activeSection === 'activations' || activeSection === 'superposition') {
+  // Use new advanced visualization components based on section
+  if (activeSection === 'superposition') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <SuperpositionPolysemanticity />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'circuits') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <InductionHeads />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'features' || activeSection === 'sae') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <LinearProbes />
+      </Suspense>
+    )
+  }
+
+  // Legacy visualization fallback for activations
+  if (activeSection === 'activations') {
     return (
       <div>
         <StateTimeline
@@ -71,7 +111,7 @@ function MechInterpVisualPanel() {
     )
   }
 
-  if (activeSection === 'sae' || activeSection === 'features') {
+  if (activeSection === 'sae-legacy') {
     return (
       <div>
         <KernelHeatmap
@@ -101,8 +141,12 @@ function MechInterpVisualPanel() {
 
 export default function MechInterpPillar() {
   return (
-    <ExplorableLayout
-      title="Mechanistic Interpretability"
+    <>
+      <Head>
+        <title>Mechanistic Interpretability — Continuous Function</title>
+      </Head>
+      <ExplorableLayout
+        title="Mechanistic Interpretability"
       subtitle="Reverse-engineering neural computation"
       visualPanel={<MechInterpVisualPanel />}
       initialParams={{ sparsity: 0.8, numFeatures: 8 }}
@@ -221,6 +265,7 @@ export default function MechInterpPillar() {
         </p>
       </ExplorableSection>
     </ExplorableLayout>
+    </>
   )
 }
 
@@ -238,6 +283,8 @@ function SparsityControl() {
         step="0.05"
         value={sparsity}
         onChange={(e) => setParam('sparsity', parseFloat(e.target.value))}
+        aria-label="Sparsity"
+        aria-valuetext={`${(sparsity * 100).toFixed(0)} percent`}
       />
       <span className="value">{(sparsity * 100).toFixed(0)}%</span>
     </div>
@@ -258,6 +305,8 @@ function NumFeaturesControl() {
         step="1"
         value={numFeatures}
         onChange={(e) => setParam('numFeatures', parseInt(e.target.value))}
+        aria-label="Number of features"
+        aria-valuetext={`${numFeatures} features`}
       />
       <span className="value">{numFeatures}</span>
     </div>

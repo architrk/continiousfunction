@@ -90,9 +90,15 @@ export const MATH_COLORS = {
   surface: 'rgba(28, 25, 23, 0.95)',
 } as const
 
+// Guard helper: clamp to finite values, fallback to default if NaN/Infinity
+export function safeNumber(value: number, fallback: number = 0): number {
+  return Number.isFinite(value) ? value : fallback
+}
+
 // Interpolation utilities
 export function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t
+  const result = a + (b - a) * t
+  return safeNumber(result, a)
 }
 
 export function lerpPoint2D(a: Point2D, b: Point2D, t: number): Point2D {
@@ -111,7 +117,10 @@ export function mapRange(
   outMin: number,
   outMax: number
 ): number {
-  return ((value - inMin) * (outMax - outMin)) / (inMax - inMin) + outMin
+  const inRange = inMax - inMin
+  if (inRange === 0) return outMin // Avoid division by zero
+  const result = ((value - inMin) * (outMax - outMin)) / inRange + outMin
+  return safeNumber(result, outMin)
 }
 
 // Generate grid points for field visualization
@@ -143,15 +152,17 @@ export function numericalGradient(
 ): Point2D {
   const dfdx = (f(x + h, y) - f(x - h, y)) / (2 * h)
   const dfdy = (f(x, y + h) - f(x, y - h)) / (2 * h)
-  return [dfdx, dfdy]
+  return [safeNumber(dfdx, 0), safeNumber(dfdy, 0)]
 }
 
 // Softmax for attention patterns
 export function softmax(values: number[]): number[] {
+  if (values.length === 0) return []
   const maxVal = Math.max(...values)
-  const exps = values.map(v => Math.exp(v - maxVal))
+  const exps = values.map(v => Math.exp(safeNumber(v - maxVal, 0)))
   const sum = exps.reduce((a, b) => a + b, 0)
-  return exps.map(e => e / sum)
+  if (sum === 0) return values.map(() => 1 / values.length) // Uniform fallback
+  return exps.map(e => safeNumber(e / sum, 1 / values.length))
 }
 
 // Matrix multiplication helper

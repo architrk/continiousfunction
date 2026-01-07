@@ -1,0 +1,20 @@
+Create a React component demonstrating equivariance vs invariance in neural networks.
+
+Key insight: Invariance = output doesn't change when input transforms. Equivariance = output transforms the same way as input.
+
+Requirements:
+1. Show an input image/pattern and network output side by side
+2. Transformation controls: rotate, translate, reflect the input
+3. Invariant network: output stays the same regardless of input transform
+4. Equivariant network: output rotates/translates in sync with input
+5. Visual comparison: why equivariance is more powerful (preserves information)
+6. Example: object detection (equivariant) vs classification (invariant)
+
+Interactive: drag/rotate the input, watch both network types respond differently.
+
+Use simple shapes (triangle, arrow) to make transformations obvious.
+
+Colors: input in teal (#14b8a6), output in orange (#f59e0b), transformation arrows in gray.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with smooth CSS/GSAP transforms.

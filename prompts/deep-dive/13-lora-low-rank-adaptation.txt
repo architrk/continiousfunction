@@ -1,0 +1,96 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+export function matmul(a: number[][], b: number[][]): number[][]
+```
+
+## Your Task
+
+Create `LoRADemo.tsx` visualizing low-rank adaptation:
+
+### Concept: LoRA - Low-Rank Adaptation
+
+**Core math:**
+```
+Standard fine-tuning: W' = W + ΔW  (update full matrix)
+
+LoRA: W' = W + BA
+Where B ∈ ℝ^{d×r}, A ∈ ℝ^{r×d}, r << d
+
+Key insight: ΔW has low rank r
+- Only train A and B (r·d + r·d = 2rd params)
+- vs full fine-tuning (d² params)
+- Savings: 2r/d (e.g., r=8, d=4096 → 0.4%)
+
+Initialization: A ~ N(0, σ²), B = 0
+So ΔW = BA = 0 at start (preserve base model)
+```
+
+**Missing intuition to address:**
+- Geometric view: LoRA adds a small, oriented "slice" in weight space
+- Why low-rank is sufficient for task adaptation
+- Which layers benefit most from LoRA
+- Combining multiple LoRAs (task arithmetic)
+
+**Interactive visualization:**
+
+1. **Weight Matrix Decomposition:**
+   - Show original W as a heatmap (d × d)
+   - Show B (d × r) and A (r × d)
+   - Show product BA (d × d)
+   - Show W' = W + BA
+   - Animate rank-r approximation
+
+2. **Rank Slider:**
+   - Adjust r from 1 to 64
+   - Show reconstruction error |ΔW - BA|
+   - Show parameter count savings
+   - Visualize: low rank = smooth updates
+
+3. **Geometric View (2D simplified):**
+   - Weight space as 2D plane
+   - Full fine-tuning: move anywhere
+   - LoRA rank-1: move along a LINE
+   - LoRA rank-2: move in a PLANE
+   - Show constraint set geometry
+
+4. **Layer-wise LoRA:**
+   - Transformer diagram with layers
+   - Toggle LoRA on/off per layer
+   - Show total params vs performance
+   - Common pattern: attention layers only
+
+5. **Task Arithmetic Panel:**
+   - LoRA for task A: ΔW_A
+   - LoRA for task B: ΔW_B
+   - Combined: W + α·ΔW_A + β·ΔW_B
+   - Slider: α and β weights
+   - Show task performance interpolation
+
+6. **Controls:**
+   - Slider: Rank r (1 to 64)
+   - Slider: Learning rate
+   - Toggle: Which layers have LoRA
+   - Button: Train step / Reset
+
+7. **Efficiency Metrics:**
+   - Trainable parameters count
+   - Memory usage comparison
+   - Training time estimate
+   - Performance vs full fine-tuning
+
+**Key insights:**
+- Most fine-tuning updates are low-rank in practice
+- LoRA captures the "essence" of task adaptation
+- Enables training huge models on consumer hardware
+- LoRAs can be combined, switched, and shared
+
+**Educational goal:**
+User understands that fine-tuning doesn't need to update all parameters - the "task-specific change" lives in a low-dimensional subspace that LoRA efficiently parameterizes.
+
+Generate complete TypeScript React component.

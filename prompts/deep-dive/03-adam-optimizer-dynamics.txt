@@ -1,0 +1,94 @@
+You are building an interactive visualization component for "Continuous Function", an educational site explaining mathematical foundations of deep learning through explorable explanations.
+
+## Project Context
+
+Next.js + MDX site with D3/SVG visualizations. Follow this existing pattern:
+
+### Reference: GradientDescentPlayground.tsx pattern
+```tsx
+import { useMemo, useState } from 'react'
+
+const WIDTH = 320, HEIGHT = 220, PADDING = 24
+
+function f(x: number) { return 0.5 * (x - 2) ** 2 }
+function gradf(x: number) { return x - 2 }
+
+export default function GradientDescentPlayground() {
+  const [lr, setLr] = useState(0.2)
+  const [momentum, setMomentum] = useState(0.8)
+  const [x, setX] = useState(4)
+  const [v, setV] = useState(0)
+  const [steps, setSteps] = useState(0)
+
+  const stepOnce = () => {
+    const g = gradf(x)
+    const newV = momentum * v - lr * g
+    setV(newV)
+    setX(x + newV)
+    setSteps(s => s + 1)
+  }
+  // ... SVG rendering with curve and moving point
+}
+```
+
+### Available utilities:
+```ts
+export const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+export function numericalGradient(f, x, y, h = 1e-5): [number, number]
+```
+
+## Your Task
+
+Create `AdamOptimizerDemo.tsx` visualizing Adam's adaptive learning:
+
+### Concept: Adam & Adaptive Gradient Methods
+
+**Core math to visualize:**
+```
+m_t = β₁ m_{t-1} + (1-β₁) g_t           // First moment (momentum)
+v_t = β₂ v_{t-1} + (1-β₂) g_t²          // Second moment (RMSprop)
+m̂_t = m_t / (1-β₁^t)                    // Bias correction
+v̂_t = v_t / (1-β₂^t)                    // Bias correction
+θ_{t+1} = θ_t - α * m̂_t / (√v̂_t + ε)   // Update
+```
+
+**Missing intuition to address:**
+- Per-coordinate scaling with 1/√v_t adapts to gradient magnitude per dimension
+- Why Adam sometimes hurts generalization vs SGD
+- How bias correction matters in early training
+- Interaction with weight decay (AdamW ≠ Adam + L2)
+
+**Interactive visualization:**
+
+1. **2D Loss Landscape View:**
+   - Rosenbrock or elongated quadratic: f(x,y) = (1-x)² + 100(y-x²)²
+   - Show trajectory of SGD vs Adam vs SGD+Momentum
+   - Contour lines showing loss surface
+
+2. **Per-Dimension Dynamics Panel:**
+   - Two bar charts showing m_t and v_t for each dimension
+   - Show how v_t accumulates squared gradients
+   - Visualize the effective learning rate α/√v_t per dimension
+
+3. **Sliders:**
+   - Learning rate α (0.001 to 0.1)
+   - β₁ (0.8 to 0.99)
+   - β₂ (0.9 to 0.999)
+   - Toggle: Adam vs AdamW (decoupled weight decay)
+
+4. **Metrics Display:**
+   - Current loss value
+   - Step count
+   - Effective learning rate per dimension
+   - Distance to optimum
+
+**Key insights:**
+- On ill-conditioned problems (elongated valleys), Adam adapts step size per dimension
+- Small β₂ → faster adaptation but noisier; large β₂ → smoother but slower
+- Bias correction prevents tiny steps in early training
+- Show divergence case: when Adam fails on simple convex problems
+
+**Educational goal:**
+User sees WHY Adam works better than vanilla SGD on typical deep learning loss surfaces (different scales per parameter), but also understands the trade-offs with generalization.
+
+Generate complete TypeScript React component.

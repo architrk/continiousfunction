@@ -1,0 +1,94 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+export function softmax(values: number[]): number[]
+```
+
+## Your Task
+
+Create `RLHFDemo.tsx` visualizing preference-based alignment:
+
+### Concept: RLHF, Reward Modeling & Constitutional AI
+
+**Core math:**
+```
+1. Reward modeling (Bradley-Terry):
+P(y_a ≻ y_b | x) = σ(r_φ(x, y_a) - r_φ(x, y_b))
+Train φ via cross-entropy on human preferences
+
+2. RLHF objective:
+max_θ E_{x,y~π_θ}[r_φ(x,y)] - β·KL(π_θ(·|x) || π_0(·|x))
+
+= Maximize reward while staying close to reference model
+
+3. Constitutional AI:
+Same framework, but AI provides labels using principles
+```
+
+**Missing intuition to address:**
+- RLHF as KL-regularized Bayesian update on behavior
+- Reward hacking: over-optimizing learned reward
+- Why KL constraint is crucial (distribution shift)
+- Policy distributions before/after RLHF
+
+**Interactive visualization:**
+
+1. **Preference Learning Panel:**
+   - Show pairs of responses (y_a, y_b) for prompt x
+   - User clicks preferred response
+   - Watch reward model r_φ update
+   - Show decision boundary evolving
+
+2. **Reward vs KL Trade-off:**
+   - X-axis: KL divergence from reference
+   - Y-axis: Expected reward
+   - Pareto frontier curve
+   - β slider controls operating point
+   - Show: too low β → reward hacking
+
+3. **Policy Distribution View:**
+   - Simplified output space (e.g., helpfulness vs harmlessness)
+   - Show π_0 (base model) as one distribution
+   - Show π_θ (RLHF'd model) as another
+   - Visualize the "shift" from RLHF
+   - KL ball constraint
+
+4. **Reward Hacking Demo:**
+   - Show imperfect reward model
+   - Let policy "find the loophole"
+   - Reward goes up but quality goes down
+   - Demonstrate why KL constraint helps
+
+5. **Controls:**
+   - Slider: β (KL penalty weight) from 0.01 to 1.0
+   - Slider: Number of preference samples
+   - Toggle: Perfect vs imperfect reward model
+   - Button: Run RL optimization step
+
+6. **Constitutional AI Panel:**
+   - Show constitution (principles)
+   - AI self-labels responses using principles
+   - Compare: human labels vs AI labels
+   - Show when they agree/disagree
+
+7. **Metrics Display:**
+   - Reward on training distribution
+   - Reward on held-out distribution
+   - KL from reference
+   - Win rate vs reference
+
+**Key insights:**
+- RLHF = "move toward high reward but don't go too far"
+- Learned rewards are imperfect → reward hacking risk
+- KL constraint keeps model "grounded" in pretraining
+- Constitutional AI scales preference learning
+
+**Educational goal:**
+User understands RLHF as a constrained optimization that balances improving according to preferences while not deviating too much from the base model's knowledge.
+
+Generate complete TypeScript React component.

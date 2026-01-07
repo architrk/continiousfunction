@@ -1,4 +1,74 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+
+// Gamification: Prediction game for learning
+type GamePhase = 'setup' | 'countdown' | 'reveal'
+type BehaviorPrediction = 'converge_smooth' | 'converge_oscillate' | 'diverge' | 'slow'
+
+interface PredictionChallenge {
+  name: string
+  lr: number
+  momentum: number
+  startX: number
+  correctAnswer: BehaviorPrediction
+  hint: string
+  explanation: string
+}
+
+// Challenge scenarios for prediction game
+const PREDICTION_CHALLENGES: PredictionChallenge[] = [
+  {
+    name: '🎯 Mystery #1',
+    lr: 0.2,
+    momentum: 0.0,
+    startX: 5,
+    correctAnswer: 'converge_smooth',
+    hint: 'LR is moderate, no momentum',
+    explanation: 'With LR=0.2 and no momentum, the optimizer takes conservative steps that steadily decrease loss without overshooting.'
+  },
+  {
+    name: '🎲 Mystery #2',
+    lr: 0.95,
+    momentum: 0.0,
+    startX: 4,
+    correctAnswer: 'converge_oscillate',
+    hint: 'LR is very high, approaching stability limit',
+    explanation: 'LR=0.95 is near the stability threshold (2/curvature=2). The optimizer bounces across the minimum but still converges.'
+  },
+  {
+    name: '💥 Mystery #3',
+    lr: 1.0,
+    momentum: 0.9,
+    startX: 4,
+    correctAnswer: 'diverge',
+    hint: 'High LR + high momentum = ?',
+    explanation: 'LR=1.0 exceeds stability limit, and momentum=0.9 amplifies each update. The optimizer diverges exponentially.'
+  },
+  {
+    name: '🐢 Mystery #4',
+    lr: 0.02,
+    momentum: 0.0,
+    startX: 5,
+    correctAnswer: 'slow',
+    hint: 'Very small LR',
+    explanation: 'LR=0.02 makes tiny steps. It will converge eventually, but takes many more steps than necessary.'
+  },
+  {
+    name: '🚀 Mystery #5',
+    lr: 0.3,
+    momentum: 0.85,
+    startX: 5,
+    correctAnswer: 'converge_smooth',
+    hint: 'Moderate LR + high momentum',
+    explanation: 'LR=0.3 with momentum=0.85 accelerates through shallow regions and converges quickly with minimal oscillation.'
+  },
+]
+
+const BEHAVIOR_LABELS: Record<BehaviorPrediction, string> = {
+  converge_smooth: '✅ Smooth convergence',
+  converge_oscillate: '🔄 Oscillate then converge',
+  diverge: '💥 Diverge (explode)',
+  slow: '🐢 Very slow convergence',
+}
 
 const X_MIN = -2
 const X_MAX = 6
@@ -6,6 +76,74 @@ const WIDTH = 320
 const HEIGHT = 220
 const PADDING = 24
 const MAX_Y = 8
+
+// Expanded guided experiments with educational goals
+const GUIDED_PROMPTS = [
+  {
+    name: 'Stable descent',
+    lr: 0.2,
+    momentum: 0.0,
+    startX: 5,
+    description: 'Smooth monotone convergence—conservative but reliable.',
+    insight: 'With moderate LR and no momentum, each step shrinks the distance to the minimum.',
+  },
+  {
+    name: 'Faster convergence',
+    lr: 0.5,
+    momentum: 0.0,
+    startX: 5,
+    description: 'Larger steps converge faster—but how close to instability?',
+    insight: 'Higher LR means fewer steps to converge, but you approach the stability limit.',
+  },
+  {
+    name: 'Overshooting',
+    lr: 0.95,
+    momentum: 0.0,
+    startX: 4,
+    description: 'Near the stability limit—oscillates but still converges.',
+    insight: 'The optimizer bounces across the minimum but gradually settles.',
+  },
+  {
+    name: 'Momentum boost',
+    lr: 0.15,
+    momentum: 0.85,
+    startX: 5,
+    description: 'Momentum accelerates through shallow regions.',
+    insight: 'Velocity accumulates, helping escape plateaus and accelerate convergence.',
+  },
+  {
+    name: 'Heavy momentum',
+    lr: 0.1,
+    momentum: 0.95,
+    startX: 5,
+    description: 'Very high momentum—watch for overshoot.',
+    insight: 'High momentum can overshoot the minimum, requiring many steps to settle.',
+  },
+  {
+    name: 'Divergence',
+    lr: 1.0,
+    momentum: 0.9,
+    startX: 4,
+    description: 'Beyond stability—loss explodes.',
+    insight: 'When LR exceeds 2/curvature, updates grow instead of shrink.',
+  },
+  {
+    name: 'Conservative',
+    lr: 0.05,
+    momentum: 0.0,
+    startX: 5,
+    description: 'Very small LR—stable but painfully slow.',
+    insight: 'Leaving speed on the table. Often you can safely increase LR.',
+  },
+  {
+    name: 'Balanced',
+    lr: 0.3,
+    momentum: 0.7,
+    startX: 5,
+    description: 'Good balance of speed and stability.',
+    insight: 'Moderate LR with momentum often gives the best practical convergence.',
+  },
+]
 
 function f(x: number) {
   const dx = x - 2
@@ -16,12 +154,96 @@ function gradf(x: number) {
   return x - 2
 }
 
+// Detect optimizer behavior for targeted feedback
+type OptimizerState = 'idle' | 'converging' | 'slow' | 'oscillating' | 'diverging' | 'converged'
+
+function detectState(
+  x: number,
+  currentY: number,
+  steps: number,
+  history: number[]
+): OptimizerState {
+  if (steps === 0) return 'idle'
+
+  // Diverging: loss is very high or x is way out of bounds
+  if (currentY > 50 || Math.abs(x) > 20) return 'diverging'
+
+  // Converged: very close to minimum (x=2, y=0)
+  if (currentY < 0.001) return 'converged'
+
+  // Need at least 3 steps for oscillation/convergence detection
+  if (history.length < 3) return 'converging'
+
+  // Check for oscillation: sign changes in recent deltas
+  const recentHistory = history.slice(-6)
+  const deltas = recentHistory.slice(1).map((h, i) => h - recentHistory[i])
+  const signChanges = deltas.slice(1).filter((d, i) => d * deltas[i] < 0).length
+
+  if (signChanges >= 2) return 'oscillating'
+
+  // Check for slow convergence: very small progress
+  const avgDelta = Math.abs(deltas.reduce((a, b) => a + b, 0) / deltas.length)
+  if (avgDelta < 0.01 && currentY > 0.1) return 'slow'
+
+  return 'converging'
+}
+
+// Feedback messages for each state
+const FEEDBACK: Record<OptimizerState, { message: string; suggestion: string }> = {
+  idle: {
+    message: '',
+    suggestion: '',
+  },
+  converging: {
+    message: 'Converging steadily toward the minimum.',
+    suggestion: 'Loss is decreasing with each step.',
+  },
+  slow: {
+    message: 'Slow convergence detected.',
+    suggestion: 'Try increasing LR or adding momentum to speed up.',
+  },
+  oscillating: {
+    message: 'Oscillating around the minimum.',
+    suggestion: 'LR may be too high. Try reducing it or use momentum with lower LR.',
+  },
+  diverging: {
+    message: 'Divergence detected—loss is exploding!',
+    suggestion: 'Reduce LR significantly (often 3-10x). If using momentum, reduce that too.',
+  },
+  converged: {
+    message: 'Converged to the minimum.',
+    suggestion: 'The optimizer found the optimum where the gradient is near zero.',
+  },
+}
+
 export default function GradientDescentPlayground() {
   const [lr, setLr] = useState(0.2)
   const [momentum, setMomentum] = useState(0.8)
   const [x, setX] = useState(4)
   const [v, setV] = useState(0)
   const [steps, setSteps] = useState(0)
+  const [activePrompt, setActivePrompt] = useState<string | null>(null)
+  const [xHistory, setXHistory] = useState<number[]>([4])
+
+  // Gamification state
+  const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
+  const [currentChallenge, setCurrentChallenge] = useState<PredictionChallenge | null>(null)
+  const [prediction, setPrediction] = useState<BehaviorPrediction | null>(null)
+  const [countdown, setCountdown] = useState(3)
+  const [score, setScore] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [showChallengeMode, setShowChallengeMode] = useState(false)
+  const autoRunRef = useRef<NodeJS.Timeout | null>(null)
+
+  const applyPrompt = (prompt: typeof GUIDED_PROMPTS[0]) => {
+    setLr(prompt.lr)
+    setMomentum(prompt.momentum)
+    setX(prompt.startX)
+    setV(0)
+    setSteps(0)
+    setActivePrompt(prompt.name)
+    setXHistory([prompt.startX])
+  }
 
   const samples = useMemo(() => {
     const pts: { x: number; y: number }[] = []
@@ -58,23 +280,216 @@ export default function GradientDescentPlayground() {
     setV(newV)
     setX(newX)
     setSteps((s) => s + 1)
+    setXHistory((h) => [...h.slice(-10), newX])
   }
 
   const reset = () => {
     setX(4)
     setV(0)
     setSteps(0)
+    setXHistory([4])
   }
 
+  // Game functions
+  const startChallenge = useCallback((challenge: PredictionChallenge) => {
+    setCurrentChallenge(challenge)
+    setLr(challenge.lr)
+    setMomentum(challenge.momentum)
+    setX(challenge.startX)
+    setV(0)
+    setSteps(0)
+    setXHistory([challenge.startX])
+    setGamePhase('setup')
+    setPrediction(null)
+    setActivePrompt(null)
+  }, [])
+
+  const submitPrediction = useCallback(() => {
+    if (!prediction || !currentChallenge) return
+    setGamePhase('countdown')
+    setCountdown(3)
+  }, [prediction, currentChallenge])
+
+  // Countdown effect
+  useEffect(() => {
+    if (gamePhase !== 'countdown') return
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(c => c - 1), 600)
+      return () => clearTimeout(timer)
+    } else {
+      setGamePhase('reveal')
+      // Auto-run the optimizer for 25 steps
+      let stepCount = 0
+      autoRunRef.current = setInterval(() => {
+        setX(prevX => {
+          const g = gradf(prevX)
+          setV(prevV => {
+            const newV = (currentChallenge?.momentum ?? 0) * prevV - (currentChallenge?.lr ?? 0.2) * g
+            return newV
+          })
+          return prevX
+        })
+        // Actually update state properly
+        stepCount++
+        if (stepCount >= 25 || Math.abs(x - 2) < 0.001 || Math.abs(x) > 20) {
+          if (autoRunRef.current) clearInterval(autoRunRef.current)
+        }
+      }, 100)
+    }
+    return () => {
+      if (autoRunRef.current) clearInterval(autoRunRef.current)
+    }
+  }, [gamePhase, countdown, currentChallenge])
+
+  // Auto-run when in reveal phase
+  useEffect(() => {
+    if (gamePhase !== 'reveal') return
+    const runSteps = async () => {
+      for (let i = 0; i < 25; i++) {
+        await new Promise(resolve => setTimeout(resolve, 80))
+        stepOnce()
+        // Stop early if converged or diverged
+        if (Math.abs(x - 2) < 0.001 || currentY > 50 || Math.abs(x) > 20) break
+      }
+    }
+    runSteps()
+  }, [gamePhase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const checkResult = useCallback(() => {
+    if (!prediction || !currentChallenge) return null
+    const isCorrect = prediction === currentChallenge.correctAnswer
+    if (isCorrect) {
+      setScore(s => s + 10 + streak * 2)
+      setStreak(s => s + 1)
+    } else {
+      setStreak(0)
+    }
+    return isCorrect
+  }, [prediction, currentChallenge, streak])
+
+  const nextChallenge = useCallback(() => {
+    const currentIndex = currentChallenge
+      ? PREDICTION_CHALLENGES.findIndex(c => c.name === currentChallenge.name)
+      : -1
+    const nextIndex = (currentIndex + 1) % PREDICTION_CHALLENGES.length
+    startChallenge(PREDICTION_CHALLENGES[nextIndex])
+  }, [currentChallenge, startChallenge])
+
   const currentY = f(x)
+  const optimizerState = detectState(x, currentY, steps, xHistory)
+  const feedback = FEEDBACK[optimizerState]
+  const activeInsight = GUIDED_PROMPTS.find((p) => p.name === activePrompt)?.insight
 
   return (
     <section className="card interactive-card">
-      <h2>Gradient Descent Playground</h2>
-      <p className="muted">
-        Adjust the learning rate and momentum to see how the optimizer moves
-        along a simple 1D loss landscape.
-      </p>
+      <div className="playground-header">
+        <h2>Gradient Descent Playground</h2>
+        <button
+          onClick={() => {
+            setShowChallengeMode(!showChallengeMode)
+            if (!showChallengeMode) {
+              startChallenge(PREDICTION_CHALLENGES[0])
+            } else {
+              setCurrentChallenge(null)
+              setGamePhase('setup')
+            }
+          }}
+          className={`challenge-toggle ${showChallengeMode ? 'active' : ''}`}
+        >
+          {showChallengeMode ? '📚 Explore Mode' : '🎮 Challenge Mode'}
+        </button>
+      </div>
+
+      {/* Challenge Mode UI */}
+      {showChallengeMode && currentChallenge && (
+        <div className="challenge-panel">
+          <div className="challenge-header">
+            <div className="challenge-stats">
+              <span className="stat">🏆 Score: {score}</span>
+              <span className="stat">🔥 Streak: {streak}</span>
+            </div>
+          </div>
+
+          <div className="challenge-scenario">
+            <h4>{currentChallenge.name}</h4>
+            <p className="challenge-hint">💡 Hint: {currentChallenge.hint}</p>
+            <div className="challenge-params">
+              <span>LR = {currentChallenge.lr}</span>
+              <span>Momentum = {currentChallenge.momentum}</span>
+            </div>
+          </div>
+
+          {gamePhase === 'setup' && (
+            <div className="prediction-selection">
+              <p className="prediction-prompt">What will happen when we run this optimizer?</p>
+              <div className="prediction-options">
+                {(Object.keys(BEHAVIOR_LABELS) as BehaviorPrediction[]).map((behavior) => (
+                  <button
+                    key={behavior}
+                    onClick={() => setPrediction(behavior)}
+                    className={`prediction-btn ${prediction === behavior ? 'selected' : ''}`}
+                  >
+                    {BEHAVIOR_LABELS[behavior]}
+                  </button>
+                ))}
+              </div>
+              {prediction && (
+                <button onClick={submitPrediction} className="submit-prediction">
+                  Lock in Prediction →
+                </button>
+              )}
+            </div>
+          )}
+
+          {gamePhase === 'countdown' && (
+            <div className="countdown-display">
+              <span className="countdown-number">{countdown}</span>
+              <p>Running in...</p>
+            </div>
+          )}
+
+          {gamePhase === 'reveal' && (
+            <div className="result-panel">
+              <div className={`result-badge ${prediction === currentChallenge.correctAnswer ? 'correct' : 'incorrect'}`}>
+                {prediction === currentChallenge.correctAnswer ? '✅ Correct!' : '❌ Not quite'}
+              </div>
+              <p className="result-explanation">
+                <strong>Answer:</strong> {BEHAVIOR_LABELS[currentChallenge.correctAnswer]}
+              </p>
+              <p className="challenge-explanation">{currentChallenge.explanation}</p>
+              <button onClick={nextChallenge} className="next-challenge">
+                Next Challenge →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Original Explore Mode */}
+      {!showChallengeMode && (
+        <p className="muted">
+          Adjust the learning rate and momentum to see how the optimizer moves
+          along a simple 1D loss landscape.
+        </p>
+      )}
+      <div className="guided-prompts" style={{ display: showChallengeMode ? 'none' : 'flex' }}>
+        <span className="guided-label">Try:</span>
+        {GUIDED_PROMPTS.map((prompt) => (
+          <button
+            key={prompt.name}
+            onClick={() => applyPrompt(prompt)}
+            className={`guided-btn ${activePrompt === prompt.name ? 'active' : ''}`}
+            title={prompt.description}
+          >
+            {prompt.name}
+          </button>
+        ))}
+      </div>
+      {activePrompt && (
+        <p className="guided-description">
+          {GUIDED_PROMPTS.find((p) => p.name === activePrompt)?.description}
+        </p>
+      )}
       <div className="gd-layout">
         <svg width={WIDTH} height={HEIGHT} className="gd-chart" role="img">
           <line
@@ -139,10 +554,27 @@ export default function GradientDescentPlayground() {
               Reset
             </button>
           </div>
-          <p className="caption">
-            Too large a learning rate overshoots the minimum; low momentum gives
-            a wiggly path, high momentum smooths it.
-          </p>
+
+          {/* Dynamic feedback based on optimizer state */}
+          {feedback.message && (
+            <div className={`gd-feedback gd-feedback-${optimizerState}`}>
+              <p className="feedback-message">{feedback.message}</p>
+              <p className="feedback-suggestion">{feedback.suggestion}</p>
+            </div>
+          )}
+
+          {/* Insight from selected preset */}
+          {activeInsight && !feedback.message && (
+            <p className="caption">{activeInsight}</p>
+          )}
+
+          {/* Default caption when no specific state */}
+          {!feedback.message && !activeInsight && (
+            <p className="caption">
+              Too large a learning rate overshoots the minimum; low momentum gives
+              a wiggly path, high momentum smooths it.
+            </p>
+          )}
         </div>
       </div>
     </section>

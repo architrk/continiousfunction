@@ -1,0 +1,22 @@
+Create a React component visualizing the Edge of Stability phenomenon in neural network training.
+
+Key insight: Theory says learning rate η must satisfy η < 2/λ_max (sharpness). But neural nets violate this - sharpness hovers AT 2/η, creating controlled instability.
+
+Requirements:
+1. 3D loss landscape visualization (can be simplified 2D contours)
+2. Show the optimization trajectory as it trains
+3. Plot sharpness λ_max over training steps
+4. Draw the "stability threshold" line at 2/η
+5. Animate: sharpness rises, hits threshold, bounces, stabilizes at edge
+6. Show the "bouncing" between valley walls at high learning rates
+7. Slider to adjust learning rate and see different behaviors
+
+Three regimes to show:
+- Low η: stable, slow convergence
+- High η: unstable, diverges
+- Edge of Stability: oscillates but converges to flat minima
+
+Colors: trajectory in orange (#f59e0b), landscape in teal gradient, threshold in red.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3.js or Three.js for 3D.

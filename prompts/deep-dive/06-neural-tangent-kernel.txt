@@ -1,0 +1,77 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `NTKDemo.tsx` visualizing Neural Tangent Kernel dynamics:
+
+### Concept: Neural Tangent Kernel & Infinite-Width Limits
+
+**Core math:**
+```
+NTK definition:
+Θ(x, x') = ∇_θ f_θ(x)ᵀ ∇_θ f_θ(x')
+
+In infinite-width limit:
+- Θ becomes deterministic at initialization
+- Θ stays CONSTANT during training (lazy training)
+- Training dynamics become linear:
+  ∂_t f_t(x) = -Σᵢ Θ(x, xᵢ) ∂ℓ/∂f
+
+This is equivalent to kernel regression with the NTK!
+```
+
+**Missing intuition to address:**
+- Geometric animation of function space trajectories
+- NTK regime (kernel frozen) vs feature learning regime (kernel evolves)
+- Why wide networks behave like kernel methods
+- When does finite-width escape the NTK regime?
+
+**Interactive visualization:**
+
+1. **Function Space View:**
+   - Show f(x) as a curve being updated
+   - Training points marked on the curve
+   - Animate how predictions evolve during training
+   - Compare: NTK (linear path) vs feature learning (curved path)
+
+2. **NTK Matrix Heatmap:**
+   - Show Θ(xᵢ, xⱼ) for training points
+   - In NTK limit: static
+   - In feature learning: evolving
+   - Toggle between regimes
+
+3. **Gradient Feature Space:**
+   - Each input x represented by its gradient ∇_θ f_θ(x)
+   - Show as points in 2D (PCA projection)
+   - In NTK: points don't move
+   - In feature learning: points reorganize
+
+4. **Controls:**
+   - Slider: Network width (10 to 10000)
+   - Slider: Learning rate
+   - Toggle: Freeze features (NTK) vs learn features
+   - Button: Step / Play animation
+
+5. **Side-by-side comparison:**
+   - Left: NTK regime (wide network, small LR)
+   - Right: Feature learning regime (narrow network, larger LR)
+   - Same training data, different dynamics
+
+**Key insights:**
+- Wide networks → kernel-like behavior, theoretically tractable
+- Narrow networks → genuine feature learning, empirically powerful
+- NTK provides clean theoretical limit for understanding
+- Real transformers operate "somewhere between" these regimes
+
+**Educational goal:**
+User sees that NTK is like training a kernel machine where the kernel is determined by network architecture. Feature learning escapes this by adapting the kernel itself.
+
+Generate complete TypeScript React component.

@@ -1,0 +1,74 @@
+You are building an interactive visualization for "Continuous Function", an educational deep learning site.
+
+## Project Context
+Next.js + MDX site with D3/SVG visualizations, React hooks, inline controls.
+
+### Pattern to follow:
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6', negative: '#ef4444' }
+```
+
+## Your Task
+
+Create `LossLandscapeSharpnessDemo.tsx` visualizing:
+
+### Concept: Loss Landscapes, Sharpness & Flat Minima (SAM)
+
+**Core math:**
+```
+SAM objective: min_w max_{|ε|_p ≤ ρ} L(w + ε)
+
+Practical SAM:
+1. ε(w) ≈ ρ * ∇L(w) / |∇L(w)|₂  (worst-case perturbation)
+2. Update using ∇L(w + ε(w))    (gradient at perturbed point)
+
+Sharpness ≈ max eigenvalue of Hessian ∇²L(w)
+```
+
+**Missing intuition to address:**
+- Sharp vs flat minima in 2D looks simple, but high-dimensional anisotropic sharpness is complex
+- Flat minima → better generalization (more robust to perturbations)
+- Mode connectivity: many minima connected by low-loss paths
+- Why SGD implicitly finds flatter minima than full-batch GD
+
+**Interactive visualization:**
+
+1. **2D Loss Surface with Two Minima:**
+   - One sharp minimum (high curvature, deep)
+   - One flat minimum (low curvature, slightly higher loss)
+   - Contour plot with Hessian eigenvalue visualization
+
+2. **Perturbation Circle:**
+   - Show the ρ-ball around current weights
+   - Animate the "worst-case perturbation" direction
+   - Compare loss at w vs max loss in ball
+
+3. **SAM vs SGD Trajectory:**
+   - Toggle between standard SGD and SAM updates
+   - Show how SAM "seeks" flatter regions
+   - Display sharpness metric along trajectory
+
+4. **Sliders:**
+   - Perturbation radius ρ (0.01 to 0.5)
+   - Learning rate
+   - Toggle: SGD vs SAM
+
+5. **Hessian Eigenvalue Display:**
+   - Show λ_max (sharpness) at current point
+   - Visualize eigenvector direction (direction of max curvature)
+   - Color-code regions by sharpness
+
+**Key insights to convey:**
+- Training loss alone doesn't predict generalization
+- Flat minima are more "compressible" / lower description length
+- SAM explicitly optimizes for flatness by looking at worst-case nearby loss
+- Mini-batch noise in SGD implicitly regularizes toward flat minima
+
+**Educational panels:**
+Panel 1: Loss contours with optimizer trajectory
+Panel 2: Sharpness heatmap overlay
+Panel 3: Cross-section showing sharp vs flat profile
+Panel 4: Metrics (loss, sharpness, generalization proxy)
+
+Generate complete TypeScript React component with SVG visualization.

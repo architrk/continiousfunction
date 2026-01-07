@@ -1,0 +1,20 @@
+Create a React component comparing LayerNorm and RMSNorm.
+
+Key insight: LayerNorm centers (subtracts mean) AND scales. RMSNorm only scales (by RMS). RMSNorm is simpler, faster, and works just as well.
+
+Requirements:
+1. Input: a vector of activations (editable)
+2. Show the transformation step by step:
+   - LayerNorm: compute mean → subtract → compute std → divide → scale/shift
+   - RMSNorm: compute RMS → divide → scale
+3. Side-by-side output comparison
+4. Show that outputs are nearly identical
+5. Computational cost comparison (fewer ops in RMSNorm)
+6. Interactive: change input values, see both normalize
+
+Why this matters: modern LLMs (Llama, etc.) use RMSNorm.
+
+Colors: input in gray, intermediate in teal, output in orange.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js.

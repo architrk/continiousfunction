@@ -1,0 +1,95 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `InformationBottleneckDemo.tsx` visualizing information theory in deep learning:
+
+### Concept: Information Bottleneck & Compression
+
+**Core math:**
+```
+Information Bottleneck objective:
+max_{p(z|x)} I(Z; Y) - β·I(Z; X)
+
+= Maximize info about target Y
+- β × Compress away info about input X
+
+Trade-off parameter β:
+- Small β: Keep all info (no compression)
+- Large β: Aggressive compression (may lose relevant info)
+
+Connection to deep learning:
+Layers form a Markov chain: X → H₁ → H₂ → ... → Y
+Each layer (potentially) compresses while preserving label info
+```
+
+**Missing intuition to address:**
+- Why compression helps generalization
+- Data Processing Inequality: I(X;Y) ≥ I(H;Y)
+- Fitting phase vs compression phase in training
+- MDL connection: simpler models = shorter descriptions
+
+**Interactive visualization:**
+
+1. **Information Plane:**
+   - X-axis: I(X; Z) - info about input
+   - Y-axis: I(Y; Z) - info about label
+   - Optimal frontier curve
+   - β slider moves along curve
+   - Show layer trajectories during training
+
+2. **Compression-Prediction Trade-off:**
+   - Toy task: classify 2D points by color
+   - Layer representation Z
+   - Show reconstruction of X from Z (compression)
+   - Show prediction of Y from Z (relevance)
+
+3. **Training Dynamics Panel:**
+   - Animate layer representations through training
+   - Phase 1: Fit (both I(X;Z) and I(Y;Z) increase)
+   - Phase 2: Compress (I(X;Z) decreases, I(Y;Z) stays)
+   - Show this trajectory in info plane
+
+4. **Minimum Description Length View:**
+   - Model complexity = code length for H
+   - Fit quality = code length for data given H
+   - Total: L(D,H) = L(H) + L(D|H)
+   - Slider: model complexity
+   - Show MDL optimal point
+
+5. **Layer-by-Layer Analysis:**
+   - Show info at each layer of a small network
+   - Early layers: preserve input info
+   - Late layers: compress to task-relevant
+   - Visualize I(Hₗ; X) and I(Hₗ; Y) per layer
+
+6. **Controls:**
+   - Slider: β (compression weight)
+   - Slider: Training epoch (animate dynamics)
+   - Toggle: Show mutual information estimates
+   - Dropdown: Select layer to visualize
+
+7. **Generalization Connection:**
+   - Compare two models: same train accuracy
+   - One compresses more (lower I(X;Z))
+   - Show test accuracy difference
+   - Compressed model generalizes better
+
+**Key insights:**
+- Good representations keep what matters, discard what doesn't
+- This is formalized by the Information Bottleneck
+- Compression and generalization are deeply connected
+- Each layer in a deep network can be seen as a bottleneck
+
+**Educational goal:**
+User understands that learning = finding representations that compress away irrelevant details while preserving task-relevant information.
+
+Generate complete TypeScript React component.

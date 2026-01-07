@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Head from 'next/head'
 import GradientDescentPlayground from '../components/GradientDescentPlayground'
 
 const pillars = [
@@ -12,24 +13,27 @@ const pillars = [
 export default function HomePage() {
   return (
     <div>
+      <Head>
+        <title>Continuous Function — The Mathematics of Learning</title>
+      </Head>
       <section className="hero">
         <h1>The Mathematics of Learning</h1>
         <p className="hero-tagline">
-          Interactive explorations of the mathematical foundations of modern deep learning.
-          Scroll-synced labs with live visualizations. From gradient descent to Mamba.
+          Exploring the mathematical foundations of deep learning through interactive visualizations.
+          See how concepts connect, from gradient descent to state space models.
         </p>
         <div className="hero-actions">
-          <Link href="/pillars" className="btn">
-            Explore the Pillars
+          <Link href="/foundations" className="btn">
+            34 Core Concepts
           </Link>
-          <Link href="/graph" className="btn ghost">
-            Knowledge Graph
+          <Link href="/pillars" className="btn ghost">
+            Five Pillars
           </Link>
         </div>
       </section>
 
-      <section style={{ marginBottom: '2.5rem' }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', marginBottom: '1rem' }}>
+      <section className="content-section">
+        <h2 className="section-heading">
           Five Mathematical Pillars
         </h2>
         <div className="pillars-nav">
@@ -44,27 +48,27 @@ export default function HomePage() {
 
       <section className="grid">
         <article className="card">
-          <h2>Scroll-Synced Labs</h2>
+          <h2>Interactive Explorations</h2>
           <p>
-            Read the theory while the visualization updates in real-time.
-            Adjust parameters inline. See the math come alive.
+            Read alongside visualizations that update as you scroll.
+            Adjust parameters and see immediate changes. Play with the concepts.
           </p>
         </article>
         <article className="card">
-          <h2>Connected Knowledge</h2>
+          <h2>Connected Ideas</h2>
           <p>
-            Concepts linked in a navigable graph structure. See how attention
-            leads to SSMs, how diffusion connects to flow matching.
+            See how concepts link together. How attention relates to state spaces,
+            how diffusion connects to flow matching.
           </p>
           <p>
             Explore the <Link href="/graph">knowledge graph</Link>.
           </p>
         </article>
         <article className="card">
-          <h2>Learn by Doing</h2>
+          <h2>Hands-On Understanding</h2>
           <p>
-            Adjust learning rates. Watch convergence. Break things on purpose.
-            Understanding comes from experimentation.
+            Adjust learning rates. Watch convergence patterns. Break things.
+            Sometimes the best way to understand is to experiment.
           </p>
         </article>
       </section>

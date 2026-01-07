@@ -1,9 +1,22 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
+import Head from 'next/head'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import { Point2D, MATH_COLORS, mapRange } from '../../lib/mathObjects'
+
+// Import visualization components from foundations (canonical source with gamification)
+const EquivarianceDemo = lazy(() => import('../../components/foundations/EquivarianceViz'))
+const ParallelTransport = lazy(() => import('../../components/foundations/ParallelTransportViz'))
+
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 360, color: '#b8b0a0' }}>
+      Loading visualization...
+    </div>
+  )
+}
 
 function GeometricVisualPanel() {
   const { activeSection, params } = useExplorable()
@@ -129,6 +142,24 @@ function GeometricVisualPanel() {
 
   }, [activeSection, rotationAngle, showTransformed])
 
+  // Use new advanced visualization components based on section
+  if (activeSection === 'equivariance' || activeSection === 'cnn') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <EquivarianceDemo />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'groups' || activeSection === 'graphs' || activeSection === 'manifolds') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <ParallelTransport />
+      </Suspense>
+    )
+  }
+
+  // Default legacy visualization
   return (
     <div>
       <canvas
@@ -146,8 +177,12 @@ function GeometricVisualPanel() {
 
 export default function GeometricDLPillar() {
   return (
-    <ExplorableLayout
-      title="Geometric Deep Learning"
+    <>
+      <Head>
+        <title>Geometric Deep Learning — Continuous Function</title>
+      </Head>
+      <ExplorableLayout
+        title="Geometric Deep Learning"
       subtitle="Symmetry as inductive bias"
       visualPanel={<GeometricVisualPanel />}
       initialParams={{ rotation: 0, showTransformed: true }}
@@ -256,6 +291,7 @@ export default function GeometricDLPillar() {
         </p>
       </ExplorableSection>
     </ExplorableLayout>
+    </>
   )
 }
 
@@ -273,6 +309,8 @@ function RotationControl() {
         step="0.05"
         value={rotation}
         onChange={(e) => setParam('rotation', parseFloat(e.target.value))}
+        aria-label="Rotation angle"
+        aria-valuetext={`${(rotation * 180 / Math.PI).toFixed(0)} degrees`}
       />
       <span className="value">{(rotation * 180 / Math.PI).toFixed(0)}°</span>
     </div>

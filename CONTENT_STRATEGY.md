@@ -2,9 +2,9 @@
 
 ## Vision
 
-**"The resource for ML practitioners who've outgrown tutorials but aren't PhD researchers."**
+**Exploring the mathematical foundations of deep learning through interactive visualizations.**
 
-With Distill.pub defunct and a massive "intermediate wasteland" in ML education, continuousfunction.ai bridges the gap between introductory tutorials and impenetrable research papers. Every explanation includes: **Intuition → Math → Code → Interactive demo**.
+There's a gap between introductory tutorials and research papers—a space where concepts deserve deeper exploration through multiple lenses. We're trying to connect ideas by showing them from different angles: **Intuition → Math → Code → Interactive demo**.
 
 ---
 
@@ -42,7 +42,7 @@ With Distill.pub defunct and a massive "intermediate wasteland" in ML education,
 
 ### The Universal Pattern: Concrete Before Abstract
 
-Every elite educator (Sanderson, Karpathy, Alammar, Weng, Olah) starts with concrete, visual examples before mathematical formalization.
+Starting with concrete, visual examples before mathematical formalization helps build intuition naturally.
 
 **Content Sequence for Each Concept:**
 1. Hook with an intriguing problem or surprising result
@@ -169,9 +169,9 @@ Each Concept Page:
 
 ## Content Differentiation
 
-### The "Intermediate Wasteland" Target
+### Topics Worth Exploring Deeper
 
-**Underexplained topics where we differentiate:**
+**Ideas that could benefit from more interactive explanation:**
 - Why attention *actually* works (not just the mechanics)
 - The intuition behind positional encodings (not just the formulas)
 - How backpropagation flows through attention layers
@@ -180,13 +180,13 @@ Each Concept Page:
 - RAG architecture decisions—when to use RAG vs fine-tuning
 - Test-time compute scaling (DeepSeek R1)—almost no educational content exists
 
-### Topics Needing Distill-Style Treatment
+### Topics to Explore Interactively
 
-1. Comprehensive Transformer attention (existing visualizations are incomplete)
+1. Transformer attention with all its moving parts
 2. How gradients flow through modern architectures
-3. How RLHF shapes model behavior (interactive demonstration)
+3. How RLHF shapes model behavior
 4. Training dynamics—watching models learn in real-time
-5. Failure mode exploration—interactive debugging
+5. Failure modes and debugging patterns
 
 ### Unique Content Types
 
@@ -206,9 +206,9 @@ Each Concept Page:
 |-------------|-----------------|
 | Standard blog post (text + static images) | 4-8 hours |
 | Post with simple interactive charts | 8-16 hours |
-| Jay Alammar-style illustrated explainer | 20-40 hours |
-| Distill.pub-quality article | 100+ hours |
-| Bartosz Ciechanowski-level article | 200-400+ hours |
+| Illustrated explainer with custom visuals | 20-40 hours |
+| Interactive deep-dive article | 100+ hours |
+| Highly interactive explorable explanation | 200-400+ hours |
 
 ### AI Workflow Integration
 
@@ -240,7 +240,7 @@ Each Concept Page:
 | Saturday | Integration + polish | 2-3 | Medium |
 | Sunday | Review + publish + social | 2-3 | Medium |
 
-**Target output:** Monthly illustrated explainers. Quarterly flagship interactive pieces.
+**Aiming for:** Monthly illustrated explainers. Quarterly interactive pieces.
 
 ---
 
@@ -253,7 +253,7 @@ Each Concept Page:
 - [ ] Launch newsletter signup
 
 ### Phase 2: First Flagship Content (Weeks 5-12)
-- [ ] Comprehensive Transformer attention explainer (landmark piece)
+- [ ] Interactive Transformer attention explainer
 - [ ] Supporting articles: "Why RMSNorm replaced LayerNorm," "The geometry of RoPE"
 - [ ] Coordinate launch (Hacker News, Reddit, ML Twitter)
 

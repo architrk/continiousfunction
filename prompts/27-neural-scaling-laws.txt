@@ -1,0 +1,18 @@
+Create a React component visualizing neural scaling laws (Chinchilla, etc.).
+
+Key insight: Loss scales as power laws with compute, data, and parameters. There's an optimal balance - Chinchilla showed we were undertrained.
+
+Requirements:
+1. Log-log plot of loss vs compute/parameters/data
+2. Show the power law lines: L ∝ N^(-α), L ∝ D^(-β), L ∝ C^(-γ)
+3. Interactive: slider for compute budget, show optimal N and D
+4. Plot famous models: GPT-3, Chinchilla, Llama on the curves
+5. Highlight: GPT-3 was overparametrized, Chinchilla is compute-optimal
+6. Show the compute-optimal frontier
+
+The key equation: N_opt ∝ C^0.5, D_opt ∝ C^0.5 (roughly equal scaling)
+
+Colors: different curves in different colors, optimal frontier in orange.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3 for log-scale plots.

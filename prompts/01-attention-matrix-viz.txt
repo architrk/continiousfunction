@@ -1,0 +1,14 @@
+Create a React component with D3.js that visualizes the Transformer self-attention mechanism step by step.
+
+Requirements:
+1. Show a sequence of tokens (e.g., "The cat sat on the mat")
+2. Visualize Q, K, V matrices as animated heatmaps
+3. Show the attention score computation: softmax(QK^T / sqrt(d_k))
+4. Interactive: hover over a token to see which other tokens it attends to
+5. Slider to control the "temperature" of softmax and see how attention sharpens/diffuses
+6. Color scheme: use orange (#f59e0b) for high attention, dark slate (#080c14) for background
+
+The component should be self-contained, use React hooks, and work with Next.js.
+Output clean TypeScript/TSX code with inline styles or CSS classes.
+
+Keep the code approachable - this is for ML practitioners learning, not experts.

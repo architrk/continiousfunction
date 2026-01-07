@@ -1,0 +1,19 @@
+Create a React component visualizing Mixture of Experts (MoE) routing.
+
+Key insight: Only a subset of experts (typically 2 out of 8) are activated per token. The router decides which experts to use.
+
+Requirements:
+1. Show 8 expert "boxes" arranged in a grid
+2. Input tokens flow from left, router in the middle, experts on right
+3. Animate tokens being routed to their top-2 experts
+4. Show the router scores (softmax probabilities) as bar charts
+5. Visualize load balancing - some experts might be overused
+6. Interactive: input different "token types" to see different routing patterns
+7. Counter showing: "Active parameters: 2/8 experts = 25% compute"
+
+Debunk the misconception: "8x7B ≠ 56B" - show only FFN is duplicated.
+
+Colors: each expert a different shade, active experts glow.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with smooth GSAP animations.

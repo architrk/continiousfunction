@@ -1,0 +1,20 @@
+Create a React component visualizing parallel transport on curved surfaces (for Geometric Deep Learning).
+
+Key insight: On a flat surface, moving a vector around a loop returns it unchanged. On a curved surface, it rotates - this is holonomy, and it measures curvature.
+
+Requirements:
+1. Show a sphere (or simpler: a hemisphere/curved surface)
+2. Place a vector (arrow) on the surface
+3. Drag the vector along a path - it parallel transports (stays "straight" relative to surface)
+4. Complete a triangle path and return to start - the vector has rotated!
+5. Show the rotation angle = surface curvature enclosed
+6. Flat plane comparison: no rotation after a loop
+
+This visualizes why regular convolution doesn't work on manifolds.
+
+Interactive: draw paths on the surface, watch vector transport.
+
+Colors: surface in dark gradient, vector in orange (#f59e0b), path in teal (#14b8a6).
+Background: #080c14
+
+Output TypeScript/TSX for Next.js. Can use Three.js for 3D or simplified 2D projection.

@@ -37,5 +37,15 @@ Thumbs.db
 *.swo
 .vscode/sftp.json
 
+# Oracle CLI (when HOME is redirected into repo)
+.oracle-home/
+
 # Testing
 coverage/
+
+# Ralph Loop (local development only - not deployed)
+RALPH_CONTINUOUS_FUNCTION.md
+state/
+responses/
+AUTONOMOUS_LOOP.md
+AUTONOMOUS_LOOP_STATUS.md

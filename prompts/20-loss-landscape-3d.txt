@@ -1,0 +1,21 @@
+Create a React component with an interactive 3D loss landscape visualization.
+
+Requirements:
+1. 3D surface plot of a loss function (e.g., Rastrigin, Rosenbrock, or neural net-inspired)
+2. Multiple optimization trajectories visible:
+   - SGD: zig-zaggy, slow
+   - Momentum: smoother, overshoots
+   - Adam: adaptive, faster
+3. Camera controls: rotate, zoom, pan
+4. Trajectory animation: watch the optimizers race
+5. Current loss value displayed for each optimizer
+6. Sliders for learning rate, momentum
+7. Toggle to show/hide gradient vectors
+
+The goal: visceral understanding of why different optimizers behave differently.
+
+Use Three.js or a React wrapper (react-three-fiber).
+Colors: surface in gradient (high=red, low=blue), trajectories in distinct colors.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js.

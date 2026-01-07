@@ -1,0 +1,84 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `SuperpositionDemo.tsx` visualizing superposition and sparse features:
+
+### Concept: Superposition, Sparse Features & Monosemanticity
+
+**Core math:**
+```
+Superposition: representing M features in N < M dimensions
+
+Dictionary learning to extract features:
+min_{A, s_i} Σᵢ |h_i - A s_i|₂² + λ|s_i|₁
+
+Where:
+- h_i = activation vectors
+- A = feature dictionary (columns are features)
+- s_i = sparse codes (which features are active)
+
+Sparse autoencoders recover monosemantic features from polysemantic neurons.
+```
+
+**Missing intuition to address:**
+- Why superposition is USEFUL: capacity vs interference trade-off
+- Geometric story: features as directions in activation space
+- How sparse autoencoders "carve up" activation space
+- Why individual neurons are polysemantic but directions are interpretable
+
+**Interactive visualization:**
+
+1. **Superposition Geometry (2D/3D):**
+   - Show 2D activation space
+   - Embed MORE than 2 features as directions
+   - Show how features can be "almost orthogonal" with small interference
+   - Animate adding features: see crowding
+
+2. **Capacity vs Interference Trade-off:**
+   - X-axis: Number of features embedded
+   - Y-axis: Average interference between features
+   - Show theoretical limit (Johnson-Lindenstrauss)
+   - Highlight where interference becomes problematic
+
+3. **Sparse Autoencoder Panel:**
+   - Input: activation vector h
+   - Dictionary A with learned feature directions
+   - Output: sparse code s showing which features active
+   - Reconstruction: A @ s ≈ h
+
+4. **Feature Activation Viewer:**
+   - Given an input prompt/activation
+   - Show which dictionary features fire
+   - Color-code by activation strength
+   - Click feature to see what it represents
+
+5. **Controls:**
+   - Slider: Number of features (2 to 20)
+   - Slider: Activation dimension (2 to 10)
+   - Slider: Sparsity penalty λ
+   - Toggle: Show individual neurons vs feature directions
+
+6. **Polysemantic vs Monosemantic:**
+   - Show a single neuron responding to multiple concepts
+   - Show a feature direction responding to one concept
+   - Interactive: pick a neuron, see its multiple meanings
+
+**Key insights:**
+- Neural networks pack more features than dimensions
+- This is efficient but makes interpretation hard
+- Sparse autoencoders extract cleaner, monosemantic features
+- Anthropic uses this to understand Claude's internals
+
+**Educational goal:**
+User understands that superposition is a "compression trick" and sparse autoencoders are a "decompression tool" for interpretability.
+
+Generate complete TypeScript React component.

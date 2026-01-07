@@ -1,10 +1,23 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
+import Head from 'next/head'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import PhasePortrait2D from '../../components/PhasePortrait2D'
 import { VectorField2D, Point2D } from '../../lib/mathObjects'
+
+// Import visualization components from foundations (canonical source with gamification)
+const DiffusionForwardReverse = lazy(() => import('../../components/foundations/DiffusionProcessViz'))
+const FlowMatching = lazy(() => import('../../components/foundations/FlowMatchingViz'))
+
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 360, color: '#b8b0a0' }}>
+      Loading visualization...
+    </div>
+  )
+}
 
 function GenerativeVisualPanel() {
   const { activeSection, params } = useExplorable()
@@ -119,7 +132,25 @@ function GenerativeVisualPanel() {
 
   const field = activeSection === 'flow' ? flowField : scoreField
 
-  if (activeSection === 'diffusion' || activeSection === 'flow' || activeSection === 'score') {
+  // Use new advanced visualization components based on section
+  if (activeSection === 'diffusion' || activeSection === 'diffusion-deep') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <DiffusionForwardReverse />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'flow' || activeSection === 'flow-matching') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <FlowMatching />
+      </Suspense>
+    )
+  }
+
+  // Legacy visualization fallback for score section
+  if (activeSection === 'score') {
     return (
       <div>
         <PhasePortrait2D
@@ -150,8 +181,12 @@ function GenerativeVisualPanel() {
 
 export default function GenerativePhysicsPillar() {
   return (
-    <ExplorableLayout
-      title="Generative Physics"
+    <>
+      <Head>
+        <title>Generative Physics — Continuous Function</title>
+      </Head>
+      <ExplorableLayout
+        title="Generative Physics"
       subtitle="Diffusion, flow matching, and the geometry of generation"
       visualPanel={<GenerativeVisualPanel />}
       initialParams={{ noiseScale: 0.3, time: 0 }}
@@ -252,6 +287,7 @@ export default function GenerativePhysicsPillar() {
         </p>
       </ExplorableSection>
     </ExplorableLayout>
+    </>
   )
 }
 
@@ -269,6 +305,8 @@ function NoiseControl() {
         step="0.05"
         value={noiseScale}
         onChange={(e) => setParam('noiseScale', parseFloat(e.target.value))}
+        aria-label="Noise scale sigma"
+        aria-valuetext={noiseScale.toFixed(2)}
       />
       <span className="value">{noiseScale.toFixed(2)}</span>
     </div>
@@ -289,6 +327,8 @@ function TimeControl() {
         step="0.05"
         value={time}
         onChange={(e) => setParam('time', parseFloat(e.target.value))}
+        aria-label="Time parameter"
+        aria-valuetext={time.toFixed(2)}
       />
       <span className="value">{time.toFixed(2)}</span>
     </div>

@@ -1,0 +1,16 @@
+Create a React component visualizing the KV Cache mechanism in autoregressive generation.
+
+The insight: During generation, we don't recompute K and V for previous tokens - we cache them.
+
+Requirements:
+1. Show a timeline of token generation (left to right)
+2. Visualize the growing KV cache as a stack/buffer that accumulates
+3. Show how only the new token's Q attends to all cached K,V
+4. Compare memory usage: with cache vs without cache (quadratic vs linear growth)
+5. Interactive: click "Generate Next Token" to see cache grow
+6. Show the computational savings counter
+
+Animation should be smooth. Use GSAP or CSS transitions.
+Dark theme: background #080c14, cache blocks in teal (#14b8a6), current token in orange (#f59e0b).
+
+Output TypeScript/TSX for Next.js with D3.js.

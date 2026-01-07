@@ -1,0 +1,19 @@
+Create a React component visualizing superposition and polysemantic neurons.
+
+Key insight: Models store more features than dimensions by using non-orthogonal (overlapping) directions. This causes neurons to respond to multiple unrelated concepts.
+
+Requirements:
+1. Start with a 2D space (2 dimensions)
+2. Try to store 5 features as vectors - they can't all be orthogonal
+3. Show the interference: when one feature activates, others partially activate
+4. Visualize the "almost orthogonal" packing - vectors at 72° apart
+5. Show how ReLU helps: negative interference is zeroed out
+6. Interactive: add more features, watch crowding increase
+
+The puzzle: how can GPT store millions of concepts in thousands of dimensions?
+Answer: superposition + sparsity
+
+Colors: each feature a different color, interference zones in red.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3.js vector visualization.

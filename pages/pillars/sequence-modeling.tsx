@@ -1,11 +1,33 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, Suspense, lazy } from 'react'
+import Head from 'next/head'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import KernelHeatmap from '../../components/KernelHeatmap'
 import TimeSeriesPlot from '../../components/TimeSeriesPlot'
 import { Matrix2D, TimeSeries, softmax } from '../../lib/mathObjects'
+
+// Import visualization components from foundations (canonical source with gamification)
+const AttentionMatrixViz = lazy(() => import('../../components/foundations/AttentionGeometryViz'))
+const RoPERotationViz = lazy(() => import('../../components/foundations/RoPEViz'))
+const KVCacheViz = lazy(() => import('../../components/foundations/KVCacheViz'))
+const GQAMQAComparison = lazy(() => import('../../components/foundations/GQAViz'))
+const SwiGLUActivation = lazy(() => import('../../components/foundations/SwiGLUViz'))
+const MoERouting = lazy(() => import('../../components/foundations/MoERoutingViz'))
+const SSMRecurrence = lazy(() => import('../../components/foundations/SSMViz'))
+const MambaSelectivity = lazy(() => import('../../components/foundations/MambaViz'))
+const AttentionIsAllYouNeed = lazy(() => import('../../components/foundations/TransformerArchitectureViz'))
+const LayerNormRMSNorm = lazy(() => import('../../components/foundations/LayerNormViz'))
+const SlidingWindowAttention = lazy(() => import('../../components/foundations/SlidingWindowViz'))
+
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 360, color: '#b8b0a0' }}>
+      Loading visualization...
+    </div>
+  )
+}
 
 function SequenceVisualPanel() {
   const { activeSection, params } = useExplorable()
@@ -76,7 +98,97 @@ function SequenceVisualPanel() {
     return series
   }, [params.selectivity])
 
-  if (activeSection === 'attention') {
+  // Use the new advanced visualization components based on section
+  if (activeSection === 'attention' || activeSection === 'attention-deep') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <AttentionMatrixViz />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'rope') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <RoPERotationViz />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'kvcache') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <KVCacheViz />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'gqa' || activeSection === 'mqa') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <GQAMQAComparison />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'swiglu' || activeSection === 'activation') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <SwiGLUActivation />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'moe') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <MoERouting />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'ssm') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <SSMRecurrence />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'mamba') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <MambaSelectivity />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'transformer') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <AttentionIsAllYouNeed />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'layernorm' || activeSection === 'normalization') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <LayerNormRMSNorm />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'sliding' || activeSection === 'window') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <SlidingWindowAttention />
+      </Suspense>
+    )
+  }
+
+  // Fallback to legacy visualization
+  if (activeSection === 'attention-legacy') {
     return (
       <div>
         <KernelHeatmap
@@ -94,7 +206,7 @@ function SequenceVisualPanel() {
     )
   }
 
-  if (activeSection === 'ssm' || activeSection === 'mamba') {
+  if (activeSection === 'ssm-legacy') {
     return (
       <div>
         <TimeSeriesPlot
@@ -125,8 +237,12 @@ function SequenceVisualPanel() {
 
 export default function SequenceModelingPillar() {
   return (
-    <ExplorableLayout
-      title="Sequence Modeling"
+    <>
+      <Head>
+        <title>Sequence Modeling — Continuous Function</title>
+      </Head>
+      <ExplorableLayout
+        title="Sequence Modeling"
       subtitle="From recurrence to attention to selective state spaces"
       visualPanel={<SequenceVisualPanel />}
       initialParams={{ temperature: 1.0, causal: true, selectivity: 0.5 }}
@@ -161,6 +277,168 @@ export default function SequenceModelingPillar() {
           For long sequences, this becomes prohibitive.
         </p>
         <TemperatureControl />
+      </ExplorableSection>
+
+      <ExplorableSection id="rope">
+        <h2>RoPE: Rotary Position Embeddings</h2>
+        <p>
+          How do transformers know token order? RoPE encodes position by rotating query and key
+          vectors in 2D subspaces. Each position gets a unique rotation angle:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Rotary Embedding</div>
+          <p>
+            R(θ<sub>m</sub>) = [cos(mθ), -sin(mθ); sin(mθ), cos(mθ)]
+          </p>
+        </div>
+        <p>
+          The key insight: relative positions are encoded in the angle between rotated vectors,
+          enabling length generalization beyond training context.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="kvcache">
+        <h2>KV Cache</h2>
+        <p>
+          During autoregressive generation, we only need to compute attention for the new token.
+          The KV cache stores previously computed key and value vectors:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Incremental Decoding</div>
+          <p>
+            At step t: K<sub>cache</sub> = [K<sub>1</sub>, ..., K<sub>t-1</sub>]
+            <br />
+            Only compute Q<sub>t</sub>, K<sub>t</sub>, V<sub>t</sub> for new token
+          </p>
+        </div>
+        <p>
+          This reduces per-token compute from O(n²) to O(n), but requires O(n·d) memory per layer.
+          For long contexts, this memory cost dominates.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="gqa">
+        <h2>Grouped Query Attention</h2>
+        <p>
+          Multi-Head Attention (MHA) uses separate K, V heads per query head. GQA shares K, V
+          across groups of query heads, reducing KV cache size:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">GQA Memory Savings</div>
+          <p>
+            MHA: n<sub>heads</sub> × d<sub>head</sub> for K and V each
+            <br />
+            GQA: n<sub>groups</sub> × d<sub>head</sub> (where groups &lt; heads)
+          </p>
+        </div>
+        <p>
+          MQA (Multi-Query Attention) is the extreme case: all query heads share a single K, V pair.
+          GQA balances memory efficiency with model quality.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="swiglu">
+        <h2>SwiGLU Activation</h2>
+        <p>
+          The feed-forward network in each transformer block uses gated activations. SwiGLU
+          combines Swish activation with a gating mechanism:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">SwiGLU</div>
+          <p>
+            SwiGLU(x) = Swish(xW<sub>1</sub>) ⊙ (xW<sub>2</sub>)
+            <br />
+            where Swish(x) = x · σ(x)
+          </p>
+        </div>
+        <p>
+          The gating allows the network to selectively pass or block information, improving
+          training stability and final performance over ReLU.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="moe">
+        <h2>Mixture of Experts</h2>
+        <p>
+          Scale model capacity without scaling compute. MoE replaces the FFN with multiple
+          "expert" networks, routing each token to a subset:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Expert Routing</div>
+          <p>
+            y = Σ G(x)<sub>i</sub> · Expert<sub>i</sub>(x)
+            <br />
+            where G(x) = TopK(softmax(x · W<sub>gate</sub>))
+          </p>
+        </div>
+        <p>
+          Typically only 1-2 experts are active per token (sparse routing), achieving massive
+          parameter counts while keeping inference cost manageable.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="transformer">
+        <h2>The Full Transformer</h2>
+        <p>
+          Putting it all together: each transformer block consists of:
+        </p>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          <li style={{ padding: '0.5rem 0' }}>
+            <span style={{ color: '#f59e0b' }}>1.</span> Multi-Head Self-Attention (with RoPE)
+          </li>
+          <li style={{ padding: '0.5rem 0' }}>
+            <span style={{ color: '#f59e0b' }}>2.</span> Residual Connection + Layer Norm
+          </li>
+          <li style={{ padding: '0.5rem 0' }}>
+            <span style={{ color: '#f59e0b' }}>3.</span> Feed-Forward Network (SwiGLU)
+          </li>
+          <li style={{ padding: '0.5rem 0' }}>
+            <span style={{ color: '#f59e0b' }}>4.</span> Residual Connection + Layer Norm
+          </li>
+        </ul>
+        <p>
+          Stack N of these blocks, add embeddings at input and unembedding at output,
+          and you have a modern large language model.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="normalization">
+        <h2>LayerNorm vs RMSNorm</h2>
+        <p>
+          Normalization is critical for training stability. LayerNorm normalizes across features:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Normalization</div>
+          <p>
+            LayerNorm: (x - μ) / σ · γ + β
+            <br />
+            RMSNorm: x / RMS(x) · γ (no mean centering)
+          </p>
+        </div>
+        <p>
+          RMSNorm is simpler (no mean computation) and often works as well, making it popular
+          in modern architectures like LLaMA.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="sliding">
+        <h2>Sliding Window Attention</h2>
+        <p>
+          For very long sequences, even O(n²) with KV cache is too expensive. Sliding window
+          attention limits each token to attending only within a local window:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Local Attention</div>
+          <p>
+            Token i attends to [i-w, i] where w = window size
+            <br />
+            Memory: O(w) per token instead of O(n)
+          </p>
+        </div>
+        <p>
+          Information propagates across layers: with L layers and window w, effective context
+          is L × w tokens. Used in Mistral and other efficient models.
+        </p>
       </ExplorableSection>
 
       <ExplorableSection id="ssm">
@@ -239,6 +517,7 @@ export default function SequenceModelingPillar() {
         </table>
       </ExplorableSection>
     </ExplorableLayout>
+    </>
   )
 }
 
@@ -256,6 +535,8 @@ function TemperatureControl() {
         step="0.1"
         value={temperature}
         onChange={(e) => setParam('temperature', parseFloat(e.target.value))}
+        aria-label="Temperature"
+        aria-valuetext={temperature.toFixed(1)}
       />
       <span className="value">{temperature.toFixed(1)}</span>
     </div>
@@ -276,6 +557,8 @@ function SelectivityControl() {
         step="0.05"
         value={selectivity}
         onChange={(e) => setParam('selectivity', parseFloat(e.target.value))}
+        aria-label="Selectivity"
+        aria-valuetext={selectivity.toFixed(2)}
       />
       <span className="value">{selectivity.toFixed(2)}</span>
     </div>

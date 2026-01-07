@@ -1,0 +1,18 @@
+Create a React component visualizing linear probes and the Linear Representation Hypothesis.
+
+Key insight: Concepts like "truthfulness" or "sentiment" are encoded as directions in activation space. A linear probe (single layer) can read them out.
+
+Requirements:
+1. 2D activation space with points representing different inputs
+2. A "concept direction" as an arrow
+3. Points colored by how much they align with the direction
+4. Show projection: dot product with direction = concept score
+5. Interactive: drag the direction, see classifications change
+6. Example: "positive/negative sentiment" direction separates reviews
+
+The word vector analogy: King - Man + Woman ≈ Queen visualized.
+
+Colors: positive examples in teal, negative in red, direction in orange.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with D3.

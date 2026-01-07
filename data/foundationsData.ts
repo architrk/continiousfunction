@@ -368,6 +368,13 @@ export const conceptRelations: Relation[] = [
     label: 'Feature entanglement',
     why: 'SAE features are not guaranteed to be perfectly monosemantic or causally isolated. Steering along imperfect features can cause unintended behavioral side effects or push activations off-manifold.'
   },
+  {
+    from: 'theory',
+    to: 'double-descent',
+    type: 'breaks_when',
+    label: 'Bias-variance puzzle',
+    why: 'Classical PAC/VC bounds predict test error increases with model complexity beyond optimal capacity. Double descent breaks this: extremely overparameterized models interpolate training data yet generalize well—requiring new theoretical frameworks like benign overfitting.'
+  },
 
   // === INVENTED_TO_FIX (additional) ===
   {
@@ -404,13 +411,6 @@ export const conceptRelations: Relation[] = [
     type: 'invented_to_fix',
     label: 'KV compression',
     why: 'FlashAttention fixes quadratic attention *during training*, but decoding still stores O(T) KV cache. Long-context engineering adds KV quantization/compression to fix the remaining linear-memory bottleneck.'
-  },
-  {
-    from: 'dpo',
-    to: 'kto',
-    type: 'invented_to_fix',
-    label: 'Binary feedback',
-    why: 'DPO assumes paired comparisons (winner vs loser). KTO was introduced to learn from unpaired good/bad examples (thumbs up/down), matching the feedback you can collect at scale.'
   },
   {
     from: 'superposition',
@@ -504,6 +504,15 @@ export const conceptRelations: Relation[] = [
     type: 'analogy',
     label: 'Linear lens',
     why: 'NTK emphasizes what happens when learning is effectively linearized (features don\'t move much). Linear probing tests what a fixed representation already makes linearly accessible—both separate "linear extractability" from "feature learning."'
+  },
+
+  // === KTO to theory connection ===
+  {
+    from: 'kto',
+    to: 'theory',
+    type: 'same_trick',
+    label: 'Human-aware utility',
+    why: 'KTO imports Kahneman-Tversky prospect theory—asymmetric loss aversion, reference-dependent value—from behavioral economics. This connects ML alignment to theoretical frameworks in decision theory and shows that loss design is fundamentally about modeling human cognition.'
   },
 
   // === REWARD-HACKING connections (was orphaned) ===
@@ -921,6 +930,109 @@ export const conceptRelations: Relation[] = [
     type: 'breaks_when',
     label: 'Linear patching misses curvature',
     why: 'Fast circuit methods rely on first-order Taylor approximations. In sharp loss regions, higher-order terms dominate and linear estimates misidentify true causal circuits.'
+  },
+
+  // ======================
+  // ADDITIONAL RELATIONS (Strengthening under-connected nodes)
+  // ======================
+
+  // RoPE → Efficient attention: Position encoding efficiency
+  {
+    from: 'rope',
+    to: 'efficient-attention',
+    type: 'same_trick',
+    label: 'Lazy position compute',
+    why: 'RoPE computes relative positions at attention-time via rotation matrices, integrating naturally with Flash Attention and sliding window. No position embedding lookups—positions emerge from query-key rotation.'
+  },
+
+  // VAEs → Diffusion: Historical progression
+  {
+    from: 'vaes',
+    to: 'diffusion',
+    type: 'invented_to_fix',
+    label: 'Fix blurry outputs',
+    why: 'VAE decoders produce blurry samples from posterior collapse and reconstruction loss averaging. Diffusion replaces single-shot decoding with iterative refinement—each step sharpens details that VAEs smear.'
+  },
+
+  // Superposition → Probing: Interpretability challenge
+  {
+    from: 'superposition',
+    to: 'probing',
+    type: 'breaks_when',
+    label: 'Features overlap',
+    why: 'Linear probes assume features occupy distinct directions. Superposition packs more features than dimensions by overlapping sparse features—probes see interference patterns, not clean linear separability.'
+  },
+
+  // Loss landscapes → Double-descent: Complexity puzzle
+  {
+    from: 'loss-landscapes',
+    to: 'double-descent',
+    type: 'breaks_when',
+    label: 'Beyond interpolation threshold',
+    why: 'Classical loss landscape intuition suggests more parameters = overfitting. Double descent breaks this: past the interpolation threshold, overparameterized networks find flatter minima that generalize better. The landscape has benign overfitting regions.'
+  },
+
+  // MoE-serving → Speculative decoding: Parallelism strategy
+  {
+    from: 'moe-serving',
+    to: 'speculative-decoding',
+    type: 'same_trick',
+    label: 'Hide latency with parallelism',
+    why: 'MoE serving uses expert parallelism to hide routing overhead. Speculative decoding uses draft-verify parallelism to hide autoregressive latency. Both mask sequential bottlenecks with parallel compute.'
+  },
+
+  // KTO → Representations: Value geometry
+  {
+    from: 'kto',
+    to: 'representations',
+    type: 'same_trick',
+    label: 'Implicit value directions',
+    why: 'KTO shapes model behavior via scalar feedback signals, implicitly learning value directions in representation space. The loss gradient pushes activations toward "good" regions—same geometric view as representation steering.'
+  },
+
+  // NTK → Double-descent: Feature learning regime
+  {
+    from: 'ntk',
+    to: 'double-descent',
+    type: 'breaks_when',
+    label: 'Rich regime dominates',
+    why: 'NTK analysis assumes lazy training (features fixed at init). Double descent occurs in the rich/feature-learning regime where representations reorganize—precisely where NTK predictions fail.'
+  },
+
+  // Efficiency → Reward-hacking: Alignment tax
+  {
+    from: 'efficiency',
+    to: 'reward-hacking',
+    type: 'breaks_when',
+    label: 'Speed vs safety tradeoff',
+    why: 'Efficient training shortcuts (fewer RLHF steps, smaller reward models, distillation) increase reward hacking risk. The "alignment tax" trades compute efficiency for robustness against proxy gaming.'
+  },
+
+  // Adam → Efficiency: Adaptive training
+  {
+    from: 'adam',
+    to: 'efficiency',
+    type: 'same_trick',
+    label: 'Adaptive step sizing',
+    why: 'Adam\'s per-parameter learning rates enable efficient training across diverse architectures without manual tuning. LoRA, QLoRA, and other efficient methods rely on Adam variants to handle heterogeneous gradient scales.'
+  },
+
+  // MoE-serving → Long-context: Memory hierarchy
+  {
+    from: 'moe-serving',
+    to: 'long-context',
+    type: 'same_trick',
+    label: 'Memory paging strategies',
+    why: 'Both MoE expert caching and long-context KV caching use similar memory management: page in/out based on access patterns, predict future needs, trade latency for capacity. PagedAttention borrows from OS memory management.'
+  },
+
+  // KTO → Decoding-sampling: Output shaping
+  {
+    from: 'kto',
+    to: 'decoding-sampling',
+    type: 'same_trick',
+    label: 'Preference-aware generation',
+    why: 'KTO training shapes the model distribution toward human preferences. At inference, sampling strategies (temperature, top-p) further control this shaped distribution—both operate on the same output space with complementary goals.'
   },
 ]
 

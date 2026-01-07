@@ -1,0 +1,18 @@
+Create a React component comparing Multi-Head Attention (MHA), Multi-Query Attention (MQA), and Grouped Query Attention (GQA).
+
+Key insight: MQA shares one KV head across all query heads. GQA is the middle ground - groups of query heads share KV heads.
+
+Requirements:
+1. Side-by-side visualization of the three architectures
+2. Show the query heads as colored circles, KV heads as squares
+3. Draw connections showing which Q heads connect to which KV heads
+4. Interactive toggle to switch between MHA/MQA/GQA
+5. Show memory comparison bar chart (MHA uses most, MQA least, GQA in between)
+6. Display the parameter counts updating in real-time
+7. Animate the transition between architectures smoothly
+
+Use Llama 3 as example: 32 query heads, 8 KV heads for GQA.
+Colors: query heads in orange shades, KV heads in teal shades.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with D3.js or SVG.

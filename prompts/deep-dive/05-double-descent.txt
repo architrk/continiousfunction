@@ -1,0 +1,78 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React state management.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `DoubleDescent.tsx` visualizing overparameterization and generalization:
+
+### Concept: Double Descent & Overparameterization
+
+**Core math:**
+```
+Classical: Test error = bias² + variance + noise
+
+Double descent phenomenon:
+- As parameters increase toward interpolation threshold (train error → 0):
+  variance explodes
+- Past interpolation threshold:
+  variance decreases again as model finds minimum-norm solution
+
+E[(y - ŷ)²] shows U-shape, then descent again
+```
+
+**Missing intuition to address:**
+- Why larger models + same objective can generalize BETTER (not just memorize more)
+- The interpolation threshold is where #parameters ≈ #training points
+- Implicit bias of SGD selects among infinite interpolating solutions
+- Connection to scaling laws: more parameters + more data = better
+
+**Interactive visualization:**
+
+1. **Main Plot: Test Error vs Model Capacity**
+   - X-axis: Number of parameters (log scale)
+   - Y-axis: Test error
+   - Show classical U-curve, then second descent
+   - Mark interpolation threshold
+   - Animate as model capacity increases
+
+2. **Bias-Variance Decomposition:**
+   - Stacked area chart showing bias², variance, irreducible noise
+   - Show variance spike at interpolation threshold
+   - Show variance decrease in overparameterized regime
+
+3. **Toy Example Panel:**
+   - Polynomial regression with adjustable degree
+   - Show training points and fitted curve
+   - Toggle between underfitting / interpolation / overparameterized
+
+4. **Controls:**
+   - Slider: Model capacity (polynomial degree or hidden units)
+   - Slider: Number of training points
+   - Slider: Noise level in data
+   - Toggle: Show training error vs test error
+
+5. **Key Metrics:**
+   - Training error
+   - Test error  
+   - Number of parameters
+   - Interpolation threshold indicator
+
+**Visualization of interpolation:**
+- At threshold: show wildly oscillating fit that passes through all points
+- Past threshold: show smoother minimum-norm interpolation
+- Highlight that BOTH interpolate training data perfectly
+
+**Key insights:**
+- Classical ML wisdom (more params = overfitting) breaks down
+- SGD finds "simple" solutions even when many exist
+- This explains why GPT-4 (trillions of params) generalizes well
+- Connection to flat minima: minimum-norm ≈ flat ≈ compressible
+
+Generate complete TypeScript React component.

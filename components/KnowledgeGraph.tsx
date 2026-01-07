@@ -1,55 +1,49 @@
-import { Graph } from 'react-d3-graph'
-import { conceptGraphData } from '../data/conceptGraphData'
-
-const config = {
-  directed: false,
-  height: 450,
-  width: 800,
-  nodeHighlightBehavior: true,
-  panAndZoom: true,
-  d3: {
-    gravity: -200,
-    linkLength: 140
-  },
-  node: {
-    size: 400,
-    fontSize: 12,
-    highlightStrokeColor: '#4f46e5'
-  },
-  link: {
-    highlightColor: '#6366f1'
-  }
-}
-
-const NODE_ROUTES: Record<string, string> = {
-  'Optimizers Overview': '/concepts/optimizers/overview',
-  'SGD & Momentum': '/concepts/optimizers/overview#momentum',
-  AdamW: '/concepts/optimizers/adamw',
-  RMSProp: '/concepts/optimizers/overview#rmsprop',
-  Muon: '/concepts/optimizers/muon'
-}
+import ForceGraph from './ForceGraph'
+import { conceptGraphData, NODE_ID_MAP, CATEGORY_COLORS } from '../data/conceptGraphData'
 
 export default function KnowledgeGraph() {
   const handleClickNode = (nodeId: string) => {
-    const route = NODE_ROUTES[nodeId]
-    if (route) {
-      window.location.href = route
+    const conceptId = NODE_ID_MAP[nodeId]
+    if (conceptId) {
+      window.location.href = `/foundations/${conceptId}`
     }
   }
 
   return (
     <div className="card graph-card">
-      <h1>Concept Graph</h1>
+      <h1>Knowledge Graph</h1>
       <p className="muted">
-        Drag nodes, zoom, and click a concept to navigate to its explainer. This
-        is a small example; you can grow it into a full knowledge map.
+        All 34 mathematical foundations and their prerequisite relationships.
+        Drag nodes, zoom with scroll, click to explore. Colors indicate topic area.
       </p>
+      <div className="legend" style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '12px',
+        marginBottom: '16px',
+        fontSize: '11px'
+      }}>
+        {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
+          <span key={cat} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: color,
+              display: 'inline-block'
+            }} />
+            <span style={{ color: '#9ca3af', textTransform: 'capitalize' }}>{cat}</span>
+          </span>
+        ))}
+      </div>
       <div className="graph-wrapper">
-        <Graph
-          id="optimizer-concept-graph"
-          data={conceptGraphData as any}
-          config={config as any}
-          onClickNode={handleClickNode}
+        <ForceGraph
+          nodes={conceptGraphData.nodes}
+          links={conceptGraphData.links}
+          categoryColors={CATEGORY_COLORS}
+          width={850}
+          height={600}
+          onNodeClick={handleClickNode}
         />
       </div>
     </div>

@@ -1,0 +1,24 @@
+Create a React component that walks through the complete Transformer architecture from "Attention Is All You Need."
+
+Requirements:
+1. Full encoder-decoder architecture diagram
+2. Click on any component to zoom in and see details
+3. Components to cover:
+   - Input embedding + positional encoding
+   - Multi-head self-attention
+   - Add & Norm (residual connections)
+   - Feed-forward network
+   - Encoder-decoder attention
+   - Output linear + softmax
+4. Data flow animation: watch a token flow through the entire network
+5. Dimension annotations: show tensor shapes at each stage
+6. Hover for formulas
+
+This is the "master reference" visualization - comprehensive but navigable.
+
+Interactive: click to drill down, breadcrumbs to navigate back up.
+
+Colors: encoder in teal tones, decoder in orange tones, attention in purple.
+Background: #0d1219
+
+Output TypeScript/TSX for Next.js with SVG/D3.

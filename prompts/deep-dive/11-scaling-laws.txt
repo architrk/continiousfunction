@@ -1,0 +1,88 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `ScalingLawsDemo.tsx` visualizing neural scaling laws:
+
+### Concept: Scaling Laws & Emergent Abilities
+
+**Core math:**
+```
+Kaplan scaling law:
+L(N, D, C) ≈ L_∞ + a·N^{-α} + b·D^{-β}
+
+Where:
+- N = parameters, D = data tokens, C = compute
+- α ≈ 0.076, β ≈ 0.095 (empirical)
+- L_∞ = irreducible loss (entropy of language)
+
+Chinchilla optimal scaling:
+D ∝ N  (scale data proportionally with parameters)
+For compute C: N_opt ∝ C^0.5, D_opt ∝ C^0.5
+
+Emergent abilities: capabilities that appear suddenly at scale
+```
+
+**Missing intuition to address:**
+- WHY power-law scaling happens (statistical physics analogies)
+- What underlies "emergent" phase transitions
+- Compute-optimal training (Chinchilla rule)
+- Task-specific vs aggregate loss scaling
+
+**Interactive visualization:**
+
+1. **Main Scaling Plot (Log-Log):**
+   - X-axis: Compute (FLOPs) or Parameters
+   - Y-axis: Loss (log scale)
+   - Power-law fit line
+   - Data points for GPT-2, GPT-3, GPT-4 scale
+   - Extrapolation to future models
+
+2. **Iso-Compute Curves:**
+   - Contour plot: N (params) vs D (data)
+   - Color = loss for fixed compute budget
+   - Chinchilla frontier line
+   - Show: under-trained (too few data) vs over-trained (too few params)
+
+3. **Emergent Abilities Panel:**
+   - X-axis: Model scale
+   - Y-axis: Task accuracy (%)
+   - Show sudden jump from ~0% to ~80%
+   - Multiple tasks: arithmetic, reasoning, etc.
+   - Highlight emergence thresholds
+
+4. **Compute Allocation Calculator:**
+   - Input: Total compute budget
+   - Output: Optimal N and D
+   - Compare: GPT-3 allocation vs Chinchilla optimal
+   - Show efficiency gain from optimal allocation
+
+5. **Controls:**
+   - Slider: Total compute budget (10^20 to 10^26 FLOPs)
+   - Toggle: Show loss vs task accuracy
+   - Dropdown: Select specific capability to track
+   - Toggle: Log scale vs linear scale
+
+6. **Decomposition Panel:**
+   - Show L = L_∞ + L_params + L_data
+   - As you scale, which term dominates?
+   - At frontier: both terms roughly equal (Chinchilla)
+
+**Key insights:**
+- Loss follows predictable power laws across 6+ orders of magnitude
+- This allows planning: predict performance before training
+- Emergent abilities: some tasks have threshold behavior
+- Chinchilla: don't over-scale parameters without matching data
+
+**Educational goal:**
+User understands that scaling is predictable (power laws) but also surprising (emergence), and learns to reason about compute allocation.
+
+Generate complete TypeScript React component.

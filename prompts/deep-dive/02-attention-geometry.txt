@@ -1,0 +1,94 @@
+You are building an interactive visualization component for "Continuous Function", an educational site explaining mathematical foundations of deep learning through explorable explanations.
+
+## Project Context
+
+This is a Next.js + MDX site with D3/SVG-based visualizations. Components use React hooks, inline sliders, and follow this pattern:
+
+### Existing Component Pattern:
+```tsx
+import { useMemo, useState } from 'react'
+
+const WIDTH = 400
+const HEIGHT = 300
+const PADDING = 24
+
+export default function ComponentName() {
+  const [param, setParam] = useState(0.5)
+  
+  return (
+    <section className="card interactive-card">
+      <h2>Title</h2>
+      <p className="muted">Description</p>
+      <svg width={WIDTH} height={HEIGHT} className="chart" role="img">
+        {/* SVG visualization */}
+      </svg>
+      <div className="controls">
+        <label className="slider-label">
+          Parameter ({param.toFixed(2)})
+          <input type="range" min={0} max={1} step={0.01} value={param}
+            onChange={(e) => setParam(parseFloat(e.target.value))} />
+        </label>
+      </div>
+    </section>
+  )
+}
+```
+
+### Available utilities from lib/mathObjects.ts:
+```ts
+export const MATH_COLORS = {
+  primary: '#f59e0b',
+  secondary: '#14b8a6',
+  accent: '#8b5cf6',
+  positive: '#22c55e',
+  negative: '#ef4444',
+  neutral: '#6b7280',
+}
+
+export function softmax(values: number[]): number[]
+export function matmul(a: number[][], b: number[][]): number[][]
+```
+
+## Your Task
+
+Create an interactive visualization component called `AttentionGeometryDemo.tsx` that explains:
+
+### Concept: Scaled Dot-Product Attention Geometry
+
+**Core math to visualize:**
+```
+Attention(Q,K,V) = softmax(QK^T / √d_k) V
+```
+
+Where Q = XW_Q, K = XW_K, V = XW_V
+
+**Missing intuition to address:**
+- Q-K dot products measure angles between feature directions in high-dimensional space
+- Softmax creates a "distribution over who to copy from" along the sequence
+- The √d_k scaling prevents dot products from becoming too large (saturation)
+- Multi-head attention = multiple learned "kernels" over positions/features
+
+**Interactive elements needed:**
+1. A small sequence of 4-6 tokens represented as 2D vectors (projectable to screen)
+2. Show Q vectors as arrows from origin, K vectors as arrows
+3. Visualize the QK^T matrix as a heatmap
+4. Show how softmax transforms raw scores into attention weights
+5. Slider for temperature (√d_k scaling factor) to show saturation effects
+6. Toggle between "pre-softmax scores" and "post-softmax weights"
+
+**Visualization panels:**
+Panel 1: Token embeddings as points in 2D space with Q/K projections as arrows
+Panel 2: QK^T attention score matrix (heatmap)
+Panel 3: Post-softmax attention weights (heatmap with row sums = 1)
+Panel 4: Final output showing weighted combination of V vectors
+
+**Key insights to convey:**
+- When two tokens have aligned Q-K directions, attention is high
+- Softmax creates competition: attending more to one token = less to others
+- Low temperature → sharper attention (nearly one-hot)
+- High temperature → uniform attention (every token equally weighted)
+
+**Educational goal:**
+User should develop geometric intuition for attention as "soft dictionary lookup" where Q is the query, K are the keys, and the dot product measures relevance. They should see why scaling matters and how softmax creates a probability distribution.
+
+Generate the complete TypeScript React component with SVG-based visualization.

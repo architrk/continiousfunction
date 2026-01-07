@@ -1,0 +1,82 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `DiffusionScoreDemo.tsx` visualizing diffusion models and score matching:
+
+### Concept: Diffusion, Score-Based Models & Flow Matching
+
+**Core math:**
+```
+Forward diffusion (add noise):
+q(x_t | x_0) = N(√ᾱ_t x_0, (1-ᾱ_t)I)
+
+Reverse process (denoise):
+Model learns ε_θ(x_t, t) to predict noise
+Loss: L = E_{x_0,t,ε}[|ε - ε_θ(x_t, t)|²]
+
+Score function connection:
+∇_x log p_t(x) ≈ -ε_θ(x_t, t) / √(1-ᾱ_t)
+
+The model learns the SCORE (gradient of log density)!
+```
+
+**Missing intuition to address:**
+- Denoising = learning the score ∇_x log p_t(x)
+- Reverse-time sampling = "walking uphill in log-density space"
+- Different noise schedules (linear, cosine, etc.)
+- Flow matching as alternative: straight-line paths vs diffusion
+
+**Interactive visualization:**
+
+1. **Forward Process Animation:**
+   - Start with data distribution (e.g., 2 Gaussians mixture)
+   - Animate adding noise: t=0 → t=1
+   - Show how structure gradually disappears
+   - Slider to control noise level t
+
+2. **Score Field Visualization:**
+   - 2D plane with vector field arrows
+   - Arrows point toward high-density regions
+   - At each noise level t, different score field
+   - Show how scores guide sampling back to data
+
+3. **Reverse Sampling Path:**
+   - Start from pure noise
+   - Follow the score field backward
+   - Animate particle trajectory
+   - Show multiple samples converging to different modes
+
+4. **Noise Schedule Comparison:**
+   - Plot α_t vs t for different schedules
+   - Show how schedule affects generation quality
+   - Linear vs cosine vs learned schedules
+
+5. **Controls:**
+   - Slider: Noise level t (0 to 1)
+   - Slider: Number of sampling steps
+   - Toggle: Show score vectors vs density contours
+   - Button: Sample new generation
+
+6. **Flow Matching Comparison (optional panel):**
+   - Show straight-line OT paths vs curved diffusion paths
+   - Explain why flow matching enables faster sampling
+
+**Key insights:**
+- Diffusion = gradually corrupt data with noise, learn to reverse
+- The neural network learns ∇ log p(x) at each noise level
+- Sampling = following the gradient field from noise to data
+- Stable Diffusion, DALL-E, Sora all use this principle
+
+**Educational goal:**
+User sees diffusion as "learning the gradient field that points toward data" and sampling as "following that field from noise to images."
+
+Generate complete TypeScript React component.

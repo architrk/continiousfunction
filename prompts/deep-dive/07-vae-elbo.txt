@@ -1,0 +1,80 @@
+You are building an interactive visualization for "Continuous Function", a deep learning educational site.
+
+## Project Context
+Next.js + MDX, D3/SVG visualizations, React hooks.
+
+```tsx
+import { useMemo, useState } from 'react'
+const MATH_COLORS = { primary: '#f59e0b', secondary: '#14b8a6', accent: '#8b5cf6' }
+```
+
+## Your Task
+
+Create `VAEElboDemo.tsx` visualizing Variational Autoencoders:
+
+### Concept: VAEs & Variational Inference
+
+**Core math:**
+```
+Latent variable model: p_θ(x,z) = p(z) p_θ(x|z)
+
+ELBO (Evidence Lower Bound):
+log p_θ(x) ≥ E_{q_φ(z|x)}[log p_θ(x|z)] - KL(q_φ(z|x) || p(z))
+           = Reconstruction term - Regularization term
+
+Reparameterization trick:
+z = μ_φ(x) + σ_φ(x) ⊙ ε,  where ε ~ N(0,I)
+```
+
+**Missing intuition to address:**
+- Why ELBO works as both reconstruction + regularization
+- How KL term shapes latent geometry (collapsed vs disentangled)
+- The "posterior collapse" problem
+- How prior p(z) and posterior q(z|x) interact
+
+**Interactive visualization:**
+
+1. **Latent Space View (2D):**
+   - Show encoded points q(z|x) as ellipses (mean + variance)
+   - Show prior p(z) = N(0,I) as reference circle
+   - Color points by class/category
+   - Show sampled z points
+
+2. **ELBO Decomposition:**
+   - Bar chart: Reconstruction loss vs KL divergence
+   - Slider to adjust β in β-VAE: β * KL term
+   - Show trade-off: low β → good reconstruction, poor latent
+   - Show trade-off: high β → structured latent, blurry reconstruction
+
+3. **Encoder/Decoder Flow:**
+   - Input x → Encoder → (μ, σ) → Sample z → Decoder → x̂
+   - Animate the forward pass
+   - Show reparameterization: z = μ + σε
+
+4. **Reconstruction Panel:**
+   - Original input (simple 2D shape or pattern)
+   - Reconstructed output
+   - Show reconstruction error
+
+5. **Controls:**
+   - Slider: β (KL weight) from 0.1 to 10
+   - Slider: Latent dimension (for toy model)
+   - Toggle: Show/hide prior distribution
+   - Button: Sample new points
+
+6. **Latent Interpolation:**
+   - Pick two encoded points
+   - Interpolate in latent space
+   - Show decoded outputs along the path
+
+**Key insights:**
+- ELBO = maximize likelihood lower bound
+- KL term "pulls" encodings toward prior (regularization)
+- Reconstruction term "pushes" to preserve information
+- β controls this trade-off
+- Stable Diffusion uses VAE to compress images before diffusion
+
+**Educational goal:**
+User understands VAE as learning both a compressed representation AND a generative model, with the ELBO balancing these objectives.
+
+Generate complete TypeScript React component.

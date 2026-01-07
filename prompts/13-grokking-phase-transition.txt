@@ -1,0 +1,18 @@
+Create a React component visualizing the "Grokking" phenomenon - delayed generalization.
+
+Key insight: Model achieves 100% training accuracy quickly, but validation stays random. Then suddenly, after 10^5 steps, it "groks" and generalizes perfectly. This is a phase transition.
+
+Requirements:
+1. Two loss curves: training (drops fast) and validation (stays high, then suddenly drops)
+2. Timeline with phases labeled: "Memorization", "Compression", "Grokking"
+3. For modular addition task: show weight embeddings transitioning from random to circular
+4. Animate the "aha moment" when validation suddenly drops
+5. Show the Fourier interpretation: numbers become frequencies on a circle
+6. Interactive: slider to scrub through training, see weights evolve
+
+The dramatic moment: embeddings snap from chaos into a perfect circle.
+
+Colors: training loss in teal (#14b8a6), validation in orange (#f59e0b), embeddings transitioning.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3.js.

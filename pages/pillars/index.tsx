@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Head from 'next/head'
 
 const pillars = [
   {
@@ -6,6 +7,7 @@ const pillars = [
     icon: '∿',
     title: 'Sequence Modeling',
     subtitle: 'The architecture of memory and attention',
+    mathNote: 'y = softmax(QKᵀ/√d)V',
     description: 'From RNNs through Transformers to Mamba. Understand how models learn to process sequential information and the mathematical innovations that enable modern language models.',
     topics: ['Attention', 'SSMs', 'Mamba', 'Memory'],
     color: 'teal',
@@ -15,6 +17,7 @@ const pillars = [
     icon: '∇',
     title: 'Optimization',
     subtitle: 'Navigating the loss landscape',
+    mathNote: 'θ ← θ − η∇L(θ)',
     description: 'Gradient descent as physics. Why Adam works, how Muon orthogonalizes updates, and the thermodynamic view of learning as escaping saddle points.',
     topics: ['SGD', 'Adam', 'Muon', 'Sharpness'],
     color: 'orange',
@@ -24,6 +27,7 @@ const pillars = [
     icon: '∂',
     title: 'Generative Physics',
     subtitle: 'Diffusion, flow, and the geometry of data',
+    mathNote: 'dx = f(x,t)dt + g(t)dW',
     description: 'Score matching, flow matching, and rectified flows. See how generation is gradient descent in data space, with interactive phase portraits.',
     topics: ['Diffusion', 'Flow Matching', 'Score', 'SDEs'],
     color: 'purple',
@@ -33,6 +37,7 @@ const pillars = [
     icon: '◇',
     title: 'Geometric Deep Learning',
     subtitle: 'Symmetry as inductive bias',
+    mathNote: 'f(ρ(g)x) = ρ′(g)f(x)',
     description: 'When the structure of data implies the structure of networks. Equivariance, group theory, and why CNNs are just the beginning.',
     topics: ['Equivariance', 'GNNs', 'Symmetry', 'Lie Groups'],
     color: 'blue',
@@ -42,6 +47,7 @@ const pillars = [
     icon: '⊕',
     title: 'Mechanistic Interpretability',
     subtitle: 'Reverse-engineering neural computation',
+    mathNote: 'x ≈ Σᵢ aᵢfᵢ (sparse)',
     description: 'Superposition, sparse autoencoders, and circuit analysis. Interactive probes into what networks actually compute.',
     topics: ['SAEs', 'Circuits', 'Features', 'Probing'],
     color: 'green',
@@ -51,11 +57,14 @@ const pillars = [
 export default function PillarsIndex() {
   return (
     <div>
+      <Head>
+        <title>Five Pillars — Continuous Function</title>
+      </Head>
       <section className="hero" style={{ paddingBottom: '1.5rem' }}>
-        <h1>Mathematical Pillars</h1>
+        <h1>Five Pillars</h1>
         <p className="hero-tagline">
-          Five interconnected domains that form the foundation of modern deep learning.
-          Each pillar is an explorable journey through theory and visualization.
+          Five interconnected areas of deep learning mathematics.
+          Each one explores theory through visualization and interaction.
         </p>
       </section>
 
@@ -69,9 +78,12 @@ export default function PillarsIndex() {
           >
             <div className="pillar-card-icon">{pillar.icon}</div>
             <h3>{pillar.title}</h3>
-            <p style={{ fontStyle: 'italic', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
+            <p className="pillar-card-subtitle">
               {pillar.subtitle}
             </p>
+            <code className="pillar-card-math">
+              {pillar.mathNote}
+            </code>
             <p>{pillar.description}</p>
             <div className="topics">
               {pillar.topics.map((topic) => (
@@ -84,9 +96,9 @@ export default function PillarsIndex() {
 
       <section style={{ marginTop: '3rem', textAlign: 'center' }}>
         <p className="muted">
-          Each pillar builds on shared mathematical foundations.
+          These areas share mathematical connections.
           <br />
-          Concepts link together in the{' '}
+          See how they link in the{' '}
           <Link href="/graph">knowledge graph</Link>.
         </p>
       </section>

@@ -1,11 +1,32 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
+import Head from 'next/head'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import PhasePortrait2D from '../../components/PhasePortrait2D'
 import TimeSeriesPlot from '../../components/TimeSeriesPlot'
 import { VectorField2D, Point2D, TimeSeries, numericalGradient } from '../../lib/mathObjects'
+
+// Import visualization components from foundations (canonical source with gamification)
+import dynamic from 'next/dynamic'
+const EdgeOfStability = lazy(() => import('../../components/foundations/EdgeOfStabilityViz'))
+const NewtonSchulz = lazy(() => import('../../components/foundations/NewtonSchulzViz'))
+const GrokkingPhase = lazy(() => import('../../components/foundations/GrokkingViz'))
+const DPOvsRLHF = lazy(() => import('../../components/foundations/DPOViz'))
+// LossLandscape3D requires React Three Fiber which needs React 19 - use dynamic import with SSR disabled
+const LossLandscape3D = dynamic(() => import('../../components/foundations/LossLandscape3DViz'), { ssr: false })
+const BackpropAttention = lazy(() => import('../../components/foundations/AttentionBackpropViz'))
+const TaskVectors = lazy(() => import('../../components/foundations/TaskVectorViz'))
+const NeuralScalingLaws = lazy(() => import('../../components/foundations/NeuralScalingViz'))
+
+function LoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 360, color: '#b8b0a0' }}>
+      Loading visualization...
+    </div>
+  )
+}
 
 // Rosenbrock-like loss surface
 function lossFunction(x: number, y: number): number {
@@ -68,11 +89,12 @@ function OptimizationVisualPanel() {
         ]
         point = [point[0] + velocity[0], point[1] + velocity[1]]
       } else if (optimizer === 'adam') {
-        step++
+        // Use t = step + 1 for 1-indexed bias correction (Adam paper convention)
+        const t = step + 1
         m = [beta1 * m[0] + (1 - beta1) * gx, beta1 * m[1] + (1 - beta1) * gy]
         v = [beta2 * v[0] + (1 - beta2) * gx * gx, beta2 * v[1] + (1 - beta2) * gy * gy]
-        const mHat = [m[0] / (1 - beta1 ** step), m[1] / (1 - beta1 ** step)]
-        const vHat = [v[0] / (1 - beta2 ** step), v[1] / (1 - beta2 ** step)]
+        const mHat = [m[0] / (1 - beta1 ** t), m[1] / (1 - beta1 ** t)]
+        const vHat = [v[0] / (1 - beta2 ** t), v[1] / (1 - beta2 ** t)]
         point = [
           point[0] - lr * mHat[0] / (Math.sqrt(vHat[0]) + eps),
           point[1] - lr * mHat[1] / (Math.sqrt(vHat[1]) + eps),
@@ -100,6 +122,72 @@ function OptimizationVisualPanel() {
     }
   }, [activeSection, lr, momentum, optimizer])
 
+  // Use new advanced visualization components based on section
+  if (activeSection === 'edge' || activeSection === 'stability') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <EdgeOfStability />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'muon' || activeSection === 'orthogonalization') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <NewtonSchulz />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'grokking') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <GrokkingPhase />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'dpo' || activeSection === 'rlhf' || activeSection === 'alignment') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <DPOvsRLHF />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'landscape3d' || activeSection === 'loss3d') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <LossLandscape3D />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'backprop' || activeSection === 'gradients') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <BackpropAttention />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'task-vectors' || activeSection === 'model-editing') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <TaskVectors />
+      </Suspense>
+    )
+  }
+
+  if (activeSection === 'scaling' || activeSection === 'scaling-laws') {
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <NeuralScalingLaws />
+      </Suspense>
+    )
+  }
+
+  // Legacy visualization fallback
   if (activeSection === 'landscape' || activeSection === 'momentum' || activeSection === 'adaptive') {
     return (
       <div>
@@ -140,8 +228,12 @@ function OptimizationVisualPanel() {
 
 export default function OptimizationPillar() {
   return (
-    <ExplorableLayout
-      title="Optimization"
+    <>
+      <Head>
+        <title>Optimization — Continuous Function</title>
+      </Head>
+      <ExplorableLayout
+        title="Optimization"
       subtitle="Gradient descent as physics in the loss landscape"
       visualPanel={<OptimizationVisualPanel />}
       initialParams={{ learningRate: 0.001, momentum: 0.9, optimizer: 'sgd' }}
@@ -240,7 +332,145 @@ export default function OptimizationPillar() {
           diverse feature representations is crucial.
         </p>
       </ExplorableSection>
+
+      <ExplorableSection id="edge">
+        <h2>Edge of Stability</h2>
+        <p>
+          A surprising phenomenon: neural networks train at the "edge of stability" where
+          the loss Hessian's largest eigenvalue hovers at 2/η (learning rate):
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Sharpness Dynamics</div>
+          <p>
+            λ<sub>max</sub>(∇²L) ≈ 2/η during training
+            <br />
+            Loss decreases non-monotonically
+          </p>
+        </div>
+        <p>
+          The optimizer self-organizes to this critical point, where conventional stability
+          analysis predicts divergence but training succeeds anyway.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="grokking">
+        <h2>Grokking</h2>
+        <p>
+          Sometimes models suddenly generalize long after perfectly fitting training data.
+          This "grokking" reveals a phase transition in learning:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Phase Transition</div>
+          <p>
+            Phase 1: Memorization (training loss → 0, test loss high)
+            <br />
+            Phase 2: Comprehension (test loss suddenly drops)
+          </p>
+        </div>
+        <p>
+          The model first memorizes, then discovers the underlying pattern. Weight decay
+          and longer training push models toward generalizing solutions.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="dpo">
+        <h2>DPO vs RLHF</h2>
+        <p>
+          Aligning language models to human preferences. RLHF trains a reward model then
+          optimizes against it. DPO directly optimizes from preference pairs:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">DPO Loss</div>
+          <p>
+            L = -log σ(β log(π(y<sub>w</sub>)/π<sub>ref</sub>(y<sub>w</sub>)) - β log(π(y<sub>l</sub>)/π<sub>ref</sub>(y<sub>l</sub>)))
+          </p>
+        </div>
+        <p>
+          DPO is simpler: no reward model, no RL. It implicitly defines a reward through
+          the optimal policy, making alignment more stable and efficient.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="landscape3d">
+        <h2>3D Loss Landscape</h2>
+        <p>
+          Visualizing the high-dimensional loss surface by projecting onto random directions.
+          Sharp minima may generalize poorly; flat minima are more robust:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Sharpness & Generalization</div>
+          <p>
+            L(θ + δ) ≈ L(θ) + ½δ<sup>T</sup>Hδ
+            <br />
+            Large eigenvalues of H → sharp minimum
+          </p>
+        </div>
+        <p>
+          The landscape visualization helps understand why certain optimizers find better
+          solutions and how regularization affects the geometry of minima.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="backprop">
+        <h2>Backprop Through Attention</h2>
+        <p>
+          Gradients flow through the attention mechanism in complex patterns. Understanding
+          this flow reveals why certain architectures train better:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Gradient Flow</div>
+          <p>
+            ∂L/∂Q = ∂L/∂A · ∂A/∂Q where A = softmax(QK<sup>T</sup>/√d)
+            <br />
+            Gradients must flow through softmax Jacobian
+          </p>
+        </div>
+        <p>
+          Skip connections provide direct gradient highways, explaining why residual
+          architectures are essential for deep transformers.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="task-vectors">
+        <h2>Task Vectors</h2>
+        <p>
+          Fine-tuned models differ from base models by a "task vector" in weight space.
+          These vectors support arithmetic operations:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Model Arithmetic</div>
+          <p>
+            τ = θ<sub>fine</sub> - θ<sub>base</sub>
+            <br />
+            θ<sub>new</sub> = θ<sub>base</sub> + α·τ<sub>1</sub> + β·τ<sub>2</sub>
+          </p>
+        </div>
+        <p>
+          Add task vectors to combine capabilities. Negate to remove behaviors. This
+          enables editing model knowledge without retraining.
+        </p>
+      </ExplorableSection>
+
+      <ExplorableSection id="scaling">
+        <h2>Neural Scaling Laws</h2>
+        <p>
+          Model performance follows predictable power laws with compute, data, and parameters:
+        </p>
+        <div className="math-insight">
+          <div className="math-insight-title">Chinchilla Scaling</div>
+          <p>
+            L ∝ N<sup>-α</sup> + D<sup>-β</sup> + L<sub>∞</sub>
+            <br />
+            Optimal: N ∝ C<sup>0.5</sup>, D ∝ C<sup>0.5</sup>
+          </p>
+        </div>
+        <p>
+          These laws enable predicting performance of larger models and optimal allocation
+          of compute budget between model size and training data.
+        </p>
+      </ExplorableSection>
     </ExplorableLayout>
+    </>
   )
 }
 
@@ -286,6 +516,8 @@ function LearningRateControl() {
         step="0.0001"
         value={lr}
         onChange={(e) => setParam('learningRate', parseFloat(e.target.value))}
+        aria-label="Learning rate"
+        aria-valuetext={lr.toFixed(4)}
       />
       <span className="value">{lr.toFixed(4)}</span>
     </div>
@@ -306,6 +538,8 @@ function MomentumControl() {
         step="0.01"
         value={momentum}
         onChange={(e) => setParam('momentum', parseFloat(e.target.value))}
+        aria-label="Momentum beta"
+        aria-valuetext={momentum.toFixed(2)}
       />
       <span className="value">{momentum.toFixed(2)}</span>
     </div>

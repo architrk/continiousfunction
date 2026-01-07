@@ -1,0 +1,21 @@
+Create a React component visualizing Task Vectors and model merging.
+
+Key insight: Fine-tuning creates a "task vector" τ = θ_finetuned - θ_pretrained. These vectors can be added/subtracted to transfer skills.
+
+Requirements:
+1. Show pretrained model as origin point in 2D/3D space
+2. Fine-tuned models as points offset from origin
+3. Task vectors as arrows from pretrained to fine-tuned
+4. Demonstrate arithmetic:
+   - Addition: combine French + Coding → French coding comments
+   - Subtraction: remove a capability
+   - Interpolation: blend tasks with α slider
+5. Interactive: drag task vectors, see combined model point move
+6. Show example outputs changing as you blend
+
+This is the foundation of model merging (TIES, DARE, etc.).
+
+Colors: pretrained in gray, each task a different color, combined in orange.
+Background: #080c14
+
+Output TypeScript/TSX for Next.js with D3 or Three.js.
