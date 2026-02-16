@@ -1,0 +1,36 @@
+You are building "Continuous Function": a static-exported Next.js + TypeScript site that teaches math + deep learning with interactive visualizations.
+
+Teaching pattern is always: Intuition -> Math -> Code -> Interactive Demo.
+Tone: humble, specific, never condescending.
+
+TASK: Deepen this concept for production quality:
+- Concept ID: [CONCEPT_ID]
+- Title: [CONCEPT_TITLE]
+- Target domain: [DOMAIN]
+
+Using the attached repo files as context, provide:
+
+1) Extended Math Derivation
+- Step-by-step derivation of the key equations (do not skip algebra).
+- Define every symbol and give shapes where relevant.
+- State 3-5 key properties or "rules of thumb" that practitioners use.
+
+2) Teaching Narrative
+- The intuition story (2-4 paragraphs) and the "aha moment".
+- Common misconceptions and how to correct them.
+
+3) Code Example (Python)
+- A runnable numpy/pytorch snippet (<= 40 lines) that matches the Math notation.
+- Include printed output to sanity-check behavior.
+
+4) Interactive Demo Design
+- Specific React + (D3 or canvas) plan.
+- What should be interactive (sliders/drag/hover), with recommended ranges and defaults.
+- What should animate and why it reinforces intuition.
+
+5) Graph Connections
+- Suggested prerequisites/leads_to/related edges using existing concept IDs.
+- Call out any missing prerequisites that should be created as P0 tasks.
+
+Be decisive and practical: we will implement this immediately.
+

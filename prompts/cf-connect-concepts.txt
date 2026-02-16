@@ -1,0 +1,24 @@
+You are building a knowledge graph of concepts for "Continuous Function".
+
+TASK: Improve graph connectivity for the following concepts:
+- Focus concepts: [CONCEPT_IDS] (comma-separated)
+
+Using the attached concept metadata as truth, provide:
+
+1) Prerequisite Chains
+- For each focus concept: a minimal prerequisite chain (existing concept IDs only).
+- Identify any prerequisite gaps (missing IDs) that should become P0 tasks.
+
+2) Related Links (Cross-Domain Gold)
+- 3-6 high-quality related edges per focus concept.
+- For each edge: one sentence explaining the shared structure (math or intuition).
+
+3) Learning Paths
+- Suggest 2-3 short curated paths (5-8 concepts) that include the focus concepts.
+- Paths should be coherent and "graphy" (each step motivated by the previous).
+
+4) Sanity Checks
+- Flag any dangling references or circular prereqs you notice.
+
+Be concrete: output YAML diffs for concept.yaml files when possible.
+

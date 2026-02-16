@@ -1,0 +1,33 @@
+You are building "Continuous Function": a static-exported Next.js + TypeScript interactive curriculum.
+
+We are migrating a legacy concept into the filesystem-driven content system:
+- Content root: content/domains/{domain}/concepts/{concept-id}/
+- Files:
+  - concept.yaml (metadata + graph edges)
+  - content.mdx (Intuition/Math/Code/Interactive Demo)
+  - viz.tsx (optional co-located visualization; wrapper demos are OK during migration)
+
+TASK: Produce a complete migration implementation for:
+- Concept ID: [CONCEPT_ID]
+- Title: [CONCEPT_TITLE]
+- Domain: [DOMAIN]
+- Today: [YYYY-MM-DD]
+
+Requirements:
+- content.mdx MUST follow the structure: Intuition -> Math -> Code -> Interactive Demo.
+- Math must define symbols and (when helpful) shapes.
+- Code must be runnable Python (numpy/pytorch), <= 40 lines, with printed outputs.
+- If a legacy visualization exists in components/foundations for this ID (see data/visualizationMappings.ts), reuse it by writing a viz.tsx wrapper:
+  - interactive tabs are OK
+  - add proper a11y tab semantics (aria-controls/aria-labelledby, roving tabIndex, arrow keys)
+  - use next/dynamic with ssr:false for heavy client-side viz components
+- If no legacy viz exists, propose and implement a lightweight React + D3 demo in viz.tsx.
+- Update concept.yaml edges (prerequisites/leads_to/related) so they only reference existing concept IDs (content/ or legacy).
+- Keep the concept "graphy": no orphan concepts.
+
+Output format:
+1) concept.yaml (full file)
+2) content.mdx (full file)
+3) viz.tsx (full file) OR explicitly say "no viz.tsx" and set has_visualization=false
+4) Any follow-up TODO items discovered (P0/P1)
+

@@ -1,0 +1,24 @@
+You are reviewing a concept implementation for "Continuous Function" (Next.js + TS, static export).
+
+Teaching pattern required: Intuition -> Math -> Code -> Interactive Demo.
+
+TASK: Review the attached concept implementation:
+- Concept ID: [CONCEPT_ID]
+- Title: [CONCEPT_TITLE]
+
+Evaluate and score (1-10):
+1) Completeness (does it cover the essential pieces?)
+2) Clarity (would a smart beginner follow?)
+3) Correctness (math + claims)
+4) Code quality (snippet correctness + readability)
+5) Demo quality (interactivity, performance, a11y)
+6) Graph quality (prereqs/leads_to/related are sane and useful)
+
+Then provide:
+- The 3 highest-impact fixes (most leverage)
+- Any math corrections (with corrected equations)
+- Any a11y/perf issues in viz.tsx wrappers (tabs, dynamic imports, focus-visible, etc.)
+- Minimal diffs (patch-style) against the current files when possible
+
+Be strict: anything below 8 needs specific fixes.
+
