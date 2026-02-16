@@ -1,0 +1,55 @@
+---
+title: "Norms"
+---
+
+## Intuition
+
+A norm is a notion of “length.” But there isn’t only one reasonable way to measure length.
+
+Changing the norm changes the geometry:
+
+- In $\|\cdot\|_2$ (Euclidean norm), circles are circles.
+- In $\|\cdot\|_1$, circles become diamonds.
+- In $\|\cdot\|_\infty$, circles become squares.
+
+In optimization, this matters because regularization penalties (like $\|w\|_1$ or $\|w\|_2^2$) push parameters toward different kinds of solutions.
+
+## Math
+
+A function $\|\cdot\|: V \to \mathbb{R}$ is a **norm** if for all $x,y \in V$ and $\alpha \in \mathbb{R}$:
+
+1. **Non-negativity:** $\|x\| \ge 0$ and $\|x\| = 0 \iff x = 0$
+2. **Homogeneity:** $\|\alpha x\| = |\alpha|\,\|x\|$
+3. **Triangle inequality:** $\|x+y\| \le \|x\| + \|y\|$
+
+Common norms on $\mathbb{R}^n$:
+
+- $\ell_2$: $$\|x\|_2 = \sqrt{\sum_i x_i^2}$$
+- $\ell_1$: $$\|x\|_1 = \sum_i |x_i|$$
+- $\ell_\infty$: $$\|x\|_\infty = \max_i |x_i|$$
+
+If your norm comes from a dot product, then
+
+$$\|x\| = \sqrt{x\cdot x}.$$
+
+## Code
+
+```python
+import numpy as np
+
+x = np.array([3.0, -1.0, 2.0])
+
+l1 = float(np.sum(np.abs(x)))
+l2 = float(np.linalg.norm(x, 2))
+linf = float(np.linalg.norm(x, np.inf))
+
+print("||x||1 =", l1)
+print("||x||2 =", l2)
+print("||x||inf =", linf)
+
+print("x / ||x||2 =", x / l2)
+```
+
+## Interactive Demo
+
+No interactive demo yet. A great demo: show the different unit balls for $\ell_1$, $\ell_2$, and $\ell_\infty$, and let users drag a point and see which norm is largest.

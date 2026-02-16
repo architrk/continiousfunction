@@ -1,0 +1,57 @@
+---
+title: "Linear Independence"
+---
+
+## Intuition
+
+If you already have a direction, adding another arrow that can be built from the first one doesn’t give you anything new. It’s redundant.
+
+Linear independence is the formal way to say “each vector contributes a genuinely new direction.” When a set is independent, you can’t recreate one member using the others.
+
+This matters because redundancy breaks uniqueness. If vectors are dependent, then the same point in space can have multiple different “coordinate recipes,” which makes reasoning (and solving for coefficients) ambiguous.
+
+## Math
+
+**Definition (linear independence).** Vectors $v_1,\dots,v_k$ are *linearly independent* if
+
+$$a_1 v_1 + \cdots + a_k v_k = 0 \quad \Rightarrow \quad a_1 = \cdots = a_k = 0.$$
+
+Equivalently, they are *dependent* if there exists a non-zero coefficient vector $a \neq 0$ such that
+
+$$a_1 v_1 + \cdots + a_k v_k = 0.$$
+
+A matrix view is often the cleanest: let $V = [v_1\; v_2\;\cdots\; v_k]$ (columns are the vectors). Then
+
+$$V a = 0.$$
+
+The vectors are independent exactly when the only solution is $a=0$ (the nullspace is trivial). Two fast consequences:
+
+1. In $\mathbb{R}^n$, any set with more than $n$ vectors is dependent.
+2. For $n$ vectors in $\mathbb{R}^n$, independence is equivalent to $\det(V) \neq 0$.
+
+## Code
+
+```python
+import numpy as np
+
+# Columns are v1, v2, v3 in R^2
+V = np.array([
+    [1, 0, 1],
+    [0, 1, 1],
+], dtype=float)
+
+rank = np.linalg.matrix_rank(V)
+print("rank:", rank, "num vectors:", V.shape[1])
+
+# Check if v3 is in span(v1, v2) by solving [v1 v2] c = v3
+A = V[:, :2]
+b = V[:, 2]
+c = np.linalg.lstsq(A, b, rcond=None)[0]
+
+print("coords for v3 in span(v1,v2):", c)
+print("reconstruction error:", np.linalg.norm(A @ c - b))
+```
+
+## Interactive Demo
+
+No interactive demo yet. A good demo here is: drag vectors and watch rank / determinant / nullspace change as they become dependent.

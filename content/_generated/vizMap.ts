@@ -14,6 +14,7 @@ export type ContentVizComponent = ComponentType<any>
 // Map: concept id -> dynamically loaded viz component (client-only)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic() typing is clunky for heterogeneous components
 export const contentConceptVizMap: Record<string, ContentVizComponent> = {
+  'dot-product': dynamic(() => import('../domains/linear-algebra/concepts/dot-product/viz'), { ssr: false }),
   'vector-spaces': dynamic(() => import('../domains/linear-algebra/concepts/vector-spaces/viz'), { ssr: false }),
 }
 

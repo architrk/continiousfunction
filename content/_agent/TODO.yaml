@@ -1,4 +1,4 @@
-current_focus: "Ship filesystem-driven /domains pages + deployment pipeline; expand core math domains"
+current_focus: "Migrate high-traffic legacy concepts into content/ and add fast concept search"
 
 last_completed:
   - concept: content-loader
@@ -26,7 +26,56 @@ last_completed:
     action: fixed
     notes: "Refreshed DEPLOYMENT_GUIDE.md; checked in public/.htaccess; added scripts/deploy-hostinger.sh + npm run deploy:hostinger"
 
+  - concept: linear-independence
+    date: 2026-02-16
+    action: created
+    notes: "Added concept.yaml + content.mdx (Intuition/Math/Code) in linear-algebra domain"
+
+  - concept: basis-and-span
+    date: 2026-02-16
+    action: created
+    notes: "Added concept.yaml + content.mdx; linked prereqs to vector-spaces + linear-independence"
+
+  - concept: linear-transformations
+    date: 2026-02-16
+    action: created
+    notes: "Added concept.yaml + content.mdx; introduced matrix-as-linear-map framing"
+
+  - concept: dot-product
+    date: 2026-02-16
+    action: created
+    notes: "Added concept.yaml + content.mdx + interactive viz.tsx (dot, angle, projection with drag handles)"
+
+  - concept: norms
+    date: 2026-02-16
+    action: created
+    notes: "Added concept.yaml + content.mdx; covered L1/L2/Linf + norm axioms"
+
 queue:
+  - action: expand_domain
+    domain: linear-algebra
+    description: "Add P0 concepts: linear-independence, basis-and-span, linear-transformations, dot-product, norms"
+    priority: P0
+    status: done
+
+  - action: build_feature
+    id: migrate-foundations-to-content
+    description: "Start migration: move 5-10 highest-traffic legacy concepts into content/domains/* so the filesystem system becomes primary over time (keep /foundations working during transition)."
+    priority: P0
+    status: pending
+
+  - action: build_feature
+    id: concept-search
+    description: "Add search across concept metadata + MDX (client-side index or build-time JSON)"
+    priority: P1
+    status: pending
+
+  - action: expand_domain
+    domain: calculus
+    description: "Create domain metadata + seed 1-2 core concepts (derivatives, chain-rule)"
+    priority: P1
+    status: pending
+
   - action: build_feature
     id: wire-content-pages
     description: "Wire filesystem concepts into the UI (add domain browser + concept pages rendered from content.mdx with optional viz.tsx). Keep legacy /foundations working during migration."
@@ -39,32 +88,8 @@ queue:
     priority: P0
     status: done
 
-  - action: build_feature
-    id: concept-search
-    description: "Add search across concept metadata + MDX (client-side index or build-time JSON)"
-    priority: P1
-    status: pending
-
-  - action: expand_domain
-    domain: linear-algebra
-    description: "Add P0 concepts: linear-independence, basis-and-span, linear-transformations, dot-product, norms"
-    priority: P0
-    status: pending
-
-  - action: expand_domain
-    domain: calculus
-    description: "Create domain metadata + seed 1-2 core concepts (derivatives, chain-rule)"
-    priority: P1
-    status: pending
-
-  - action: build_feature
-    id: migrate-foundations-to-content
-    description: "Start migration: move 5-10 highest-traffic legacy concepts into content/domains/* so the filesystem system becomes primary over time (keep /foundations working during transition)."
-    priority: P0
-    status: pending
-
 audit_log:
   - date: 2026-02-16
-    summary: "Bootstrap: created content/ structure; validate-content passes (0 errors); /domains pages SSG + MDX-to-HTML rendering works"
+    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra with 5 core concepts + a dot-product interactive demo"
 
 discovered_connections: []

@@ -1,0 +1,27 @@
+id: linear-independence
+title: "Linear Independence"
+domain: linear-algebra
+slug: linear-independence
+difficulty: 2
+status: published
+importance: critical
+prerequisites:
+  - vector-spaces
+leads_to:
+  - basis-and-span
+related:
+  - dot-product
+  - norms
+tags:
+  - linear-algebra
+  - span
+  - dimension
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate
+short_description: "A set of vectors is linearly independent if none can be built from the others; independence is what makes coordinates unique."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 12
