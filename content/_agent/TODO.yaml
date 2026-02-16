@@ -1,4 +1,4 @@
-current_focus: "Migrate high-traffic legacy concepts into content/ and seed calculus domain"
+current_focus: "Migrate high-traffic legacy concepts into content/ (filesystem-first) and deepen cross-links"
 
 last_completed:
   - concept: content-loader
@@ -56,6 +56,11 @@ last_completed:
     action: created
     notes: "Added /search page indexing /domains + /foundations metadata; added nav link"
 
+  - concept: calculus-domain
+    date: 2026-02-16
+    action: created
+    notes: "Added calculus domain + seeded functions, derivatives (with secant→tangent demo), and chain-rule concepts"
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -79,7 +84,7 @@ queue:
     domain: calculus
     description: "Create domain metadata + seed 1-2 core concepts (derivatives, chain-rule)"
     priority: P1
-    status: pending
+    status: done
 
   - action: build_feature
     id: search-fulltext
@@ -101,6 +106,6 @@ queue:
 
 audit_log:
   - date: 2026-02-16
-    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra with 5 core concepts + dot-product demo; added /search across domains+foundations"
+    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra + calculus (derivatives demo); added /search across domains+foundations"
 
 discovered_connections: []

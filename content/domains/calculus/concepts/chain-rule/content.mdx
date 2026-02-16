@@ -1,0 +1,43 @@
+---
+title: "Chain Rule"
+---
+
+## Intuition
+
+When a quantity depends on an intermediate variable, change propagates through the chain.
+
+If a tiny change in $x$ causes a change in $u$, and that change in $u$ causes a change in $y$, then the total change from $x$ to $y$ multiplies those effects.
+
+That is the entire story of backpropagation: derivatives flow through a computational graph by repeatedly applying the chain rule.
+
+## Math
+
+Let $u = g(x)$ and $y = f(u) = f(g(x))$. The chain rule says:
+
+$$(f \circ g)'(x) = f'(g(x))\, g'(x).$$
+
+A useful way to remember it is “differentiate the outside, then multiply by the derivative of the inside.”
+
+For multi-variable functions (what we use in ML), the chain rule becomes Jacobian multiplication, and backprop is efficient Jacobian-vector products.
+
+## Code
+
+```python
+import torch
+
+x = torch.tensor(1.5, requires_grad=True)
+
+# y = f(g(x)) with g(x)=x^2 and f(u)=sin(u)
+y = torch.sin(x**2)
+y.backward()
+
+print("dy/dx (autograd):", x.grad.item())
+
+# Analytic chain rule: f'(u)=cos(u), g'(x)=2x
+analytic = torch.cos(x**2) * (2 * x)
+print("dy/dx (analytic):", analytic.item())
+```
+
+## Interactive Demo
+
+No interactive demo yet. A great demo: a small computation graph with sliders, showing local derivatives on edges and the product along a path.

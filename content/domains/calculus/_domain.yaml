@@ -1,0 +1,5 @@
+title: "Calculus"
+description: "Rates of change and accumulation. Calculus is the language behind gradients, optimization, continuous-time dynamics, and why backprop works as efficiently as it does."
+icon: "function-square"
+color: "#22c55e"
+order: 20
