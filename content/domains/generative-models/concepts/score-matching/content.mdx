@@ -1,0 +1,71 @@
+---
+title: "Score Matching & Score-Based Generative Models"
+---
+
+## Intuition
+
+If a probability distribution $p(x)$ is a landscape, then $\\log p(x)$ is a height map, and the **score**
+
+$$s(x)=\\nabla_x \\log p(x)$$
+
+is the vector field that points "uphill" toward higher density.
+
+Score-based generative modeling is the idea: instead of learning $p(x)$ directly (which requires a normalizing constant), learn the **gradient of the log-density**. If you know the score field, you can sample by following dynamics that move points from noise into data.
+
+This is the hidden backbone of diffusion: predicting noise $\\epsilon$ at each noise level is (up to a known scale) predicting the score.
+
+## Math
+
+### The score function
+
+$$s(x)=\\nabla_x\\log p(x).$$
+
+It depends only on the *shape* of the density, not its absolute normalization.
+
+### Score matching (classical form)
+
+One objective for learning $s_\\theta(x)\\approx \\nabla_x\\log p_{\\text{data}}(x)$ is:
+
+$$\\mathcal{L}_{SM}=\\mathbb{E}_{p_{\\text{data}}}\\left[\\frac{1}{2}\\|s_\\theta(x)\\|^2+\\mathrm{tr}(\\nabla_x s_\\theta(x))\\right].$$
+
+This avoids evaluating $p(x)$ but is hard to implement directly because of the divergence term.
+
+### Denoising score matching (diffusion-friendly)
+
+Add Gaussian noise: $\\tilde x = x + \\sigma\\epsilon$, with $\\epsilon\\sim\\mathcal N(0,I)$. Then:
+
+$$\\nabla_{\\tilde x}\\log q(\\tilde x\\mid x)= -\\frac{\\tilde x-x}{\\sigma^2} = -\\frac{\\epsilon}{\\sigma}.$$
+
+Denoising score matching trains:
+
+$$\\mathcal{L}_{DSM}=\\mathbb E\\,\\big\\|s_\\theta(\\tilde x,\\sigma) + \\epsilon/\\sigma\\big\\|^2.$$
+
+So predicting noise $\\epsilon_\\theta$ is equivalent (up to scaling) to predicting the score:
+
+$$s_\\theta(\\tilde x,\\sigma) \\approx -\\frac{\\epsilon_\\theta(\\tilde x,\\sigma)}{\\sigma}.$$
+
+## Code
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+x = rng.normal(loc=1.5, scale=1.0, size=(5,))
+sigma = 0.7
+eps = rng.standard_normal(x.shape)
+xt = x + sigma * eps
+
+score_from_eps = -eps / sigma
+score_from_xt = -(xt - x) / (sigma**2)  # same quantity
+
+print("x:  ", np.round(x, 3))
+print("xt: ", np.round(xt, 3))
+print("max|diff|:", float(np.max(np.abs(score_from_eps - score_from_xt))))
+```
+
+## Interactive Demo
+
+Use the demo to see the score field and how diffusion "noise prediction" corresponds to a scaled score estimate.
+
+{/* viz.tsx component renders here if it exists */}
+

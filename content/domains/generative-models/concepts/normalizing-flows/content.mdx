@@ -1,0 +1,64 @@
+---
+title: "Normalizing Flows: Exact Likelihood via Invertible Transforms"
+---
+
+## Intuition
+
+Normalizing flows are "reversible warps."
+
+Start from a simple base distribution (like a standard Gaussian). Then apply an invertible transformation that bends and stretches space until samples match the data distribution.
+
+Because the transform is invertible, you get:
+
+- **Exact sampling**: sample $z$ from the base, push forward to $x=f(z)$.
+- **Exact likelihood**: map $x$ back to $z=f^{-1}(x)$ and account for how volumes change.
+
+The price is architectural: you must design $f$ so it is invertible and its Jacobian determinant is cheap to compute.
+
+## Math
+
+### Change of variables
+
+Let $x=f(z)$ where $f$ is invertible and $z\\sim p_z$. Then:
+
+$$p_x(x)=p_z\\big(f^{-1}(x)\\big)\\left|\\det\\frac{\\partial f^{-1}}{\\partial x}\\right|,$$
+
+so:
+
+$$\\log p_x(x)=\\log p_z\\big(f^{-1}(x)\\big)+\\log\\left|\\det\\frac{\\partial f^{-1}}{\\partial x}\\right|.$$
+
+### Composition of flows
+
+If $f=f_K\\circ\\cdots\\circ f_1$, then log-determinants add:
+
+$$\\log p_x(x)=\\log p_z(z_0)+\\sum_{k=1}^K\\log\\left|\\det\\frac{\\partial f_k}{\\partial z_{k-1}}\\right|.$$
+
+This is why coupling layers and autoregressive flows are engineered around "easy log-det Jacobians."
+
+## Code
+
+```python
+import numpy as np
+
+# A tiny 2D linear flow: x = A z + b, with z ~ N(0, I)
+A = np.array([[1.2, 0.3], [0.1, 0.9]])
+b = np.array([0.5, -0.2])
+Ainv = np.linalg.inv(A)
+
+def log_pz(z):
+    d = z.shape[0]
+    return -0.5 * float(z @ z) - 0.5 * d * np.log(2 * np.pi)
+
+x = np.array([1.0, 0.0])
+z = Ainv @ (x - b)
+log_px = log_pz(z) + np.log(abs(np.linalg.det(Ainv)))
+
+print("det(A):", round(float(np.linalg.det(A)), 3))
+print("z:", np.round(z, 3))
+print("log p_x(x):", round(float(log_px), 3))
+```
+
+## Interactive Demo
+
+No demo yet for this concept. A good one would let you compose simple invertible transforms and watch how density changes under the Jacobian term.
+

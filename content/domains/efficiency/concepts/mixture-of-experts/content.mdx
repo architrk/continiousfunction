@@ -1,0 +1,72 @@
+---
+title: "Sparse Mixture of Experts: Routing, Load Balancing & Expert Parallelism"
+---
+
+## Intuition
+
+Mixture of Experts (MoE) is the "specialist team" version of a neural network.
+
+Instead of running the same dense MLP for every token, you keep a large set of expert MLPs and a small router that decides which experts each token should use. That buys you:
+
+- **Capacity**: lots of total parameters (many experts).
+- **Efficiency**: only run $k$ experts per token (small activated compute).
+
+But it also sells you new problems: tokens get unevenly routed (skew), which creates stragglers and all-to-all communication. In MoE, "sparsity" is as much a **systems** story as a modeling story.
+
+## Math
+
+### Router probabilities
+
+Let a token hidden state be $h\\in\\mathbb R^d$. A linear router produces logits and probabilities:
+
+$$z = W_r h,\\qquad p(e\\mid h)=\\mathrm{softmax}(z)_e.$$
+
+### Top-k gating (sparse activation)
+
+Let $S=\\mathrm{TopK}(p(\\cdot\\mid h), k)$. Only experts in $S$ run:
+
+$$\\mathrm{MoE}(h)=\\sum_{e\\in S}\\tilde p_e\\,f_e(h),\\qquad
+\\tilde p_e = \\frac{p(e\\mid h)}{\\sum_{j\\in S} p(j\\mid h)}.$$
+
+### Load balancing (avoid expert collapse)
+
+Routers tend to collapse onto a small subset of experts unless you regularize. A classic form uses:
+
+- $f_i$: fraction of tokens assigned to expert $i$
+- $P_i$: average gating probability for expert $i$
+
+and:
+
+$$\\mathcal L_{\\text{LB}} = N_E\\sum_{i=1}^{N_E} f_i\\,P_i.$$
+
+## Code
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+E, d, T = 8, 16, 2000  # experts, hidden dim, tokens
+
+W = rng.standard_normal((E, d))  # router weights
+h = rng.standard_normal((T, d))  # token hidden states
+
+z = h @ W.T
+p = np.exp(z - z.max(axis=1, keepdims=True))
+p = p / p.sum(axis=1, keepdims=True)
+
+top = p.argmax(axis=1)  # top-1 routing
+freq = np.bincount(top, minlength=E) / T  # f_i
+P = p.mean(axis=0)                         # P_i
+
+L_lb = E * float(np.sum(freq * P))
+print("freq f_i:", np.round(freq, 3))
+print("mean gate P_i:", np.round(P, 3))
+print("load-balancing loss:", round(L_lb, 3))
+```
+
+## Interactive Demo
+
+Use the demo to watch routing decisions, expert load, and how load balancing changes behavior.
+
+{/* viz.tsx component renders here if it exists */}
+

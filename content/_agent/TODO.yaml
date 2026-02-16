@@ -191,6 +191,26 @@ last_completed:
     action: created
     notes: "Upgraded /search to include lightweight snippets extracted from content.mdx (Intuition/Math) for better relevance without large bundle size impact."
 
+  - concept: kto
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3 start: migrated kto into filesystem content and reused KTOViz as the interactive demo."
+
+  - concept: mixture-of-experts
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3: migrated mixture-of-experts into filesystem content and reused MoERoutingViz as the interactive demo."
+
+  - concept: score-matching
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3: migrated score-matching into filesystem content and reused DiffusionScoreViz as the interactive demo."
+
+  - concept: normalizing-flows
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3: migrated normalizing-flows into filesystem content (no demo yet) to unblock flow-matching prerequisites."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -212,9 +232,9 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-3
-    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers."
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers. (Progress: 4 migrated: kto, mixture-of-experts, score-matching, normalizing-flows)"
     priority: P0
-    status: pending
+    status: in_progress
 
   - action: build_feature
     id: concept-search
@@ -255,6 +275,9 @@ audit_log:
 
   - date: 2026-02-16
     summary: "Search: added build-time extraction of short Intuition/Math snippets from content.mdx so /search can match more than metadata without inflating bundles."
+
+  - date: 2026-02-16
+    summary: "Migration batch 3 start: migrated kto, mixture-of-experts, score-matching, and normalizing-flows; regenerated vizMap; validate/typecheck/build passed."
 
 discovered_connections:
   - source: tokenization-vocabulary

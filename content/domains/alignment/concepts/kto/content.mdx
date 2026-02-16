@@ -1,0 +1,67 @@
+---
+title: "KTO: Alignment from Binary Feedback via Human-Aware Losses"
+---
+
+## Intuition
+
+Pairwise preferences (A vs B) are great when you can afford them. In many production settings, you mostly get **binary feedback**:
+
+- thumbs up / thumbs down
+- "helpful" / "not helpful"
+- "safe" / "unsafe"
+
+KTO (and related "HALO" objectives) treat alignment as **loss engineering**: you want an objective that uses cheap feedback, stays anchored to a reference model, and does not overreact to noisy labels.
+
+A key idea is *saturation*: if an example is extremely desirable or extremely undesirable, gradients should shrink. That focuses learning on the borderline cases where the model is uncertain and feedback is most informative.
+
+## Math
+
+### Implied reward (policy vs reference)
+
+KTO often starts from the log-probability ratio:
+
+$$r_\\theta(x,y) = \\log\\frac{\\pi_\\theta(y\\mid x)}{\\pi_{\\text{ref}}(y\\mid x)}.$$
+
+This is an "implied reward": it measures how much the policy prefers $(x,y)$ compared to the reference.
+
+### A KL baseline (reference point)
+
+Use a baseline based on how far the policy has drifted:
+
+$$z_0 = \\mathrm{KL}\\!\\left(\\pi_\\theta(\\cdot\\mid x)\\ \\|\\ \\pi_{\\text{ref}}(\\cdot\\mid x)\\right).$$
+
+Intuition: if the policy already drifted far, you should be more conservative.
+
+### Logistic value function (saturating gradients)
+
+One form is a value function with a sigmoid:
+
+$$v(x,y)=
+\\begin{cases}
+\\lambda_D\\,\\sigma\\!\\big(\\beta(r_\\theta(x,y)-z_0)\\big) & y\\in\\text{desirable} \\\\
+\\lambda_U\\,\\sigma\\!\\big(\\beta(z_0-r_\\theta(x,y))\\big) & y\\in\\text{undesirable}
+\\end{cases}$$
+
+The derivative of a sigmoid includes $\\sigma(1-\\sigma)$, so gradients are largest near the decision boundary and shrink for extreme values.
+
+## Code
+
+```python
+import numpy as np
+
+beta = 2.0
+deltas = np.array([-5, -2, -1, 0, 1, 2, 5], dtype=float)  # think: r_theta - z0
+
+sig = 1.0 / (1.0 + np.exp(-beta * deltas))
+grad_mag = beta * sig * (1.0 - sig)  # proportional to sigmoid' (largest near 0)
+
+for d, s, g in zip(deltas, sig, grad_mag):
+    print("delta=", d, "sigmoid=", round(float(s), 3), "grad~", round(float(g), 3))
+```
+
+## Interactive Demo
+
+Use the demo to compare binary-feedback objectives to pairwise preference losses, and to see how saturation changes optimization dynamics.
+
+{/* viz.tsx component renders here if it exists */}
+
