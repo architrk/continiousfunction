@@ -49,11 +49,11 @@ function transposeMatrix(m: number[][]): number[][] {
   return result
 }
 
-function vecAdd(a: Vec2, b: Vec2): Vec2 {
+function _vecAdd(a: Vec2, b: Vec2): Vec2 {
   return [a[0] + b[0], a[1] + b[1]]
 }
 
-function vecScale(v: Vec2, s: number): Vec2 {
+function _vecScale(v: Vec2, s: number): Vec2 {
   return [v[0] * s, v[1] * s]
 }
 

@@ -269,7 +269,7 @@ const FLOW_PRESETS = [
 ]
 
 // Educational insights based on current state
-const getFlowInsight = (mode: Mode, time: number, rectifyLevel: number): string => {
+const getFlowInsight = (mode: Mode, time: number, _rectifyLevel: number): string => {
   if (mode === 'diffusion') {
     if (time < 0.2) return '🌀 Early diffusion: particles start from pure noise, wandering unpredictably'
     if (time < 0.8) return '🔀 Mid-diffusion: particles slowly find their way, taking curved, stochastic paths'
@@ -1048,7 +1048,7 @@ export default function FlowMatchingOTDemo() {
                 { q: qDiff, className: 'diffusion' },
                 { q: qFlow, className: 'flow' },
                 { q: qRect, className: 'rectified' },
-              ].map(({ q, className }, idx) => {
+              ].map(({ q, className }, _idx) => {
                 const y =
                   SAMPLING_HEIGHT -
                   PADDING -

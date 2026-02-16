@@ -16,7 +16,7 @@ const ARCH_CHALLENGES = [
 function getArchPredictionFeedback(
   predicted: ArchitectureId,
   actual: ArchitectureId,
-  scenarioName: string
+  _scenarioName: string
 ): string {
   const explanations: Record<ArchitectureId, string> = {
     'MHA': 'MHA gives each query head its own KV head, maximizing expressiveness. Best when quality is paramount and memory is abundant.',

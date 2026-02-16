@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
+import { useKeyboardNav } from '../lib/useKeyboardNav'
 
 // Gamification: Prediction game for learning
 type GamePhase = 'setup' | 'countdown' | 'reveal'
@@ -69,6 +70,14 @@ const BEHAVIOR_LABELS: Record<BehaviorPrediction, string> = {
   diverge: '💥 Diverge (explode)',
   slow: '🐢 Very slow convergence',
 }
+
+// Array of behavior options for keyboard navigation
+const BEHAVIOR_OPTIONS: BehaviorPrediction[] = [
+  'converge_smooth',
+  'converge_oscillate',
+  'diverge',
+  'slow',
+]
 
 const X_MIN = -2
 const X_MAX = 6
@@ -235,6 +244,18 @@ export default function GradientDescentPlayground() {
   const [showChallengeMode, setShowChallengeMode] = useState(false)
   const autoRunRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Keyboard navigation for prediction options
+  const predictionNav = useKeyboardNav({
+    options: BEHAVIOR_OPTIONS,
+    onSelect: (behavior) => setPrediction(behavior),
+    onEscape: () => {
+      setShowChallengeMode(false)
+      setCurrentChallenge(null)
+      setGamePhase('setup')
+    },
+    enabled: showChallengeMode && gamePhase === 'setup',
+  })
+
   const applyPrompt = (prompt: typeof GUIDED_PROMPTS[0]) => {
     setLr(prompt.lr)
     setMomentum(prompt.momentum)
@@ -339,23 +360,33 @@ export default function GradientDescentPlayground() {
     return () => {
       if (autoRunRef.current) clearInterval(autoRunRef.current)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- x accessed via stale closure for convergence check; refactoring deferred
   }, [gamePhase, countdown, currentChallenge])
 
-  // Auto-run when in reveal phase
+  // Auto-run when in reveal phase with proper cleanup
   useEffect(() => {
     if (gamePhase !== 'reveal') return
+
+    let cancelled = false
     const runSteps = async () => {
       for (let i = 0; i < 25; i++) {
+        if (cancelled) break // Check cancellation before each iteration
         await new Promise(resolve => setTimeout(resolve, 80))
+        if (cancelled) break // Check cancellation after timeout
         stepOnce()
         // Stop early if converged or diverged
         if (Math.abs(x - 2) < 0.001 || currentY > 50 || Math.abs(x) > 20) break
       }
     }
     runSteps()
+
+    // Cleanup: cancel async loop if component unmounts or gamePhase changes
+    return () => {
+      cancelled = true
+    }
   }, [gamePhase]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const checkResult = useCallback(() => {
+  const _checkResult = useCallback(() => {
     if (!prediction || !currentChallenge) return null
     const isCorrect = prediction === currentChallenge.correctAnswer
     if (isCorrect) {
@@ -402,11 +433,11 @@ export default function GradientDescentPlayground() {
 
       {/* Challenge Mode UI */}
       {showChallengeMode && currentChallenge && (
-        <div className="challenge-panel">
+        <div className="challenge-panel" role="region" aria-label="Gradient descent challenge">
           <div className="challenge-header">
-            <div className="challenge-stats">
-              <span className="stat">🏆 Score: {score}</span>
-              <span className="stat">🔥 Streak: {streak}</span>
+            <div className="challenge-stats" role="status" aria-live="polite">
+              <span className="stat" aria-label={`Score: ${score} points`}>🏆 Score: {score}</span>
+              <span className="stat" aria-label={`Streak: ${streak} correct`}>🔥 Streak: {streak}</span>
             </div>
           </div>
 
@@ -422,12 +453,16 @@ export default function GradientDescentPlayground() {
           {gamePhase === 'setup' && (
             <div className="prediction-selection">
               <p className="prediction-prompt">What will happen when we run this optimizer?</p>
-              <div className="prediction-options">
-                {(Object.keys(BEHAVIOR_LABELS) as BehaviorPrediction[]).map((behavior) => (
+              <p className="sr-only">Use arrow keys to navigate options, Enter to select, Escape to exit</p>
+              <div
+                className="prediction-options"
+                {...predictionNav.containerProps}
+              >
+                {BEHAVIOR_OPTIONS.map((behavior, index) => (
                   <button
                     key={behavior}
-                    onClick={() => setPrediction(behavior)}
-                    className={`prediction-btn ${prediction === behavior ? 'selected' : ''}`}
+                    {...predictionNav.getOptionProps(behavior, index)}
+                    className={`prediction-btn ${prediction === behavior ? 'selected' : ''} ${predictionNav.focusedIndex === index ? 'kb-focused' : ''}`}
                   >
                     {BEHAVIOR_LABELS[behavior]}
                   </button>
@@ -442,14 +477,14 @@ export default function GradientDescentPlayground() {
           )}
 
           {gamePhase === 'countdown' && (
-            <div className="countdown-display">
-              <span className="countdown-number">{countdown}</span>
+            <div className="countdown-display" role="timer" aria-live="assertive" aria-atomic="true">
+              <span className="countdown-number" aria-label={`${countdown} seconds remaining`}>{countdown}</span>
               <p>Running in...</p>
             </div>
           )}
 
           {gamePhase === 'reveal' && (
-            <div className="result-panel">
+            <div className="result-panel" role="status" aria-live="polite" aria-atomic="true">
               <div className={`result-badge ${prediction === currentChallenge.correctAnswer ? 'correct' : 'incorrect'}`}>
                 {prediction === currentChallenge.correctAnswer ? '✅ Correct!' : '❌ Not quite'}
               </div>
@@ -491,7 +526,8 @@ export default function GradientDescentPlayground() {
         </p>
       )}
       <div className="gd-layout">
-        <svg width={WIDTH} height={HEIGHT} className="gd-chart" role="img">
+        <svg width={WIDTH} height={HEIGHT} className="gd-chart" role="img" aria-label="Interactive gradient descent visualization showing a loss function curve with draggable point and optimization trajectory">
+          <title>Gradient Descent Playground: drag the point to explore how gradient descent finds minima</title>
           <line
             x1={xToSvg(X_MIN)}
             y1={yToSvg(0)}

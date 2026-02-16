@@ -1,0 +1,19 @@
+You are reviewing the Next.js/TypeScript code for concept pages in Continuous Function, an AI curriculum site.
+
+Goal: make pages more intuitive, correct, robust and easy to understand.
+
+Files attached:
+- pages/foundations/[id].tsx (concept page, includes a custom MathContent renderer that parses a markdown-ish string with KaTeX)
+- data/foundationsData.ts (100 concept entries; coreMath strings use headings like ##, lists, --- rules, $...$ and $$...$$, bold **...**, sometimes italics *...*)
+- data/visualizationMappings.ts (maps concept IDs to visualization component names)
+
+Tasks:
+1) Teaching flow: Evaluate section order and UI copy. Suggest improvements to make the page intuition-first while still supporting deep math. Propose concrete changes.
+2) MathContent correctness: Verify parsing and rendering are correct and safe. Identify edge cases where it breaks (italics, nested/multiline lists, escaped dollars, code blocks, links, blockquotes, etc). Propose a more robust parser/renderer if needed, but keep it lightweight (avoid heavy markdown deps unless clearly justified).
+3) Accessibility: Suggest a11y improvements (TOC semantics, heading hierarchy, contrast, keyboard nav).
+4) Correctness checks: Confirm links respect trailingSlash static export and suggest any fixes.
+
+Output format:
+- Prioritized list of issues/risks
+- Exact code diffs to implement your recommendations (prefer minimal changes)
+- Tests/checks to run

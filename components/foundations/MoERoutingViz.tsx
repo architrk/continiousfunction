@@ -210,7 +210,10 @@ function MoERoutingDemo() {
       setStreak((s) => s + 1);
       setLastFeedback(FEEDBACK_MESSAGES.correct[Math.floor(Math.random() * FEEDBACK_MESSAGES.correct.length)]);
       setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 2000);
+      if (celebrationTimeoutRef.current !== null) {
+        window.clearTimeout(celebrationTimeoutRef.current);
+      }
+      celebrationTimeoutRef.current = window.setTimeout(() => setShowCelebration(false), 2000);
     } else if (isPartial) {
       setScore((s) => s + 3);
       setStreak(0);
@@ -254,6 +257,18 @@ function MoERoutingDemo() {
   const usageBarRefs = useRef<(HTMLDivElement | null)[]>([]);
   const tokenBubbleRef = useRef<HTMLDivElement | null>(null);
   const routeTimelineRef = useRef<gsap.core.Timeline | null>(null);
+  const celebrationTimeoutRef = useRef<number | null>(null);
+
+  // Cleanup to prevent state updates after unmount and stop in-flight animations.
+  useEffect(() => {
+    return () => {
+      if (celebrationTimeoutRef.current !== null) {
+        window.clearTimeout(celebrationTimeoutRef.current);
+      }
+      routeTimelineRef.current?.kill();
+      routeTimelineRef.current = null;
+    };
+  }, []);
 
   // Hide token bubble initially
   useEffect(() => {

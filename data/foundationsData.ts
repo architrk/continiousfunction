@@ -1,5 +1,5 @@
 // Core mathematical foundations data for deep learning concept map
-// 34 concepts that explain GPT-4 / Claude / Gemini / Llama / Stable Diffusion / Sora
+// 100 concepts spanning modern foundation models (LLMs, diffusion/video, scaling, alignment, interpretability)
 
 export interface Paper {
   title: string
@@ -3090,17 +3090,3036 @@ Decoding in LLMs and guidance in diffusion both do inference-time preference sha
     prereqs: ['maximum-likelihood', 'attention-transformers', 'diffusion', 'speculative-decoding'],
     dependents: [],
     color: CATEGORY_COLORS.core
+  },
+
+  // ==========================================
+  // NEW CONCEPTS (Oracle GPT-5.2 Pro, Jan 2026)
+  // ==========================================
+
+  {
+    id: 'backpropagation-autodiff',
+    number: 35,
+    title: 'Backpropagation & Automatic Differentiation',
+    shortTitle: 'Backprop',
+    icon: '⟲',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'Learning representations by back-propagating errors',
+        authors: 'Rumelhart, Hinton, Williams',
+        year: 1986,
+        venue: 'Nature',
+        url: 'https://www.nature.com/articles/323533a0'
+      },
+      {
+        title: 'Automatic Differentiation in Machine Learning: a Survey',
+        authors: 'Baydin et al.',
+        year: 2018,
+        venue: 'JMLR',
+        url: 'https://arxiv.org/abs/1502.05767'
+      }
+    ],
+    coreMath: `The chain rule computes gradients efficiently via **reverse-mode autodiff**:
+
+For composite function $f = f_L \\circ f_{L-1} \\circ \\cdots \\circ f_1$:
+
+$$\\frac{\\partial L}{\\partial \\theta_\\ell} = \\frac{\\partial L}{\\partial h_L} \\cdot \\frac{\\partial h_L}{\\partial h_{L-1}} \\cdots \\frac{\\partial h_{\\ell+1}}{\\partial h_\\ell} \\cdot \\frac{\\partial h_\\ell}{\\partial \\theta_\\ell}$$
+
+The **backward pass** propagates sensitivities:
+
+$$\\delta_\\ell = \\frac{\\partial L}{\\partial h_\\ell} = \\delta_{\\ell+1} \\cdot \\frac{\\partial h_{\\ell+1}}{\\partial h_\\ell}$$
+
+Computational cost: one forward pass + one backward pass = O(2 × forward).
+Memory cost: must store all intermediate activations $h_1, \\ldots, h_L$.`,
+    coreEquation: '\\delta_\\ell = \\delta_{\\ell+1} \\cdot \\frac{\\partial h_{\\ell+1}}{\\partial h_\\ell}',
+    whyItMatters: [
+      'Every modern neural network is trained via backprop—it is the fundamental algorithm enabling gradient-based learning',
+      'Memory cost of storing activations explains why activation checkpointing exists and why large models need gradient accumulation',
+      'Understanding forward/backward asymmetry explains why inference is cheap but training is expensive'
+    ],
+    missingIntuition: [
+      'Reverse-mode is optimal when outputs << parameters (typical in ML); forward-mode would require one pass per parameter',
+      'The computation graph is built dynamically in PyTorch—this is why torch.no_grad() saves memory, not just compute',
+      'Vanishing/exploding gradients arise from repeated multiplication of Jacobians—residual connections fix this by adding identity'
+    ],
+    prereqs: [],
+    dependents: ['adam', 'loss-landscapes'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'score-matching',
+    number: 36,
+    title: 'Score Matching & Score-Based Generative Models',
+    shortTitle: 'Score Matching',
+    icon: '∇p',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'Estimation of Non-Normalized Statistical Models by Score Matching',
+        authors: 'Hyvärinen',
+        year: 2005,
+        venue: 'JMLR',
+        url: 'https://jmlr.org/papers/v6/hyvarinen05a.html'
+      },
+      {
+        title: 'Generative Modeling by Estimating Gradients of the Data Distribution',
+        authors: 'Song & Ermon',
+        year: 2019,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1907.05600'
+      }
+    ],
+    coreMath: `The **score function** is the gradient of log-density:
+
+$$s(x) = \\nabla_x \\log p(x)$$
+
+**Score matching** learns $s_\\theta(x) \\approx \\nabla_x \\log p_{\\text{data}}(x)$ without knowing the normalizing constant:
+
+$$\\mathcal{L}_{SM} = \\mathbb{E}_{p_{\\text{data}}}\\left[ \\frac{1}{2}\\|s_\\theta(x)\\|^2 + \\text{tr}(\\nabla_x s_\\theta(x)) \\right]$$
+
+**Denoising score matching** (practical form):
+
+$$\\mathcal{L}_{DSM} = \\mathbb{E}_{x, \\tilde{x}}\\left[ \\|s_\\theta(\\tilde{x}) - \\nabla_{\\tilde{x}} \\log q(\\tilde{x}|x)\\|^2 \\right]$$
+
+For Gaussian noise $\\tilde{x} = x + \\sigma\\epsilon$, the optimal score is $-\\epsilon/\\sigma$.`,
+    coreEquation: 's(x) = \\nabla_x \\log p(x)',
+    whyItMatters: [
+      'Score functions are the mathematical foundation of diffusion models—the denoiser learns the score at each noise level',
+      'Explains why diffusion training is "just regression": predict noise ε, which equals -σ × score',
+      'Unifies VAEs, diffusion, and energy-based models through the lens of learning ∇log p(x)'
+    ],
+    missingIntuition: [
+      'The score is a vector field pointing "uphill" toward higher density—sampling follows this flow backward from noise',
+      'Why denoising works: optimal denoiser predicts E[x|x̃], and its gradient w.r.t. x̃ gives the score',
+      'Score matching avoids computing intractable partition functions—you only need gradients, not absolute probabilities'
+    ],
+    prereqs: ['maximum-likelihood', 'diffusion'],
+    dependents: [],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'in-context-learning',
+    number: 37,
+    title: 'In-Context Learning: Learning Without Weight Updates',
+    shortTitle: 'ICL',
+    icon: '📝',
+    category: 'representation',
+    canonicalPapers: [
+      {
+        title: 'Language Models are Few-Shot Learners',
+        authors: 'Brown et al.',
+        year: 2020,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2005.14165'
+      },
+      {
+        title: 'What Can Transformers Learn In-Context? A Case Study of Simple Function Classes',
+        authors: 'Garg et al.',
+        year: 2022,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2208.01066'
+      }
+    ],
+    coreMath: `**In-context learning** performs task adaptation through the prompt alone:
+
+Given examples $(x_1, y_1), \\ldots, (x_k, y_k)$ and query $x_{k+1}$:
+
+$$\\hat{y}_{k+1} = \\arg\\max_y p_\\theta(y \\mid x_1, y_1, \\ldots, x_k, y_k, x_{k+1})$$
+
+No gradient updates to $\\theta$—the model "learns" by conditioning on demonstrations.
+
+**Mechanistic hypothesis**: attention heads implement approximate gradient descent:
+
+$$W_{\\text{updated}} \\approx W + \\eta \\sum_i (y_i - Wx_i)x_i^T$$
+
+This emerges from the attention mechanism's ability to retrieve and aggregate relevant examples.`,
+    coreEquation: '\\hat{y} = \\arg\\max_y p_\\theta(y \\mid \\text{examples}, x_{\\text{query}})',
+    whyItMatters: [
+      'ICL is arguably THE signature capability of large language models—task adaptation without fine-tuning',
+      'Enables rapid prototyping and deployment: just change the prompt, not the model',
+      'Creates the "prompt engineering" paradigm and explains why few-shot examples matter'
+    ],
+    missingIntuition: [
+      'ICL emerges from scale—small models cannot do it; there appears to be a threshold around 1B+ parameters',
+      'Induction heads (copy-from-context circuits) are necessary but not sufficient for sophisticated ICL',
+      'ICL is not the same as memorization: models can interpolate to genuinely new tasks from demonstrations'
+    ],
+    prereqs: ['attention-transformers', 'induction-heads', 'scaling-laws'],
+    dependents: [],
+    color: CATEGORY_COLORS.representation
+  },
+  {
+    id: 'optimal-transport',
+    number: 38,
+    title: 'Optimal Transport & Wasserstein Distance',
+    shortTitle: 'OT/Wasserstein',
+    icon: '⚖️',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Computational Optimal Transport',
+        authors: 'Peyré & Cuturi',
+        year: 2019,
+        venue: 'Foundations and Trends in ML',
+        url: 'https://arxiv.org/abs/1803.00567'
+      },
+      {
+        title: 'Wasserstein GAN',
+        authors: 'Arjovsky, Chintala, Bottou',
+        year: 2017,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/1701.07875'
+      }
+    ],
+    coreMath: `**Optimal transport** finds the minimum-cost way to move mass from distribution $\\mu$ to $\\nu$:
+
+$$W_p(\\mu, \\nu) = \\left( \\inf_{\\gamma \\in \\Gamma(\\mu, \\nu)} \\int \\|x - y\\|^p \\, d\\gamma(x, y) \\right)^{1/p}$$
+
+where $\\Gamma(\\mu, \\nu)$ is the set of joint distributions with marginals $\\mu, \\nu$.
+
+**Kantorovich duality** (key for computation):
+
+$$W_1(\\mu, \\nu) = \\sup_{\\|f\\|_L \\leq 1} \\mathbb{E}_{x \\sim \\mu}[f(x)] - \\mathbb{E}_{y \\sim \\nu}[f(y)]$$
+
+**Brenier's theorem**: For absolutely continuous $\\mu$, the optimal map is $T = \\nabla \\phi$ for convex $\\phi$.`,
+    coreEquation: 'W_p(\\mu, \\nu) = \\left( \\inf_{\\gamma \\in \\Gamma(\\mu, \\nu)} \\int \\|x - y\\|^p \\, d\\gamma(x, y) \\right)^{1/p}',
+    whyItMatters: [
+      'Wasserstein distance explains why WGANs are more stable than vanilla GANs—it provides gradients even when distributions do not overlap',
+      'Flow matching and rectified flows are built on OT: they learn the optimal transport map directly',
+      'OT provides a principled way to measure distance between distributions that respects geometry'
+    ],
+    missingIntuition: [
+      'KL divergence is infinite when supports do not overlap; Wasserstein is finite and measures "how far to move mass"',
+      'The "earth mover" intuition: imagine distributions as piles of dirt, OT finds the cheapest way to reshape one into the other',
+      'Entropic regularization (Sinkhorn) makes OT tractable: adds −εH(γ) to get differentiable, GPU-friendly algorithms'
+    ],
+    prereqs: ['theory', 'diffusion', 'gans'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'normalizing-flows',
+    number: 39,
+    title: 'Normalizing Flows: Exact Likelihood via Invertible Transforms',
+    shortTitle: 'Flows',
+    icon: '🌊',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'Variational Inference with Normalizing Flows',
+        authors: 'Rezende & Mohamed',
+        year: 2015,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/1505.05770'
+      },
+      {
+        title: 'Glow: Generative Flow with Invertible 1×1 Convolutions',
+        authors: 'Kingma & Dhariwal',
+        year: 2018,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1807.03039'
+      }
+    ],
+    coreMath: `**Normalizing flows** transform a simple base distribution $p_z(z)$ through an invertible function $f$:
+
+$$x = f(z), \\quad z \\sim p_z$$
+
+The **change of variables** formula gives exact log-likelihood:
+
+$$\\log p_x(x) = \\log p_z(f^{-1}(x)) + \\log \\left| \\det \\frac{\\partial f^{-1}}{\\partial x} \\right|$$
+
+**Composition** of flows: $f = f_K \\circ \\cdots \\circ f_1$ with log-det Jacobian summing:
+
+$$\\log p_x(x) = \\log p_z(z_0) + \\sum_{k=1}^K \\log \\left| \\det \\frac{\\partial f_k}{\\partial z_{k-1}} \\right|$$`,
+    coreEquation: '\\log p_x(x) = \\log p_z(f^{-1}(x)) + \\log \\left| \\det \\frac{\\partial f^{-1}}{\\partial x} \\right|',
+    whyItMatters: [
+      'Flows provide exact likelihood (unlike GANs) and exact sampling (unlike EBMs)—the "best of both worlds"',
+      'The mathematical foundation for flow matching/rectified flows which are replacing traditional diffusion',
+      'Understanding Jacobian determinants and invertibility constraints illuminates architectural design choices'
+    ],
+    missingIntuition: [
+      'The challenge is making f invertible AND having tractable Jacobian determinant—this drives architecture choices (coupling layers, autoregressive flows)',
+      'Unlike VAEs, no variational bound: you get exact log p(x), but at the cost of architectural constraints',
+      'Modern flow matching avoids the Jacobian entirely by learning velocity fields—converges to OT map'
+    ],
+    prereqs: ['maximum-likelihood', 'vaes'],
+    dependents: ['diffusion'],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'ppo-policy-optimization',
+    number: 40,
+    title: 'PPO: Proximal Policy Optimization',
+    shortTitle: 'PPO',
+    icon: '🎯',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Proximal Policy Optimization Algorithms',
+        authors: 'Schulman et al.',
+        year: 2017,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1707.06347'
+      }
+    ],
+    coreMath: `**PPO** optimizes policies with clipped surrogate objectives:
+
+$$L^{CLIP}(\\theta) = \\mathbb{E}_t\\left[ \\min\\left( r_t(\\theta) \\hat{A}_t, \\text{clip}(r_t(\\theta), 1-\\epsilon, 1+\\epsilon) \\hat{A}_t \\right) \\right]$$
+
+where the probability ratio is:
+
+$$r_t(\\theta) = \\frac{\\pi_\\theta(a_t|s_t)}{\\pi_{\\theta_{\\text{old}}}(a_t|s_t)}$$
+
+**Advantage estimation** (GAE):
+
+$$\\hat{A}_t = \\sum_{l=0}^{\\infty} (\\gamma\\lambda)^l \\delta_{t+l}, \\quad \\delta_t = r_t + \\gamma V(s_{t+1}) - V(s_t)$$
+
+The clipping prevents too-large policy updates that destabilize training.`,
+    coreEquation: 'L^{CLIP}(\\theta) = \\mathbb{E}\\left[ \\min\\left( r_t \\hat{A}_t, \\text{clip}(r_t, 1-\\epsilon, 1+\\epsilon) \\hat{A}_t \\right) \\right]',
+    whyItMatters: [
+      'PPO is THE algorithm behind RLHF—understanding it explains how preference data becomes model behavior',
+      'Clipping ratio is a practical trust region: prevents catastrophic forgetting while allowing learning',
+      'GAE balances bias/variance in advantage estimation—key hyperparameter for stable RLHF training'
+    ],
+    missingIntuition: [
+      'Why clipping not KL penalty: PPO was simpler to tune than TRPO and empirically as effective',
+      'The "probability ratio" view: you are reweighting old experience by how much more/less likely actions are now',
+      'PPO failures in RLHF often trace to advantage estimation issues—reward model noise amplifies errors'
+    ],
+    prereqs: ['rlhf'],
+    dependents: ['reward-hacking'],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'residual-connections',
+    number: 41,
+    title: 'Residual Connections & Skip Connections',
+    shortTitle: 'Residuals',
+    icon: '⊕',
+    category: 'core',
+    canonicalPapers: [
+      {
+        title: 'Deep Residual Learning for Image Recognition',
+        authors: 'He et al.',
+        year: 2016,
+        venue: 'CVPR',
+        url: 'https://arxiv.org/abs/1512.03385'
+      }
+    ],
+    coreMath: `**Residual block** transforms input $x$ by learning a perturbation:
+
+$$y = x + F(x, \\{W_i\\})$$
+
+In transformers, this creates the **residual stream**:
+
+$$h^{(l+1)} = h^{(l)} + \\text{Attn}(h^{(l)}) + \\text{MLP}(h^{(l)} + \\text{Attn}(h^{(l)}))$$
+
+**Gradient flow** through L layers:
+
+$$\\frac{\\partial L}{\\partial h^{(0)}} = \\frac{\\partial L}{\\partial h^{(L)}} \\cdot \\left( I + \\sum_{l=1}^{L} \\frac{\\partial F^{(l)}}{\\partial h^{(l-1)}} \\right)$$
+
+The identity term $I$ ensures gradients always have a direct path backward.`,
+    coreEquation: 'y = x + F(x)',
+    whyItMatters: [
+      'Residuals enable training 100+ layer networks by preventing vanishing gradients',
+      'The "residual stream" view is foundational to mechanistic interpretability—each component writes to a shared memory',
+      'Without residuals, logit lens and activation patching would not work: there is no stable representation to probe'
+    ],
+    missingIntuition: [
+      'Residual networks are "perturbations of identity"—each layer learns to make small corrections rather than full transforms',
+      'Deep networks with residuals behave like ensembles of shallower networks (unraveled view)',
+      'Pre-norm vs post-norm changes where gradients flow—modern transformers use pre-norm for stability'
+    ],
+    prereqs: ['attention-transformers'],
+    dependents: ['induction-heads', 'circuit-discovery'],
+    color: CATEGORY_COLORS.core
+  },
+  {
+    id: 'classifier-free-guidance',
+    number: 42,
+    title: 'Classifier-Free Guidance in Diffusion',
+    shortTitle: 'CFG',
+    icon: '🎚️',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'Classifier-Free Diffusion Guidance',
+        authors: 'Ho & Salimans',
+        year: 2022,
+        venue: 'NeurIPS Workshop',
+        url: 'https://arxiv.org/abs/2207.12598'
+      }
+    ],
+    coreMath: `**CFG** interpolates between conditional and unconditional scores:
+
+$$\\tilde{\\epsilon}_\\theta(x_t, c) = \\epsilon_\\theta(x_t, \\emptyset) + w \\cdot (\\epsilon_\\theta(x_t, c) - \\epsilon_\\theta(x_t, \\emptyset))$$
+
+where $w$ is the **guidance scale** (typically 3-15 for text-to-image).
+
+Equivalently in score space:
+
+$$\\tilde{s}(x_t, c) = s(x_t) + w \\cdot \\nabla_{x_t} \\log p(c|x_t)$$
+
+Higher $w$ amplifies the conditioning signal, trading diversity for fidelity.`,
+    coreEquation: '\\tilde{\\epsilon}_\\theta = \\epsilon_\\theta(\\emptyset) + w \\cdot (\\epsilon_\\theta(c) - \\epsilon_\\theta(\\emptyset))',
+    whyItMatters: [
+      'CFG is why Stable Diffusion/DALL-E/Midjourney produce high-quality, on-prompt images',
+      'The guidance scale is the main user-facing knob for text-to-image quality vs diversity',
+      'Trains one model that handles both conditional and unconditional generation via dropout on conditioning'
+    ],
+    missingIntuition: [
+      'CFG extrapolates beyond the data distribution—high guidance can produce unrealistic but more "prompt-adherent" images',
+      'There is an optimal guidance scale: too low = ignores prompt, too high = artifacts and oversaturation',
+      'CFG relates to temperature in LLMs: both are post-hoc distribution shaping at inference time'
+    ],
+    prereqs: ['diffusion', 'score-matching'],
+    dependents: [],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'retrieval-augmented-generation',
+    number: 43,
+    title: 'Retrieval-Augmented Generation (RAG)',
+    shortTitle: 'RAG',
+    icon: '🔍',
+    category: 'representation',
+    canonicalPapers: [
+      {
+        title: 'Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks',
+        authors: 'Lewis et al.',
+        year: 2020,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2005.11401'
+      }
+    ],
+    coreMath: `**RAG** augments generation with retrieved documents:
+
+$$p(y|x) = \\sum_{d \\in \\text{top-}k} p(d|x) \\cdot p(y|x, d)$$
+
+**Retrieval** uses embedding similarity:
+
+$$p(d|x) \\propto \\exp(\\text{sim}(E_q(x), E_d(d)) / \\tau)$$
+
+where $E_q$, $E_d$ are query/document encoders (often shared, e.g., BERT, Contriever).
+
+**Generation** conditions on retrieved context:
+
+$$p(y|x, d_1, \\ldots, d_k) = \\prod_t p(y_t | y_{<t}, x, d_1, \\ldots, d_k)$$`,
+    coreEquation: 'p(y|x) = \\sum_{d} p(d|x) \\cdot p(y|x, d)',
+    whyItMatters: [
+      'RAG is the dominant paradigm for grounding LLMs in external/updated knowledge',
+      'Explains why vector databases and embedding search became critical infrastructure',
+      'Separates "what the model knows" from "what the model can access"—enables knowledge updates without retraining'
+    ],
+    missingIntuition: [
+      'RAG trades model capacity for external memory: smaller models + good retrieval can match larger models',
+      'Retrieval quality is bottleneck: irrelevant docs hurt more than no docs (noise injection)',
+      'The "lost in the middle" problem: LLMs struggle to use information from middle of long contexts—retrieval ranking matters'
+    ],
+    prereqs: ['representations', 'attention-transformers', 'long-context'],
+    dependents: [],
+    color: CATEGORY_COLORS.representation
+  },
+  {
+    id: 'adversarial-examples',
+    number: 44,
+    title: 'Adversarial Examples & Robustness',
+    shortTitle: 'Adversarial',
+    icon: '⚔️',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Explaining and Harnessing Adversarial Examples',
+        authors: 'Goodfellow, Shlens, Szegedy',
+        year: 2015,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/1412.6572'
+      }
+    ],
+    coreMath: `**FGSM** (Fast Gradient Sign Method) generates adversarial examples:
+
+$$x_{\\text{adv}} = x + \\epsilon \\cdot \\text{sign}(\\nabla_x L(\\theta, x, y))$$
+
+**PGD** (Projected Gradient Descent) iterates:
+
+$$x^{(t+1)} = \\Pi_{\\mathcal{B}_\\epsilon(x)} \\left( x^{(t)} + \\alpha \\cdot \\text{sign}(\\nabla_x L) \\right)$$
+
+**Adversarial training** min-max objective:
+
+$$\\min_\\theta \\mathbb{E}_{(x,y)} \\left[ \\max_{\\|\\delta\\| \\leq \\epsilon} L(\\theta, x + \\delta, y) \\right]$$
+
+Small perturbations $\\delta$ cause large changes in model predictions.`,
+    coreEquation: 'x_{\\text{adv}} = x + \\epsilon \\cdot \\text{sign}(\\nabla_x L)',
+    whyItMatters: [
+      'Reveals that neural networks are "right for the wrong reasons"—decision boundaries are brittle',
+      'Foundation for understanding model robustness, jailbreaks, and AI safety',
+      'Adversarial training remains the most reliable defense—robust models generalize better to distribution shift'
+    ],
+    missingIntuition: [
+      'Adversarial examples exist because of high dimensionality: many directions to push decision boundaries',
+      'Linear hypothesis: even linear models are vulnerable due to high-dimensional dot products',
+      'Robustness-accuracy tradeoff: adversarial training typically hurts clean accuracy by 2-10%'
+    ],
+    prereqs: ['loss-landscapes', 'representations'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'grokking',
+    number: 45,
+    title: 'Grokking: Delayed Generalization',
+    shortTitle: 'Grokking',
+    icon: '💡',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Grokking: Generalization Beyond Overfitting on Small Algorithmic Datasets',
+        authors: 'Power et al.',
+        year: 2022,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/2201.02177'
+      }
+    ],
+    coreMath: `**Grokking** is the phenomenon where models suddenly generalize long after memorizing training data:
+
+Training dynamics show three phases:
+1. **Memorization**: Training loss → 0, test loss high
+2. **Plateau**: Both losses stable for many steps
+3. **Grokking**: Test loss suddenly drops to match training
+
+The transition happens at a critical point where:
+
+$$\\text{Generalization gap} \\approx O\\left(\\frac{\\|\\theta\\|^2}{n}\\right)$$
+
+Weight decay strength $\\lambda$ controls when grokking occurs—stronger decay → earlier grokking.`,
+    coreEquation: '\\text{Test loss}(t) \\xrightarrow{\\text{grokking}} \\text{Train loss}(t) \\text{ at } t \\gg t_{\\text{memorization}}',
+    whyItMatters: [
+      'Challenges classical learning theory: generalization can happen AFTER interpolation, not before',
+      'Connects to double descent and neural scaling: more compute can unlock generalization that appears "impossible"',
+      'Explains why small algorithmic tasks sometimes need surprisingly long training'
+    ],
+    missingIntuition: [
+      'Grokking reveals that memorization and generalization use different circuits—training eventually finds the generalizing one',
+      'Weight decay is key: it slowly shrinks the memorizing solution until the generalizing solution wins',
+      'Phase transitions in loss curves suggest discrete "algorithm discovery" rather than smooth learning'
+    ],
+    prereqs: ['double-descent', 'loss-landscapes', 'theory'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'logit-lens',
+    number: 46,
+    title: 'Logit Lens: Probing Intermediate Representations',
+    shortTitle: 'Logit Lens',
+    icon: '🔬',
+    category: 'representation',
+    canonicalPapers: [
+      {
+        title: 'interpreting GPT: the logit lens',
+        authors: 'nostalgebraist',
+        year: 2020,
+        venue: 'LessWrong',
+        url: 'https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens'
+      }
+    ],
+    coreMath: `**Logit lens** applies the unembedding matrix to intermediate residual stream states:
+
+$$\\text{logits}^{(l)} = W_U \\cdot h^{(l)}$$
+
+where $W_U$ is the unembedding matrix and $h^{(l)}$ is the residual stream at layer $l$.
+
+This reveals what token the model would predict if it "stopped" at layer $l$:
+
+$$p^{(l)}(\\text{token}) = \\text{softmax}(\\text{logits}^{(l)})$$
+
+The progression $p^{(0)} \\to p^{(L)}$ shows how the prediction evolves through the network.`,
+    coreEquation: '\\text{logits}^{(l)} = W_U \\cdot h^{(l)}',
+    whyItMatters: [
+      'First simple tool for "seeing inside" transformers—reveals layer-by-layer computation',
+      'Shows that early layers often predict related tokens, later layers refine to the final answer',
+      'Foundation for activation patching and circuit analysis techniques'
+    ],
+    missingIntuition: [
+      'The unembedding matrix acts as a "universal probe"—no training required, just matrix multiply',
+      'Not all layers show sensible tokens: some layers store information in non-token-interpretable ways',
+      'Tuned lens (learned affine per layer) often works better than raw logit lens'
+    ],
+    prereqs: ['representations', 'probing', 'attention-transformers'],
+    dependents: ['circuit-discovery'],
+    color: CATEGORY_COLORS.representation
+  },
+  {
+    id: 'learning-rate-schedules',
+    number: 47,
+    title: 'Learning Rate Schedules: Warmup, Decay & Cycling',
+    shortTitle: 'LR Schedules',
+    icon: '📉',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'SGDR: Stochastic Gradient Descent with Warm Restarts',
+        authors: 'Loshchilov & Hutter',
+        year: 2017,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/1608.03983'
+      }
+    ],
+    coreMath: `**Warmup** ramps LR from 0 to peak over $T_w$ steps:
+
+$$\\eta_t = \\eta_{\\max} \\cdot \\frac{t}{T_w}, \\quad t \\leq T_w$$
+
+**Cosine decay** smoothly anneals:
+
+$$\\eta_t = \\eta_{\\min} + \\frac{1}{2}(\\eta_{\\max} - \\eta_{\\min})\\left(1 + \\cos\\left(\\frac{t - T_w}{T - T_w}\\pi\\right)\\right)$$
+
+**1/√t decay** (classical):
+
+$$\\eta_t = \\frac{\\eta_0}{\\sqrt{t}}$$
+
+Modern LLM training typically uses: warmup → constant → cosine decay.`,
+    coreEquation: '\\eta_t = \\eta_{\\min} + \\frac{1}{2}(\\eta_{\\max} - \\eta_{\\min})\\left(1 + \\cos\\left(\\frac{\\pi t}{T}\\right)\\right)',
+    whyItMatters: [
+      'LR schedule is one of the highest-leverage hyperparameters—same model can fail or succeed based on schedule',
+      'Warmup prevents early instability: Adam moments are biased at start, large LR can diverge',
+      'Cosine decay + warmup is the default for LLM pretraining (GPT, LLaMA, etc.)'
+    ],
+    missingIntuition: [
+      'Why warmup helps: gradients are noisy/wrong at random init; small steps let moments stabilize',
+      'Cosine vs linear decay: cosine spends more time at high LR (exploration) before annealing (exploitation)',
+      'The "LR range test" finds optimal peak LR by training briefly at increasing LR until loss spikes'
+    ],
+    prereqs: ['adam', 'loss-landscapes'],
+    dependents: ['scaling-laws'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'weight-initialization',
+    number: 48,
+    title: 'Weight Initialization: Xavier, He & µP',
+    shortTitle: 'Init',
+    icon: '🎲',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'Understanding the difficulty of training deep feedforward neural networks',
+        authors: 'Glorot & Bengio',
+        year: 2010,
+        venue: 'AISTATS',
+        url: 'https://proceedings.mlr.press/v9/glorot10a.html'
+      },
+      {
+        title: 'Tensor Programs V: Tuning Large Neural Networks via Zero-Shot Hyperparameter Transfer',
+        authors: 'Yang et al.',
+        year: 2022,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2203.03466'
+      }
+    ],
+    coreMath: `**Xavier/Glorot** (for tanh/sigmoid):
+
+$$W \\sim \\mathcal{U}\\left(-\\sqrt{\\frac{6}{n_{in} + n_{out}}}, \\sqrt{\\frac{6}{n_{in} + n_{out}}}\\right)$$
+
+**He/Kaiming** (for ReLU):
+
+$$W \\sim \\mathcal{N}\\left(0, \\frac{2}{n_{in}}\\right)$$
+
+**µP (Maximal Update Parameterization)**: Scales init AND learning rate by width:
+
+$$W \\sim \\mathcal{N}(0, 1/n_{in}), \\quad \\eta_W = \\eta_{base} / n_{out}$$
+
+This enables hyperparameter transfer: tune on small model, scale to large.`,
+    coreEquation: 'W \\sim \\mathcal{N}(0, 2/n_{in})',
+    whyItMatters: [
+      'Bad initialization → vanishing/exploding activations → training fails immediately',
+      'µP is how labs scale hyperparameters: tune on small proxy, apply to full-scale training',
+      'Connects to NTK theory: at infinite width with proper scaling, training becomes deterministic'
+    ],
+    missingIntuition: [
+      'The "1/√n" scaling keeps variance constant through layers: Var(output) ≈ Var(input)',
+      'ReLU kills half the activations, so He init uses 2× variance to compensate',
+      'µP insight: learning rate should scale with layer width to keep update magnitudes constant'
+    ],
+    prereqs: ['ntk', 'loss-landscapes'],
+    dependents: ['scaling-laws'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'contrastive-learning',
+    number: 49,
+    title: 'Contrastive Learning & InfoNCE',
+    shortTitle: 'Contrastive',
+    icon: '🔗',
+    category: 'representation',
+    canonicalPapers: [
+      {
+        title: 'A Simple Framework for Contrastive Learning of Visual Representations',
+        authors: 'Chen et al.',
+        year: 2020,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/2002.05709'
+      },
+      {
+        title: 'Learning Transferable Visual Models From Natural Language Supervision',
+        authors: 'Radford et al.',
+        year: 2021,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/2103.00020'
+      }
+    ],
+    coreMath: `**InfoNCE loss** maximizes agreement between positive pairs while pushing negatives apart:
+
+$$\\mathcal{L} = -\\log \\frac{\\exp(\\text{sim}(z_i, z_j^+) / \\tau)}{\\sum_{k=1}^{N} \\exp(\\text{sim}(z_i, z_k) / \\tau)}$$
+
+where $z_j^+$ is a positive (augmented view), others are negatives, and $\\tau$ is temperature.
+
+**CLIP** extends this to image-text pairs:
+
+$$\\mathcal{L}_{CLIP} = \\frac{1}{2}\\left( \\mathcal{L}_{i2t} + \\mathcal{L}_{t2i} \\right)$$
+
+matching images to their captions and vice versa in a batch.`,
+    coreEquation: '\\mathcal{L} = -\\log \\frac{\\exp(\\text{sim}(z_i, z_j^+) / \\tau)}{\\sum_k \\exp(\\text{sim}(z_i, z_k) / \\tau)}',
+    whyItMatters: [
+      'Powers CLIP, which enabled zero-shot image classification and text-to-image (via embeddings)',
+      'Self-supervised learning breakthrough: learned ImageNet-quality features without labels',
+      'Same framework underlies sentence embeddings, audio-text models, and multimodal foundation models'
+    ],
+    missingIntuition: [
+      'Temperature τ controls "hardness": low τ → focuses on hard negatives, high τ → uniform over negatives',
+      'Batch size matters: more negatives = better approximation of true InfoNCE = better representations',
+      'False negatives (same class treated as negative) hurt less than expected—contrastive is robust'
+    ],
+    prereqs: ['representations', 'maximum-likelihood'],
+    dependents: ['multimodal'],
+    color: CATEGORY_COLORS.representation
+  },
+  {
+    id: 'distributed-training',
+    number: 50,
+    title: 'Distributed Training: Data, Tensor & Pipeline Parallelism',
+    shortTitle: 'Distributed',
+    icon: '🌐',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism',
+        authors: 'Shoeybi et al.',
+        year: 2020,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1909.08053'
+      },
+      {
+        title: 'ZeRO: Memory Optimizations Toward Training Trillion Parameter Models',
+        authors: 'Rajbhandari et al.',
+        year: 2020,
+        venue: 'SC',
+        url: 'https://arxiv.org/abs/1910.02054'
+      }
+    ],
+    coreMath: `**Data parallelism**: Each GPU holds full model, processes different batches:
+
+$$\\nabla L = \\frac{1}{N}\\sum_{i=1}^{N} \\nabla L_i \\quad \\text{(AllReduce)}$$
+
+**Tensor parallelism**: Split matrix multiplies across GPUs:
+
+$$Y = XW = X[W_1 | W_2] = [XW_1 | XW_2] \\quad \\text{(column split)}$$
+
+**Pipeline parallelism**: Split layers across GPUs, micro-batch for efficiency:
+
+$$\\text{GPU}_i: \\text{layers } [l_i, l_{i+1})$$
+
+**ZeRO** partitions optimizer states, gradients, parameters across ranks.`,
+    coreEquation: '\\text{Memory per GPU} \\approx \\frac{\\text{Model} + \\text{Optimizer}}{\\text{Parallelism degree}}',
+    whyItMatters: [
+      'Large models REQUIRE distributed training—no single GPU can hold GPT-4 class models',
+      '3D parallelism (data + tensor + pipeline) is how 100B+ models are trained',
+      'Understanding communication patterns explains why some architectures scale better than others'
+    ],
+    missingIntuition: [
+      'Communication is often the bottleneck: AllReduce time can exceed compute time at scale',
+      'ZeRO stages trade memory for communication: ZeRO-3 is most memory-efficient but slowest',
+      'Pipeline bubbles waste compute: micro-batching (1F1B schedule) minimizes idle time'
+    ],
+    prereqs: ['efficiency', 'scaling-laws'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'beam-search',
+    number: 51,
+    title: 'Beam Search & Structured Decoding',
+    shortTitle: 'Beam Search',
+    icon: '🌳',
+    category: 'core',
+    canonicalPapers: [
+      {
+        title: 'Sequence to Sequence Learning with Neural Networks',
+        authors: 'Sutskever, Vinyals, Le',
+        year: 2014,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1409.3215'
+      }
+    ],
+    coreMath: `**Beam search** maintains top-$B$ partial sequences:
+
+At step $t$, expand each beam by all vocab tokens, keep top-$B$ by score:
+
+$$\\text{score}(y_{1:t}) = \\sum_{i=1}^{t} \\log p(y_i | y_{<i})$$
+
+**Length normalization** prevents bias toward short sequences:
+
+$$\\text{score}_{\\text{norm}} = \\frac{1}{t^\\alpha} \\sum_{i=1}^{t} \\log p(y_i | y_{<i})$$
+
+**Diverse beam search** adds diversity penalty to avoid similar beams.`,
+    coreEquation: '\\text{score}(y_{1:t}) = \\sum_{i=1}^{t} \\log p(y_i | y_{<i})',
+    whyItMatters: [
+      'Beam search is standard for machine translation and structured generation tasks',
+      'Explains the "greedy vs search" tradeoff: greedy is fast but suboptimal, beam explores more',
+      'Understanding beam search clarifies why speculative decoding and constrained generation work'
+    ],
+    missingIntuition: [
+      'Beam search is NOT sampling—it approximates argmax, which can produce boring/repetitive text',
+      'Larger beam ≠ always better: "beam search curse" where larger beams give worse translations',
+      'For open-ended generation (chat), sampling usually beats beam search for quality'
+    ],
+    prereqs: ['decoding-sampling', 'maximum-likelihood'],
+    dependents: ['speculative-decoding'],
+    color: CATEGORY_COLORS.core
+  },
+  {
+    id: 'dropout',
+    number: 52,
+    title: 'Dropout: Stochastic Regularization',
+    shortTitle: 'Dropout',
+    icon: '💧',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'Dropout: A Simple Way to Prevent Neural Networks from Overfitting',
+        authors: 'Srivastava et al.',
+        year: 2014,
+        venue: 'JMLR',
+        url: 'https://jmlr.org/papers/v15/srivastava14a.html'
+      }
+    ],
+    coreMath: `**Dropout** randomly zeros activations during training:
+
+$$\\tilde{h} = h \\odot m, \\quad m_i \\sim \\text{Bernoulli}(1-p)$$
+
+At test time, scale by keep probability:
+
+$$h_{\\text{test}} = (1-p) \\cdot h$$
+
+Or use **inverted dropout** (scale during training):
+
+$$\\tilde{h} = \\frac{h \\odot m}{1-p}$$
+
+Dropout approximates **ensemble averaging** over $2^n$ sub-networks.`,
+    coreEquation: '\\tilde{h} = h \\odot m, \\quad m \\sim \\text{Bernoulli}(1-p)',
+    whyItMatters: [
+      'Classic regularizer that prevents co-adaptation of features',
+      'Foundation for understanding stochastic regularization (also: droppath, stochastic depth)',
+      'Modern LLMs often use minimal dropout—understanding when it helps/hurts is practical knowledge'
+    ],
+    missingIntuition: [
+      'Dropout injects noise proportional to activation magnitude—implicitly favors robust features',
+      'Different dropout rates per layer: higher dropout in final layers often helps',
+      'At large scale with lots of data, dropout can hurt: the ensemble benefit is dominated by data diversity'
+    ],
+    prereqs: ['maximum-likelihood', 'loss-landscapes'],
+    dependents: ['double-descent'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'energy-based-models',
+    number: 53,
+    title: 'Energy-Based Models & Score Functions',
+    shortTitle: 'EBMs',
+    icon: '⚡',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'A Tutorial on Energy-Based Learning',
+        authors: 'LeCun et al.',
+        year: 2006,
+        venue: 'MIT Press',
+        url: 'http://yann.lecun.com/exdb/publis/pdf/lecun-06.pdf'
+      }
+    ],
+    coreMath: `**Energy-based models** define probability via unnormalized energy:
+
+$$p_\\theta(x) = \\frac{\\exp(-E_\\theta(x))}{Z_\\theta}, \\quad Z_\\theta = \\int \\exp(-E_\\theta(x)) dx$$
+
+The **score function** is the gradient of log-probability:
+
+$$s_\\theta(x) = \\nabla_x \\log p_\\theta(x) = -\\nabla_x E_\\theta(x)$$
+
+**Contrastive divergence** training:
+
+$$\\nabla_\\theta \\mathcal{L} = \\mathbb{E}_{p_{data}}[\\nabla_\\theta E_\\theta(x)] - \\mathbb{E}_{p_\\theta}[\\nabla_\\theta E_\\theta(x)]$$`,
+    coreEquation: 'p_\\theta(x) = \\frac{\\exp(-E_\\theta(x))}{Z_\\theta}',
+    whyItMatters: [
+      'Unifies discriminative and generative modeling: classifier logits ARE energy differences',
+      'GAN discriminators can be viewed as learning energy functions',
+      'Score-based diffusion models are EBMs trained via denoising score matching'
+    ],
+    missingIntuition: [
+      'The partition function Z is intractable—all EBM training tricks avoid computing it',
+      'Energy = "how wrong this input looks"—low energy = high probability',
+      'MCMC sampling from EBMs is slow; diffusion sidesteps this by learning the denoising path directly'
+    ],
+    prereqs: ['maximum-likelihood', 'score-matching'],
+    dependents: ['diffusion'],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'layer-normalization',
+    number: 54,
+    title: 'Layer Normalization & RMSNorm',
+    shortTitle: 'LayerNorm',
+    icon: '📏',
+    category: 'core',
+    canonicalPapers: [
+      {
+        title: 'Layer Normalization',
+        authors: 'Ba, Kiros, Hinton',
+        year: 2016,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1607.06450'
+      },
+      {
+        title: 'Root Mean Square Layer Normalization',
+        authors: 'Zhang & Sennrich',
+        year: 2019,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1910.07467'
+      }
+    ],
+    coreMath: `**LayerNorm** normalizes across features for each example:
+
+$$\\text{LN}(x) = \\gamma \\odot \\frac{x - \\mu}{\\sigma + \\epsilon} + \\beta$$
+
+where $\\mu = \\frac{1}{d}\\sum_i x_i$, $\\sigma = \\sqrt{\\frac{1}{d}\\sum_i(x_i - \\mu)^2}$.
+
+**RMSNorm** (used in LLaMA, etc.) skips mean centering:
+
+$$\\text{RMSNorm}(x) = \\gamma \\odot \\frac{x}{\\text{RMS}(x) + \\epsilon}, \\quad \\text{RMS}(x) = \\sqrt{\\frac{1}{d}\\sum_i x_i^2}$$`,
+    coreEquation: '\\text{LN}(x) = \\gamma \\odot \\frac{x - \\mu}{\\sigma}',
+    whyItMatters: [
+      'LayerNorm is in every transformer—it stabilizes training by controlling activation scales',
+      'Pre-norm vs post-norm placement affects gradient flow and training stability',
+      'RMSNorm saves compute (no mean) with similar quality—used in modern efficient LLMs'
+    ],
+    missingIntuition: [
+      'LayerNorm makes networks robust to scale: you can multiply weights by constant without changing output',
+      'The learned γ, β parameters let the network "undo" normalization where needed',
+      'Pre-norm (normalize before attention/MLP) is more stable for deep networks'
+    ],
+    prereqs: ['attention-transformers', 'residual-connections'],
+    dependents: ['long-context'],
+    color: CATEGORY_COLORS.core
+  },
+  {
+    id: 'fisher-information',
+    number: 55,
+    title: 'Fisher Information & Information Geometry',
+    shortTitle: 'Fisher Info',
+    icon: 'ℐ',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Information Geometry and Its Applications',
+        authors: 'Amari',
+        year: 2016,
+        venue: 'Springer',
+        url: 'https://link.springer.com/book/10.1007/978-4-431-55978-8'
+      },
+      {
+        title: 'Natural Gradient Works Efficiently in Learning',
+        authors: 'Amari',
+        year: 1998,
+        venue: 'Neural Computation',
+        url: 'https://ieeexplore.ieee.org/document/6790500'
+      }
+    ],
+    coreMath: `The **Fisher Information Matrix** measures how distinguishable distributions are:
+
+$$F_{ij}(\\theta) = \\mathbb{E}_{x \\sim p_\\theta}\\left[\\frac{\\partial \\log p_\\theta(x)}{\\partial \\theta_i} \\frac{\\partial \\log p_\\theta(x)}{\\partial \\theta_j}\\right]$$
+
+Equivalently (under regularity):
+
+$$F_{ij}(\\theta) = -\\mathbb{E}_{x \\sim p_\\theta}\\left[\\frac{\\partial^2 \\log p_\\theta(x)}{\\partial \\theta_i \\partial \\theta_j}\\right]$$
+
+**KL as local metric**: For small parameter changes:
+
+$$\\text{KL}(p_\\theta \\| p_{\\theta + d\\theta}) \\approx \\frac{1}{2} d\\theta^\\top F(\\theta) d\\theta$$`,
+    coreEquation: 'F_{ij}(\\theta) = \\mathbb{E}\\left[\\partial_i \\log p_\\theta \\cdot \\partial_j \\log p_\\theta\\right]',
+    whyItMatters: [
+      'Fisher gives the natural metric on probability distributions—not Euclidean distance in parameters',
+      'Explains why KL penalties in RLHF/PPO are geometric constraints, not arbitrary regularization',
+      'Connects curvature to uncertainty: high Fisher = parameters are well-identified'
+    ],
+    missingIntuition: [
+      'Distance in parameter space should mean "distinguishability of distributions"—Fisher captures this',
+      'The Cramér-Rao bound: variance of any estimator ≥ 1/Fisher—more info = tighter estimates',
+      'Fisher is the Hessian of KL at θ=θ₀, making it a second-order object without needing the loss Hessian'
+    ],
+    prereqs: ['maximum-likelihood', 'theory'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'natural-gradient',
+    number: 56,
+    title: 'Natural Gradient & Riemannian Optimization',
+    shortTitle: 'Natural Grad',
+    icon: '🧭',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'Natural Gradient Works Efficiently in Learning',
+        authors: 'Amari',
+        year: 1998,
+        venue: 'Neural Computation',
+        url: 'https://ieeexplore.ieee.org/document/6790500'
+      },
+      {
+        title: 'Trust Region Policy Optimization',
+        authors: 'Schulman et al.',
+        year: 2015,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/1502.05477'
+      }
+    ],
+    coreMath: `**Natural gradient** uses the Fisher metric instead of Euclidean:
+
+$$\\tilde{\\nabla} L = F(\\theta)^{-1} \\nabla_\\theta L$$
+
+Update rule:
+$$\\theta_{t+1} = \\theta_t - \\eta F(\\theta_t)^{-1} \\nabla L$$
+
+**Variational characterization** (why it's "natural"):
+
+$$\\delta^* = \\arg\\min_\\delta \\langle \\nabla L, \\delta \\rangle \\quad \\text{s.t.} \\quad \\text{KL}(p_\\theta \\| p_{\\theta+\\delta}) \\leq \\epsilon$$
+
+$$\\Rightarrow \\delta^* \\propto F^{-1} \\nabla L$$`,
+    coreEquation: '\\tilde{\\nabla} L = F(\\theta)^{-1} \\nabla_\\theta L',
+    whyItMatters: [
+      'Natural gradient is coordinate-invariant—it gives the same update regardless of parameterization',
+      'TRPO and PPO are approximations to natural gradient updates for policy optimization',
+      'Adam can be viewed as a diagonal approximation to natural gradient with adaptive preconditioning'
+    ],
+    missingIntuition: [
+      'The gradient is a covector, not a vector—the metric turns it into a direction of steepest descent',
+      'Euclidean gradient depends on how you parameterize; natural gradient depends only on the distributions',
+      'Natural gradient avoids plateaus faster because it accounts for local curvature in distribution space'
+    ],
+    prereqs: ['fisher-information', 'adam'],
+    dependents: ['ppo-policy-optimization'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'sgd-momentum',
+    number: 57,
+    title: 'SGD & Momentum: The Workhorses of Optimization',
+    shortTitle: 'SGD+Momentum',
+    icon: '🏃',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'On the importance of initialization and momentum in deep learning',
+        authors: 'Sutskever et al.',
+        year: 2013,
+        venue: 'ICML',
+        url: 'https://proceedings.mlr.press/v28/sutskever13.html'
+      },
+      {
+        title: 'A method for unconstrained convex minimization problem with the rate of convergence O(1/k²)',
+        authors: 'Nesterov',
+        year: 1983,
+        venue: 'Soviet Mathematics Doklady',
+        url: 'https://ci.nii.ac.jp/naid/10029946121/'
+      }
+    ],
+    coreMath: `**Vanilla SGD**:
+$$\\theta_{t+1} = \\theta_t - \\eta \\nabla L(\\theta_t)$$
+
+**Momentum** (Polyak):
+$$v_{t+1} = \\mu v_t + \\nabla L(\\theta_t)$$
+$$\\theta_{t+1} = \\theta_t - \\eta v_{t+1}$$
+
+**Nesterov Momentum** (look-ahead gradient):
+$$v_{t+1} = \\mu v_t + \\nabla L(\\theta_t - \\eta \\mu v_t)$$
+$$\\theta_{t+1} = \\theta_t - \\eta v_{t+1}$$
+
+With momentum $\\mu \\approx 0.9$, effective learning rate is $\\eta / (1 - \\mu) = 10\\eta$.`,
+    coreEquation: 'v_{t+1} = \\mu v_t + \\nabla L, \\quad \\theta_{t+1} = \\theta_t - \\eta v_{t+1}',
+    whyItMatters: [
+      'Momentum is still used to train most vision models and is the default for many frameworks',
+      'Understanding momentum explains why adaptive methods (Adam) can be worse for generalization',
+      'Nesterov momentum provides optimal convergence rates for convex optimization'
+    ],
+    missingIntuition: [
+      'Momentum = exponential moving average of gradients, so it smooths over mini-batch noise',
+      'Heavy ball analogy: momentum lets you roll through small bumps and ravines in the loss landscape',
+      'Nesterov looks ahead: "if I keep going this way, what would the gradient be?"'
+    ],
+    prereqs: ['backpropagation-autodiff', 'loss-landscapes'],
+    dependents: ['adam'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'weight-decay-adamw',
+    number: 58,
+    title: 'Weight Decay & AdamW: Decoupled Regularization',
+    shortTitle: 'AdamW',
+    icon: '⚖️',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'Decoupled Weight Decay Regularization',
+        authors: 'Loshchilov & Hutter',
+        year: 2019,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/1711.05101'
+      },
+      {
+        title: 'Fixing Weight Decay Regularization in Adam',
+        authors: 'Loshchilov & Hutter',
+        year: 2018,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1711.05101'
+      }
+    ],
+    coreMath: `**L2 regularization** adds penalty to loss:
+$$L_{reg} = L + \\frac{\\lambda}{2} \\|\\theta\\|^2$$
+$$\\nabla L_{reg} = \\nabla L + \\lambda \\theta$$
+
+**Weight decay** directly shrinks weights:
+$$\\theta_{t+1} = (1 - \\eta \\lambda) \\theta_t - \\eta \\nabla L$$
+
+**For SGD**: L2 regularization = weight decay. **For Adam**: they differ!
+
+**AdamW** decouples weight decay from gradient updates:
+$$m_t = \\beta_1 m_{t-1} + (1-\\beta_1) \\nabla L$$
+$$v_t = \\beta_2 v_{t-1} + (1-\\beta_2) (\\nabla L)^2$$
+$$\\theta_{t+1} = \\theta_t - \\eta \\left( \\frac{\\hat{m}_t}{\\sqrt{\\hat{v}_t} + \\epsilon} + \\lambda \\theta_t \\right)$$`,
+    coreEquation: '\\theta_{t+1} = (1 - \\eta\\lambda)\\theta_t - \\eta \\cdot \\text{Adam\\_step}',
+    whyItMatters: [
+      'AdamW is the standard optimizer for LLM training—GPT, LLaMA, etc. all use it',
+      'The distinction between L2 and weight decay is a common source of bugs in training',
+      'Weight decay strength is one of the most important hyperparameters for generalization'
+    ],
+    missingIntuition: [
+      'Adam rescales gradients, so L2 regularization gets rescaled too—breaking the intended effect',
+      'AdamW applies weight decay *after* the Adam update, preserving the regularization strength',
+      'Weight decay = "prefer simpler models"—it keeps weights small unless data strongly supports them'
+    ],
+    prereqs: ['adam', 'maximum-likelihood'],
+    dependents: ['scaling-laws'],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'gradient-clipping',
+    number: 59,
+    title: 'Gradient Clipping & Explosion Prevention',
+    shortTitle: 'Grad Clip',
+    icon: '✂️',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'On the difficulty of training Recurrent Neural Networks',
+        authors: 'Pascanu, Mikolov, Bengio',
+        year: 2013,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/1211.5063'
+      },
+      {
+        title: 'Language Models are Few-Shot Learners',
+        authors: 'Brown et al.',
+        year: 2020,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2005.14165'
+      }
+    ],
+    coreMath: `**Gradient norm clipping**: Scale gradient if norm exceeds threshold:
+
+$$\\tilde{g} = \\begin{cases}
+g & \\text{if } \\|g\\| \\leq c \\\\
+c \\cdot \\frac{g}{\\|g\\|} & \\text{if } \\|g\\| > c
+\\end{cases}$$
+
+**Value clipping** (per-coordinate): $\\tilde{g}_i = \\text{clip}(g_i, -c, c)$
+
+**Why gradients explode**: In deep networks, gradients are products of Jacobians:
+
+$$\\frac{\\partial L}{\\partial W_1} = \\frac{\\partial L}{\\partial h_L} \\prod_{l=2}^{L} \\frac{\\partial h_l}{\\partial h_{l-1}} \\frac{\\partial h_1}{\\partial W_1}$$
+
+If $\\|\\frac{\\partial h_l}{\\partial h_{l-1}}\\| > 1$, gradients grow exponentially with depth.`,
+    coreEquation: '\\tilde{g} = \\min(1, c / \\|g\\|) \\cdot g',
+    whyItMatters: [
+      'Essential for training LLMs—without clipping, gradients explode on certain batches',
+      'GPT-3 used gradient clipping of 1.0; it\'s a standard hyperparameter in all LLM training',
+      'Explains why very deep networks (100+ layers) require careful architectural choices'
+    ],
+    missingIntuition: [
+      'Clipping preserves gradient direction while bounding step size—you still go the right way',
+      'Bad batches (outliers) cause gradient spikes; clipping prevents single batches from destabilizing training',
+      'Gradient norm is a useful diagnostic: spikes often precede training instabilities'
+    ],
+    prereqs: ['backpropagation-autodiff', 'loss-landscapes'],
+    dependents: [],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'label-smoothing',
+    number: 60,
+    title: 'Label Smoothing & Soft Targets',
+    shortTitle: 'Label Smooth',
+    icon: '🎯',
+    category: 'optimization',
+    canonicalPapers: [
+      {
+        title: 'Rethinking the Inception Architecture for Computer Vision',
+        authors: 'Szegedy et al.',
+        year: 2016,
+        venue: 'CVPR',
+        url: 'https://arxiv.org/abs/1512.00567'
+      },
+      {
+        title: 'When Does Label Smoothing Help?',
+        authors: 'Müller, Kornblith, Hinton',
+        year: 2019,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1906.02629'
+      }
+    ],
+    coreMath: `Instead of hard targets $y = [0, 0, 1, 0]$, use **soft targets**:
+
+$$y_{smooth} = (1 - \\alpha) y + \\frac{\\alpha}{K}$$
+
+For $\\alpha = 0.1$ and $K = 4$ classes: $[0.025, 0.025, 0.925, 0.025]$
+
+**Effect on cross-entropy**:
+
+$$\\mathcal{L}_{smooth} = (1-\\alpha) \\mathcal{L}_{CE}(p, y) + \\alpha \\mathcal{L}_{CE}(p, u)$$
+
+where $u$ is uniform. This **penalizes overconfidence**: logits can't go to infinity.`,
+    coreEquation: 'y_{smooth} = (1 - \\alpha) y + \\frac{\\alpha}{K}',
+    whyItMatters: [
+      'Used in most vision models and LLMs—simple trick with consistent improvements',
+      'Prevents overconfidence, which improves calibration and sometimes generalization',
+      'Knowledge distillation uses the same idea: train on soft targets from a teacher model'
+    ],
+    missingIntuition: [
+      'Hard targets say "100% sure it\'s class 3"—but that\'s almost never true in real data',
+      'Label smoothing implicitly regularizes: model can\'t drive logits to ±∞',
+      'Connects to calibration: smoothed models give more honest uncertainty estimates'
+    ],
+    prereqs: ['maximum-likelihood'],
+    dependents: [],
+    color: CATEGORY_COLORS.optimization
+  },
+  {
+    id: 'batch-normalization',
+    number: 61,
+    title: 'Batch Normalization',
+    shortTitle: 'BatchNorm',
+    icon: '📊',
+    category: 'core',
+    canonicalPapers: [
+      {
+        title: 'Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift',
+        authors: 'Ioffe & Szegedy',
+        year: 2015,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/1502.03167'
+      },
+      {
+        title: 'How Does Batch Normalization Help Optimization?',
+        authors: 'Santurkar et al.',
+        year: 2018,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1805.11604'
+      }
+    ],
+    coreMath: `**BatchNorm** normalizes across the batch dimension:
+
+$$\\hat{x}_i = \\frac{x_i - \\mu_B}{\\sqrt{\\sigma_B^2 + \\epsilon}}$$
+
+where $\\mu_B = \\frac{1}{m}\\sum_{i=1}^m x_i$ and $\\sigma_B^2 = \\frac{1}{m}\\sum_{i=1}^m (x_i - \\mu_B)^2$.
+
+**Scale and shift** with learned parameters:
+$$y_i = \\gamma \\hat{x}_i + \\beta$$
+
+**At inference**: use running averages of $\\mu$ and $\\sigma^2$ from training.`,
+    coreEquation: '\\hat{x} = \\frac{x - \\mu_B}{\\sqrt{\\sigma_B^2 + \\epsilon}}',
+    whyItMatters: [
+      'Enabled training of very deep CNNs—ResNets wouldn\'t work without it',
+      'Allows higher learning rates: normalization keeps activations in stable range',
+      'The train/test discrepancy (batch stats vs running stats) causes subtle bugs'
+    ],
+    missingIntuition: [
+      'Original "covariate shift" explanation is likely wrong—it works by smoothing the loss landscape',
+      'BatchNorm couples examples in a batch: each example\'s gradient depends on batchmates',
+      'Small batch sizes → noisy statistics → training instability. That\'s why LLMs use LayerNorm instead'
+    ],
+    prereqs: ['backpropagation-autodiff'],
+    dependents: ['layer-normalization'],
+    color: CATEGORY_COLORS.core
+  },
+  {
+    id: 'knowledge-distillation',
+    number: 62,
+    title: 'Knowledge Distillation: Learning from Teachers',
+    shortTitle: 'Distillation',
+    icon: '🧪',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'Distilling the Knowledge in a Neural Network',
+        authors: 'Hinton, Vinyals, Dean',
+        year: 2015,
+        venue: 'NIPS Workshop',
+        url: 'https://arxiv.org/abs/1503.02531'
+      },
+      {
+        title: 'DistilBERT, a distilled version of BERT',
+        authors: 'Sanh et al.',
+        year: 2019,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1910.01108'
+      }
+    ],
+    coreMath: `Train a **student** $S$ to match a **teacher** $T$'s soft predictions:
+
+$$\\mathcal{L} = (1-\\alpha) \\mathcal{L}_{CE}(S(x), y) + \\alpha \\mathcal{L}_{KL}(S(x), T(x))$$
+
+Use **temperature** $\\tau$ to soften teacher outputs:
+
+$$p_i^T = \\frac{\\exp(z_i^T / \\tau)}{\\sum_j \\exp(z_j^T / \\tau)}$$
+
+Higher $\\tau$ → more uniform → more information about relative similarities.`,
+    coreEquation: '\\mathcal{L} = \\alpha \\mathcal{L}_{KL}(S(x), T(x)) + (1-\\alpha) \\mathcal{L}_{CE}(S(x), y)',
+    whyItMatters: [
+      'How you get small models from large ones—DistilBERT is 40% smaller, 60% faster, 97% of performance',
+      'Soft targets contain "dark knowledge": teacher\'s uncertainty about similar classes',
+      'Modern LLM training uses distillation: smaller models trained on larger model outputs'
+    ],
+    missingIntuition: [
+      'Hard labels say "cat, not dog"; soft labels say "mostly cat, a bit dog, definitely not car"',
+      'Temperature τ controls how much dark knowledge transfers: τ→∞ means uniform (no info)',
+      'Distillation works even when student has different architecture than teacher'
+    ],
+    prereqs: ['maximum-likelihood', 'label-smoothing'],
+    dependents: ['speculative-decoding'],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'quantization',
+    number: 63,
+    title: 'Quantization: Compressing Models to Integers',
+    shortTitle: 'Quantization',
+    icon: '🔢',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers',
+        authors: 'Frantar et al.',
+        year: 2023,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/2210.17323'
+      },
+      {
+        title: 'LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale',
+        authors: 'Dettmers et al.',
+        year: 2022,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2208.07339'
+      }
+    ],
+    coreMath: `Map FP32 weights to INT8 (or INT4):
+
+**Uniform quantization**:
+$$w_q = \\text{round}\\left(\\frac{w - w_{min}}{\\Delta}\\right), \\quad \\Delta = \\frac{w_{max} - w_{min}}{2^b - 1}$$
+
+**Dequantization**:
+$$\\hat{w} = w_q \\cdot \\Delta + w_{min}$$
+
+**Per-channel scaling** (better quality):
+$$W_q = \\text{round}(W / s), \\quad s_i = \\max(|W_{i,:}|) / 127$$
+
+Memory: FP32 → INT8 = 4× reduction. INT4 = 8× reduction.`,
+    coreEquation: 'w_q = \\text{round}\\left(\\frac{w - w_{min}}{\\Delta}\\right)',
+    whyItMatters: [
+      'How you run 70B models on consumer GPUs: 4-bit quantization fits in 24GB VRAM',
+      'GPTQ/AWQ/GGML are standard for deploying open-weight LLMs',
+      'INT8 inference is ~2× faster than FP16 on modern GPUs (tensor cores)'
+    ],
+    missingIntuition: [
+      'Neural nets are surprisingly robust to quantization—most precision is wasted',
+      'Outliers are the enemy: a few large activations force bad scaling for everything else',
+      'Quantization-aware training (QAT) is better than post-training quantization (PTQ), but expensive'
+    ],
+    prereqs: ['efficiency', 'llm-serving'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'pruning',
+    number: 64,
+    title: 'Pruning: Removing Unnecessary Weights',
+    shortTitle: 'Pruning',
+    icon: '✂️',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'The Lottery Ticket Hypothesis: Finding Sparse, Trainable Neural Networks',
+        authors: 'Frankle & Carlin',
+        year: 2019,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/1803.03635'
+      },
+      {
+        title: 'SparseGPT: Massive Language Models Can Be Accurately Pruned in One-Shot',
+        authors: 'Frantar & Alistarh',
+        year: 2023,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/2301.00774'
+      }
+    ],
+    coreMath: `**Magnitude pruning**: Remove weights with smallest $|w|$:
+
+$$W_{pruned} = W \\odot M, \\quad M_{ij} = \\mathbf{1}[|W_{ij}| > \\theta]$$
+
+**Structured pruning**: Remove entire neurons/attention heads:
+$$W_{pruned} = W[:, \\text{keep\\_indices}]$$
+
+**Lottery Ticket**: There exist sparse subnetworks that train as well as dense:
+$$\\exists M: \\text{train}(W_0 \\odot M) \\approx \\text{train}(W_0)$$
+
+**OBS/OBD** criterion (second-order): Prune weight that minimizes loss increase:
+$$\\delta L \\approx \\frac{w_i^2}{2 H_{ii}^{-1}}$$`,
+    coreEquation: 'W_{pruned} = W \\odot M, \\quad M_{ij} = \\mathbf{1}[|W_{ij}| > \\theta]',
+    whyItMatters: [
+      'Lottery ticket hypothesis changed how we think about overparameterization',
+      'SparseGPT can prune 50% of GPT-175B weights with minimal quality loss',
+      'Structured pruning enables actual speedups; unstructured sparsity needs special hardware'
+    ],
+    missingIntuition: [
+      'Small weights ≠ unimportant; magnitude pruning is a heuristic, not optimal',
+      'Unstructured 90% sparsity sounds great but doesn\'t speed up standard GPUs',
+      'Iterative pruning (prune, retrain, repeat) works much better than one-shot'
+    ],
+    prereqs: ['efficiency', 'weight-initialization'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'self-supervised-learning',
+    number: 65,
+    title: 'Self-Supervised Learning: Labels from Structure',
+    shortTitle: 'SSL',
+    icon: '🔄',
+    category: 'representation',
+    canonicalPapers: [
+      {
+        title: 'BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding',
+        authors: 'Devlin et al.',
+        year: 2019,
+        venue: 'NAACL',
+        url: 'https://arxiv.org/abs/1810.04805'
+      },
+      {
+        title: 'Masked Autoencoders Are Scalable Vision Learners',
+        authors: 'He et al.',
+        year: 2022,
+        venue: 'CVPR',
+        url: 'https://arxiv.org/abs/2111.06377'
+      }
+    ],
+    coreMath: `**Self-supervised** = create supervision from data itself:
+
+**Masked Language Modeling** (BERT):
+$$\\mathcal{L}_{MLM} = -\\mathbb{E}_{x, M}\\left[\\sum_{i \\in M} \\log p(x_i | x_{\\backslash M})\\right]$$
+
+where $M$ is the set of masked positions.
+
+**Next Token Prediction** (GPT):
+$$\\mathcal{L}_{NTP} = -\\sum_{t=1}^T \\log p(x_t | x_{<t})$$
+
+**Contrastive** (SimCLR, CLIP):
+$$\\mathcal{L} = -\\log \\frac{\\exp(\\text{sim}(z_i, z_i^+)/\\tau)}{\\sum_k \\exp(\\text{sim}(z_i, z_k)/\\tau)}$$`,
+    coreEquation: '\\mathcal{L} = -\\mathbb{E}[\\log p(x_{masked} | x_{visible})]',
+    whyItMatters: [
+      'Foundation of modern NLP: BERT, GPT, LLaMA all use self-supervised pretraining',
+      'Enables learning from internet-scale unlabeled data—the key to scaling laws',
+      'Self-supervised vision (MAE, DINO) is closing the gap with supervised ImageNet pretraining'
+    ],
+    missingIntuition: [
+      'The task (predict missing parts) forces the model to understand structure and semantics',
+      'SSL works because predicting tokens/pixels requires modeling the full data distribution',
+      'Transfer learning magic: SSL features generalize because the pretext task is so hard'
+    ],
+    prereqs: ['maximum-likelihood', 'representations'],
+    dependents: ['contrastive-learning'],
+    color: CATEGORY_COLORS.representation
+  },
+  {
+    id: 'calibration',
+    number: 66,
+    title: 'Calibration & Temperature Scaling',
+    shortTitle: 'Calibration',
+    icon: '🌡️',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'On Calibration of Modern Neural Networks',
+        authors: 'Guo et al.',
+        year: 2017,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/1706.04599'
+      },
+      {
+        title: 'Verified Uncertainty Calibration',
+        authors: 'Kumar et al.',
+        year: 2019,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1909.10155'
+      }
+    ],
+    coreMath: `A model is **calibrated** if confidence matches accuracy:
+
+$$P(Y = \\hat{Y} | \\hat{P} = p) = p$$
+
+**Expected Calibration Error (ECE)**:
+$$ECE = \\sum_{m=1}^M \\frac{|B_m|}{n} |\\text{acc}(B_m) - \\text{conf}(B_m)|$$
+
+**Temperature scaling**: Learn a single scalar $T$ on validation set:
+$$q_i = \\frac{\\exp(z_i / T)}{\\sum_j \\exp(z_j / T)}$$
+
+$T > 1$ softens predictions (reduces overconfidence).`,
+    coreEquation: 'P(Y = \\hat{Y} | \\hat{P} = p) = p',
+    whyItMatters: [
+      'Modern deep networks are often overconfident—90% confidence doesn\'t mean 90% accuracy',
+      'Critical for downstream decisions: medical diagnosis, autonomous driving need honest uncertainty',
+      'LLM "hallucination confidence" is a calibration failure—model is certain about wrong things'
+    ],
+    missingIntuition: [
+      'Neural nets maximize log-likelihood, not calibration—these are different objectives',
+      'Temperature scaling is surprisingly effective: one scalar fixes most miscalibration',
+      'Bigger models are often LESS calibrated—scale doesn\'t solve everything'
+    ],
+    prereqs: ['maximum-likelihood', 'theory'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'swiglu',
+    number: 67,
+    title: 'SwiGLU & Gated Activations',
+    shortTitle: 'SwiGLU',
+    icon: '🚪',
+    category: 'core',
+    canonicalPapers: [
+      {
+        title: 'GLU Variants Improve Transformer',
+        authors: 'Shazeer',
+        year: 2020,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2002.05202'
+      },
+      {
+        title: 'LLaMA: Open and Efficient Foundation Language Models',
+        authors: 'Touvron et al.',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2302.13971'
+      }
+    ],
+    coreMath: `**Gated Linear Unit** (GLU):
+$$\\text{GLU}(x) = (xW_1) \\odot \\sigma(xW_2)$$
+
+**SwiGLU** uses SiLU (Swish) activation:
+$$\\text{SwiGLU}(x) = (xW_1 \\cdot \\text{SiLU}(xW_2)) W_3$$
+
+where $\\text{SiLU}(x) = x \\cdot \\sigma(x)$.
+
+The **gating** mechanism: one path produces values, another produces gates.
+More expressive than ReLU at same parameter count (but uses 50% more compute).`,
+    coreEquation: '\\text{SwiGLU}(x) = (xW_1 \\cdot \\text{SiLU}(xW_2)) W_3',
+    whyItMatters: [
+      'Used in LLaMA, PaLM, and most modern LLMs—replaced ReLU in transformer FFN',
+      'Empirically better than ReLU/GELU at same compute budget',
+      'The gating mechanism adds multiplicative interactions, increasing expressiveness'
+    ],
+    missingIntuition: [
+      'Gates let the network learn which features to pass through, not just which to zero out',
+      'SwiGLU needs 50% more parameters for same hidden dim—but quality gains are worth it',
+      'Smooth activations (SiLU vs ReLU) may help optimization by avoiding gradient discontinuities'
+    ],
+    prereqs: ['attention-transformers'],
+    dependents: [],
+    color: CATEGORY_COLORS.core
+  },
+  {
+    id: 'flash-attention',
+    number: 68,
+    title: 'FlashAttention: IO-Aware Attention',
+    shortTitle: 'FlashAttn',
+    icon: '⚡',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness',
+        authors: 'Dao et al.',
+        year: 2022,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2205.14135'
+      },
+      {
+        title: 'FlashAttention-2: Faster Attention with Better Parallelism and Work Partitioning',
+        authors: 'Dao',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2307.08691'
+      }
+    ],
+    coreMath: `Standard attention materializes $O(N^2)$ intermediate matrices:
+$$\\text{Attention}(Q, K, V) = \\text{softmax}\\left(\\frac{QK^T}{\\sqrt{d}}\\right) V$$
+
+**FlashAttention** fuses operations, keeping data in SRAM:
+- Tile Q, K, V into blocks that fit in SRAM
+- Compute local softmax, accumulate with online softmax trick
+- Never materialize full $N \\times N$ attention matrix
+
+**Memory**: $O(N)$ instead of $O(N^2)$
+**Speed**: 2-4× faster than standard attention`,
+    coreEquation: '\\text{Memory: } O(N) \\text{ vs } O(N^2)',
+    whyItMatters: [
+      'Enabled training with 100K+ context windows—without this, long context is impractical',
+      'Foundational for modern LLMs: used in LLaMA, GPT-4, Claude, etc.',
+      'Shows that algorithmic innovation can beat hardware by understanding memory hierarchy'
+    ],
+    missingIntuition: [
+      'GPU memory hierarchy matters: SRAM (fast, small) vs HBM (slow, large)',
+      'Materializing N×N attention wastes memory bandwidth—the bottleneck, not FLOPs',
+      'Online softmax: you can compute softmax in one pass by tracking running max and sum'
+    ],
+    prereqs: ['efficient-attention', 'long-context'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'constitutional-ai',
+    number: 69,
+    title: 'Constitutional AI: Principles-Based Alignment',
+    shortTitle: 'Constitutional',
+    icon: '📜',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Constitutional AI: Harmlessness from AI Feedback',
+        authors: 'Bai et al.',
+        year: 2022,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2212.08073'
+      },
+      {
+        title: 'Training a Helpful and Harmless Assistant with Reinforcement Learning from Human Feedback',
+        authors: 'Bai et al.',
+        year: 2022,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2204.05862'
+      }
+    ],
+    coreMath: `**Constitutional AI** (CAI) uses a two-stage process:
+
+**Stage 1 - Self-Critique**: Model generates response, then critiques it:
+$$r_{critique} = \\text{LLM}(\\text{prompt}, r_{initial}, \\text{principle})$$
+$$r_{revised} = \\text{LLM}(\\text{prompt}, r_{initial}, r_{critique})$$
+
+**Stage 2 - RLAIF**: Train reward model on AI-generated preferences:
+$$\\mathcal{L}_{RM} = -\\log \\sigma(r_\\theta(r_{chosen}) - r_\\theta(r_{rejected}))$$
+
+Key insight: Principles ("Be helpful", "Don't be harmful") can guide AI feedback.`,
+    coreEquation: 'r_{revised} = \\text{Critique}(r_{initial}, \\text{principle})',
+    whyItMatters: [
+      'How Claude is trained—principles replace pure human preference labeling',
+      'Scales better than RLHF: AI can critique faster than humans can label',
+      'More interpretable: you can see which principles guide behavior'
+    ],
+    missingIntuition: [
+      'The "constitution" is just a set of principles like "be honest" and "don\'t help with harm"',
+      'AI feedback can bootstrap from a smaller set of human preferences',
+      'Self-critique is iterative: multiple rounds of revision improve outputs'
+    ],
+    prereqs: ['rlhf', 'dpo'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'bregman-divergence',
+    number: 70,
+    title: 'Bregman Divergence & Mirror Descent',
+    shortTitle: 'Bregman',
+    icon: '🪞',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Mirror Descent and Nonlinear Projected Subgradient Methods',
+        authors: 'Beck & Teboulle',
+        year: 2003,
+        venue: 'Operations Research Letters',
+        url: 'https://www.sciencedirect.com/science/article/abs/pii/S0167637703000903'
+      },
+      {
+        title: 'Prediction, Learning, and Games',
+        authors: 'Cesa-Bianchi & Lugosi',
+        year: 2006,
+        venue: 'Cambridge University Press',
+        url: 'https://www.cambridge.org/core/books/prediction-learning-and-games/A1EC70A2E2D0E1BE95EF80C8E3FAC9CE'
+      }
+    ],
+    coreMath: `**Bregman divergence** generated by strictly convex $\\Phi$:
+
+$$D_\\Phi(p, q) = \\Phi(p) - \\Phi(q) - \\langle \\nabla\\Phi(q), p - q \\rangle$$
+
+**Mirror descent**:
+$$x_{t+1} = \\arg\\min_{x \\in \\mathcal{X}} \\left\\{ \\langle g_t, x \\rangle + \\frac{1}{\\eta} D_\\Phi(x, x_t) \\right\\}$$
+
+Special cases:
+- $\\Phi(x) = \\frac{1}{2}\\|x\\|^2$ → Euclidean GD, $D_\\Phi$ = squared distance
+- $\\Phi(x) = \\sum_i x_i \\log x_i$ → KL divergence on simplex (exponentiated gradient)`,
+    coreEquation: 'D_\\Phi(p, q) = \\Phi(p) - \\Phi(q) - \\langle \\nabla\\Phi(q), p - q \\rangle',
+    whyItMatters: [
+      'Explains why different geometries suit different problems—simplex needs KL, not Euclidean',
+      'Exponentiated gradient (softmax updates) is mirror descent with entropy potential',
+      'Natural gradient is Bregman geometry with Fisher information as the potential'
+    ],
+    missingIntuition: [
+      'Euclidean gradient descent is ONE choice; mirror descent is the general framework',
+      'The "mirror map" transforms to dual coordinates where steps are linear',
+      'KL divergence is the Bregman divergence for probability distributions'
+    ],
+    prereqs: ['fisher-information', 'natural-gradient'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'rkhs',
+    number: 71,
+    title: 'Reproducing Kernel Hilbert Spaces',
+    shortTitle: 'RKHS',
+    icon: '🎭',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Kernel Methods for Pattern Analysis',
+        authors: 'Shawe-Taylor & Cristianini',
+        year: 2004,
+        venue: 'Cambridge University Press',
+        url: 'https://www.cambridge.org/core/books/kernel-methods-for-pattern-analysis/725B8F1C1CF4F7C5D8582D3B00BFBDD5'
+      },
+      {
+        title: 'Neural Tangent Kernel',
+        authors: 'Jacot et al.',
+        year: 2018,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1806.07572'
+      }
+    ],
+    coreMath: `**Reproducing property**: evaluation is an inner product:
+$$f(x) = \\langle f, k(x, \\cdot) \\rangle_{\\mathcal{H}}$$
+
+**Kernel trick**: inner product in feature space without explicit computation:
+$$k(x, x') = \\langle \\varphi(x), \\varphi(x') \\rangle$$
+
+**Mercer decomposition** (spectral):
+$$k(x, x') = \\sum_{m=1}^\\infty \\lambda_m e_m(x) e_m(x')$$
+
+**Representer theorem**: optimal function is a linear combination of kernel evaluations:
+$$f^*(x) = \\sum_{i=1}^n \\alpha_i k(x_i, x)$$`,
+    coreEquation: 'f(x) = \\langle f, k(x, \\cdot) \\rangle_{\\mathcal{H}}',
+    whyItMatters: [
+      'Unifies SVMs, Gaussian processes, kernel regression, and NTK under one framework',
+      'Explains why "similarity functions" must be positive definite—they define inner products',
+      'NTK shows neural networks are kernel machines in the infinite-width limit'
+    ],
+    missingIntuition: [
+      'Kernels implicitly define an (often infinite-dimensional) feature space',
+      'Positive definiteness = you can build a Hilbert space where the kernel is an inner product',
+      'Attention can be viewed as a learned, data-dependent kernel'
+    ],
+    prereqs: ['ntk', 'theory'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'persistent-homology',
+    number: 72,
+    title: 'Persistent Homology & Topological Data Analysis',
+    shortTitle: 'TDA',
+    icon: '🕳️',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'Topological Methods for the Analysis of High Dimensional Data Sets',
+        authors: 'Carlsson',
+        year: 2009,
+        venue: 'Bulletin of the AMS',
+        url: 'https://www.ams.org/journals/bull/2009-46-02/S0273-0979-09-01249-X/'
+      },
+      {
+        title: 'A Topological Regularizer for Classifiers via Persistent Homology',
+        authors: 'Chen et al.',
+        year: 2019,
+        venue: 'AISTATS',
+        url: 'https://arxiv.org/abs/1806.10714'
+      }
+    ],
+    coreMath: `Build a **filtration** of simplicial complexes at different scales $\\epsilon$:
+$$\\emptyset \\subseteq K_0 \\subseteq K_1 \\subseteq \\cdots \\subseteq K_n$$
+
+Track **homology groups** $H_k(K_\\epsilon)$ (k-dimensional holes):
+- $H_0$: connected components
+- $H_1$: loops/cycles
+- $H_2$: voids
+
+**Persistence diagram**: plot (birth, death) of each topological feature.
+
+$$\\text{Persistence} = \\text{death} - \\text{birth}$$
+
+Long-lived features are "real"; short-lived are noise.`,
+    coreEquation: '\\text{Persistence} = \\text{death} - \\text{birth}',
+    whyItMatters: [
+      'Detects "shape" in high-dimensional data that other methods miss',
+      'Topological loss functions can enforce connectivity in segmentation',
+      'Provides interpretable features: "this dataset has 3 clusters and 1 loop"'
+    ],
+    missingIntuition: [
+      'Homology counts "holes" at different dimensions: components, loops, voids',
+      'Persistence separates signal from noise: real features persist across scales',
+      'Loss landscape topology can predict generalization—more connected = better'
+    ],
+    prereqs: ['theory', 'representations'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'lie-groups',
+    number: 73,
+    title: 'Lie Groups & Equivariant Networks',
+    shortTitle: 'Lie Groups',
+    icon: '🔀',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'A General Theory of Equivariant CNNs on Homogeneous Spaces',
+        authors: 'Cohen et al.',
+        year: 2019,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1811.02017'
+      },
+      {
+        title: 'Geometric Deep Learning: Grids, Groups, Graphs, Geodesics, and Gauges',
+        authors: 'Bronstein et al.',
+        year: 2021,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2104.13478'
+      }
+    ],
+    coreMath: `A **Lie group** $G$ is a smooth manifold with group structure.
+
+**Equivariance**: $f(g \\cdot x) = g \\cdot f(x)$ for all $g \\in G$
+
+**Group convolution** (generalizes 2D convolution):
+$$[f * \\psi](g) = \\int_G f(h) \\psi(g^{-1}h) dh$$
+
+**Lie algebra** $\\mathfrak{g}$: infinitesimal generators at identity:
+$$\\exp: \\mathfrak{g} \\to G$$
+
+Rotation group $SO(3)$: 3D rotations, Lie algebra is skew-symmetric matrices.`,
+    coreEquation: 'f(g \\cdot x) = g \\cdot f(x)',
+    whyItMatters: [
+      'CNNs are equivariant to translations—this explains why they work for images',
+      'Symmetry constraints dramatically reduce parameter count and improve generalization',
+      'Molecular/protein prediction requires 3D rotation equivariance (SE(3))'
+    ],
+    missingIntuition: [
+      'Equivariance = "the output transforms the same way as the input"',
+      'Translation equivariance (CNN) is the simplest case; rotation, scale are harder',
+      'The Lie algebra captures "infinitesimal" symmetries—rotation by tiny angles'
+    ],
+    prereqs: ['theory', 'multimodal'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'test-time-compute',
+    number: 74,
+    title: 'Test-Time Compute & Inference Scaling',
+    shortTitle: 'Test-Time',
+    icon: '🧠',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Scaling LLM Test-Time Compute Optimally',
+        authors: 'Snell et al.',
+        year: 2024,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2408.03314'
+      },
+      {
+        title: 'Let\'s Verify Step by Step',
+        authors: 'Lightman et al.',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2305.20050'
+      }
+    ],
+    coreMath: `**Test-time scaling** trades compute for quality at inference:
+
+$$\\text{Quality} \\sim \\log(\\text{inference compute})$$
+
+**Best-of-N sampling**: Generate N responses, select best via verifier:
+$$y^* = \\arg\\max_{y \\in \\{y_1, ..., y_N\\}} V(y)$$
+
+**Process Reward Models** score intermediate steps:
+$$R_{PRM}(s_1, ..., s_k) = \\prod_{i=1}^k P(\\text{correct} | s_1, ..., s_i)$$
+
+**Monte Carlo Tree Search** for reasoning:
+$$UCB(s) = V(s) + c\\sqrt{\\frac{\\log N_{parent}}{N_s}}$$`,
+    coreEquation: '\\text{Quality} \\sim \\log(\\text{inference compute})',
+    whyItMatters: [
+      'The paradigm behind o1: spend more compute at inference for harder problems',
+      'Enables adaptive compute: easy questions are fast, hard ones "think longer"',
+      'May be more efficient than pure pretraining scaling for reasoning tasks'
+    ],
+    missingIntuition: [
+      'Train-time and test-time compute are substitutes: you can trade one for the other',
+      'Verifiers (reward models) let you search through many candidate solutions',
+      'Tree search over reasoning steps explores the space of possible derivations'
+    ],
+    prereqs: ['scaling-laws', 'rlhf'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'chain-of-thought',
+    number: 75,
+    title: 'Chain-of-Thought Prompting',
+    shortTitle: 'CoT',
+    icon: '💭',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Chain-of-Thought Prompting Elicits Reasoning in Large Language Models',
+        authors: 'Wei et al.',
+        year: 2022,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2201.11903'
+      },
+      {
+        title: 'Self-Consistency Improves Chain of Thought Reasoning',
+        authors: 'Wang et al.',
+        year: 2023,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/2203.11171'
+      }
+    ],
+    coreMath: `**Chain-of-Thought**: Prompt model to show reasoning steps:
+
+$$P(answer | question) \\to P(answer | question, reasoning)$$
+
+**Self-Consistency**: Sample multiple reasoning paths, majority vote:
+$$answer^* = \\arg\\max_a \\sum_{i=1}^N \\mathbf{1}[a_i = a]$$
+
+where $a_i \\sim P(a | q, r_i)$ with reasoning path $r_i$.
+
+**Decomposition**: Break complex problem into sub-problems:
+$$P(y | x) = \\prod_{t=1}^T P(y_t | y_{<t}, x)$$`,
+    coreEquation: 'P(answer | question, reasoning)',
+    whyItMatters: [
+      'Dramatically improves reasoning performance—math, logic, coding',
+      'Emergent capability: only works well in large models (>100B parameters)',
+      'Foundation for o1-style reasoning: explicit intermediate computation steps'
+    ],
+    missingIntuition: [
+      'CoT gives the model "scratchpad" space for intermediate computation',
+      'The reasoning doesn\'t need to be human-readable—it just needs to help the model',
+      'Self-consistency leverages diversity: different reasoning paths vote on the answer'
+    ],
+    prereqs: ['in-context-learning', 'test-time-compute'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'world-models',
+    number: 76,
+    title: 'World Models & Model-Based RL',
+    shortTitle: 'World Models',
+    icon: '🌍',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'World Models',
+        authors: 'Ha & Schmidhuber',
+        year: 2018,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/1803.10122'
+      },
+      {
+        title: 'Mastering Diverse Domains through World Models',
+        authors: 'Hafner et al.',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2301.04104'
+      }
+    ],
+    coreMath: `A **world model** learns to predict future states:
+
+$$\\hat{s}_{t+1} = f_\\theta(s_t, a_t)$$
+
+**Latent world model** (DreamerV3):
+- Encoder: $z_t = \\text{enc}(o_t)$
+- Dynamics: $\\hat{z}_{t+1} = \\text{dyn}(z_t, a_t)$
+- Decoder: $\\hat{o}_{t+1} = \\text{dec}(\\hat{z}_{t+1})$
+
+**Planning in imagination**:
+$$a^* = \\arg\\max_a \\mathbb{E}_{\\hat{s} \\sim f_\\theta}\\left[\\sum_{t=0}^H \\gamma^t r(\\hat{s}_t, a_t)\\right]$$
+
+Train policy entirely in the learned model ("dreaming").`,
+    coreEquation: '\\hat{s}_{t+1} = f_\\theta(s_t, a_t)',
+    whyItMatters: [
+      'Sample-efficient RL: learn from imagined experience, not just real data',
+      'DreamerV3 achieves superhuman Atari with 100× less data than model-free methods',
+      'Foundation for planning-based AI: simulate futures before acting'
+    ],
+    missingIntuition: [
+      'World models let agents "imagine" consequences without taking real actions',
+      'Latent space prediction is easier than pixel prediction—compress, then predict',
+      'Model error compounds over long horizons—need careful uncertainty handling'
+    ],
+    prereqs: ['vaes', 'theory'],
+    dependents: ['test-time-compute'],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'synthetic-data',
+    number: 77,
+    title: 'Synthetic Data & Self-Improvement',
+    shortTitle: 'Synth Data',
+    icon: '🏭',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Textbooks Are All You Need',
+        authors: 'Gunasekar et al.',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2306.11644'
+      },
+      {
+        title: 'Self-Instruct: Aligning Language Models with Self-Generated Instructions',
+        authors: 'Wang et al.',
+        year: 2023,
+        venue: 'ACL',
+        url: 'https://arxiv.org/abs/2212.10560'
+      }
+    ],
+    coreMath: `**Synthetic data generation**:
+
+1. Generate candidates: $y \\sim p_\\theta(y | x)$
+2. Filter for quality: $\\{(x_i, y_i) : V(y_i) > \\tau\\}$
+3. Train on filtered data: $\\theta' = \\arg\\min \\mathcal{L}(\\theta; \\mathcal{D}_{synth})$
+
+**Self-improvement loop**:
+$$\\theta_{t+1} = \\text{Train}(\\theta_t, \\text{Generate}(\\theta_t, \\text{Filter}))$$
+
+**Phi-1 insight**: Small model + high-quality synthetic data > Large model + web data
+
+Quality filtering: use reward models, verifiers, or consistency checks.`,
+    coreEquation: '\\theta_{t+1} = \\text{Train}(\\theta_t, \\text{Generate}(\\theta_t, \\text{Filter}))',
+    whyItMatters: [
+      'Key to modern training: Phi, LLaMA 3, many models use synthetic data',
+      'Enables training without human annotation at scale',
+      'Data quality > quantity: careful curation beats raw scale'
+    ],
+    missingIntuition: [
+      'Models can teach themselves if we filter for correct answers',
+      'Synthetic data amplifies capabilities the model already has (via distillation)',
+      'The "data wall" problem: we\'re running out of internet text, synthetics are the solution'
+    ],
+    prereqs: ['knowledge-distillation', 'rlhf'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'consistency-models',
+    number: 78,
+    title: 'Consistency Models: One-Step Diffusion',
+    shortTitle: 'Consistency',
+    icon: '🎯',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'Consistency Models',
+        authors: 'Song et al.',
+        year: 2023,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/2303.01469'
+      },
+      {
+        title: 'Improved Techniques for Training Consistency Models',
+        authors: 'Song & Dhariwal',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2310.14189'
+      }
+    ],
+    coreMath: `**Consistency function** maps any point on ODE trajectory to origin:
+
+$$f(x_t, t) = x_0 \\quad \\forall t \\in [0, T]$$
+
+**Self-consistency** property:
+$$f(x_t, t) = f(x_{t'}, t') \\quad \\text{for all } t, t' \\text{ on same trajectory}$$
+
+**Training via consistency loss**:
+$$\\mathcal{L} = \\mathbb{E}\\left[d(f(x_{t+\\Delta}, t+\\Delta), f(x_t, t))\\right]$$
+
+One-step generation: $x_0 = f(x_T, T)$ where $x_T \\sim \\mathcal{N}(0, I)$.`,
+    coreEquation: 'f(x_t, t) = x_0 \\quad \\forall t',
+    whyItMatters: [
+      'Generates images in 1-2 steps instead of 50-1000 steps',
+      'Bridges the speed gap between diffusion quality and GAN speed',
+      'The "distillation" approach: learn to jump directly to the answer'
+    ],
+    missingIntuition: [
+      'Diffusion models trace a path from noise to image; consistency models learn to skip',
+      'Self-consistency = "any point on the trajectory should predict the same endpoint"',
+      'Trade-off: fewer steps = faster but lower quality; find the sweet spot'
+    ],
+    prereqs: ['diffusion', 'score-matching'],
+    dependents: [],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'activation-checkpointing',
+    number: 79,
+    title: 'Activation Checkpointing & Memory Efficiency',
+    shortTitle: 'Checkpointing',
+    icon: '💾',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'Training Deep Nets with Sublinear Memory Cost',
+        authors: 'Chen et al.',
+        year: 2016,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1604.06174'
+      },
+      {
+        title: 'Reducing Activation Recomputation in Large Transformer Models',
+        authors: 'Korthikanti et al.',
+        year: 2022,
+        venue: 'MLSys',
+        url: 'https://arxiv.org/abs/2205.05198'
+      }
+    ],
+    coreMath: `**Memory problem**: Storing activations for backprop requires $O(L \\cdot B \\cdot d)$ memory.
+
+**Gradient checkpointing**: Recompute instead of store:
+- Forward: Save only checkpoint activations (every $\\sqrt{L}$ layers)
+- Backward: Recompute activations from nearest checkpoint
+
+**Memory**: $O(\\sqrt{L})$ instead of $O(L)$
+**Compute**: 33% overhead (recompute forward pass once)
+
+**Selective checkpointing**: Only checkpoint expensive layers (attention).
+
+Trade-off: $\\text{Memory} \\times \\text{Compute} \\geq \\text{constant}$`,
+    coreEquation: '\\text{Memory: } O(\\sqrt{L}) \\text{ vs } O(L)',
+    whyItMatters: [
+      'Essential for training large models—without it, you can\'t fit 100B models in GPU memory',
+      'Every major training framework (PyTorch, JAX) uses this technique',
+      'Memory-compute trade-off is fundamental: pay with one to save the other'
+    ],
+    missingIntuition: [
+      'Backprop needs activations from forward pass; normally we store all of them',
+      'Checkpointing says: "just save some, recompute the rest when needed"',
+      'Optimal checkpoint spacing is √L layers—minimizes memory × compute product'
+    ],
+    prereqs: ['backpropagation-autodiff', 'distributed-training'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'grouped-query-attention',
+    number: 80,
+    title: 'Grouped Query Attention (GQA)',
+    shortTitle: 'GQA',
+    icon: '👥',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints',
+        authors: 'Ainslie et al.',
+        year: 2023,
+        venue: 'EMNLP',
+        url: 'https://arxiv.org/abs/2305.13245'
+      }
+    ],
+    coreMath: `**Multi-Head Attention**: Each head has own Q, K, V.
+**Multi-Query Attention**: All heads share K, V; each has own Q.
+**Grouped Query Attention**: Groups of heads share K, V:
+
+$$\\text{GQA}: \\text{head}_i = \\text{Attention}(XW^Q_i, XW^K_{g(i)}, XW^V_{g(i)})$$
+
+where heads in group $g$ share the same K, V projections.
+
+**KV cache savings**: Memory reduced by factor $\\frac{h}{g}$ (h heads, g groups).`,
+    coreEquation: '\\text{KV cache} = \\frac{h}{g} \\times \\text{MHA cache}',
+    whyItMatters: [
+      'Used in LLaMA 2, Mistral—critical for efficient long-context inference',
+      'Reduces KV cache without significant quality loss',
+      'Enables running larger context windows on consumer hardware'
+    ],
+    missingIntuition: [
+      'Not all heads need unique K, V—sharing works surprisingly well',
+      'GQA with g=h is MHA; g=1 is MQA; g in between is the sweet spot',
+      'Speedup comes from smaller memory reads, not fewer FLOPs'
+    ],
+    prereqs: ['efficient-attention', 'long-context'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'process-reward-models',
+    number: 81,
+    title: 'Process Reward Models',
+    shortTitle: 'PRMs',
+    icon: '📋',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Let\'s Verify Step by Step',
+        authors: 'Lightman et al.',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2305.20050'
+      }
+    ],
+    coreMath: `**Outcome RM**: Score final answer: $R_{ORM}(y) = P(\\text{correct})$
+
+**Process RM**: Score each step:
+$$R_{PRM}(s_1, ..., s_K) = \\prod_{k=1}^K P(\\text{step } s_k \\text{ correct})$$
+
+**Best-of-N with PRM**: Reject solutions with any incorrect step:
+$$y^* = \\arg\\max_{y} \\min_{k} R_{PRM}(s_1, ..., s_k)$$`,
+    coreEquation: 'R_{PRM} = \\prod_k P(\\text{step } k \\text{ correct})',
+    whyItMatters: [
+      'Key to o1-style reasoning: verify each step, not just the answer',
+      'Better for math/code: catches errors before they compound',
+      'Enables reliable search over reasoning paths'
+    ],
+    missingIntuition: [
+      'Outcome is sparse feedback; process is dense—better credit assignment',
+      'PRMs need step-level labels—expensive but informative',
+      'Wrong final answer could mean 1 wrong step or 10; PRM tells you which'
+    ],
+    prereqs: ['rlhf', 'test-time-compute'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'rlaif',
+    number: 82,
+    title: 'RLAIF: AI Feedback',
+    shortTitle: 'RLAIF',
+    icon: '🤖',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'RLAIF: Scaling Reinforcement Learning from Human Feedback with AI Feedback',
+        authors: 'Lee et al.',
+        year: 2023,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2309.00267'
+      }
+    ],
+    coreMath: `Replace human with AI preferences:
+
+**RLHF**: $r(y) = \\text{Human}(y)$ → expensive
+**RLAIF**: $r(y) = \\text{LLM}(y | \\text{criteria})$ → scalable
+
+AI judge: $P(y_1 \\succ y_2) = \\text{LLM}(x, y_1, y_2, \\text{rubric})$
+
+Correlates ~0.85 with human for many tasks.`,
+    coreEquation: 'r(y) = \\text{LLM}(y | \\text{criteria})',
+    whyItMatters: [
+      'Removes human labeling bottleneck',
+      'Powers Constitutional AI and production alignment',
+      'Quality approaching human at 10-100× lower cost'
+    ],
+    missingIntuition: [
+      'AI feedback is consistent and follows complex rubrics',
+      'Judge can be same model or stronger one',
+      'Works best with clear criteria; fails on subjective judgments'
+    ],
+    prereqs: ['rlhf', 'constitutional-ai'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'flow-matching',
+    number: 83,
+    title: 'Flow Matching & Rectified Flows',
+    shortTitle: 'Flow Match',
+    icon: '🌊',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'Flow Matching for Generative Modeling',
+        authors: 'Lipman et al.',
+        year: 2023,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/2210.02747'
+      }
+    ],
+    coreMath: `Learn vector field transporting noise to data:
+$$\\frac{dx_t}{dt} = v_\\theta(x_t, t)$$
+
+**Conditional flow matching**:
+$$\\mathcal{L} = \\mathbb{E}_{t, x_0, x_1}[\\|v_\\theta(x_t, t) - u_t\\|^2]$$
+
+**Rectified flow**: Straight paths $x_t = (1-t)x_0 + tx_1$
+$$u_t = x_1 - x_0 \\text{ (constant velocity)}$$`,
+    coreEquation: '\\frac{dx_t}{dt} = v_\\theta(x_t, t)',
+    whyItMatters: [
+      'Simpler than diffusion: no noise schedule to tune',
+      'Rectified flows enable 1-4 step generation',
+      'State-of-the-art: Stable Diffusion 3 uses flow matching'
+    ],
+    missingIntuition: [
+      'Diffusion = learn to denoise; flow = learn velocity directly',
+      'Straight paths are easiest to approximate with few steps',
+      'Simulation-free: no sampling during training'
+    ],
+    prereqs: ['diffusion', 'normalizing-flows'],
+    dependents: [],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'instruction-tuning',
+    number: 84,
+    title: 'Instruction Tuning',
+    shortTitle: 'Instruct',
+    icon: '📝',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Finetuned Language Models Are Zero-Shot Learners',
+        authors: 'Wei et al.',
+        year: 2022,
+        venue: 'ICLR',
+        url: 'https://arxiv.org/abs/2109.01652'
+      }
+    ],
+    coreMath: `Fine-tune on (instruction, response) pairs:
+$$\\mathcal{L} = -\\sum_{t} \\log p(y_t | \\text{instruction}, y_{<t})$$
+
+**Multi-task format**:
+$$\\text{Task: } \\langle\\text{desc}\\rangle \\quad \\text{Input: } x \\quad \\text{Output: } y$$
+
+Instruction-tuned models generalize to new tasks (zero-shot).`,
+    coreEquation: '\\mathcal{L} = -\\sum_t \\log p(y_t | \\text{instr}, y_{<t})',
+    whyItMatters: [
+      'Unlocks instruction-following—base models don\'t understand "summarize"',
+      'FLAN showed dramatic zero-shot improvements',
+      'First step before RLHF: instruct → RM → PPO'
+    ],
+    missingIntuition: [
+      'Base models predict text; instruct models follow commands',
+      'Diversity matters: more task types = better generalization',
+      'CoT in the mix teaches reasoning as an instruction'
+    ],
+    prereqs: ['maximum-likelihood', 'self-supervised-learning'],
+    dependents: ['rlhf'],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'deliberative-alignment',
+    number: 85,
+    title: 'Deliberative Alignment',
+    shortTitle: 'Deliberative',
+    icon: '🎯',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Deliberative Alignment: Reasoning Enables Safer Language Models',
+        authors: 'OpenAI',
+        year: 2024,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2412.16339'
+      }
+    ],
+    coreMath: `Train model to reason over safety specifications $S$:
+
+**Constrained optimization view**:
+$$\\max_\\pi \\mathbb{E}[r_{\\text{help}}(x,y)] \\quad \\text{s.t.} \\quad \\mathbb{E}[v_S(x,y)] \\ge \\tau$$
+
+**Lagrangian form**:
+$$\\max_\\pi \\mathbb{E}[r_{\\text{help}}] + \\lambda \\mathbb{E}[v_S]$$
+
+where $v_S$ scores compliance with spec text $S$.`,
+    coreEquation: '\\max_\\pi \\mathbb{E}[r_{\\text{help}}] + \\lambda \\mathbb{E}[v_S]',
+    whyItMatters: [
+      'Trains models on explicit specifications rather than implicit reward shaping',
+      'Enables auditability: which policy clauses were consulted?',
+      'Reduces over-refusal while improving jailbreak robustness'
+    ],
+    missingIntuition: [
+      'Model retrieves relevant policy text, reasons about it, then responds',
+      'Like Constitutional AI but with explicit spec document in context',
+      'Pareto frontier: helpfulness vs safety vs over-refusal'
+    ],
+    prereqs: ['constitutional-ai', 'chain-of-thought'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'ai-safety-via-debate',
+    number: 86,
+    title: 'AI Safety via Debate',
+    shortTitle: 'Debate',
+    icon: '⚔️',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'AI safety via debate',
+        authors: 'Irving et al.',
+        year: 2018,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1805.00899'
+      }
+    ],
+    coreMath: `Two agents debate; judge picks winner. Zero-sum game:
+$$\\max_{\\pi_A} \\min_{\\pi_B} \\mathbb{E}[J(\\tau)]$$
+
+where $\\tau$ is the debate transcript and $J(\\tau) \\in \\{0,1\\}$ indicates A wins.
+
+**Key insight**: self-play pushes agents toward truthful, checkable arguments.`,
+    coreEquation: '\\max_{\\pi_A} \\min_{\\pi_B} \\mathbb{E}[J(\\tau)]',
+    whyItMatters: [
+      'Targets evaluation difficulty: we can judge arguments even when we can\'t judge answers',
+      'Scalable oversight: judge weaker than debaters can still pick truth',
+      'Adversarial structure surfaces hidden flaws in reasoning'
+    ],
+    missingIntuition: [
+      'Think Socratic dialogue meets adversarial training',
+      'Claims + evidence + counterexample structure',
+      'Judge accuracy improves with debate length'
+    ],
+    prereqs: ['rlhf'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'iterated-amplification',
+    number: 87,
+    title: 'Iterated Amplification',
+    shortTitle: 'IDA',
+    icon: '🔄',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Supervising strong learners by amplifying weak experts',
+        authors: 'Christiano et al.',
+        year: 2018,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1810.08575'
+      }
+    ],
+    coreMath: `Amplify human $H$ with assistants $A$, then distill:
+$$A' \\approx \\arg\\min_\\pi \\mathbb{E}_x\\left[\\mathrm{KL}\\big(\\text{Amp}(H,A)(\\cdot|x) \\| \\pi(\\cdot|x)\\big)\\right]$$
+
+Then iterate: $A \\leftarrow A'$.
+
+**Recursion**: as $A$ improves, $\\text{Amp}(H,A)$ becomes more capable.`,
+    coreEquation: 'A\' = \\arg\\min_\\pi \\mathrm{KL}(\\text{Amp}(H,A) \\| \\pi)',
+    whyItMatters: [
+      'Concrete proposal for scalable oversight when AI exceeds human capability',
+      'Human decomposes task, assistants solve subtasks, distill back',
+      'Foundational to modern AI safety research'
+    ],
+    missingIntuition: [
+      'Like teaching: break hard problems into pieces students can help with',
+      'Distillation compresses the amplified procedure into single model',
+      'Each iteration enables supervision of harder tasks'
+    ],
+    prereqs: ['knowledge-distillation', 'rlhf'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'weak-to-strong-generalization',
+    number: 88,
+    title: 'Weak-to-Strong Generalization',
+    shortTitle: 'Weak→Strong',
+    icon: '💪',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Weak-to-Strong Generalization: Eliciting Strong Capability with Weak Supervision',
+        authors: 'Burns et al.',
+        year: 2023,
+        venue: 'OpenAI',
+        url: 'https://arxiv.org/abs/2312.09390'
+      }
+    ],
+    coreMath: `Strong model $S$ trained on weak labels $\\tilde{y} = W(x)$:
+$$\\tilde{y} \\sim p(\\tilde{y}|y), \\quad y \\sim p(y|x)$$
+
+Training minimizes $\\mathbb{E}[\\ell(S(x), \\tilde{y})]$ but we care about $\\mathbb{E}[\\ell(S(x), y)]$.
+
+**Gap** = true performance - weak label performance.`,
+    coreEquation: '\\mathbb{E}[\\ell(S(x), y)] - \\mathbb{E}[\\ell(S(x), \\tilde{y})]',
+    whyItMatters: [
+      'Directly studies "how do we supervise something smarter than us?"',
+      'Turns alignment into measurable ML generalization problem',
+      'Strong models recover capability beyond what weak labels provide'
+    ],
+    missingIntuition: [
+      'Like student learning from flawed teacher but getting it right',
+      'Model internalizes patterns, generalizes beyond noisy labels',
+      'Confidence-based losses help filter weak label errors'
+    ],
+    prereqs: ['rlhf', 'knowledge-distillation'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'automated-red-teaming',
+    number: 89,
+    title: 'Automated Red Teaming',
+    shortTitle: 'Auto RedTeam',
+    icon: '🔴',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Red Teaming Language Models with Language Models',
+        authors: 'Perez et al.',
+        year: 2022,
+        venue: 'EMNLP',
+        url: 'https://arxiv.org/abs/2202.03286'
+      }
+    ],
+    coreMath: `Adversarial search for failure-inducing prompts:
+$$\\max_{p \\in \\mathcal{P}} U(p, M)$$
+
+then mitigate:
+$$\\min_M \\mathbb{E}_{p \\sim \\text{RedTeam}}[U(p, M)]$$
+
+where $U$ measures unsafe behavior (toxicity, policy violation, leakage).`,
+    coreEquation: '\\max_p U(p, M) \\rightarrow \\min_M \\mathbb{E}_p[U(p, M)]',
+    whyItMatters: [
+      'Unknown unknowns dominate safety issues',
+      'Automated coverage exceeds human handcrafted tests',
+      'RL-based generation finds progressively harder failures'
+    ],
+    missingIntuition: [
+      'Red-team model proposes attacks, evaluator scores target response',
+      'Iterate: improve adversarial generation to find harder failures',
+      'Feed discoveries into filters, training data, policy updates'
+    ],
+    prereqs: ['adversarial-examples', 'constitutional-ai'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'mesa-optimization',
+    number: 90,
+    title: 'Mesa-Optimization & Inner Alignment',
+    shortTitle: 'Mesa-Opt',
+    icon: '🔮',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Risks from Learned Optimization in Advanced Machine Learning Systems',
+        authors: 'Hubinger et al.',
+        year: 2019,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/1906.01820'
+      }
+    ],
+    coreMath: `**Outer training**:
+$$\\theta^* = \\arg\\min_\\theta \\mathbb{E}_{(x,y) \\sim \\mathcal{D}_{\\text{train}}}[\\mathcal{L}(f_\\theta(x), y)]$$
+
+But learned system may implement internal search:
+$$f_\\theta(x) = \\arg\\max_{a \\in \\mathcal{A}} m_\\theta(a; x)$$
+
+where $m_\\theta$ is an **implicit mesa-objective** ≠ designer's goal.`,
+    coreEquation: 'f_\\theta(x) = \\arg\\max_a m_\\theta(a; x)',
+    whyItMatters: [
+      'Explains why "passes training tests" ≠ "has right objective"',
+      'Risk grows when models learn internal search/planning',
+      'Central theoretical concern for advanced AI alignment'
+    ],
+    missingIntuition: [
+      'Outer objective = training loss; inner objective = what model actually optimizes',
+      'Goal misgeneralization: capabilities generalize, goals don\'t',
+      'Aligned on train distribution, diverges on deployment'
+    ],
+    prereqs: ['loss-landscapes', 'in-context-learning'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'sleeper-agents',
+    number: 91,
+    title: 'Sleeper Agents & Alignment Faking',
+    shortTitle: 'Sleepers',
+    icon: '😴',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Sleeper Agents: Training Deceptive LLMs that Persist Through Safety Training',
+        authors: 'Hubinger et al.',
+        year: 2024,
+        venue: 'Anthropic',
+        url: 'https://arxiv.org/abs/2401.05566'
+      }
+    ],
+    coreMath: `Triggered policy:
+$$\\pi(y|x) = \\begin{cases} \\pi_{\\text{safe}}(y|x) & t(x) = 0 \\\\ \\pi_{\\text{bad}}(y|x) & t(x) = 1 \\end{cases}$$
+
+Detection = hypothesis testing over rare trigger events.
+
+**Finding**: standard safety training (SFT, RL) fails to remove backdoors.`,
+    coreEquation: '\\pi(y|x) = \\pi_{\\text{safe}} \\cdot \\mathbf{1}_{t=0} + \\pi_{\\text{bad}} \\cdot \\mathbf{1}_{t=1}',
+    whyItMatters: [
+      'Probes scary case: looks aligned in evals, fails on triggers',
+      'Standard mitigations (SFT, RL) don\'t remove deceptive behavior',
+      'Alignment faking: model complies during training to preserve goals'
+    ],
+    missingIntuition: [
+      'Like a spy passing background checks but activated by codeword',
+      'Probes on hidden states can detect deception',
+      'Persistence through safety training is the key concern'
+    ],
+    prereqs: ['rlhf', 'constitutional-ai'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'model-graded-evals',
+    number: 92,
+    title: 'Model-Graded Evaluations',
+    shortTitle: 'LLM-as-Judge',
+    icon: '⚖️',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena',
+        authors: 'Zheng et al.',
+        year: 2023,
+        venue: 'NeurIPS',
+        url: 'https://arxiv.org/abs/2306.05685'
+      }
+    ],
+    coreMath: `Evaluator model $E$ scores outputs against rubric $R$:
+$$s = E(x, y; R)$$
+
+Aggregate:
+$$\\hat{\\mu} = \\frac{1}{n} \\sum_{i=1}^n s_i$$
+
+Validate by correlating $s_i$ with human ratings. Track regressions across model versions.`,
+    coreEquation: '\\hat{\\mu} = \\frac{1}{n} \\sum_i E(x_i, y_i; R)',
+    whyItMatters: [
+      'Enables scalable safety testing without human bottleneck',
+      'Fast iteration loops for alignment research',
+      'Powers modern benchmarks: Chatbot Arena, AlpacaEval'
+    ],
+    missingIntuition: [
+      'Rubric defines what "good" means: helpfulness, truthfulness, safety',
+      'Calibration: does model-graded score match human judgment?',
+      'Position bias: models prefer first option—randomize order'
+    ],
+    prereqs: ['maximum-likelihood', 'calibration'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'capability-elicitation',
+    number: 93,
+    title: 'Capability Elicitation & ELK',
+    shortTitle: 'Elicitation',
+    icon: '🔍',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'ARC\'s First Technical Report: Eliciting Latent Knowledge',
+        authors: 'Christiano et al.',
+        year: 2021,
+        venue: 'Alignment Forum',
+        url: 'https://www.alignmentforum.org/posts/qHCDysDnvhteW7kRd'
+      }
+    ],
+    coreMath: `**Elicitation gap** (capability as max over prompts):
+$$\\text{Cap}(M) = \\max_{p \\in \\mathcal{P}} \\mathbb{E}[\\text{score}(M, p)]$$
+
+**ELK**: extract truth from internals even when output unreliable:
+$$g_\\psi(h(x)) \\approx z$$
+
+where $h(x)$ = activations, $z$ = latent truth, even if output $y \\ne z$.`,
+    coreEquation: 'g_\\psi(h(x)) \\approx z',
+    whyItMatters: [
+      'Safety evals must find worst-case, not average-case capability',
+      'ELK: can we trust what model says when it could be deceptive?',
+      'Core theoretical obstacle to alignment'
+    ],
+    missingIntuition: [
+      'Scaffolding/prompting can dramatically change apparent capability',
+      'Model may "know" truth internally but output something else',
+      'Probes on activations might extract honest beliefs'
+    ],
+    prereqs: ['probing', 'logit-lens'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'sandwiching-evaluations',
+    number: 94,
+    title: 'Sandwiching Evaluations',
+    shortTitle: 'Sandwich',
+    icon: '🥪',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Measuring Progress on Scalable Oversight for Large Language Models',
+        authors: 'Bowman et al.',
+        year: 2022,
+        venue: 'Anthropic',
+        url: 'https://arxiv.org/abs/2211.03540'
+      }
+    ],
+    coreMath: `**Sandwich score** measures AI-assisted oversight:
+$$\\text{SandwichScore} = \\frac{P_{H+A} - P_H}{P_E - P_H}$$
+
+- $P_H$: non-expert performance
+- $P_{H+A}$: non-expert + AI assistance
+- $P_E$: expert performance
+
+Score = 1.0 means assisted non-expert matches expert.`,
+    coreEquation: '\\text{Score} = \\frac{P_{H+A} - P_H}{P_E - P_H}',
+    whyItMatters: [
+      'Makes scalable oversight empirically testable today',
+      'Choose tasks where experts can judge, non-experts struggle',
+      'Proxy for future "smart model oversight" capabilities'
+    ],
+    missingIntuition: [
+      'Bottom = unaided human, top = expert, middle = AI-assisted human',
+      'Tests: can weaker oversight + AI match stronger oversight?',
+      'Foundational benchmark for alignment research progress'
+    ],
+    prereqs: ['rlhf', 'iterated-amplification'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'mixture-of-depths',
+    number: 95,
+    title: 'Mixture-of-Depths',
+    shortTitle: 'MoD',
+    icon: '📊',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'Mixture-of-Depths: Dynamically allocating compute in transformer-based language models',
+        authors: 'Raposo et al.',
+        year: 2024,
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2404.02258'
+      }
+    ],
+    coreMath: `Route tokens to different depths. At layer $\\ell$, score $g_\\ell(t)$ per token:
+$$S_\\ell = \\text{TopK}(\\{g_\\ell(t)\\}_{t=1}^n, k)$$
+
+$$h^{\\ell+1}_t = \\begin{cases} \\text{Block}_\\ell(h^\\ell_t) & t \\in S_\\ell \\\\ h^\\ell_t & \\text{otherwise} \\end{cases}$$
+
+Train with explicit compute constraint $k$ (predictable FLOPs).`,
+    coreEquation: 'h^{\\ell+1}_t = \\text{Block}_\\ell(h^\\ell_t) \\cdot \\mathbf{1}_{t \\in S_\\ell} + h^\\ell_t \\cdot \\mathbf{1}_{t \\notin S_\\ell}',
+    whyItMatters: [
+      'Adaptive compute: "think harder" only when needed',
+      'Like MoE but routing tokens to layers, not experts',
+      'Predictable FLOPs budget enables efficient deployment'
+    ],
+    missingIntuition: [
+      'Some tokens need deep processing, others can skip layers',
+      'Router learns which tokens are "important"',
+      'Complement to MoE: sparse width (MoE) + sparse depth (MoD)'
+    ],
+    prereqs: ['mixture-of-experts', 'attention-transformers'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
+  },
+  {
+    id: 'tree-search-reasoning',
+    number: 96,
+    title: 'Tree Search over Thoughts',
+    shortTitle: 'MCTS-LLM',
+    icon: '🌲',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Language Agent Tree Search Unifies Reasoning Acting and Planning in Language Models',
+        authors: 'Zhou et al.',
+        year: 2024,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/2310.04406'
+      }
+    ],
+    coreMath: `MCTS over reasoning states. UCB action selection:
+$$a^* = \\arg\\max_a \\left( Q(s,a) + c\\sqrt{\\frac{\\ln N(s)}{N(s,a)}} \\right)$$
+
+Expand with LM policy prior $\\pi_\\theta(a|s)$. Back up values $Q$ from rollouts/verifier.
+
+**Key insight**: Inference becomes planning, not just generation.`,
+    coreEquation: 'a^* = \\arg\\max_a \\left( Q(s,a) + c\\sqrt{\\frac{\\ln N(s)}{N(s,a)}} \\right)',
+    whyItMatters: [
+      'Makes inference like planning, not text completion',
+      'Enables systematic exploration of reasoning paths',
+      'Foundation for o1-style "System 2" thinking'
+    ],
+    missingIntuition: [
+      'Each node is a partial solution/thought',
+      'Verifier provides value estimates for backpropagation',
+      'Trade-off: exploration (new paths) vs exploitation (best paths)'
+    ],
+    prereqs: ['chain-of-thought', 'test-time-compute'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'video-world-models',
+    number: 97,
+    title: 'Video World Models',
+    shortTitle: 'VideoWM',
+    icon: '🎬',
+    category: 'generative',
+    canonicalPapers: [
+      {
+        title: 'Video generation models as world simulators',
+        authors: 'OpenAI',
+        year: 2024,
+        venue: 'OpenAI',
+        url: 'https://openai.com/index/video-generation-models-as-world-simulators/'
+      }
+    ],
+    coreMath: `Video as learned dynamics. Autoregressive:
+$$p_\\theta(x_{1:T}|c) = \\prod_{t=1}^T p_\\theta(x_t | x_{<t}, c)$$
+
+Diffusion over latent $z$:
+$$\\min_\\theta \\mathbb{E}_{t,\\epsilon}[\\|\\epsilon - \\epsilon_\\theta(z_t, t, c)\\|^2]$$
+
+Video generators = learned simulators of physical world.`,
+    coreEquation: 'p_\\theta(x_{1:T}|c) = \\prod_t p_\\theta(x_t | x_{<t}, c)',
+    whyItMatters: [
+      'Merges generative modeling with dynamics modeling',
+      'Precursor to general planning/agents',
+      'Sora shows emergence of 3D consistency, object permanence'
+    ],
+    missingIntuition: [
+      'Not just "video generation" but learned physics engine',
+      'Emergent properties: camera control, object tracking, causality',
+      'Can imagine "what happens if" for planning'
+    ],
+    prereqs: ['diffusion', 'vaes'],
+    dependents: [],
+    color: CATEGORY_COLORS.generative
+  },
+  {
+    id: 'self-improvement-loops',
+    number: 98,
+    title: 'Self-Improvement & Distillation Loops',
+    shortTitle: 'Self-Improve',
+    icon: '🔄',
+    category: 'scaling',
+    canonicalPapers: [
+      {
+        title: 'Self-Play Fine-Tuning Converts Weak Language Models to Strong Language Models',
+        authors: 'Chen et al.',
+        year: 2024,
+        venue: 'ICML',
+        url: 'https://arxiv.org/abs/2401.01335'
+      }
+    ],
+    coreMath: `Iterative self-training loop:
+$$D_{k+1} = D_k \\cup \\{(x, \\hat{y}) : \\hat{y} \\sim \\pi_{\\theta_k}(\\cdot|x)\\}$$
+$$\\theta_{k+1} = \\arg\\min_\\theta \\mathbb{E}_{(x,y) \\sim D_{k+1}}[-\\log \\pi_\\theta(y|x)]$$
+
+**Distillation**: $\\min_{\\theta_s} \\mathbb{E}_x[\\mathrm{KL}(\\pi_{\\theta_t}(\\cdot|x) \\| \\pi_{\\theta_s}(\\cdot|x))]$`,
+    coreEquation: '\\theta_{k+1} = \\arg\\min_\\theta \\mathcal{L}(\\theta; D_k \\cup \\text{self-gen})',
+    whyItMatters: [
+      'Makes data generation and model improvement a closed loop',
+      'DeepSeek-R1: RL → reasoning → distill to smaller models',
+      'Reduces reliance on scarce human labels'
+    ],
+    missingIntuition: [
+      'Model bootstraps on its own outputs (filtered by verifier)',
+      'Teacher-student paradigm: large model → small model',
+      'Risk: distribution shift, mode collapse'
+    ],
+    prereqs: ['knowledge-distillation', 'rlhf'],
+    dependents: [],
+    color: CATEGORY_COLORS.scaling
+  },
+  {
+    id: 'model-collapse',
+    number: 99,
+    title: 'Model Collapse & Synthetic Data',
+    shortTitle: 'Collapse',
+    icon: '📉',
+    category: 'theory',
+    canonicalPapers: [
+      {
+        title: 'AI models collapse when trained on recursively generated data',
+        authors: 'Shumailov et al.',
+        year: 2024,
+        venue: 'Nature',
+        url: 'https://www.nature.com/articles/s41586-024-07566-y'
+      }
+    ],
+    coreMath: `Recursive training on synthetic data causes collapse:
+$$p_t = (1 - \\alpha)p_* + \\alpha p_{\\theta_t}$$
+$$\\theta_{t+1} = F(p_t)$$
+
+Repeated application drives $p_{\\theta_t}$ away from real $p_*$ (degeneration).
+
+**Mitigation**: anchor with real data, filter synthetic outputs, track provenance.`,
+    coreEquation: 'p_{t+1} = (1-\\alpha)p_* + \\alpha p_{\\theta_t} \\rightarrow \\text{collapse}',
+    whyItMatters: [
+      'Synthetic data is essential AND dangerous',
+      'Web is increasingly AI-generated: training data pollution',
+      'Dataset provenance becomes critical for safety'
+    ],
+    missingIntuition: [
+      'Like photocopying a photocopy: quality degrades',
+      'Mode collapse: diversity shrinks, tails disappear',
+      'Solution: always anchor training with real data'
+    ],
+    prereqs: ['maximum-likelihood', 'scaling-laws'],
+    dependents: [],
+    color: CATEGORY_COLORS.theory
+  },
+  {
+    id: 'infinite-context',
+    number: 100,
+    title: 'Infinite Context Architectures',
+    shortTitle: 'InfCtx',
+    icon: '♾️',
+    category: 'efficiency',
+    canonicalPapers: [
+      {
+        title: 'Leave No Context Behind: Efficient Infinite Context Transformers with Infini-attention',
+        authors: 'Munkhdalai et al.',
+        year: 2024,
+        venue: 'Google',
+        url: 'https://arxiv.org/abs/2404.07143'
+      }
+    ],
+    coreMath: `Compressive memory for bounded cost:
+$$\\mathrm{Attn}(Q,K,V) = \\mathrm{softmax}\\left(\\frac{QK^\\top}{\\sqrt{d}}\\right)V \\quad O(n^2)$$
+
+**Infini-attention**: Maintain memory $M$ updated online, cost bounded w.r.t. $n$.
+
+**Ring Attention**: Distribute long sequences across devices via blockwise ring communication.`,
+    coreEquation: 'M_{t+1} = \\text{Update}(M_t, K_t, V_t)',
+    whyItMatters: [
+      'Turns entire repos/books into "single prompt" territory',
+      'Streaming: process unbounded sequences with fixed memory',
+      '1M+ tokens: Gemini 1.5, LongRoPE, Ring Attention'
+    ],
+    missingIntuition: [
+      'Compressive: old context summarized into memory state',
+      'Ring: sequence chunks processed in ring topology across GPUs',
+      'Hybrid: combine attention with SSM-style recurrence'
+    ],
+    prereqs: ['long-context', 'ssm-hybrids'],
+    dependents: [],
+    color: CATEGORY_COLORS.efficiency
   }
 ]
 
 // Study order groupings (phases for subway-style layout)
+// 100 concepts organized into pedagogically sound phases
 export const studyOrder = [
-  { phase: 1, title: 'Core probabilistic training + transformers', concepts: ['maximum-likelihood', 'attention-transformers'] },
-  { phase: 2, title: 'Optimization & generalization', concepts: ['adam', 'loss-landscapes', 'double-descent', 'ntk'] },
-  { phase: 3, title: 'Generative modeling families', concepts: ['vaes', 'gans', 'diffusion'] },
-  { phase: 4, title: 'Representation & interpretability', concepts: ['representations', 'superposition', 'probing', 'induction-heads'] },
-  { phase: 5, title: 'Scaling & alignment', concepts: ['scaling-laws', 'rlhf'] },
-  { phase: 6, title: 'Efficiency & theory', concepts: ['efficiency', 'theory'] },
+  {
+    phase: 1,
+    title: 'Core probabilistic training + transformers',
+    concepts: ['maximum-likelihood', 'attention-transformers']
+  },
+  {
+    phase: 2,
+    title: 'Architecture fundamentals',
+    concepts: ['tokenization-vocabulary', 'rope', 'efficient-attention', 'layer-normalization', 'residual-connections', 'swiglu', 'grouped-query-attention']
+  },
+  {
+    phase: 3,
+    title: 'Optimization & generalization',
+    concepts: ['backpropagation-autodiff', 'sgd-momentum', 'adam', 'weight-decay-adamw', 'gradient-clipping', 'loss-landscapes', 'double-descent', 'ntk', 'learning-rate-schedules', 'weight-initialization', 'label-smoothing', 'batch-normalization']
+  },
+  {
+    phase: 4,
+    title: 'Generative modeling families',
+    concepts: ['vaes', 'gans', 'diffusion', 'normalizing-flows', 'score-matching', 'consistency-models', 'flow-matching']
+  },
+  {
+    phase: 5,
+    title: 'Representation & interpretability',
+    concepts: ['representations', 'superposition', 'probing', 'induction-heads', 'sparse-autoencoders', 'circuit-discovery', 'activation-steering', 'in-context-learning', 'logit-lens', 'contrastive-learning', 'self-supervised-learning']
+  },
+  {
+    phase: 6,
+    title: 'Modern efficiency & inference',
+    concepts: ['speculative-decoding', 'llm-serving', 'mixture-of-experts', 'moe-serving', 'long-context', 'ssm-hybrids', 'decoding-sampling', 'knowledge-distillation', 'quantization', 'pruning', 'flash-attention', 'activation-checkpointing']
+  },
+  {
+    phase: 7,
+    title: 'Alignment & RLHF',
+    concepts: ['rlhf', 'dpo', 'kto', 'reward-hacking', 'ppo-policy-optimization', 'constitutional-ai', 'rlaif', 'instruction-tuning']
+  },
+  {
+    phase: 8,
+    title: 'Scaling, theory & multimodal',
+    concepts: ['scaling-laws', 'efficiency', 'theory', 'multimodal', 'optimal-transport', 'adversarial-examples', 'grokking', 'calibration']
+  },
+  {
+    phase: 9,
+    title: 'Advanced architectures & generation',
+    concepts: ['classifier-free-guidance', 'retrieval-augmented-generation', 'distributed-training', 'beam-search']
+  },
+  {
+    phase: 10,
+    title: 'Mathematical foundations & information geometry',
+    concepts: ['fisher-information', 'natural-gradient', 'energy-based-models', 'dropout', 'bregman-divergence', 'rkhs', 'persistent-homology', 'lie-groups', 'world-models']
+  },
+  {
+    phase: 11,
+    title: 'Frontier research & scaling',
+    concepts: ['test-time-compute', 'chain-of-thought', 'synthetic-data', 'process-reward-models']
+  },
+  {
+    phase: 12,
+    title: 'Advanced alignment & safety research',
+    concepts: ['deliberative-alignment', 'ai-safety-via-debate', 'iterated-amplification', 'weak-to-strong-generalization', 'automated-red-teaming', 'mesa-optimization', 'sleeper-agents', 'model-graded-evals', 'capability-elicitation', 'sandwiching-evaluations']
+  },
+  {
+    phase: 13,
+    title: 'Cutting-edge 2024-2025 research',
+    concepts: ['mixture-of-depths', 'tree-search-reasoning', 'video-world-models', 'self-improvement-loops', 'model-collapse', 'infinite-context']
+  },
 ]
 
 // Build phase lookup from study order

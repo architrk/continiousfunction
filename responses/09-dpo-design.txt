@@ -1,0 +1,100 @@
+   Dense FFNs are predictable; MoE FFNs are **demand-shaped by the router**. So load becomes bursty and skewed, and **the busiest expert dictates latency**.
+
+2. **“MoE inference is two collective communications per layer.”**
+   Every MoE layer is effectively:
+   **dispatch (tokens → experts)** → **expert GEMMs** → **combine (experts → tokens)**.
+   Your cost isn’t just matmul; it’s **all‑to‑all patterns + synchronization**. ([arXiv][1])
+
+3. **“Batch size is not ‘free’ in decoding.”**
+   #21 taught that decode is sequential and latency-sensitive. MoEs make this worse: you need enough tokens **per expert** to get good GEMM efficiency, but you’re constrained by KV cache + SLOs.
+
+4. **“Expert parallelism changes *what scales*.”**
+   You’re no longer just scaling tensor parallelism. You’re scaling the *placement* of experts, the *routing-induced traffic*, and the *microbatching strategy*.
+
+5. **“Disaggregation is the new architecture knob.”**
+   MegaScale‑Infer argues attention and FFNs/expert modules should be **scaled and deployed differently** (even on different GPU types), with pipelining to keep both sides busy. ([arXiv][2])
+
+---
+
+## 5) 2–3 papers to anchor #23 (with citations)
+
+1. **MegaScale‑Infer: Serving Mixture‑of‑Experts at Scale with Disaggregated Expert Parallelism** (Zhu et al., 2025, arXiv) — disaggregates attention vs expert FFNs, introduces pipelining + specialized communication to raise utilization; reports up to **1.90×** per‑GPU decoding throughput improvements and cost reductions in deployment. ([arXiv][2])
+
+2. **Optimizing MoE Inference Time Combining Model Deployment and Communication Scheduling (Aurora)** (Li et al., 2024, arXiv) — targets the real bottleneck: **all‑to‑all communication scheduling + expert placement**, showing sizable speedups in homogeneous and heterogeneous clusters. ([arXiv][1])
+
+3. **Mixtral of Experts** (Jiang et al., 2024, arXiv) — the widely-referenced open MoE LLM paper; gives concrete architecture details (e.g., **top‑2 routing**) that make the serving problem tangible. ([arXiv][3])
+
+*(Optional bonus reading if you want a deeper “systems frontier” extension later: AMoE / Asynchronous Expert Parallelism and MoEShard are strong 2025 follow-ups.)* ([arXiv][6])
+
+---
+
+## 6) Visualization ideas (3–4 interactive demos)
+
+1. **Routing Skew → Straggler Latency Simulator**
+
+   * UI: slider for (E) experts, (k), batch tokens (T), and “skewness” (e.g., Zipf parameter).
+   * Show: histogram of tokens per expert, and predicted layer time (\max_e n_e).
+   * “Aha”: even if average load is fine, **tail experts** dominate latency.
+
+2. **All‑to‑All Token Dispatch Animation (8 GPUs)**
+
+   * Represent GPUs as nodes; tokens as colored packets routed to experts.
+   * Toggle: **expert placement** strategies (random, co-located, balanced) and observe traffic patterns.
+   * Show: “dispatch bytes” and “barrier wait time”.
+
+3. **MoE Decode Goodput Dashboard (ties directly to #21)**
+
+   * Simulate continuous batching with request arrivals.
+   * Measure TTFT/TPOT and goodput while varying:
+
+     * microbatch size,
+     * capacity factor / padding,
+     * expert replication vs none.
+   * “Aha”: MoE can *reduce FLOPs* but still *hurt* goodput if scheduling is naïve.
+
+4. **Disaggregation Playground (Attention GPUs vs Expert GPUs)**
+
+   * Two pools: attention replicas and expert nodes.
+   * Let users allocate GPUs between pools; add a “ping‑pong pipeline” toggle.
+   * Show utilization of each pool and end-to-end tokens/sec.
+   * “Aha”: “scale attention with replication, scale experts with parallelism” becomes intuitive. ([arXiv][2])
+
+---
+
+## 7) Prerequisites (hook into your existing concept IDs)
+
+Minimum prereqs that make #23 smooth:
+
+* **attention-transformers** (what the block is)
+* **efficient-attention** (KV cache and memory/bandwidth realism)
+* **llm-serving** (prefill vs decode, continuous batching, SLO/goodput)
+* **sparse-moe** (routing + load-balancing losses + expert parallelism basics)
+
+---
+
+## 8) Future concepts this unlocks (clean next steps after #23)
+
+Once learners understand MoE serving mechanics, you can naturally branch into:
+
+* **Asynchronous Expert Parallelism (AEP)**: removing barrier-style synchronization; queueing-aware execution. ([arXiv][6])
+* **MoE-aware disaggregation as a general paradigm**: attention/FFN separation, heterogeneous deployment, “compute vs bandwidth” cluster design. ([arXiv][2])
+* **Expert placement + replication + caching**: hot-expert replication, expert locality, and admission control.
+* **MoE + long-context co-optimization**: how KV cache pressure changes the “right” MoE batching strategy.
+* **Hybrid architectures (Transformer + SSM + MoE)**: e.g., Jamba-style hybrids become much easier to explain once “serving constraints” are first-class. ([arXiv][7])
+
+---
+
+If you want an intentional **pivot** instead of continuing the efficiency/systems arc, the best alternate #23 is **Sparse Autoencoders (SAEs) for feature discovery** (ties #11/#13 into 2024 mechanistic interpretability). But given you *just* introduced MoE (#22) and you already have serving (#21), **MoE Serving & Scheduling** is the highest-leverage “missing brick” right now.
+
+[1]: https://arxiv.org/abs/2410.17043?utm_source=chatgpt.com "Optimizing Mixture-of-Experts Inference Time Combining Model Deployment and Communication Scheduling"
+[2]: https://arxiv.org/pdf/2504.02263 "MegaScale-Infer: Serving Mixture-of-Experts at Scale with Disaggregated Expert Parallelism"
+[3]: https://arxiv.org/abs/2401.04088?utm_source=chatgpt.com "[2401.04088] Mixtral of Experts"
+[4]: https://arxiv.org/html/2405.04434v3?utm_source=chatgpt.com "DeepSeek-V2: A Strong, Economical, and Efficient Mixture- ..."
+[5]: https://www.databricks.com/blog/introducing-dbrx-new-state-art-open-llm?utm_source=chatgpt.com "Introducing DBRX: A New State-of-the-Art Open LLM"
+[6]: https://arxiv.org/abs/2505.08944?utm_source=chatgpt.com "Toward Cost-Efficient Serving of Mixture-of-Experts with ..."
+[7]: https://arxiv.org/abs/2403.19887?utm_source=chatgpt.com "Jamba: A Hybrid Transformer-Mamba Language Model"
+
+
+Finished in 12m 51s (gpt-5.1-pro[browser] | tok(i/o/r/t)=13.63k/2.59k/0/16.23k | files=1)
+
+Finished in 12m 51s (gpt-5.1-pro[browser] | tok(i/o/r/t)=13.63k/2.59k/0/16.23k | files=1 | slug=you-are-building-continuous-function-3)

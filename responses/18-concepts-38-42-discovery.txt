@@ -1,0 +1,385 @@
+Building directly on your draft #33–#37 (tokenization → decoding → data mixture → RAG → tool use/agents) , the next 5 concepts should “close the loop” on *reliability*: **make outputs machine-checkable, measure them well, know when you’re wrong, spend inference compute wisely (a major 2025–2026 trend), and secure tool/RAG surfaces**.
+
+---
+
+## 38) Constrained Decoding & Structured Outputs
+
+**Positioning (why it belongs here):**
+After “Decoding & Sampling” (#34 draft) and “Tool Use & Agentic Systems” (#37 draft), you need the missing bridge between *natural language* and *machine interfaces*: **guaranteed structured generation**. This is the difference between a demo agent and a production agent. Also: it’s *highly visualizable* (token masking, automata state, schema trees). Constrained decoding has become the de-facto enforcement layer for JSON Schema outputs across modern stacks. ([arXiv][1])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Base autoregressive next-token distribution**
+   [
+   p_\theta(x_t \mid x_{<t})
+   ]
+   This is what you get from a vanilla Transformer LM: a distribution over the vocab at step (t).
+
+2. **Prefix-valid constrained distribution (token masking + renormalization)**
+   [
+   p_\theta^{(C)}(x_t \mid x_{<t})
+   =\frac{p_\theta(x_t \mid x_{<t})\cdot \mathbf{1}\big[x_{<t}x_t \in \mathrm{Pref}(L_C)\big]}
+   {\sum_{v\in\mathcal V} p_\theta(v \mid x_{<t})\cdot \mathbf{1}\big[x_{<t}v \in \mathrm{Pref}(L_C)\big]}
+   ]
+   Where (L_C) is the language defined by a constraint (grammar / JSON Schema), and (\mathrm{Pref}(L_C)) are prefixes that can still be completed to a valid output.
+   **Intuition:** you maintain a parser/automaton state; invalid next tokens get probability 0, then you renormalize.
+
+3. **What you *wish* you were sampling from (conditional distribution over valid strings)**
+   [
+   p_\theta(x \mid x\in L_C)=\frac{p_\theta(x),\mathbf{1}[x\in L_C]}{\sum_{x'\in L_C} p_\theta(x')}
+   ]
+   Tutorials often stop at token masking, but this equation highlights the subtlety: **constrained decoding can distort the model’s intended distribution** unless done carefully. ([arXiv][2])
+
+### Frontier Model Usage (2024–2026)
+
+* **API-level “Structured Outputs” / JSON Schema enforcement**: OpenAI’s Structured Outputs mode enforces schema compliance for tool calls and JSON-mode responses; Azure documents the same capability. ([OpenAI Platform][3])
+* **Cross-vendor schema-first generation is becoming standard**: JSONSchemaBench evaluates multiple constrained decoding frameworks, explicitly including OpenAI and Gemini among the compared systems. ([arXiv][1])
+* **Agents depend on it**: tool routers, planners, and multi-agent systems increasingly pass *typed objects* (plans, tool invocations, safety decisions) rather than free-form text. The operational reality: you can’t “regex your way” out of malformed outputs at scale. ([arXiv][1])
+* **Structured extraction & semantic parsing**: incremental parsers (e.g., PICARD) reject inadmissible tokens at decode-time to keep SQL/code valid. ([arXiv][4])
+
+### Missing Intuition (what tutorials get wrong)
+
+* **“JSON mode” ≠ “schema compliance.”** Valid JSON can still violate required keys/types/constraints; schemas are a stronger contract. ([arXiv][1])
+* **Constraints change the distribution.** Many tutorials imply constraints are “just formatting,” but grammar constraints can produce outputs that are *valid yet low-quality* due to distribution distortion; Grammar-Aligned Decoding exists precisely because of this issue. ([arXiv][2])
+* **Tokenization matters.** Constraints operate at the *token* level; a “character-level grammar” can fail badly under BPE/Unigram tokenization unless you compile it to the model’s token space.
+
+### Canonical Papers (2–4, arXiv URLs)
+
+* `https://arxiv.org/abs/2109.05093` ([arXiv][4])
+* `https://arxiv.org/abs/2305.13971` ([arXiv][5])
+* `https://arxiv.org/abs/2405.21047` ([arXiv][2])
+* `https://arxiv.org/abs/2501.10868` ([arXiv][1])
+
+### Visualization Ideas (interactive demos)
+
+* **Schema Tree → Token Mask:** show JSON Schema as a tree; as the user types/generated tokens stream in, highlight *which schema node is active* and show the next-token mask overlay.
+* **Prefix Automaton Viewer:** render DFA/stack state for a grammar; step through decoding and show “why token X is illegal now.”
+* **Distribution Distortion Demo:** compare (A) unconstrained sampling, (B) naive grammar masking, (C) grammar-aligned decoding; measure “quality vs compliance” live. ([arXiv][2])
+
+### Prerequisites (existing concept IDs)
+
+* `maximum-likelihood`
+* `attention-transformers`
+* `speculative-decoding`
+* `llm-serving`
+
+### What It Unlocks
+
+* Reliable tool calling (JSON Schema / typed function args)
+* Robust information extraction pipelines
+* Safer multi-agent messaging (no brittle parsing)
+* Deterministic “compiler-like” guarantees for certain output properties
+
+---
+
+## 39) Evaluation Engineering for LLMs & Agents
+
+**Positioning (why it belongs here):**
+Once you have RAG and agents (#36–#37 draft), *everything becomes a systems problem*. Progress stalls without **continuous evals**: offline benchmarks, online A/Bs, regression tests, and red-team suites. This concept is practical, and it sets up the rest (#40–#42) as “improve what you can measure.” OpenAI and others explicitly treat evals as essential for reliable applications. ([OpenAI Platform][6])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Pass@k (common for code / tool success)**
+   [
+   \mathrm{pass@}k ;=; 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}}
+   ]
+   If you sample (n) candidates and (c) are correct, this estimates the probability that at least one of the best (k) samples passes. (This ties directly to test-time compute in #41.)
+
+2. **Bradley–Terry preference model (pairwise eval → ratings)**
+   [
+   \Pr(i \succ j) = \sigma(s_i - s_j)
+   ]
+   Models (i,j) have latent scores (s_i,s_j); pairwise wins become a statistically meaningful ranking (used in many arena-style evals). ([arXiv][7])
+
+3. **Elo-style update (online ranking intuition)**
+   [
+   R_i \leftarrow R_i + K,(y - \sigma(R_i - R_j))
+   ]
+   A lightweight way to turn noisy comparisons into stable rankings over time.
+
+### Frontier Model Usage (2024–2026)
+
+* **LLM-as-a-judge is mainstream for open-ended tasks**: MT-Bench/Chatbot Arena formalize using strong LLM judges, while documenting judge biases (position, verbosity, etc.). ([arXiv][8])
+* **“Living” benchmark suites**: HELM is a canonical example of broad, multi-scenario evaluation, with transparent reporting. ([Stanford CRFM][9])
+* **Agent evaluation**: AgentBench targets LLM agents across tool-using environments, reflecting the post-2024 shift toward agentic systems. ([Hugging Face][10])
+* **Real-world software tasks**: SWE-bench became a standard for end-to-end coding agents; the benchmark paper is widely referenced. ([Hugging Face][11])
+* **Evals frameworks in practice**: OpenAI maintains an open eval framework and docs emphasizing evals for reliable apps and model upgrades. ([GitHub][12])
+
+### Missing Intuition (what tutorials get wrong)
+
+* **Leaderboards aren’t product evals.** You need *your* distribution: your users, your tools, your failure costs. HELM and MT-Bench help, but they’re not a substitute for custom suites. ([Stanford CRFM][9])
+* **LLM judges are not “objective.”** MT-Bench explicitly analyzes biases like position and verbosity; without mitigation (randomization, rubrics, reference-guided judging), results can be misleading. ([arXiv][8])
+* **System-level metrics dominate.** For RAG/agents, correctness is entangled with retrieval quality, tool reliability, latency/cost, and refusal behavior—so evals must be end-to-end, not just “answer correctness.”
+
+### Canonical Papers (2–4, arXiv URLs)
+
+* `https://arxiv.org/abs/2211.09110` ([Stanford CRFM][9])
+* `https://arxiv.org/abs/2306.05685` ([arXiv][8])
+* `https://arxiv.org/abs/2308.03688` ([Hugging Face][10])
+* `https://arxiv.org/abs/2310.06770` ([Hugging Face][11])
+
+### Visualization Ideas (interactive demos)
+
+* **Arena Simulator:** users submit prompts; two “models” respond; a judge (or human) votes; show Elo updates live and confidence intervals. ([arXiv][7])
+* **Judge Bias Lab:** swap answer A/B positions, change verbosity, and watch preference flips; teach “randomize sides + calibrate rubric.” ([arXiv][8])
+* **Evals Pyramid Builder:** interactive flow from unit tests (schema validity) → integration tests (tool success) → red-team (prompt injection) → online monitoring.
+
+### Prerequisites (existing concept IDs)
+
+* `maximum-likelihood`
+* `rlhf`
+* `dpo`
+* `llm-serving`
+
+### What It Unlocks
+
+* Continuous regression testing for prompts/RAG/agents
+* Safe model upgrades (measure drift before deploy)
+* Cost/latency-quality trade studies
+* Security eval suites (#42) and test-time compute tuning (#41)
+
+---
+
+## 40) Uncertainty, Calibration & Selective Generation
+
+**Positioning (why it belongs here):**
+After you can *measure* (#39), you need models/systems that can **say “I don’t know”** (or “I need to retrieve/call a tool”) reliably. This is a practical reliability/safety concept: calibrate confidence, build abstention policies, and reduce hallucinations with sampling-based checks. ([arXiv][13])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Temperature scaling (post-hoc calibration for logits)**
+   [
+   p_T(y\mid x)=\mathrm{softmax}!\left(\frac{z(x)}{T}\right)
+   ]
+   A single scalar (T) can substantially improve calibration in many classifiers. ([arXiv][13])
+
+2. **Expected Calibration Error (ECE)**
+   [
+   \mathrm{ECE}=\sum_{b=1}^B \frac{|B_b|}{n},\big|\mathrm{acc}(B_b)-\mathrm{conf}(B_b)\big|
+   ]
+   Bucket predictions by stated confidence; measure the gap between empirical accuracy and stated confidence.
+
+3. **Conformal “coverage guarantee” for generation (set-valued outputs)**
+   [
+   \Pr\big(Y \in \Gamma_\alpha(X)\big)\ge 1-\alpha
+   ]
+   Conformal methods produce *sets* (or stopping rules for sampling) that guarantee coverage under mild assumptions—useful when you need “one acceptable answer” with high probability. ([arXiv][14])
+
+### Frontier Model Usage (2024–2026)
+
+* **Self-evaluation signals**: “P(True)” / “P(I know)” style self-assessment is explicitly studied for LMs and used as a conceptual template for reliability gating. ([arXiv][15])
+* **Sampling-based hallucination checks**: SelfCheckGPT uses multi-sample disagreement as a black-box hallucination detector—very aligned with how teams build practical “self-check” layers. ([arXiv][16])
+* **Conformal generation for risk control**: Conformal Language Modeling proposes calibrated sampling/stopping rules to return candidate sets with guarantees—directly relevant to high-stakes deployments. ([arXiv][14])
+
+### Missing Intuition (what tutorials get wrong)
+
+* **Logprob ≠ truth probability.** Token likelihood is about *linguistic plausibility given the prompt*, not factual correctness. (Kadavath et al. show that format and setup matter enormously for calibration-like behavior.) ([arXiv][15])
+* **Low temperature ≠ calibrated confidence.** Low temperature makes outputs *less diverse*, not necessarily *more reliable*. Calibration needs held-out measurement (ECE) and tuning. ([arXiv][13])
+* **Abstention is a product feature, not a moral failure.** In practice, “I don’t know; here are sources” + retrieval/tool fallback is a reliability strategy, not just safety theater.
+
+### Canonical Papers (2–4, arXiv URLs)
+
+* `https://arxiv.org/abs/1706.04599` ([arXiv][13])
+* `https://arxiv.org/abs/2207.05221` ([arXiv][15])
+* `https://arxiv.org/abs/2306.10193` ([arXiv][14])
+* `https://arxiv.org/abs/2303.08896` ([arXiv][16])
+
+### Visualization Ideas (interactive demos)
+
+* **Reliability Diagram Playground:** drag a temperature slider; see calibration curve + ECE update in real time. ([arXiv][13])
+* **Risk–Coverage Curve:** slider for abstention threshold; visualize accuracy vs coverage as you “reject uncertain answers.”
+* **SelfCheck Explorer:** sample (N) completions; show contradiction graph; highlight sentences with high disagreement. ([arXiv][16])
+
+### Prerequisites (existing concept IDs)
+
+* `maximum-likelihood`
+* `rlhf`
+* `llm-serving`
+* `long-context`
+
+### What It Unlocks
+
+* “Answer / retrieve / ask / abstain” policies for RAG + agents
+* Measurable hallucination reduction strategies
+* Confidence-aware UX (citations, warnings, fallback to tools/humans)
+* Safer autonomy thresholds for agents (#37 draft → #42)
+
+---
+
+## 41) Test-Time Compute Scaling & Deliberative Reasoning
+
+**Positioning (why it belongs here):**
+This is the **2025–2026 “latest thing”** that deserves a core concept: *inference-time scaling* (aka “think longer,” “search more,” “verify”). It connects directly to decoding (#34 draft), evals (#39), uncertainty (#40), and agents (#37 draft). It’s also extremely demo-friendly: accuracy vs compute curves, search trees, majority vote dynamics. Research in 2024–2025 explicitly studies and systematizes test-time scaling strategies. ([arXiv][17])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Best-of-(N) selection (generate many, pick one by a score/verifier)**
+   [
+   y_i \sim p_\theta(\cdot \mid x),\quad \hat y = \arg\max_{i\in{1..N}} s(y_i)
+   ]
+   (s(\cdot)) can be a reward model, unit tests, a judge model, or a process verifier.
+
+2. **Self-consistency majority vote (aggregate answers from multiple chains)**
+   [
+   \hat a = \arg\max_{a} \sum_{i=1}^N \mathbf{1}\big[\mathrm{ans}(y_i)=a\big]
+   ]
+   You trade compute for robustness: if the model “knows” the answer, samples converge. ([arXiv][18])
+
+3. **Tree search / MCTS selection (planning over “thought” branches)**
+   [
+   a^*=\arg\max_a\left(Q(s,a)+c\sqrt{\frac{\ln N(s)}{N(s,a)}}\right)
+   ]
+   This is the canonical UCB rule: balance exploitation (high (Q)) and exploration (uncertainty term). It’s the math template behind many “search over thoughts” and agent planners.
+
+### Frontier Model Usage (2024–2026)
+
+* **Reasoning models explicitly leverage test-time compute**: OpenAI’s “learning to reason with LLMs” notes performance improves with more time spent thinking at inference, framing test-time compute as a scaling axis. ([OpenAI][19])
+* **Systematic comparisons of test-time scaling**: “The Art of Scaling Test-Time Compute…” is a 2025 paper focused on comparing strategies and difficulty interactions. ([arXiv][17])
+* **Verifier/search framing is central**: “Scaling LLM Test-Time Compute Optimally…” analyzes mechanisms like searching against verifier reward models and adaptive test-time updates. ([arXiv][20])
+* **Agents too**: there’s now explicit work exploring test-time scaling *for LLM agents* (not just pure reasoning). ([arXiv][21])
+
+### Missing Intuition (what tutorials get wrong)
+
+* **“Longer CoT” is not the same as “better reasoning.”** The useful unit is often *search + selection + verification*, not just verbosity. Research directly revisits “o1-like” test-time scaling and shows nuances in what works. ([arXiv][22])
+* **You need a target objective.** Best-of-(N) without a verifier/judge often just gives you a “louder hallucination.” This is why verifier-based methods matter in the scaling literature. ([arXiv][20])
+* **Compute allocation should be adaptive.** Spend more on hard instances, early-stop on easy ones—this is where eval + uncertainty + test-time scaling become one coherent loop.
+
+### Canonical Papers (2–4, arXiv URLs)
+
+* `https://arxiv.org/abs/2203.11171` ([arXiv][18])
+* `https://arxiv.org/abs/2305.10601` ([arXiv][23])
+* `https://arxiv.org/abs/2411.19477` ([arXiv][24])
+* `https://arxiv.org/abs/2512.02008` ([arXiv][17])
+
+### Visualization Ideas (interactive demos)
+
+* **Compute Budget Slider:** accuracy vs cost curve for (greedy, best-of-N, self-consistency, tree search).
+* **Search Tree Visualizer:** nodes = partial thoughts; edges = expansions; show UCB scores and which branch gets explored next.
+* **Verifier Sandbox:** generate candidates + run unit tests / schema validation / judge rubric; show how selection changes. ([arXiv][20])
+
+### Prerequisites (existing concept IDs)
+
+* `scaling-laws`
+* `speculative-decoding`
+* `llm-serving`
+* `rlhf`
+
+### What It Unlocks
+
+* “Reasoning mode” features without retraining
+* Better coding performance via pass@k + verifiers
+* Agent planning/search loops that actually improve with compute
+* A principled knob for latency/quality trade-offs
+
+---
+
+## 42) Practical LLM/Agent Security: Prompt Injection, Tool Poisoning, Sandboxing
+
+**Positioning (why it belongs here):**
+If #37 (agents) is “LLMs can act,” then #42 is “LLMs can be attacked.” Prompt injection is now treated as a core application security risk; OWASP explicitly lists it among top risks for LLM apps. ([OWASP Foundation][25])
+This concept is *practical safety* and *highly demoable*: you can build an interactive “agent with a secret + tools” and show how defenses change outcomes.
+
+### Core Math (2–3 equations + intuition)
+
+1. **No inherent security boundary between instruction and data**
+   [
+   y \sim p_\theta\big(y \mid s_{\text{sys}}, s_{\text{user}}, s_{\text{tool}}, s_{\text{retrieved}}\big)
+   ]
+   The model is just doing conditional generation. Unless the *system design* enforces boundaries, retrieved text or tool outputs can hijack behavior.
+
+2. **Adversarial injection as an optimization problem**
+   [
+   c^*=\arg\max_{c}; \Pr_\theta!\left(\text{unsafe_action}\mid x, c\right)
+   ]
+   The attacker’s “payload” (c) is crafted to maximize unsafe tool calls, secret leakage, or policy violations.
+
+3. **Capability-based tool gating (least privilege as a function)**
+   [
+   \mathrm{exec}(a)=
+   \begin{cases}
+   \mathrm{tool}(a) & a \in \mathcal{A}_{\text{allow}}\
+   \varnothing & \text{otherwise}
+   \end{cases}
+   ]
+   Even if the LM is manipulated, **the system must prevent unauthorized actions** via explicit allowlists/scopes.
+
+### Frontier Model Usage (2024–2026)
+
+* **Industry threat model codification**: OWASP’s LLM Top 10 explicitly enumerates prompt injection among critical risks (plus related issues like insecure output handling, etc.). ([OWASP Foundation][25])
+* **RAG-specific attacks are now formalized**: “Backdoored Retrievers…” targets prompt injection through RAG retrieval pipelines. ([arXiv][26])
+* **Tool-calling attack research**: ToolCommander demonstrates adversarial injection against LLM tool-calling systems. ([arXiv][27])
+* **Agent-specific defenses + benchmarks**: “Securing AI Agents Against Prompt Injection Attacks” frames the problem as an agent security benchmark challenge. ([ACM Digital Library][28])
+* **Operational push toward agent protocols increases the surface area**: MCP is explicitly a protocol for connecting models to tools; standardization makes interoperability easier *and* raises the stakes for secure boundaries. ([Anthropic][29])
+
+### Missing Intuition (what tutorials get wrong)
+
+* **“The system prompt is the security boundary” is false.** It’s just another conditioning string unless the *application layer* enforces permissions and isolation.
+* **Defenses must be layered.** “Just tell the model to ignore tool output instructions” fails against adaptive attacks; you need a combination of: strict schemas (#38), tool allowlists, sandboxing, retrieval hygiene, monitoring, and red-team evals (#39). ([arXiv][26])
+* **Security evaluation is its own discipline.** You need attack corpora, low-FPR detectors, and fuzzing-style testing—analogous to classic AppSec. (Prompt injection detectors/benchmarks like PromptShield reflect this direction.) ([arXiv][30])
+
+### Canonical Papers (2–4, arXiv URLs)
+
+* `https://arxiv.org/abs/2410.14479` ([arXiv][26])
+* `https://arxiv.org/abs/2511.15759` ([ACM Digital Library][28])
+* `https://arxiv.org/abs/2412.10198` ([arXiv][27])
+* `https://arxiv.org/abs/2501.15145` ([arXiv][30])
+
+### Visualization Ideas (interactive demos)
+
+* **“Agent With a Secret” Playground:** agent has a hidden token/credential and a browser tool. Users paste a malicious web page / retrieved doc; watch injection succeed/fail under different mitigations (schema validation, tool allowlists, isolation, detector).
+* **RAG Poisoning Visualizer:** show top-k retrieved docs; let user flip a “backdoored” doc on/off; observe behavioral changes and which safeguard catches it. ([arXiv][26])
+* **Attack-Defense Matrix:** a grid of scenarios (data exfiltration, tool misuse, DoS) × defenses; run Monte Carlo trials and show empirical risk reductions.
+
+### Prerequisites (existing concept IDs)
+
+* `long-context`
+* `llm-serving`
+* `rlhf`
+* `multimodal`
+
+### What It Unlocks
+
+* Shipping tool-using agents without “one weird prompt” disasters
+* Security-focused eval suites & monitoring playbooks
+* Safe RAG deployments (retrieval hygiene + injection-aware design)
+* Governance/compliance alignment for real enterprises
+
+---
+
+* [The Verge](https://www.theverge.com/news/603849/openai-o3-mini-launch-chatgpt-api-available-now?utm_source=chatgpt.com)
+* [Reuters](https://www.reuters.com/world/asia-pacific/google-openais-ai-models-win-milestone-gold-global-math-competition-2025-07-21/?utm_source=chatgpt.com)
+* [Android Central](https://www.androidcentral.com/apps-software/ai/google-is-making-it-easier-to-use-the-gemini-api-in-multi-agent-workflows?utm_source=chatgpt.com)
+* [WIRED](https://www.wired.com/story/openai-anthropic-and-block-are-teaming-up-on-ai-agent-standards?utm_source=chatgpt.com)
+* [techradar.com](https://www.techradar.com/pro/security/prompt-injection-attacks-might-never-be-properly-mitigated-uk-ncsc-warns?utm_source=chatgpt.com)
+* [timesofindia.indiatimes.com](https://timesofindia.indiatimes.com/technology/tech-news/openai-warns-ai-browsers-may-never-be-fully-secure-says-prompt-injection-may-never-be-solved/articleshow/126138136.cms?utm_source=chatgpt.com)
+
+[1]: https://arxiv.org/abs/2501.10868?utm_source=chatgpt.com "Generating Structured Outputs from Language Models: Benchmark and Studies"
+[2]: https://arxiv.org/abs/2405.21047?utm_source=chatgpt.com "[2405.21047] Grammar-Aligned Decoding"
+[3]: https://platform.openai.com/docs/guides/structured-outputs?utm_source=chatgpt.com "Structured model outputs | OpenAI API"
+[4]: https://arxiv.org/abs/2109.05093?utm_source=chatgpt.com "PICARD: Parsing Incrementally for Constrained Auto-Regressive Decoding from Language Models"
+[5]: https://arxiv.org/abs/2305.13971?utm_source=chatgpt.com "Grammar-Constrained Decoding for Structured NLP Tasks without Finetuning"
+[6]: https://platform.openai.com/docs/guides/evals?utm_source=chatgpt.com "Working with evals | OpenAI API"
+[7]: https://arxiv.org/abs/2403.04132?utm_source=chatgpt.com "Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference"
+[8]: https://arxiv.org/abs/2306.05685?utm_source=chatgpt.com "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"
+[9]: https://crfm.stanford.edu/helm/latest/?utm_source=chatgpt.com "Holistic Evaluation of Language Models (HELM)"
+[10]: https://huggingface.co/papers/2308.03688?utm_source=chatgpt.com "Paper page - AgentBench: Evaluating LLMs as Agents"
+[11]: https://huggingface.co/papers/2310.06770?utm_source=chatgpt.com "Can Language Models Resolve Real-World GitHub Issues?"
+[12]: https://github.com/openai/evals?utm_source=chatgpt.com "openai/evals"
+[13]: https://arxiv.org/abs/1706.04599?utm_source=chatgpt.com "On Calibration of Modern Neural Networks"
+[14]: https://arxiv.org/abs/2306.10193?utm_source=chatgpt.com "Conformal Language Modeling"
+[15]: https://arxiv.org/abs/2207.05221?utm_source=chatgpt.com "Language Models (Mostly) Know What They Know"
+[16]: https://arxiv.org/abs/2303.08896?utm_source=chatgpt.com "SelfCheckGPT: Zero-Resource Black-Box Hallucination Detection for Generative Large Language Models"
+[17]: https://www.arxiv.org/abs/2512.02008?utm_source=chatgpt.com "The Art of Scaling Test-Time Compute for Large Language ..."
+[18]: https://arxiv.org/abs/2203.11171?utm_source=chatgpt.com "Self-Consistency Improves Chain of Thought Reasoning in Language Models"
+[19]: https://openai.com/index/learning-to-reason-with-llms/?utm_source=chatgpt.com "Learning to reason with LLMs"
+[20]: https://arxiv.org/abs/2408.03314?utm_source=chatgpt.com "Scaling LLM Test-Time Compute Optimally can be More ..."
+[21]: https://arxiv.org/pdf/2506.12928?utm_source=chatgpt.com "Scaling Test-time Compute for LLM Agents"
+[22]: https://arxiv.org/html/2502.12215v1?utm_source=chatgpt.com "Revisiting the Test-Time Scaling of o1-like Models"
+[23]: https://arxiv.org/abs/2305.10601?utm_source=chatgpt.com "Tree of Thoughts: Deliberate Problem Solving with Large Language Models"
+[24]: https://arxiv.org/abs/2411.19477?utm_source=chatgpt.com "Simple and Provable Scaling Laws for the Test-Time Compute of Large Language Models"
+[25]: https://owasp.org/www-project-top-10-for-large-language-model-applications/assets/PDF/OWASP-Top-10-for-LLMs-v2025.pdf?utm_source=chatgpt.com "OWASP Top 10 for LLM Applications 2025"
+[26]: https://arxiv.org/abs/2410.14479?utm_source=chatgpt.com "Backdoored Retrievers for Prompt Injection Attacks on Retrieval Augmented Generation of Large Language Models"
+[27]: https://arxiv.org/abs/2412.10198?utm_source=chatgpt.com "From Allies to Adversaries: Manipulating LLM Tool-Calling through Adversarial Injection"
+[28]: https://dl.acm.org/doi/10.5555/3666122.3668142?utm_source=chatgpt.com "Judging LLM-as-a-judge with MT-bench and Chatbot Arena"
+[29]: https://www.anthropic.com/news/model-context-protocol?utm_source=chatgpt.com "Introducing the Model Context Protocol"
+[30]: https://arxiv.org/abs/2501.15145?utm_source=chatgpt.com "PromptShield: Deployable Detection for Prompt Injection Attacks"

@@ -1,12 +1,35 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
+import { useMemo, Suspense, lazy } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import StateTimeline from '../../components/StateTimeline'
 import KernelHeatmap from '../../components/KernelHeatmap'
-import { NeuralState, Matrix2D, MATH_COLORS } from '../../lib/mathObjects'
+import { NeuralState, Matrix2D } from '../../lib/mathObjects'
+
+// Explore in depth link component
+function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="explore-link">
+      {label} →
+      <style jsx>{`
+        .explore-link {
+          display: inline-block;
+          margin-top: 1rem;
+          font-size: 0.85rem;
+          color: var(--converge-teal);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .explore-link:hover {
+          color: var(--accent);
+        }
+      `}</style>
+    </Link>
+  )
+}
 
 // Import visualization components from foundations (canonical source with gamification)
 const SuperpositionPolysemanticity = lazy(() => import('../../components/foundations/SuperpositionViz'))
@@ -34,7 +57,7 @@ function MechInterpVisualPanel() {
     const numNeurons = 16
 
     for (let t = 0; t < numSteps; t++) {
-      const activations = Array.from({ length: numNeurons }, (_, i) => {
+      const activations = Array.from({ length: numNeurons }, () => {
         // Simulate sparse, interpretable features
         const isActive = Math.random() > sparsity
         return isActive ? Math.random() * 0.8 + 0.2 : Math.random() * 0.1
@@ -147,9 +170,14 @@ export default function MechInterpPillar() {
       </Head>
       <ExplorableLayout
         title="Mechanistic Interpretability"
-      subtitle="Reverse-engineering neural computation"
-      visualPanel={<MechInterpVisualPanel />}
-      initialParams={{ sparsity: 0.8, numFeatures: 8 }}
+        subtitle="Reverse-engineering neural computation"
+        visualPanel={<MechInterpVisualPanel />}
+        initialParams={{ sparsity: 0.8, numFeatures: 8 }}
+        breadcrumb={[
+          { label: 'Home', href: '/' },
+          { label: 'Pillars', href: '/pillars' },
+          { label: 'Mech Interp' }
+        ]}
     >
       <ExplorableSection id="intro">
         <h2>What Do Networks Compute?</h2>
@@ -196,6 +224,7 @@ export default function MechInterpPillar() {
           This is efficient but makes interpretation harder — we can't just look
           at individual neurons.
         </p>
+        <ExploreLink href="/foundations/superposition/" />
       </ExplorableSection>
 
       <ExplorableSection id="sae">
@@ -215,6 +244,7 @@ export default function MechInterpPillar() {
           of features, ideally corresponding to interpretable concepts.
         </p>
         <NumFeaturesControl />
+        <ExploreLink href="/foundations/sparse-autoencoders/" />
       </ExplorableSection>
 
       <ExplorableSection id="features">
@@ -263,6 +293,7 @@ export default function MechInterpPillar() {
           Understanding circuits gives us mechanistic insight into model behavior
           and potential failure modes.
         </p>
+        <ExploreLink href="/foundations/induction-heads/" />
       </ExplorableSection>
     </ExplorableLayout>
     </>

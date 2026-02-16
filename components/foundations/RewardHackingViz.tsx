@@ -16,7 +16,7 @@ interface SeverityChallenge {
   explanation: string;
 }
 
-function getSeverityLevel(overopt: number, noise: number): 'aligned' | 'warning' | 'hacking' | 'severe' {
+function _getSeverityLevel(overopt: number, noise: number): 'aligned' | 'warning' | 'hacking' | 'severe' {
   if (overopt < 0.2 && noise < 0.2) return 'aligned';
   if (overopt > 0.7 || (overopt > 0.5 && noise > 0.5)) return 'severe';
   if (overopt > 0.4 || (overopt + noise) > 0.6) return 'hacking';
@@ -536,7 +536,7 @@ export default function RewardHackingViz({ width = 600, height = 400 }: RewardHa
         </div>
       </div>
 
-      <svg width={width} height={height}>
+      <svg width={width} height={height} role="img" aria-label="Reward hacking visualization showing how policies can exploit proxy rewards while diverging from true performance">
         <g transform={`translate(${margin.left},${margin.top})`}>
           {/* Axes */}
           <g className="axis axis-x" transform={`translate(0,${h})`}>

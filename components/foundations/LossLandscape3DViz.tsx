@@ -5,7 +5,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Line } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Point2D } from '../../lib/mathObjects'
-import { MATH_COLORS } from '../../lib/mathObjects'
+import { MATH_COLORS as _MATH_COLORS } from '../../lib/mathObjects'
 
 /**
  * 3D Loss Landscape Explorer
@@ -512,7 +512,7 @@ export default function LossLandscape3D() {
   }, [lockedPrediction, finishWinner.optimizer, trajectories, finishStep])
 
   // Check if race is finished (current step past winner)
-  const raceFinished = winner.optimizer && currentStep >= winner.step
+  const _raceFinished = winner.optimizer && currentStep >= winner.step
   const activeInsight = RACE_PRESETS.find(p => p.name === activePreset)?.insight
 
   // Reset prediction game when preset/params change

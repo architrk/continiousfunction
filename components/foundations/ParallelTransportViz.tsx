@@ -420,7 +420,7 @@ export default function ParallelTransportDemo() {
     // Create a regular polygon path
     const angleStep = (2 * Math.PI) / steps;
     for (let i = 0; i < steps; i++) {
-      const angle = i * angleStep;
+      const _angle = i * angleStep;
       const nextAngle = (i + 1) * angleStep;
 
       // Move along geodesic in direction determined by angle

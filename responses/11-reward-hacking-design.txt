@@ -1,0 +1,217 @@
+🧿 oracle 0.7.0 — Cleanup crew for model-made messes—now with citations.
+Created: 2025-12-22T08:09:54.042Z
+Status: completed
+Models:
+- gpt-5.1-pro — completed tok=2.32k/18.93k
+Prompt:
+You are building 'Continuous Function' - target 50 concepts total.
+CURRENT: 24 concepts implemented
+Efficiency arc complete: #19-23 (Attention→Speculative→Serving→MoE→MoE Serving)
+Alignment started: #24 DPO
+YOUR TASK: Identify Foundation Concept #26
+Consider natural progressions:
+- Alignment variants (SimPO, ORPO, KTO, reward hacking)
+- Interpretability (SAEs, feature discovery, circuit analysis)
+- Training efficiency (SwiGLU, modern activations, fused kernels)
+- Architecture (SSMs/Mamba, linear attention, hybrid models)
+- Long context (KV compression, attention variants)
+- Robustness (adversarial, OOD detection)
+Choose the MOST IMPACTFUL next concept that:
+1. Has 2024-2025 research backing
+2. Fills educational gaps
+3. Connects naturally to existing concepts
+4. Matters in frontier models
+OUTPUT:
+1. Concept #26 recommendation + positioning
+2. Math core (2-3 key equations)
+3. Frontier model usage
+4. Missing intuition to teach
+5. 2-3 canonical papers
+6. Visualization ideas
+7. Prerequisites
+8. Unlocks what
+Be decisive and pick the optimal next step.
+
+---
+Answer:
+## 1) Concept #26 recommendation + positioning
+
+### **#26 — Reward Hacking & Overoptimization in Preference Optimization (Robust Rewards)**
+
+**Positioning:** Put this **immediately after #24 DPO** as the “cold shower” concept:
+
+* **#24 (DPO)** teaches *how* to move probability mass toward preferred outputs.
+* **#26 (Reward Hacking)** teaches *why that can backfire*, even with “correct-looking” objectives—because you’re optimizing a **proxy signal** (preferences / reward model / dataset labels) under **distribution shift + finite data noise**.
+
+This fills a real educational gap in the current map: you already introduce RLHF/DPO objectives, but you don’t yet have the **failure-mode lens** that explains why frontier post-training is dominated by *conservatism, monitoring, and robust objectives*, not just “pick an algorithm and crank steps.”
+
+Key research backing: conservative/uncertainty objectives for overoptimization (ICLR 2024), information-theoretic reward modeling (NeurIPS 2024), and finite-sample reward-hacking analysis + robust preference optimization (ICLR 2025). ([ICLR Proceedings][1])
+
+---
+
+## 2) Math core (2–3 key equations)
+
+### (A) You are optimizing a **proxy reward** with a **trust-region**
+
+For prompt (x), policy (\pi_\theta(y\mid x)), reference (\pi_{\text{ref}}), and learned proxy reward (\hat r_\phi):
+
+[
+\max_{\pi_\theta};\mathbb E_{y\sim \pi_\theta(\cdot\mid x)}[\hat r_\phi(x,y)]
+;-;\beta,\mathrm{KL}!\left(\pi_\theta(\cdot\mid x),|,\pi_{\text{ref}}(\cdot\mid x)\right).
+]
+
+This is the *core* alignment shape across RLHF-style training and many preference-optimization variants: **optimize reward, constrain drift**.
+
+### (B) Conservative optimization to resist reward hacking (ensemble lower bound)
+
+With an ensemble of reward models ({r_{\phi_j}}_{j=1}^K), define mean/uncertainty:
+
+[
+\mu(x,y)=\frac1K\sum_{j=1}^K r_{\phi_j}(x,y),\qquad
+\sigma(x,y)=\sqrt{\frac1K\sum_{j=1}^K\left(r_{\phi_j}(x,y)-\mu(x,y)\right)^2}.
+]
+
+Then optimize a **lower-confidence bound** proxy:
+
+[
+r_{\text{LCB}}(x,y)=\mu(x,y)-\lambda,\sigma(x,y),
+]
+
+(or a worst-case proxy (r_{\text{WCO}}(x,y)=\min_j r_{\phi_j}(x,y))).
+This is the mathematical “anti-Goodhart move”: **prefer high reward you’re confident about**. ([ICLR Proceedings][1])
+
+### (C) InfoRM-style information bottleneck reward modeling (filter spurious features)
+
+InfoRM trains a reward model to retain only preference-relevant information using an information-bottleneck flavored objective (variational form):
+
+[
+\max_{\phi};\mathbb E[\log p_\phi(\ell\mid z)]
+;-;\alpha,\mathrm{KL}!\left(q_\phi(z\mid x,y),|,p(z)\right),
+]
+
+where (\ell) is the preference label and (z) is a learned bottleneck representation intended to drop “shortcut” features that cause misgeneralization. ([arXiv][2])
+
+---
+
+## 3) Frontier model usage (what this looks like in practice)
+
+Frontier post-training pipelines (open and closed) implicitly behave as if reward hacking is *expected*, not rare:
+
+* **Conservative reward optimization**: ensemble-based objectives (uncertainty-weighted / worst-case style) are explicitly studied as a way to reduce overoptimization in both best-of-(n) selection and PPO-style RLHF. ([ICLR Proceedings][1])
+* **Better reward modeling**: InfoRM-style approaches target **reward misgeneralization** (reward models latching onto spurious features) and propose **detecting** hacked samples as outliers in a learned latent space. ([arXiv][2])
+* **Robust preference optimization under finite data**: offline preference optimization can “hack” simply due to **statistical fluctuations / sparse coverage** in the preference dataset; ICLR 2025 frames this as two types (I/II) and proposes methods to mitigate. 
+* **Iterated RLHF**: repeated cycles of collecting feedback + retraining reward models + re-optimizing policies can reduce overoptimization over iterations, but has dynamics and diminishing returns worth understanding. ([arXiv][3])
+
+---
+
+## 4) Missing intuition to teach (the “aha” that people lack)
+
+This concept’s teaching goal is to install a *robust mental model*:
+
+1. **Goodhart’s law is the alignment tax.**
+   The moment a learned score becomes a target, you should assume optimization will find edge cases where the score is wrong.
+
+2. **Reward hacking ≠ “the model is evil.”**
+   Often it’s just **distribution shift**: the policy explores outputs the reward model never saw, and the reward model extrapolates incorrectly.
+
+3. **KL doesn’t “solve” reward hacking; it just slows it down.**
+   KL is a trust region around (\pi_{\text{ref}}), but if the reward is wrong *within* that region (or the model can exploit loopholes without drifting far), KL won’t save you.
+
+4. **Offline preference optimization can make a model worse.**
+   The ICLR 2025 framing is extremely teachable:
+
+   * **Type I**: bad options look good due to sparse/noisy labels → optimizer amplifies them.
+   * **Type II**: good options look bad due to sparse/noisy labels → optimizer suppresses them, even if the base model was already aligned. 
+
+5. **Uncertainty is a safety signal.**
+   Ensembles (or other uncertainty estimators) turn reward hacking into a measurable phenomenon: “high reward + high disagreement” is exactly the region you should distrust. ([ICLR Proceedings][1])
+
+---
+
+## 5) 2–3 canonical papers (2024–2025)
+
+1. **Coste et al. — “Reward Model Ensembles Help Mitigate Overoptimization” (ICLR 2024)**
+   Establishes conservative/ensemble objectives (worst-case, uncertainty-weighted) as practical mitigations across BoN and PPO settings. ([ICLR Proceedings][1])
+
+2. **Miao et al. — “InfoRM: Mitigating Reward Hacking in RLHF via Information-Theoretic Reward Modeling” (accepted NeurIPS 2024)**
+   Frames reward hacking as reward misgeneralization; proposes info-bottleneck reward modeling + an outlier-based detection signal. ([arXiv][2])
+
+3. **Rashidinejad & Tian — “Sail into the Headwind: Alignment via Robust Rewards and Dynamic Labels Against Reward Hacking” (ICLR 2025)**
+   Gives a clean finite-sample / dataset-coverage explanation (Type I/II) and proposes robust offline preference optimization methods. 
+
+*(Optional “extra reading” if you want a 4th link in your UI later: Wolf et al. “Reward Model Overoptimisation in Iterated RLHF” (arXiv 2025). ([arXiv][3]))*
+
+---
+
+## 6) Visualization ideas (high-leverage for “Continuous Function”)
+
+1. **Goodhart curve interactive**
+
+   * X-axis: training steps (or KL from reference)
+   * Two lines: **proxy reward** (\hat r) vs **true quality** (human/judge)
+   * Show the characteristic pattern: proxy up, true up, then proxy keeps rising while true stalls/drops.
+
+2. **Ensemble “risk map”**
+
+   * Scatter plot of sampled completions:
+
+     * X = mean reward (\mu)
+     * Y = uncertainty (\sigma)
+   * Highlight quadrant: **high (\mu), high (\sigma)** as “likely reward hacking.”
+
+3. **Type I vs Type II dataset coverage toy**
+
+   * Discrete “choice” nodes with true reward colors.
+   * Slider: “dataset coverage” for each node.
+   * Randomly sample preference labels with noise → show how optimizers can:
+
+     * amplify a low-coverage bad option (Type I)
+     * suppress a low-coverage good option (Type II) 
+
+4. **InfoRM latent space outliers**
+
+   * 2D embedding of (z) (bottleneck features)
+   * Show “in-distribution” cluster vs “reward-hacked” outliers (high Mahalanobis distance / outlier score conceptually). ([arXiv][2])
+
+---
+
+## 7) Prerequisites (hook into your existing graph)
+
+Hard prereqs:
+
+* **#15 RLHF** (reward models + KL-regularized objective)
+* **#24 DPO** (preference optimization is now “easy,” so you need to teach what breaks)
+
+Helpful prereqs (for deeper treatment, not required):
+
+* **#17 Theory** (Information Bottleneck connection to InfoRM)
+* **#4 Loss Landscapes** (why “over-optimization” can appear suddenly / phase-transition-like)
+
+---
+
+## 8) Unlocks what (why #26 is a keystone)
+
+After #26, you can cleanly introduce (and learners will *care*):
+
+* **Robust preference optimization methods** (POWER / dynamic labels; other robust PO objectives) 
+* **Alignment algorithm variants with a purpose**, not a zoo:
+
+  * SimPO/ORPO/KTO can be framed as choices that trade off anchors, margins, and stability—but #26 gives the *reason* these tweaks matter.
+* **Iterated RLHF / active data collection loops** (why you need fresh labels when the policy shifts). ([arXiv][3])
+* **Reward model uncertainty + monitoring as first-class alignment tools** (ensembles, outlier detection, early stopping). ([ICLR Proceedings][1])
+* **A natural bridge into safety/robustness concepts** (OOD detection for reward models, adversarial prompt distributions, evals).
+
+---
+
+### Bottom line
+
+If #24 teaches “**how to align**,” then **#26 teaches “why alignment is fragile”**—and why frontier post-training is fundamentally about **robust objectives + uncertainty + distribution shift** rather than just picking DPO vs PPO.
+
+[1]: https://proceedings.iclr.cc/paper_files/paper/2024/hash/dda7f9378a210c25e470e19304cce85d-Abstract-Conference.html "Reward Model Ensembles Help Mitigate Overoptimization"
+[2]: https://arxiv.org/abs/2402.09345 "[2402.09345] InfoRM: Mitigating Reward Hacking in RLHF via Information-Theoretic Reward Modeling"
+[3]: https://arxiv.org/abs/2505.18126 "[2505.18126] Reward Model Overoptimisation in Iterated RLHF"
+
+
+Finished in 17m 18s (gpt-5.1-pro[browser] | tok(i/o/r/t)=16.61k/2.32k/0/18.93k | files=1)
+
+Finished in 17m 18s (gpt-5.1-pro[browser] | tok(i/o/r/t)=16.61k/2.32k/0/18.93k | files=1 | slug=you-are-building-continuous-function-6)

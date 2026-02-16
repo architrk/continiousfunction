@@ -1,0 +1,726 @@
+Below is a production-oriented spec for **Concept #33: Tokenization & Vocabulary Design** grounded in your discovery doc and aligned with your existing `foundationsData.ts` concept IDs/prereqs. 
+
+---
+
+## 1) Extended Math Derivation
+
+### 1.1 Tokenization as the model’s discrete interface
+
+Think of tokenization as a **lossless (usually) encoding** from a string into a sequence of vocabulary indices.
+
+Let:
+
+* Raw text (Unicode string): (s)
+* Normalization (optional): (\tilde s = \mathcal N(s))
+* Byte encoding (typically UTF‑8): (x = \mathrm{UTF8}(\tilde s)), where (x\in{0,\dots,255}^L)
+* Vocabulary (\mathcal V): a set of byte-strings (or “pieces”) (v \in {0,\dots,255}^{\ell(v)})
+
+A tokenizer produces a **segmentation**:
+[
+x = \mathrm{concat}(t_1,\dots,t_n),\qquad t_i \in \mathcal V
+]
+and then maps each token piece (t_i) to an integer id:
+[
+\text{Tok}(s) = (z_1,\dots,z_n),\qquad z_i \in {1,\dots,|\mathcal V|}
+]
+
+#### Where this “touches” the model
+
+The transformer does not see characters or bytes—it sees **ids**:
+
+* **Input embedding table**:
+  [
+  E \in \mathbb{R}^{|\mathcal V|\times d},\quad e_i = E[z_i]
+  ]
+* Transformer produces hidden states (h_i \in \mathbb{R}^d)
+* **Output head** (logits over vocabulary):
+  [
+  W_{\text{out}}\in\mathbb{R}^{|\mathcal V|\times d},\quad \ell_i = h_i W_{\text{out}}^\top \in \mathbb{R}^{|\mathcal V|}
+  ]
+* **Softmax**:
+  [
+  p(j\mid z_{\le i}) = \frac{\exp(\ell_{i,j})}{\sum_{k=1}^{|\mathcal V|}\exp(\ell_{i,k})}
+  ]
+
+So vocabulary size (|\mathcal V|) directly sets:
+
+* the number of rows in **input embeddings**
+* the number of classes in **the softmax head**
+* the id-space the model must learn
+
+And tokenization determines sequence length (n), which drives:
+
+* attention/KV cache scaling with (n)
+* how many next-token losses you pay per character/byte
+
+---
+
+### 1.2 Unigram tokenization (SentencePiece-style): MAP segmentation
+
+Unigram tokenization treats segmentation as a probabilistic model.
+
+#### Assumption: tokens are i.i.d. under a unigram prior
+
+Let token probabilities (p(v)) for (v\in \mathcal V) satisfy (\sum_{v\in\mathcal V} p(v)=1).
+
+For a segmentation (t_{1:n}):
+[
+p(t_{1:n})=\prod_{i=1}^n p(t_i)
+]
+
+We want the **maximum a posteriori (MAP)** segmentation that exactly reconstructs (x):
+[
+\hat{t}*{1:n}
+=\arg\max*{t:\ \mathrm{concat}(t)=x} \prod_{i=1}^n p(t_i)
+]
+Take logs (turn products into sums, avoid underflow):
+[
+\hat{t}*{1:n}
+=\arg\max*{t:\ \mathrm{concat}(t)=x} \sum_{i=1}^n \log p(t_i)
+]
+
+#### Dynamic programming derivation (Viterbi on a token lattice)
+
+Let (x) be a byte sequence of length (L). Define:
+
+* (\mathrm{dp}[j]): best log-score for prefix (x_{0:j})
+* (\mathrm{dp}[0]=0), (\mathrm{dp}[j]=-\infty) initially
+
+For every position (j), consider tokens (v) that **end at (j)** (i.e., match (x_{j-\ell(v):j})):
+
+[
+\mathrm{dp}[j] = \max_{v:\ x_{j-\ell(v):j}=v} \left(\mathrm{dp}[j-\ell(v)] + \log p(v)\right)
+]
+
+Store an argmax “backpointer” to reconstruct (\hat{t}_{1:n}).
+
+**Key takeaway:** unigram tokenization is literally “decoding” a probabilistic model.
+
+#### (Optional but valuable for the concept page) Training unigram: latent-variable MLE
+
+Segmentation is latent. For a string (x), the model likelihood marginalizes over all segmentations:
+[
+p(x)=\sum_{t:\ \mathrm{concat}(t)=x} \prod_{i=1}^n p(t_i)
+]
+
+Maximize (\sum_m \log p(x^{(m)})) over dataset. This is an EM problem:
+
+* **E-step:** compute expected counts of each token (v) over all segmentations (forward-backward on the lattice)
+* **M-step:** renormalize:
+  [
+  p_{\text{new}}(v) = \frac{\mathbb E[\text{count}(v)]}{\sum_u \mathbb E[\text{count}(u)]}
+  ]
+
+This is a great place to show “tokenization is a model,” not just preprocessing.
+
+---
+
+### 1.3 BPE: greedy compression / vocabulary growth
+
+BPE is usually described algorithmically, but you can give it a clean mathematical spine.
+
+#### Setup
+
+Start with a corpus represented as a sequence of symbols (often bytes). At iteration (k), you have a vocabulary (\mathcal V_k) and the corpus is tokenized into symbols from (\mathcal V_k).
+
+Let (C_k(a,b)) be the **count** of adjacent pair ((a,b)) in the current tokenized corpus.
+
+#### Greedy merge step
+
+BPE chooses the most frequent pair:
+[
+(a^*,b^*) = \arg\max_{(a,b)} C_k(a,b)
+]
+Create a new symbol:
+[
+c = a^* ,\Vert, b^* \quad (\text{concatenation})
+]
+and replace all occurrences of ((a^*,b^*)) with (c).
+
+#### Why “most frequent pair” is rational (compression view)
+
+Let (N_k) be the total number of tokens in the corpus under (\mathcal V_k). Each merge reduces the token count by the number of replaced pairs (approximately (C_k(a^*,b^*)), ignoring overlap edge-cases):
+
+[
+N_{k+1} \approx N_k - C_k(a^*,b^*)
+]
+
+So BPE is greedily minimizing tokenized length under a fixed “1 unit per token” encoding cost. That connects naturally to MDL/compression intuition:
+
+* A new token is a “dictionary entry”
+* Frequent substrings earn their own symbol
+
+#### Inference-time BPE tokenization (ranked merges)
+
+At inference, given a list of merges with ranks (r(a,b)) (lower rank = earlier merge), you repeatedly apply the **best available merge** in the current symbol sequence until no merge applies.
+
+You can describe this as minimizing a segmentation energy:
+
+* “good” segmentations are those achievable by applying high-priority merges
+* (not a probabilistic MAP objective; it’s a deterministic rewrite system)
+
+---
+
+### 1.4 Byte-level tokenization (and “byte-level BPE”)
+
+Byte-level tokenization avoids the “unknown token” problem by making the base alphabet ({0,\dots,255}).
+
+#### Pure byte tokenizer
+
+[
+x = \mathrm{UTF8}(s)\quad\Rightarrow\quad t_i = x_i \in {0,\dots,255}
+]
+Vocabulary size is ~256 (+ special tokens). Sequence length equals number of UTF‑8 bytes.
+
+#### Byte-level BPE
+
+Start from bytes, run BPE merges, so tokens become common byte sequences.
+
+The mapping is still lossless because decoding is:
+[
+\mathrm{bytes} = \mathrm{concat}(t_1,\dots,t_n)\quad\Rightarrow\quad s = \mathrm{UTF8}^{-1}(\mathrm{bytes})
+]
+
+**Important nuance for intuition:** a token may correspond to a byte sequence that’s not a “nice character boundary” by itself, but concatenation across tokens reconstructs valid UTF‑8.
+
+---
+
+### 1.5 How tokenization interfaces with embedding geometry and the softmax head
+
+#### Weight tying (common in LMs)
+
+Often:
+[
+W_{\text{out}} = E
+]
+so logits become:
+[
+\ell_i = h_i E^\top
+]
+This makes “input meaning geometry” and “output choice geometry” literally the same vectors.
+
+#### Vocabulary size is real parameter budget
+
+If untied, embedding + output head params:
+[
+#\text{params} \approx 2|\mathcal V|d
+]
+If tied:
+[
+#\text{params} \approx |\mathcal V|d
+]
+So increasing vocab size trades:
+
+* **fewer time steps** (shorter sequences)
+* **more parameters + larger classification head**
+
+#### Token boundaries change what the model must learn to compose
+
+A token is an “atomic id” with an atomic vector. If a string’s meaning spans multiple tokens, the transformer must compose it across time/attention.
+
+This matters most for:
+
+* code identifiers (`myVeryLongFunctionName`)
+* JSON keys (`"user_id"`)
+* rare morphemes in multilingual text
+* long numbers
+
+---
+
+### 1.6 Geometric + information-theoretic intuition: what boundaries do to learning
+
+Here are the two clean intuitions that consistently produce “aha” moments:
+
+#### (A) Tokenization defines the basis vectors the model starts from
+
+At layer 0, the model’s representation is literally:
+[
+[e_1, e_2, \dots, e_n]
+]
+where each (e_i) is the embedding of a token id.
+
+So tokenization decides:
+
+* which substrings get **their own learnable vector**
+* which substrings must be expressed as **compositions** of smaller vectors
+
+This is a **representational bias**.
+
+Example intuition:
+
+* If `"ing"` is a token, you can reuse an `"ing"` direction across many words.
+* If `"running"` is one token, you may memorize it well, but you’re not forced to share structure with `"jumping"`.
+
+#### (B) Unigram tokenization is minimum description length in disguise
+
+Because code length (\approx -\log p(v)), the MAP segmentation:
+[
+\max \sum_i \log p(t_i)
+]
+is equivalent to:
+[
+\min \sum_i -\log p(t_i)
+]
+So unigram tokenization chooses the segmentation that **compresses the string best under its token prior**.
+
+This is the clean bridge to:
+
+* frequency effects
+* why common substrings become single tokens
+* why rare/weird strings blow up into many pieces
+
+---
+
+### 1.7 Common misconceptions to explicitly teach (and correct)
+
+1. **“Tokens are words.”**
+   Tokens are artifacts of a compression/segmentation scheme. Many “words” are multiple tokens; many tokens are not words (whitespace markers, punctuation, byte fragments).
+
+2. **“Tokenization is lossless, so it doesn’t matter.”**
+   Even when reversible, boundaries change **sequence length**, **frequency distribution**, **rare token quality**, and **how meaning must be composed**.
+
+3. **“Bigger vocab is always better.”**
+   Bigger vocab reduces token count but increases:
+
+   * embedding/head parameter footprint
+   * output class count for softmax
+   * risk of “memorized whole chunks” rather than compositional generalization
+
+4. **“Unicode is just characters.”**
+   Unicode has multiple equivalent spellings (NFC/NFD/NFKC), invisible characters, mixed scripts. These can change tokenization and behavior dramatically.
+
+5. **“Byte-level tokenizers solve everything.”**
+   They solve OOV/coverage, but can worsen efficiency for some scripts and create longer sequences (more attention steps).
+
+---
+
+## 2) Implementation Details
+
+### 2.1 Exact `foundationsData.ts` entry to add
+
+Below is a drop-in `Concept` object that matches your schema and uses existing prerequisite IDs from your curriculum (`maximum-likelihood`, `representations`, `efficiency`, `long-context`). I’ve kept the style consistent with existing entries.
+
+```ts
+{
+  id: 'tokenization-vocab',
+  number: 33,
+  title: 'Tokenization & Vocabulary Design',
+  shortTitle: 'Tokenization',
+  icon: '🧩',
+  category: 'core',
+  canonicalPapers: [
+    {
+      title: 'Neural Machine Translation of Rare Words with Subword Units',
+      authors: 'Sennrich, Haddow, Birch',
+      year: 2015,
+      venue: 'ACL',
+      url: 'https://arxiv.org/abs/1508.07909'
+    },
+    {
+      title: 'SentencePiece: A simple and language independent subword tokenizer and detokenizer for Neural Text Processing',
+      authors: 'Kudo, Richardson',
+      year: 2018,
+      venue: 'EMNLP',
+      url: 'https://arxiv.org/abs/1808.06226'
+    },
+    {
+      title: 'ByT5: Towards a token-free future with pre-trained byte-to-byte models',
+      authors: 'Xue et al.',
+      year: 2021,
+      venue: 'arXiv',
+      url: 'https://arxiv.org/abs/2105.13626'
+    }
+  ],
+  coreMath: `Tokenization is the **discrete interface** between text and the model: it maps a string/bytes into vocabulary ids.
+
+**Segmentation constraint:**
+$$x = \\text{concat}(t_1,\\dots,t_n), \\quad t_i \\in \\mathcal V$$
+
+**Unigram (SentencePiece) tokenization as MAP segmentation:**
+$$\\hat{t}_{1:n} = \\arg\\max_{t:\\,\\text{concat}(t)=x}\\; \\sum_{i=1}^{n}\\log p(t_i)$$
+
+**Vocab size affects embedding + softmax head geometry:**
+$$E\\in\\mathbb R^{|\\mathcal V|\\times d},\\qquad \\ell_t = h_t W_{\\text{out}}^\\top,\\; W_{\\text{out}}\\in\\mathbb R^{|\\mathcal V|\\times d}$$
+
+Larger vocab usually means **fewer tokens per string**, but a **larger head/embedding table**. Token boundaries also shape what the model must learn compositionally.`,
+  coreEquation:
+    '\\hat{t}_{1:n} = \\arg\\max_{t:\\,\\text{concat}(t)=x}\\; \\sum_{i=1}^{n}\\log p(t_i)',
+  whyItMatters: [
+    'Tokens are the real unit of cost, latency, and context: the same string can be 1.5×–3× tokens under different tokenizers.',
+    'Token boundaries shape capabilities: code/JSON, multilingual scripts, and long numbers can become “hard” if split poorly.',
+    'Vocabulary size changes real model parameters: embedding + softmax head scale as O(|V|·d) (or 2|V|·d if untied).',
+    'Tokenization affects serving economics: more tokens → more KV cache memory and more decoding steps (#30, #19, #21).',
+    'Normalization and invisible Unicode can change meaning/behavior and create security & prompt-injection edge cases.'
+  ],
+  missingIntuition: [
+    'Tokenization is a learned *bias*: it decides which substrings get their own vectors vs must be composed across time.',
+    'Unigram tokenization is “decoding” a probabilistic model (Viterbi on a token lattice), not just string splitting.',
+    'BPE is greedy compression: frequent byte-pairs become dictionary entries, trading sequence length vs vocab/head size.',
+    'Whitespace and Unicode normalization are first-class: leading spaces, NFKC/NFC, and invisible chars change tokenization and behavior.',
+    'Rare tokens have poorly trained embeddings/output rows; subword pieces share statistics and can generalize better.'
+  ],
+  prereqs: ['maximum-likelihood', 'representations', 'efficiency', 'long-context'],
+  dependents: [],
+  color: CATEGORY_COLORS.core
+}
+```
+
+**Note on `dependents`:**
+
+* If #34–#37 aren’t in the file yet, keep `dependents: []` to avoid dangling graph edges.
+* Once you add them, you’ll likely set #33 dependents to something like:
+
+  * `decoding-sampling` (Concept #34)
+  * `data-curation-mixtures` (#35)
+  * `rag` (#36)
+  * `agents-tool-use` (#37)
+
+…and add `'tokenization-vocab'` to their `prereqs`.
+
+---
+
+### 2.2 Edge cases you should explicitly handle in the concept page + toy code
+
+These are the ones that most often cause “I didn’t know that mattered” moments.
+
+#### Unicode normalization
+
+* **Same human-visible text, different byte sequences**:
+
+  * NFC: `é` as U+00E9
+  * NFD: `e` + combining accent U+0301
+* **NFKC can change semantics** (compatibility folding): ligatures, full-width forms, etc.
+
+**Implementation tip:** add a UI toggle:
+
+* `Normalization: none | NFC | NFD | NFKC | NFKD`
+  and show the **code points** + **UTF‑8 bytes** before tokenization.
+
+```ts
+const norm = (s: string, form: 'none'|'NFC'|'NFD'|'NFKC'|'NFKD') =>
+  form === 'none' ? s : s.normalize(form)
+```
+
+#### Whitespace conventions
+
+Real tokenizers treat whitespace as structural:
+
+* Leading space vs no leading space often changes tokenization.
+* Some schemes include explicit “whitespace marker” tokens (e.g., SentencePiece uses ▁-style markers conceptually).
+
+**UI idea:** display whitespace visibly:
+
+* show `␠` for space, `↵` for newline, `⇥` for tab
+* add toggle “Show whitespace markers”.
+
+#### JSON/code tokens
+
+Tokenization quality is a **huge determinant** of code performance and structured output reliability.
+
+Edge cases:
+
+* escaped quotes `\"`
+* unicode escapes `\u1234`
+* indentation and newlines
+* common multi-char operators: `=>`, `==`, `!=`, `//`, `/* */`, `</`
+
+**Teach explicitly:** poor tokenization can turn a short code snippet into many tokens → harder to model and more expensive.
+
+#### Long numbers
+
+Tokenizers vary wildly on numbers:
+
+* may chunk (`123` `456`)
+* may split per digit (`1` `2` `3` ...)
+* may make large “number tokens” that are rare and poorly trained
+
+This is a prime place to connect to “why arithmetic is hard”: the model often sees numbers as **symbol strings**, not numeric values.
+
+#### Mixed scripts / multilingual
+
+Examples:
+
+* Latin + Cyrillic confusables
+* Japanese + Latin + emoji
+* Arabic shaping & diacritics
+* Thai (no spaces) → segmentation issues
+
+**UI tip:** ship sample inputs that include mixed scripts and show the “token explosion” effect.
+
+---
+
+### 2.3 Numerical stability + performance (in-browser)
+
+Even if your demo vocab is tiny, do it “the right way” so it scales and doesn’t teach bad habits.
+
+#### Use log-space for unigram DP
+
+* Store (\log p(v))
+* DP uses `-Infinity` for impossible states
+
+#### Use stable log-sum-exp if you show marginal probabilities
+
+If you decide to show **total probability** (p(x)) (summing over segmentations), compute:
+[
+\log\sum_i e^{a_i} = m + \log\sum_i e^{a_i-m},\quad m=\max_i a_i
+]
+
+#### Avoid doing “real softmax over 50k vocab” in the browser
+
+If you visualize softmax-head effects, do:
+
+* a **toy vocab** (e.g. 50–500)
+* or show formulas/derived metrics instead of computing full distributions
+
+#### Use `TextEncoder`/`TextDecoder` for byte correctness
+
+```ts
+const enc = new TextEncoder()
+const dec = new TextDecoder('utf-8', { fatal: false })
+const bytes = enc.encode(str) // Uint8Array
+```
+
+#### Keep tokenizer computations off the main thread if you add “train BPE”
+
+If you add an interactive “train merges” feature:
+
+* use a **Web Worker**
+* cap merges (e.g., max 200)
+* cap corpus length (e.g., 5k–20k bytes)
+
+---
+
+## 3) Visualization Deep Dive
+
+### 3.1 One visualization that reliably creates an “aha moment”
+
+Build a **Tokenization Lattice + Cost Lens**.
+
+**Aha:** tokenization is a *path-finding problem* (unigram) and a *compression process* (BPE), and it changes both **sequence length** and **what vectors exist**.
+
+#### Layout (single component)
+
+1. **Input panel**
+
+   * text area + preset buttons (English, Code/JSON, Unicode/Mixed, Long numbers)
+   * toggles: normalization, show bytes, show whitespace
+
+2. **Tokenizer comparison row**
+   Three side-by-side “token strips”:
+
+   * Byte-level
+   * BPE (merge-steps slider)
+   * Unigram (length penalty / temperature slider)
+
+3. **Lattice view (D3)**
+   For the currently selected tokenizer:
+
+   * nodes at positions (0..L)
+   * edges for candidate tokens spanning (i\to j)
+   * highlight chosen path (Viterbi for unigram; deterministic segmentation for BPE; trivial for bytes)
+
+4. **Cost lens mini-dashboard**
+
+   * token count (n)
+   * bytes (L)
+   * estimated KV cache scaling indicator (relative): (\propto n)
+   * “effective context” meter: how many characters fit in a fixed token budget
+
+### 3.2 What should animate
+
+* When the user changes normalization or tokenizer type:
+
+  * **token blocks morph** (D3 enter/update/exit)
+  * lattice edges update; chosen path re-highlights
+* When BPE merge steps increase:
+
+  * animate merges as **two adjacent blocks collapsing into one**
+  * token count decreases live
+  * vocab size indicator increases live
+* When unigram parameters change:
+
+  * chosen Viterbi path can **flip** between segmentations
+  * animate “path switching” to show ambiguity
+
+### 3.3 Controls with suggested defaults/ranges
+
+#### Global
+
+* **Tokenizer**: `Byte | BPE | Unigram` (default: BPE)
+* **Normalization**: `none | NFC | NFKC` (default: none)
+* Toggles:
+
+  * `Show whitespace markers` (default: on)
+  * `Show bytes` (default: off)
+  * `Show code points` (default: off)
+
+#### BPE-specific
+
+* `mergeSteps`: slider 0 → 200 (default: 80)
+* `domain merges`: dropdown (default: “balanced”)
+
+  * balanced merges
+  * code-heavy merges
+  * multilingual-ish merges
+
+#### Unigram-specific
+
+You want a knob that changes segmentation in a visible way. Two good options:
+
+1. **Length penalty** (\lambda) applied per token:
+   [
+   \text{score}(t_{1:n}) = \sum_i \log p(t_i) - \lambda n
+   ]
+
+* slider (\lambda): 0 → 2 (default 0.3)
+  Higher (\lambda) favors **fewer, longer tokens**.
+
+or
+
+2. **Temperature on token priors**:
+   [
+   \log p_\tau(v) = \frac{1}{\tau}\log p(v)
+   ]
+
+* slider (\tau): 0.5 → 2.0 (default 1.0)
+
+### 3.4 “Without shipping a full tokenizer”: recommended approach
+
+You do **not** need GPT‑2/SentencePiece full vocabs to teach this.
+
+#### Recommended: ship tiny toy vocabs + merges (and guarantee fallback)
+
+**Goal:** always tokenize any input, while still demonstrating differences.
+
+* Base fallback: **bytes** always available
+  This guarantees no OOV.
+
+* **Toy BPE merges**:
+
+  * 150–300 merges
+  * stored as `[{a: number[], b: number[], out: number[]}]` or as strings if you only merge along UTF‑8 boundaries
+  * provide 2–3 preset merge lists (English-ish / code-ish / mixed)
+
+* **Toy unigram vocabulary**:
+
+  * same token set as BPE vocab (or subset)
+  * attach probabilities (p(v)) (log probs)
+  * include all single bytes with small probability mass so coverage holds
+
+This gives you:
+
+* byte-level: baseline
+* BPE: deterministic compression effect
+* unigram: lattice / MAP segmentation effect
+
+#### Minimal toy implementations are worth it here
+
+Yes—implement tiny BPE/unigram *for real* (but on toy vocabs). The conceptual clarity payoff is huge.
+
+---
+
+## 4) Connection Map
+
+### 4.1 Prereqs (existing IDs in `foundationsData.ts`)
+
+Use exactly these as `prereqs` for #33:
+
+* `maximum-likelihood` (#1) — tokenization defines the sequence used by cross-entropy
+* `representations` (#10) — tokens become embedding vectors (geometry)
+* `efficiency` (#16) — token count ↔ runtime/cost tradeoffs
+* `long-context` (#30) — tokens are the unit of context length and KV cache scaling
+
+### 4.2 Recommended cross-links (3–6) inside the page
+
+These are strong “see also” links even if not prereqs:
+
+1. `efficient-attention` (#19)
+   Token count changes attention/KV cache dynamics (practical cost lens).
+
+2. `llm-serving` (#21)
+   Tokenization overhead + streaming tokens + latency/cost per token.
+
+3. `scaling-laws` (#14)
+   Scaling discussions use *tokens* as the budget; tokenizer changes effective dataset length and prompt cost.
+
+4. `rope` (#18)
+   Position encoding cares about token positions, not characters; boundary changes shift positional patterns.
+
+5. `multimodal` (#32)
+   Nice analogy: “tokenization” is not just text—images/video also become discrete-ish units (patch tokens/latents).
+
+6. `theory` (#17)
+   BPE/unigram connect naturally to MDL/compression (helpful for the “why” intuition).
+
+---
+
+## 5) Teaching Sequence
+
+Here’s a sequencing that works well for interactive learning and avoids math-first overload.
+
+1. **Hook: Tokenizer Microscope (show, don’t tell)**
+
+   * Preload 3 buttons:
+
+     * “Plain English”
+     * “JSON + code”
+     * “Unicode weirdness”
+   * Show side-by-side token strips for Byte vs BPE vs Unigram
+   * Show token count + “fits in 8k tokens?” meter
+
+2. **What tokenization is (1 minute concept)**
+
+   * “Tokenizer maps text → ids; model never sees characters.”
+   * Show the segmentation equation (x=\text{concat}(t_i))
+
+3. **Three families overview**
+
+   * BPE (merge/compress)
+   * Unigram (probabilistic segmentation)
+   * Byte-level (coverage-first)
+
+4. **Aha section: Unigram lattice (Viterbi)**
+
+   * Draw the lattice
+   * Move the length penalty slider and watch the best path change
+   * Teach the MAP equation and DP recurrence
+
+5. **BPE merge animation**
+
+   * MergeSteps slider: show blocks collapsing
+   * Connect to “compression/dictionary entries”
+   * Show the “most frequent pair” argmax
+
+6. **Interface to the transformer**
+
+   * Embedding table + softmax head shapes
+   * Vocabulary size trade-offs and weight tying
+   * Explain: “tokens are the classes”
+
+7. **Edge case lab**
+
+   * Unicode normalization toggle + invisible characters
+   * Whitespace sensitivity
+   * JSON/code and long numbers
+   * Mixed scripts
+
+8. **Wrap: design trade-offs & checklist**
+
+   * If you optimize for multilingual, what happens?
+   * If you optimize for code, what happens?
+   * If you go byte-level, what changes?
+
+9. **Quick exercises**
+
+   * “Predict which tokenizer uses fewer tokens for this input.”
+   * “Find a normalization that changes tokenization but not appearance.”
+   * “Tune mergeSteps to minimize tokens without exploding |V| in the cost lens.”
+
+---
+
+If you want, I can also provide:
+
+* a ready-to-drop `TokenizerMicroscope.tsx` component skeleton (React + D3 join/transition patterns),
+* a tiny toy merges/probabilities JSON that hits the best “weird splits” (English + code + unicode),
+* and the DP/BPE functions in TypeScript with perf-safe defaults.
+

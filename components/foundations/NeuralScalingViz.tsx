@@ -77,7 +77,7 @@ const COMPUTE_PRESETS = [
 ];
 
 // Model comparison presets
-const MODEL_FOCUS_PRESETS = [
+const _MODEL_FOCUS_PRESETS = [
   { name: '⚖️ All Models', focus: null, description: 'Compare all models on the plot' },
   { name: '🔴 GPT-3 Analysis', focus: 'gpt3', description: 'Focus on why GPT-3 is over-parameterized' },
   { name: '🟢 Chinchilla Optimal', focus: 'chinchilla', description: 'See compute-optimal training' },
@@ -286,7 +286,7 @@ export default function NeuralScalingLawsExplorer() {
 
   const plotState = useMemo<PlotState>(() => {
     let xLabel: string
-    let yLabel = 'Loss (nats/token, schematic)'
+    const yLabel = 'Loss (nats/token, schematic)'
     let curveLabel: string
     let lineColor: string
 

@@ -602,7 +602,7 @@ export default function RLHFDemo() {
     setGamePhase('countdown')
   }
 
-  const resetGame = () => {
+  const _resetGame = () => {
     setGameMode(false)
     setGamePhase('setup')
     setSelectedChallenge(null)

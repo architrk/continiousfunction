@@ -298,7 +298,7 @@ function findInductionPattern(tokens: string[]): InductionPattern | null {
 
   for (let i = 0; i < n - 2; i++) {
     const A = tokens[i]
-    const B = tokens[i + 1]
+    const _B = tokens[i + 1]
     for (let j = i + 2; j < n; j++) {
       if (tokens[j] === A) {
         return {
@@ -419,7 +419,7 @@ export default function InductionHeadsDemo() {
 
   const focusRow =
     effectiveTokenIndex !== null ? attn[effectiveTokenIndex] : undefined
-  const focusKeyIndex =
+  const _focusKeyIndex =
     focusRow && focusRow.length ? argmax(focusRow) : -1
 
   const predictedNextToken =

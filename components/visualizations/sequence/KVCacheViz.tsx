@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
+import { callAxis } from '../../../lib/d3Types'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Gamification Types and Data
@@ -150,6 +151,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
     }
     const timer = setInterval(() => setCountdown((c) => c - 1), 1000)
     return () => clearInterval(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- revealAnswer is stable callback
   }, [gamePhase, countdown])
 
   // Simple model of KV compute cost:
@@ -213,7 +215,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .tickFormat(() => '')
 
     grid
-      .call(yGrid as any)
+      .call(callAxis(yGrid))
       .call(g =>
         g
           .selectAll('line')
@@ -235,11 +237,11 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
     g.append('g')
       .attr('class', 'kv-axis kv-axis-x')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(xAxis as any)
+      .call(callAxis(xAxis))
 
     g.append('g')
       .attr('class', 'kv-axis kv-axis-y')
-      .call(yAxis as any)
+      .call(callAxis(yAxis))
 
     g.selectAll('.kv-axis text')
       .attr('fill', '#9ca3af')
@@ -260,7 +262,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .y(d => y(d))
       .curve(d3.curveMonotoneX)
 
-    const noCachePath = g
+    const _noCachePath = g
       .append('path')
       .datum(noCacheSeries)
       .attr('fill', 'none')

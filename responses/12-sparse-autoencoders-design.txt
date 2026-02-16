@@ -1,0 +1,196 @@
+🧿 oracle 0.7.0 — Ships facts, not vibes.
+Created: 2025-12-22T08:10:00.075Z
+Status: completed
+Models:
+- gpt-5.1-pro — completed tok=2.18k/18.79k
+Prompt:
+You are building 'Continuous Function' - target 50 concepts total.
+CURRENT: 24 concepts implemented
+Efficiency arc complete: #19-23 (Attention→Speculative→Serving→MoE→MoE Serving)
+Alignment started: #24 DPO
+YOUR TASK: Identify Foundation Concept #29
+Consider natural progressions:
+- Alignment variants (SimPO, ORPO, KTO, reward hacking)
+- Interpretability (SAEs, feature discovery, circuit analysis)
+- Training efficiency (SwiGLU, modern activations, fused kernels)
+- Architecture (SSMs/Mamba, linear attention, hybrid models)
+- Long context (KV compression, attention variants)
+- Robustness (adversarial, OOD detection)
+Choose the MOST IMPACTFUL next concept that:
+1. Has 2024-2025 research backing
+2. Fills educational gaps
+3. Connects naturally to existing concepts
+4. Matters in frontier models
+OUTPUT:
+1. Concept #29 recommendation + positioning
+2. Math core (2-3 key equations)
+3. Frontier model usage
+4. Missing intuition to teach
+5. 2-3 canonical papers
+6. Visualization ideas
+7. Prerequisites
+8. Unlocks what
+Be decisive and pick the optimal next step.
+
+---
+Answer:
+## 1) Concept #29 recommendation + positioning
+
+**#29 — Sparse Autoencoders at Scale: Feature Dictionaries for Mechanistic Interpretability (and Steering)**
+
+**Positioning in your map:**
+
+* You already teach **why** interpretability is hard (#11 Superposition) and **how** to reason about circuits (#13).
+* What’s missing is the **workhorse method frontier labs now use to *extract the parts list*** from big models: **train a sparse autoencoder on internal activations to recover “features” (latent directions) that are far more interpretable than neurons/heads**.
+* This concept also bridges to **alignment**: once you can *name* internal features, you can **measure, audit, and intervene**—a natural continuation after RLHF/DPO (#15, #24).
+
+Why this is the optimal next step:
+
+* It has **strong 2024–2025 backing** and is **actively used on frontier models** (OpenAI + Anthropic-scale work). ([OpenAI][1])
+* It fills a key educational gap: “superposition exists” → “here’s how we actually *recover features* from real models.”
+
+---
+
+## 2) Math core (2–3 key equations)
+
+Let (x \in \mathbb{R}^d) be a model activation vector (often **residual stream** at a layer/site).
+
+**(1) SAE encode → sparse latents, decode → reconstruction**
+[
+z = \mathrm{ReLU}(W_{\text{enc}}(x-b_{\text{pre}})+b_{\text{enc}}),\qquad
+\hat x = W_{\text{dec}} z + b_{\text{pre}}
+]
+This makes the key idea concrete: **a sparse code (z)** explains the dense activation (x) via a learned dictionary (W_{\text{dec}}). 
+
+**(2) Classic SAE objective (reconstruction + sparsity penalty)**
+[
+\mathcal L = \lVert x-\hat x\rVert_2^2 + \lambda \lVert z\rVert_1
+]
+Sparsity is what pushes the model toward **monosemantic, human-nameable latents** (instead of dense uninterpretable factors). 
+
+**(3) Modern “Top‑K / k‑sparse” variant (directly control sparsity)**
+[
+z = \mathrm{TopK}(W_{\text{enc}}(x-b_{\text{pre}}), k),\qquad
+\mathcal L = \lVert x-\hat x\rVert_2^2
+]
+This replaces “tune (\lambda)” with “set exactly **k active features per token**,” improving the reconstruction–sparsity frontier and simplifying scaling. 
+
+---
+
+## 3) Frontier model usage
+
+Where this shows up in frontier practice:
+
+* **OpenAI (GPT‑4):** trained extremely large SAEs (e.g., **16M latent** autoencoder) on GPT‑4 activations, and uses a “feature browser” style workflow (inspect top-activating contexts) to interpret features. ([OpenAI][1])
+* **Anthropic (Claude 3 Sonnet):** reported extracting large numbers of interpretable features from Claude 3 Sonnet using SAE-style methods, emphasizing scaling behavior and abstract features. ([transformer-circuits.pub][2])
+* **DeepMind/GDM-style training improvements:** Gated SAE work targets known SAE pathologies (notably **L1 shrinkage bias**) and shows improvements on models like Gemma‑7B. 
+* **Downstream interpretability pipelines:** SAEs enable **feature-level circuit discovery and editing** (circuits built from “features” instead of heads/neurons). ([arXiv][3])
+
+Why frontier cares:
+
+* You can’t reliably “neuron-interpret” huge models due to **polysemanticity**; SAEs give a scalable substitute unit: **feature latents**.
+
+---
+
+## 4) Missing intuition to teach
+
+This is the “aha” layer your users likely don’t have yet:
+
+1. **SAE = “learn a parts dictionary for the residual stream.”**
+   Each column of (W_{\text{dec}}) is a candidate *feature direction*. The sparse vector (z) says “which parts are present right now, and how strongly.”
+
+2. **Sparsity is the interpretability prior.**
+   A dense code can represent anything but names nothing. Sparse codes force the model to reuse a small set of directions across many examples—making “this direction” show up repeatedly in similar semantic contexts.
+
+3. **The real knob isn’t “reconstruction error,” it’s “explanatory budget per token.”**
+   In k‑sparse SAEs, (k) literally sets: *how many features are allowed to explain an activation*. That’s an intuitive tradeoff slider users can grasp immediately. 
+
+4. **SAE pathologies are not side notes—they’re the whole game at scale.**
+
+   * **Shrinkage bias** from L1 can understate feature magnitudes; gated approaches explicitly address this. 
+   * **Dead latents** (features that never activate) become severe at scale; modern recipes include explicit mitigations. 
+
+5. **Interpretability becomes actionable when features become causal handles.**
+   Once you have features, you can do: ablation, amplification, causal tracing, circuit extraction—turning “interpretability” into “debugging & control.”
+
+---
+
+## 5) 2–3 canonical papers (2024–2025)
+
+1. **Gao et al. (OpenAI), “Scaling and evaluating sparse autoencoders” (2024)** — scaling SAEs (TopK / k‑sparse), dead-latent mitigations, and evaluation metrics; includes training a **16M latent SAE on GPT‑4 activations**. ([arXiv][4])
+2. **Rajamanoharan et al., “Improving Dictionary Learning with Gated Sparse Autoencoders” (2024)** — addresses L1 shrinkage by separating “which features fire” from “how strongly,” improving the pareto frontier. 
+3. **Marks et al., “Sparse Feature Circuits: Discovering and Editing Interpretable Causal Graphs in Language Models” (2024)** — uses SAE features as units for circuit discovery and editing, enabling scalable pipelines beyond neuron/head circuits. ([arXiv][3])
+
+---
+
+## 6) Visualization ideas
+
+1. **Reconstruction–Sparsity Frontier Explorer**
+
+   * X-axis: sparsity (L0 or (k)); Y-axis: reconstruction error (MSE)
+   * Toggle between **L1 SAE** vs **TopK SAE** vs **Gated SAE**; show “why TopK is easier to tune.”
+
+2. **Feature Browser (“What activates this feature?”)**
+
+   * For a selected latent (z_j), show:
+
+     * top-activating text spans (tokens highlighted by activation),
+     * histogram of activations across dataset,
+     * co-activation graph with other features.
+   * This is the canonical workflow described in OpenAI’s GPT‑4 feature extraction writeup. ([OpenAI][1])
+
+3. **Geometry view of superposition → SAE disentangling**
+
+   * Plot: dense activation point cloud in 2D projection
+   * Overlay learned decoder directions (d_j)
+   * Animate: representing each activation as sum of a few directions.
+
+4. **“Steering slider” demo (safe, toy model)**
+
+   * Pick a feature (e.g., “politeness” / “SQL mode” / “Spanish mode”)
+   * Show how amplifying/ablating it changes completions.
+
+5. **Circuit extraction preview**
+
+   * Node graph: features as nodes, edges as inferred causal influence
+   * Tie directly into a future concept on “sparse feature circuits.”
+
+---
+
+## 7) Prerequisites (connect to your existing concepts)
+
+Must-have prereqs from your current 24:
+
+* **#10 Representation Learning & Embedding Geometry** (vector-space thinking)
+* **#11 Superposition, Sparse Features & Monosemanticity** (why neurons fail; why sparse directions help)
+* **#12 Probing & Activations** (working with internal activations)
+* **#13 Transformer Circuits** (what we’ll do *after* we have features)
+* (Optional) **#2 Attention/Transformers** (where residual stream activations come from)
+
+---
+
+## 8) Unlocks what
+
+Adding #29 unlocks a whole “modern interpretability” branch:
+
+* **Feature-level circuit analysis** (instead of head/neuron circuits): scalable causal graphs, sparse feature circuits. ([arXiv][3])
+* **Auditing & safety monitoring**: detect internal activation patterns correlated with risk (deception, jailbreak compliance, etc.)—a natural bridge to post‑training alignment.
+* **Feature steering / model control**: controlled interventions become explainable knobs (precursor to “model editing” concepts).
+* **Better eval mental models**: reconstruction error ≠ interpretability; you can teach “feature quality metrics” and downstream behavioral impacts (introduced in the OpenAI scaling paper). ([arXiv][4])
+* **A clean on-ramp to automated interpretability**: moving from artisanal hand-picked circuits to pipelines that discover many behaviors automatically.
+
+---
+
+### Final decision
+
+**Make #29 “Sparse Autoencoders at Scale.”** It’s the most leverage-per-concept addition right now because it turns your existing interpretability foundations into a *frontier-relevant, practical extraction method* that directly supports both mechanistic understanding and alignment work.
+
+[1]: https://openai.com/index/extracting-concepts-from-gpt-4/?utm_source=chatgpt.com "Extracting Concepts from GPT-4"
+[2]: https://transformer-circuits.pub/2024/scaling-monosemanticity/?utm_source=chatgpt.com "Extracting Interpretable Features from Claude 3 Sonnet"
+[3]: https://arxiv.org/abs/2403.19647?utm_source=chatgpt.com "Sparse Feature Circuits: Discovering and Editing Interpretable Causal Graphs in Language Models"
+[4]: https://arxiv.org/abs/2406.04093?utm_source=chatgpt.com "Scaling and evaluating sparse autoencoders"
+
+
+Finished in 16m 46s (gpt-5.1-pro[browser] | tok(i/o/r/t)=16.61k/2.18k/0/18.79k | files=1)
+
+Finished in 16m 46s (gpt-5.1-pro[browser] | tok(i/o/r/t)=16.61k/2.18k/0/18.79k | files=1 | slug=you-are-building-continuous-function-9)

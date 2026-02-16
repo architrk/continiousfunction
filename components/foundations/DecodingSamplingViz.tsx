@@ -388,7 +388,7 @@ function applyRepetitionPenalty(logits: number[], history: number[], penalty: nu
 }
 
 function sampleFromDistribution(probs: number[], seed: number): [number, number] {
-  let [r, nextSeed] = nextRand(seed)
+  const [r, nextSeed] = nextRand(seed)
   let cum = 0
   for (let i = 0; i < probs.length; i++) {
     cum += probs[i]

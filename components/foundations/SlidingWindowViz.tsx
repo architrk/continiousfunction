@@ -224,7 +224,7 @@ const SlidingWindowAttentionDemo: React.FC<SlidingWindowAttentionProps> = ({
 
   const windowTokens = windowSizeCells * TOKENS_PER_CELL
   const effectiveContextTokens = numLayers * windowTokens
-  const approximateK = effectiveContextTokens / 1024
+  const _approximateK = effectiveContextTokens / 1024
   const seqTokens = seqLen * TOKENS_PER_CELL
   const clampedEffective = Math.min(effectiveContextTokens, seqTokens)
 
@@ -1122,7 +1122,7 @@ interface MemoryBarChartProps {
 
 const MemoryBarChart: React.FC<MemoryBarChartProps> = ({
   seqLen,
-  windowSizeCells,
+  windowSizeCells: _windowSizeCells,
   fullComplexity,
   slidingComplexity,
   savingsFactor,
@@ -1176,7 +1176,7 @@ const MemoryBarChart: React.FC<MemoryBarChartProps> = ({
         L×L matrix. Sliding-window attention only stores L×W entries, where W
         is the window size.
       </p>
-      <svg width={width} height={height} role="img">
+      <svg width={width} height={height} role="img" aria-label="Memory comparison: full attention L×L matrix vs sliding window L×W entries">
         {/* Axes baseline */}
         <line
           x1={padding.left}

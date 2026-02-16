@@ -311,7 +311,7 @@ interface InformationPlaneProps {
 
 function InformationPlane(props: InformationPlaneProps) {
   const {
-    beta,
+    beta: _beta,
     betaNorm,
     epoch,
     trajectories,
@@ -549,6 +549,7 @@ function CompressionPredictionPanel({ betaNorm }: CompressionPredictionProps) {
         const y = (1 - compression) * p.y + compression * c.y
         return { ...p, rx: x, ry: y }
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- centers is stable (derived from labels)
     [toyPoints, compression],
   )
 
@@ -975,6 +976,7 @@ function MDLView({ modelComplexity, setModelComplexity }: MDLViewProps) {
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
       })
       .join(' ')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- xScale/yScale are stable within render
   }, [points])
 
   const lhPath = useMemo(() => {
@@ -985,6 +987,7 @@ function MDLView({ modelComplexity, setModelComplexity }: MDLViewProps) {
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
       })
       .join(' ')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- xScale/yScale are stable within render
   }, [points])
 
   const ldPath = useMemo(() => {
@@ -995,6 +998,7 @@ function MDLView({ modelComplexity, setModelComplexity }: MDLViewProps) {
         return `${i === 0 ? 'M' : 'L'} ${x} ${y}`
       })
       .join(' ')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- xScale/yScale are stable within render
   }, [points])
 
   const currentC = clamp(modelComplexity, 0, 1)

@@ -556,7 +556,7 @@ export default function GANsViz() {
         </div>
       )}
 
-      <svg width={width} height={height} className="gan-viz-svg">
+      <svg width={width} height={height} className="gan-viz-svg" role="img" aria-label="GAN visualization showing generator and discriminator learning to match real and generated distributions">
         <defs>
           <linearGradient id="realGrad" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor={MATH_COLORS.primary} stopOpacity="0.6" />

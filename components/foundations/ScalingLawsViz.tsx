@@ -431,12 +431,16 @@ export default function ScalingLawsDemo() {
     if (gamePhase !== 'animating' || challengeLogC === null) return
 
     const animationDuration = 2500 // ms
-    const startTime = Date.now()
+    const startTime = performance.now()
     const startLogC = 20
     const endLogC = challengeLogC
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime
+    let rafId = 0
+    let cancelled = false
+
+    const animate = (now: number) => {
+      if (cancelled) return
+      const elapsed = now - startTime
       const progress = Math.min(1, elapsed / animationDuration)
       // Ease out curve for dramatic reveal
       const easedProgress = 1 - Math.pow(1 - progress, 3)
@@ -444,12 +448,17 @@ export default function ScalingLawsDemo() {
       setAnimatedLogC(currentLogC)
 
       if (progress < 1) {
-        requestAnimationFrame(animate)
+        rafId = requestAnimationFrame(animate)
       } else {
         setGamePhase('revealed')
       }
     }
-    requestAnimationFrame(animate)
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+    }
   }, [gamePhase, challengeLogC])
 
   // Compute actual accuracy for prediction result
@@ -671,7 +680,7 @@ export default function ScalingLawsDemo() {
 
   // Iso-compute curves for a couple of fixed budgets plus the current slider
   const isoComputeLevels = [21, 23, 25]
-  const allIsoLevels = [...isoComputeLevels, logCompute]
+  const allIsoLevels = [...new Set([...isoComputeLevels, logCompute])]
 
   const isoPaths = allIsoLevels.map((logCVal) => {
     const C = Math.pow(10, logCVal)
@@ -1274,7 +1283,7 @@ export default function ScalingLawsDemo() {
 
               {/* Capability curves */}
               {CAPABILITY_ORDER.map((key) => {
-                const cfg = CAPABILITIES[key]
+                const _cfg = CAPABILITIES[key]
                 const steps = 80
                 const path = []
                 for (let i = 0; i <= steps; i++) {

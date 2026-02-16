@@ -16,7 +16,7 @@ const ARCH_CHALLENGES = [
 function getArchPredictionFeedback(
   predicted: ArchitectureId,
   actual: ArchitectureId,
-  scenarioName: string
+  _scenarioName: string
 ): string {
   const explanations: Record<ArchitectureId, string> = {
     'MHA': 'MHA gives each query head its own KV head, maximizing expressiveness. Best when quality is paramount and memory is abundant.',
@@ -245,6 +245,8 @@ const ArchitectureDiagramColumn: React.FC<ArchitectureDiagramColumnProps> = ({
         viewBox={`0 0 ${width} ${height}`}
         width="100%"
         height={height}
+        role="img"
+        aria-label="Grouped Query Attention visualization showing query heads sharing key-value heads for memory efficiency"
         style={{
           display: 'block',
           borderRadius: '0.5rem',
@@ -871,7 +873,7 @@ const AttentionArchitecturesExplorer: React.FC = () => {
 
         {/* Revealed */}
         {gamePhase === 'reveal' && activeChallenge && (
-          <div>
+          <div role="status" aria-live="polite" aria-atomic="true">
             <div style={{
               textAlign: 'center',
               padding: '16px',
@@ -880,8 +882,10 @@ const AttentionArchitecturesExplorer: React.FC = () => {
                 : 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05))',
               borderRadius: '10px',
               marginBottom: '12px',
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>
+            }}
+              aria-label={predictionCorrect ? 'Correct prediction' : 'Incorrect prediction'}
+            >
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }} aria-hidden="true">
                 {predictionCorrect ? '🎉' : '🤔'}
               </div>
               <div style={{

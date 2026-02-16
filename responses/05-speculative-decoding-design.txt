@@ -1,0 +1,38 @@
+Foundation #20: Speculative Decoding (Draft-Verify) — Lossless Multi-Token Generation
+
+[Full Oracle response - see background task output]
+
+## Key Points for Implementation
+
+**Concept ID:** speculative-decoding
+**Category:** efficiency
+**Icon:** ⏩
+**Number:** 20
+
+**Canonical Papers:**
+1. Fast Inference from Transformers via Speculative Decoding (Leviathan et al., ICML 2023)
+2. Sequoia: Scalable and Robust Speculative Decoding (Chen et al., NeurIPS 2024)
+3. PEARL: Parallel Speculative Decoding with Adaptive Draft Length (Liu et al., ICLR 2025)
+
+**Core Math:**
+- Acceptance probability: α_i = min(1, p_i[x_i] / q_i[x_i])
+- Residual sampling: x_i ~ Normalize(max(0, p_i - q_i))
+- Lossless property: output distributed exactly as target model p
+
+**Visualizations to Build:**
+1. Token-level rejection sampler sandbox (shows lossless property)
+2. Draft-verify timeline with "mutual waiting" meter
+3. Tree speculation explorer (Sequoia-style)
+4. "Where #19 helps" verifier-cost demo
+
+**Prerequisites:**
+- maximum-likelihood (#1)
+- attention-transformers (#2)
+- efficiency (#16)
+- efficient-attention (#19) — CRITICAL dependency
+
+**Enables (Future #21+):**
+- LLM serving systems (continuous batching, KV paging)
+- Draft-model training recipes
+- Cascade hybrids
+- Inference-time alignment

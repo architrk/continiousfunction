@@ -599,7 +599,7 @@ function BpeTradeoffChart(props: {
         <div className="panel-title">BPE tradeoff</div>
         <div className="panel-meta">step {current}/{n - 1}</div>
       </div>
-      <svg viewBox={`0 0 ${w} ${h}`} className="chart">
+      <svg viewBox={`0 0 ${w} ${h}`} className="chart" role="img" aria-label="BPE tradeoff chart showing tokens vs vocabulary size during tokenizer training">
         <path d={pathTok} fill="none" stroke="rgba(96,165,250,0.9)" strokeWidth={2} />
         <path d={pathV} fill="none" stroke="rgba(52,211,153,0.9)" strokeWidth={2} />
         <line x1={cx} x2={cx} y1={pad} y2={h - pad} stroke="rgba(148,163,184,0.35)" strokeWidth={1} />

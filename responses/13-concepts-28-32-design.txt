@@ -1,0 +1,376 @@
+🧿 oracle 0.7.0 — The cleanup crew for speculative stack traces.
+Created: 2025-12-22T08:36:06.574Z
+Status: completed
+Models:
+- gpt-5.1-pro — completed tok=4.59k/24.3k
+Prompt:
+You are building 'Continuous Function' - target 50 concepts total.
+CURRENT: 27 concepts implemented
+Alignment arc complete: #24 DPO, #25 KTO, #26 Reward Hacking, #27 SAEs
+YOUR TASK: Identify Foundation Concepts #28-32 (5 concepts)
+Consider natural progressions:
+- Interpretability extensions (circuit analysis, feature steering, automated 
+  interp)
+- Training efficiency (SwiGLU, modern activations, fused kernels, mixed 
+  precision)
+- Architecture (SSMs/Mamba, linear attention, hybrid models, Retentive Networks)
+- Long context (KV compression, attention variants, RoPE extensions)
+- Robustness (adversarial, OOD detection, calibration)
+- Advanced optimization (Sophia, Lion, Shampoo, second-order methods)
+- Multimodal (vision encoders, cross-attention, contrastive learning)
+Choose the 5 MOST IMPACTFUL next concepts that:
+1. Have 2024-2025 research backing
+2. Fill educational gaps
+3. Connect naturally to existing concepts
+4. Matter in frontier models
+For EACH of the 5 concepts, OUTPUT:
+1. Concept number + recommendation + positioning
+2. Math core (2-3 key equations)
+3. Frontier model usage
+4. Missing intuition to teach
+5. 2-3 canonical papers
+6. Visualization ideas
+7. Prerequisites
+8. Unlocks what
+Be decisive and pick the optimal next 5 steps.
+
+---
+Answer:
+## #28 — Automated Circuit Discovery via Patching, Attribution, and Decomposition
+
+**Recommendation + positioning:** *“From SAEs to scalable mechanistic explanations.”* You already have circuits (#13) and SAEs (#27); the next gap is **automating** “find the circuit” so interpretability isn’t stuck at hand-crafted case studies.
+
+1. **Concept #28 + positioning**
+   Automated Circuit Discovery (ACDC → EAP → CD-T): turning mechanistic interpretability into a *search / scoring / pruning* problem over the model’s computational graph.
+
+2. **Math core (2–3 key equations)**
+
+* **Activation patching as a causal intervention (edge/node ablation):**
+  [
+  \Delta_E ;=;\left|,L(x_{\text{clean}}\mid do(E=e_{\text{corr}})) - L(x_{\text{clean}}),\right|
+  ]
+
+* **Attribution patching (first-order/Taylor approximation):**
+  [
+  L(x_{\text{clean}}\mid do(E=e_{\text{corr}})) \approx L(x_{\text{clean}}) + (e_{\text{corr}}-e_{\text{clean}})^\top
+  \frac{\partial}{\partial e_{\text{clean}}}L(x_{\text{clean}}\mid do(E=e_{\text{clean}}))
+  ]
+
+* **Edge scoring + pruning (circuit extraction):**
+  [
+  s_E ;=;|\Delta_e L|\quad\text{then keep top-}k\text{ edges}
+  ]
+
+3. **Frontier model usage**
+
+* Used in *frontier-aligned* workflows where you need to answer: “**Which internal components are responsible for behavior X?**” at a granularity like head→head edges, MLP writes, specific positions, etc.
+* 2024–2025 trend: moving from slow patching-based search (ACDC) toward **faster approximations** (EAP) and **decomposition-style methods** that aim to get circuits in seconds rather than hours (CD-T).
+
+4. **Missing intuition to teach**
+
+* **Activation patching is causal; attribution patching is *linearized causal***. The approximation can be *useful* even when it’s not faithful pointwise—students need a strong feel for when gradients lie.
+* **Metric choice is everything:** some metrics create degenerate gradients (e.g., “zero-gradient at the optimum” pathologies); automated methods inherit these failure modes.
+* **Circuits are not unique**: many sparse subgraphs can reproduce behavior; pruning reveals *a* mechanism, not *the* mechanism.
+
+5. **2–3 canonical papers**
+
+* Conmy et al., *Towards Automated Circuit Discovery for Mechanistic Interpretability* (NeurIPS 2023, ACDC).
+* Syed et al., *Attribution Patching Outperforms Automated Circuit Discovery* (BlackBoxNLP/ACL Anthology 2024; Edge Attribution Patching framing).
+* Hsu et al., *Efficient Automated Circuit Discovery in Transformers using Contextual Decomposition (CD‑T)* (ICLR 2025).
+
+6. **Visualization ideas**
+
+* **Circuit graph UI:** nodes = heads/MLPs at positions, edges colored by (s_E); slider for pruning threshold; show task metric vs %edges kept.
+* **Patch map heatmap:** layer×head matrix of (\Delta) scores; click into a head to see its strongest incoming/outgoing edges.
+* **Approximation gap demo:** plot activation-patching (\Delta_E) vs attribution score for same edges; show where linearization over/under-estimates.
+
+7. **Prerequisites**
+
+* #2 Attention & transformer layers
+* #13 Transformer circuits & mechanistic interpretability
+* #1 Cross-entropy / KL basics (for metrics)
+* #27 SAEs (optional but highly synergistic)
+
+8. **Unlocks what**
+
+* Scaling mechanistic interpretability from “one-off archaeology” → **repeatable pipeline**.
+* Enables **target selection** for steering (#29), safety interventions, and debugging.
+* Bridges to “automatic red-teaming of internals” and interpretability evaluations at scale.
+
+## #29 — Activation Steering and Feature-Guided Interventions
+
+**Recommendation + positioning:** *“Interpretability becomes actionable.”* After SAEs (#27) and automated circuit discovery (#28), the natural next concept is **intervening** on internals to control outputs—both to test hypotheses and to get practical, inference-time control.
+
+1. **Concept #29 + positioning**
+   Activation Steering / Activation Engineering: methods that *edit hidden states* (or SAE latents) to change behavior without retraining, turning interpretability into **control knobs**.
+
+2. **Math core (2–3 key equations)**
+
+* **Classic steering vector addition (one layer/position):**
+  [
+  h_{\ell,t}^{,\text{steer}} ;=; h_{\ell,t} + \alpha,v_{\ell,t}
+  ]
+* **Contrastive steering vector (difference of means):**
+  [
+  v_{\ell,t} ;=; \mathbb{E}[h_{\ell,t}\mid \text{desired}] ;-; \mathbb{E}[h_{\ell,t}\mid \text{undesired}]
+  ]
+  (This is the core idea behind “instruction vectors” and many CAA-style methods.)
+* **SAE-latent steering (feature toggle → decode back):**
+  [
+  z = f_{\text{enc}}(h_{\ell,t}),\qquad
+  h_{\ell,t}^{,\text{steer}} = f_{\text{dec}}!\left(z + \delta,e_k\right)
+  ]
+  (With (e_k) a basis vector selecting feature (k).)
+
+3. **Frontier model usage**
+
+* **Inference-time control**: enforce format/length/constraints, style shifts, reduce/induce refusals, change factuality/hedging, etc., *without fine-tuning*.
+* **Interpretability probe:** steering is a causal test—if adding feature (k) induces behavior, you’ve localized part of the mechanism (and can validate circuits).
+* **Minimal interventions trend:** “activation scaling” learns sparse scalars to strengthen/weaken existing directions, aiming for more interpretable, less invasive edits.
+
+4. **Missing intuition to teach**
+
+* Steering is **geometry on the model’s manifold**: small (\alpha) nudges within-distribution; large (\alpha) can throw you off-manifold → incoherence and capability loss.
+* “Interpretable steering” isn’t just *what direction*—it’s *which basis*: SAE features give humans handles, but the decoder can entangle effects unless you constrain feature selection.
+* **Compositionality isn’t guaranteed**: adding two “instruction vectors” can cancel or amplify depending on where they write in residual space.
+
+5. **2–3 canonical papers**
+
+* Stoehr et al., *Activation Scaling for Steering and Interpreting Language Models* (EMNLP Findings 2024).
+* Stolfo et al., *Improving Instruction-Following in Language Models through Activation Steering* (ICLR 2025 submission listed on arXiv).
+* Soo et al., *Feature Guided Activation Additions (FGAA)* (OpenReview, 2025).
+
+6. **Visualization ideas**
+
+* **Logit lens delta:** show top-10 logits before/after steering; animate as (\alpha) changes.
+* **SAE feature dashboard:** bars for (z_k) activations; user toggles features; show generated text changes + which features were used.
+* **Steering phase diagram:** heatmap of “task success” vs (\alpha) and layer index (\ell); highlight the “safe” band before coherence collapses.
+
+7. **Prerequisites**
+
+* #2 Transformers + residual stream mental model
+* #10 Embedding geometry
+* #27 SAEs (strongly recommended)
+* #28 (optional) for causal framing of interventions
+
+8. **Unlocks what**
+
+* Practical, modular **behavior control** without retraining.
+* A causal toolkit to validate interpretability claims (“this feature causes that behavior”).
+* A bridge to safety: controllable refusal/style/format constraints as *post-training knobs*.
+
+## #30 — Long Context Engineering: RoPE Scaling + KV Memory Compression
+
+**Recommendation + positioning:** *“How frontier models reach 128K → 1M+ tokens.”* You already cover RoPE basics (#18) and KV cache/FlashAttention (#19). The missing piece is **how we break the pretraining-length ceiling** and then **make the KV memory cost survivable**.
+
+1. **Concept #30 + positioning**
+   Long-context extension is a *two-front war*:
+
+* **Position extrapolation** (RoPE scaling / interpolation / non-uniform rescaling), and
+* **Inference memory** (KV cache quantization/compression), which dominates at long contexts.
+
+2. **Math core (2–3 key equations)**
+
+* **RoPE injection (complex form, key idea: relative phase):**
+  [
+  q_{m,[2j:2j+1]} = W_q x_m, e^{i m\theta_j},\quad
+  k_{n,[2j:2j+1]} = W_k x_n, e^{i n\theta_j},\quad
+  \theta_j=b^{-2j/d}
+  ]
+
+* **YaRN “NTK-by-parts” wavelength scaling (one way to extend):**
+  [
+  \hat{\lambda}_j = (1-\gamma_j),s\lambda_j + \gamma_j,\lambda_j,
+  \quad
+  \gamma_j=
+  \begin{cases}
+  1 & \lambda_j<L/\beta\
+  0 & \lambda_j>L/\alpha\
+  \frac{L/\lambda_j-\alpha}{\beta-\alpha} & \text{otherwise}
+  \end{cases}
+  ]
+
+* **Attention with compressed KV (generic form):**
+  [
+  \text{Attn}(q,K,V)=\text{softmax}!\left(\frac{qK^\top}{\sqrt d}\right)V
+  ;\approx;
+  \text{Attn}(q,;C(K),;C(V))
+  ]
+  (Where (C(\cdot)) may prune tokens, cluster, low-rank project, or quantize.)
+
+3. **Frontier model usage**
+
+* **RoPE scaling methods** are a dominant route to extending transformer context windows without architectural change (e.g., YaRN and successors).
+* **Extreme context via rescaling:** LongRoPE reports extending to **millions of tokens** using non-uniform positional interpolation/rescaling; it’s also presented as practical enough to integrate into an existing stack.
+* **KV cache becomes the bottleneck** at very long contexts; KVQuant specifically targets KV activation quantization and reports enabling **~1M context on a single A100‑80GB** (and much longer with more GPUs) at low perplexity degradation.
+
+4. **Missing intuition to teach**
+
+* The failure mode isn’t “the model forgets”—it’s often **phase/angle OOD**: RoPE dimensions have wavelengths, and beyond training range you hit unseen rotations (“critical dimensions” framing).
+* Long context breaks attention in two ways:
+  **(a)** position encoding extrapolation, and **(b)** **attention entropy / softmax temperature drift** as (T) grows (why some methods rescale attention).
+* **Memory math becomes destiny**: for long contexts, KV cache storage and bandwidth dominate; quantization/compression is not optional at scale.
+
+5. **2–3 canonical papers**
+
+* Peng et al., *YaRN: Efficient Context Window Extension of Large Language Models* (ICLR 2024).
+* Ding et al., *LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens* (ICML 2024).
+* Hooper et al., *KVQuant: Towards 10 Million Context Length LLM Inference with KV Cache Quantization* (2024).
+
+6. **Visualization ideas**
+
+* **RoPE angle plot:** show (m\theta_j) vs position (m) for several (j); overlay scaled variants to make “OOD angle ranges” obvious.
+* **KV memory budget chart:** memory = layers × heads × seq_len × head_dim × bytes; compare FP16 vs 4-bit vs 3-bit (interactive slider).
+* **Attention entropy vs length:** plot entropy for baseline vs attention-scaled variant; annotate “why logits scaling helps.”
+
+7. **Prerequisites**
+
+* #18 RoPE
+* #19 KV cache, GQA & FlashAttention
+* #21 Serving (prefill/decode) for why KV dominates
+* #2 Attention basics
+
+8. **Unlocks what**
+
+* The playbook behind modern 32k/128k/256k (and beyond) context windows.
+* Ability to reason about long-context tradeoffs: “positional method vs KV compression vs architecture change.”
+* Sets up the motivation for #31 (SSMs/hybrids as KV-free/linear-time alternatives).
+
+## #31 — State Space Models and Hybrid Architectures: Mamba‑2 / SSD / Griffin / Jamba
+
+**Recommendation + positioning:** *“Architectures that scale in time and memory.”* Long context (#30) exposes the transformer’s Achilles heel (quadratic attention + ever-growing KV cache). The clean conceptual next step is **linear-time sequence modeling** and **hybrids** that retain transformer strengths.
+
+1. **Concept #31 + positioning**
+   State Space Models (SSMs) + hybrids: replace global attention with **recurrences / structured kernels**, or mix both (often with local attention + recurrence) for long-context efficiency.
+
+2. **Math core (2–3 key equations)**
+
+* **SSM recurrence:**
+  [
+  h_{t+1}=Ah_t + Bx_t,\qquad y_t=Ch_t
+  ]
+* **Equivalent convolution/kernel view:**
+  [
+  y_t=\sum_{k=0}^{t}K_k x_{t-k},\qquad K_k = CA^{k}B
+  ]
+* **Hybrid gating intuition (one generic template):**
+  [
+  y_t = g_t\odot y_t^{\text{SSM}} + (1-g_t)\odot y_t^{\text{Attn(local)}}
+  ]
+  (Captures Griffin-style “recurrence + local attention” hybrids at a conceptual level.)
+
+3. **Frontier model usage**
+
+* **Mamba‑2 / SSD:** Dao & Gu (2024) explicitly frame *Structured State-Space Duality* connecting SSMs and attention and introduce Mamba‑2, described as faster while staying competitive.
+* **Jamba:** hybrid **Transformer–Mamba** architecture, interleaving blocks and adding MoE for capacity; reported strong long-context performance up to 256K tokens in open releases.
+* **RecurrentGemma / Griffin:** mixes **linear recurrences with local attention**, aiming for efficiency and long-sequence suitability.
+
+4. **Missing intuition to teach**
+
+* SSMs can be taught as “**attention with a structured kernel**”: both compute weighted sums over the past, but SSMs do it via a recurrence/scan that can be **hardware-friendly and linear-time**.
+* The reason “SSMs work for language now” is **selectivity** (input-dependent behavior), not just (O(T)) complexity—otherwise you get a bland smoothing kernel that can’t do sharp retrieval.
+* Hybrids exist because you often want:
+  **local attention** for short-range syntax + **recurrence/SSM** for long-range memory.
+
+5. **2–3 canonical papers**
+
+* Dao & Gu, *Transformers are SSMs: … Structured State Space Duality (Mamba‑2)* (ICML 2024 / arXiv 2024).
+* *Jamba: Hybrid Transformer‑Mamba Language Models* (ICLR 2025 conference paper; arXiv 2024).
+* *RecurrentGemma: Moving Past Transformers for Efficient Open Language Models* (2024 technical report).
+
+6. **Visualization ideas**
+
+* **Scaling plot:** attention compute/memory (O(T^2)) and KV growth (O(T)) vs SSM compute (O(T)) and constant state memory.
+* **“Receptive field” animation:** show how a recurrence updates state each step; contrast with attention “look-back” matrix.
+* **Hybrid block diagram:** interleave Transformer blocks and SSM blocks; show where MoE plugs in (connect to #22/#23).
+
+7. **Prerequisites**
+
+* #2 Attention & transformers
+* #19 Efficient attention at scale
+* #22 Sparse MoE (for Jamba-style hybrids)
+* #30 Long context engineering (motivates the shift)
+
+8. **Unlocks what**
+
+* Understanding why “post-transformer” doesn’t mean “no transformer” (hybrids dominate).
+* A principled way to reason about **long-context cost** and why some models avoid KV caches.
+* Architectural vocabulary for frontier trends beyond vanilla Transformers.
+
+## #32 — Multimodal Foundations: Vision Encoders, Contrastive Pretraining, and Cross-Attention Fusion
+
+**Recommendation + positioning:** *“Start the multimodal arc cleanly.”* You already cover diffusion (#9) and representation learning (#10), but you’re missing the bridge: **how images become tokens** and how models learn **shared semantic spaces** that feed multimodal LLMs and diffusion conditioning.
+
+1. **Concept #32 + positioning**
+   Vision-Language Pretraining (VLP): train **image encoder + text encoder** (or text-free variants) so that images and text land in a shared space; then fuse into a generative model (often via cross-attention).
+
+2. **Math core (2–3 key equations)**
+
+* **Dual-encoder similarity (normalized embeddings):**
+  [
+  u_i=\frac{f_I(I_i)}{|f_I(I_i)|},\quad v_j=\frac{f_T(T_j)}{|f_T(T_j)|},\quad
+  s_{ij}=\frac{u_i^\top v_j}{\tau}
+  ]
+
+* **CLIP-style contrastive loss (InfoNCE / symmetric cross-entropy):**
+  [
+  \mathcal{L}=\frac12\left(
+  -\log\frac{e^{s_{ii}}}{\sum_j e^{s_{ij}}}
+  -\log\frac{e^{s_{ii}}}{\sum_j e^{s_{ji}}}
+  \right)
+  ]
+
+* **Cross-attention fusion (text attends to vision tokens):**
+  [
+  \text{CrossAttn}(H_T,H_I)=\text{softmax}!\left(\frac{(H_TW_Q)(H_IW_K)^\top}{\sqrt d}\right)(H_IW_V)
+  ]
+
+3. **Frontier model usage**
+
+* **Modern VLP recipes:** SigLIP 2 (2025) describes a unified training recipe extending the image-text objective with captioning-based pretraining, self-supervised losses, and online curation, producing better encoders for downstream VLMs.
+* **Localization-aware contrastive:** CLOC (2024) explicitly adds region-level objectives to improve localization/dense features, motivated by needs of multimodal LLMs (region understanding).
+* These encoders become the **front-end** for multimodal LLMs, and the **conditioning backbone** for text-to-image systems (e.g., diffusion uses text embeddings/attention conditioning—your #9 becomes more complete once this is in place).
+
+4. **Missing intuition to teach**
+
+* **Contrastive ≠ dense understanding**: CLIP-like training often yields global semantics; localization and dense features require extra losses/architecture.
+* **Negatives and batch size matter**: contrastive training is heavily shaped by the similarity matrix; students should “see” how diagonal dominance emerges.
+* **Fusion choice is capability choice**: dual-encoder retrieval is cheap; cross-attention fusion enables richer grounding but costs compute and needs careful tokenization (patches/regions).
+
+5. **2–3 canonical papers**
+
+* Radford et al., *Learning Transferable Visual Models From Natural Language Supervision (CLIP)* (2021) — baseline paradigm.
+* Tschannen et al., *SigLIP 2: Multilingual Vision-Language Encoders…* (2025).
+* Chen et al., *Contrastive Localized Language-Image Pre-Training (CLOC)* (2024).
+
+6. **Visualization ideas**
+
+* **Similarity matrix heatmap:** batch image×text scores (s_{ij}); show how training sharpens the diagonal over time.
+* **Retrieval demo:** input image → top-k captions; input caption → top-k images; show embedding distances live.
+* **Cross-attention maps:** for a caption token (“red”, “dog”), visualize attention over image patches/regions; compare CLIP vs CLOC-like localized features.
+
+7. **Prerequisites**
+
+* #2 Attention & transformers
+* #10 Embedding geometry
+* #1 Cross-entropy / softmax
+* (Optional) #9 Diffusion (to connect how text embeddings condition generative vision)
+
+8. **Unlocks what**
+
+* Full conceptual bridge to **multimodal LLMs** (how vision becomes tokens + how grounding works).
+* Better explanation of text-conditioned diffusion and future video models.
+* Foundations for later concepts like multimodal RLHF, grounding evals, and VLM safety/robustness.
+
+### Summary of the optimal next 5 steps (#28–32)
+
+* **#28** Automate mechanistic interpretability (patching → attribution → decomposition).
+* **#29** Turn interpretability into control (steering, SAE-feature interventions).
+* **#30** Explain long context *and* why it’s hard (RoPE scaling + KV memory compression).
+* **#31** Show the architecture escape hatch (SSMs + hybrids like Jamba/Griffin).
+* **#32** Open the multimodal arc (contrastive vision encoders + cross-attention fusion).
+
+
+Finished in 19m 41s (gpt-5.1-pro[browser] | tok(i/o/r/t)=19.71k/4.59k/0/24.3k | files=1)
+
+Finished in 19m 41s (gpt-5.1-pro[browser] | tok(i/o/r/t)=19.71k/4.59k/0/24.3k | files=1 | slug=you-are-building-continuous-function-10)

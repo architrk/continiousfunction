@@ -1,20 +1,39 @@
+import { useMemo } from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
 import ForceGraph from './ForceGraph'
-import { conceptGraphData, NODE_ID_MAP, CATEGORY_COLORS } from '../data/conceptGraphData'
+import { generateFoundationsGraphData, CATEGORY_COLORS } from '../data/foundationsData'
 
 export default function KnowledgeGraph() {
+  const router = useRouter()
+
+  // Generate graph data from the full foundations dataset (100 concepts)
+  const graphData = useMemo(() => generateFoundationsGraphData(), [])
+
   const handleClickNode = (nodeId: string) => {
-    const conceptId = NODE_ID_MAP[nodeId]
-    if (conceptId) {
-      window.location.href = `/foundations/${conceptId}`
+    // nodeId is already the concept ID in the new data format
+    if (nodeId) {
+      // Client-side navigation keeps the graph page snappy on static export.
+      router.push(`/foundations/${nodeId}/`)
     }
   }
 
+  const nodeCount = graphData.nodes.length
+  const linkCount = graphData.links.length
+
   return (
     <div className="card graph-card">
+      {/* Breadcrumb */}
+      <nav className="breadcrumb" style={{ marginBottom: '1rem', fontSize: '0.85rem' }}>
+        <Link href="/" style={{ color: 'var(--text-muted)' }}>Home</Link>
+        <span style={{ margin: '0 0.5rem', color: 'var(--text-muted)' }}>/</span>
+        <span style={{ color: 'var(--text-secondary)' }}>Knowledge Graph</span>
+      </nav>
+
       <h1>Knowledge Graph</h1>
       <p className="muted">
-        All 34 mathematical foundations and their prerequisite relationships.
-        Drag nodes, zoom with scroll, click to explore. Colors indicate topic area.
+        Explore {nodeCount} concepts and {linkCount} connections between them.
+        Drag nodes, zoom with scroll, click to navigate. Colors indicate topic area.
       </p>
       <div className="legend" style={{
         display: 'flex',
@@ -38,8 +57,8 @@ export default function KnowledgeGraph() {
       </div>
       <div className="graph-wrapper">
         <ForceGraph
-          nodes={conceptGraphData.nodes}
-          links={conceptGraphData.links}
+          nodes={graphData.nodes}
+          links={graphData.links}
           categoryColors={CATEGORY_COLORS}
           width={850}
           height={600}

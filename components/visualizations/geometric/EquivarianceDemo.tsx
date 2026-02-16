@@ -511,7 +511,7 @@ export default function EquivarianceInvarianceDemo() {
                   <span style={{ fontSize: '0.72rem' }}>invariant</span>
                 </div>
                 <div style={{ display: 'grid', gap: '0.22rem' }}>
-                  {['background', 'triangle', 'arrow', 'square'].map((label, idx) => {
+                  {['background', 'triangle', 'arrow', 'square'].map((label, _idx) => {
                     const isArrow = label === 'arrow'
                     return (
                       <div

@@ -70,7 +70,7 @@ function getFlatnessFeedback(
   const sharpDiff = sgdSharp - samSharp
   const samWon = sharpDiff > 0.5
   const sgdWon = sharpDiff < -0.5
-  const wasTie = !samWon && !sgdWon
+  const _wasTie = !samWon && !sgdWon
 
   if (isCorrect) {
     if (challenge.answer === 'sam-wins') {

@@ -2,11 +2,34 @@
 
 import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import PhasePortrait2D from '../../components/PhasePortrait2D'
 import TimeSeriesPlot from '../../components/TimeSeriesPlot'
 import { VectorField2D, Point2D, TimeSeries, numericalGradient } from '../../lib/mathObjects'
+
+// Explore in depth link component
+function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="explore-link">
+      {label} →
+      <style jsx>{`
+        .explore-link {
+          display: inline-block;
+          margin-top: 1rem;
+          font-size: 0.85rem;
+          color: var(--converge-teal);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .explore-link:hover {
+          color: var(--accent);
+        }
+      `}</style>
+    </Link>
+  )
+}
 
 // Import visualization components from foundations (canonical source with gamification)
 import dynamic from 'next/dynamic'
@@ -234,9 +257,14 @@ export default function OptimizationPillar() {
       </Head>
       <ExplorableLayout
         title="Optimization"
-      subtitle="Gradient descent as physics in the loss landscape"
-      visualPanel={<OptimizationVisualPanel />}
-      initialParams={{ learningRate: 0.001, momentum: 0.9, optimizer: 'sgd' }}
+        subtitle="Gradient descent as physics in the loss landscape"
+        visualPanel={<OptimizationVisualPanel />}
+        initialParams={{ learningRate: 0.001, momentum: 0.9, optimizer: 'sgd' }}
+        breadcrumb={[
+          { label: 'Home', href: '/' },
+          { label: 'Pillars', href: '/pillars' },
+          { label: 'Optimization' }
+        ]}
     >
       <ExplorableSection id="intro">
         <h2>The Loss Landscape</h2>
@@ -312,6 +340,7 @@ export default function OptimizationPillar() {
           The second moment acts as a per-parameter learning rate: dimensions with
           large gradients get smaller steps, preventing overshooting.
         </p>
+        <ExploreLink href="/foundations/adam/" />
       </ExplorableSection>
 
       <ExplorableSection id="muon">
@@ -351,6 +380,7 @@ export default function OptimizationPillar() {
           The optimizer self-organizes to this critical point, where conventional stability
           analysis predicts divergence but training succeeds anyway.
         </p>
+        <ExploreLink href="/foundations/loss-landscapes/" />
       </ExplorableSection>
 
       <ExplorableSection id="grokking">
@@ -371,6 +401,7 @@ export default function OptimizationPillar() {
           The model first memorizes, then discovers the underlying pattern. Weight decay
           and longer training push models toward generalizing solutions.
         </p>
+        <ExploreLink href="/foundations/grokking/" />
       </ExplorableSection>
 
       <ExplorableSection id="dpo">
@@ -389,6 +420,7 @@ export default function OptimizationPillar() {
           DPO is simpler: no reward model, no RL. It implicitly defines a reward through
           the optimal policy, making alignment more stable and efficient.
         </p>
+        <ExploreLink href="/foundations/dpo/" />
       </ExplorableSection>
 
       <ExplorableSection id="landscape3d">
@@ -468,6 +500,7 @@ export default function OptimizationPillar() {
           These laws enable predicting performance of larger models and optimal allocation
           of compute budget between model size and training data.
         </p>
+        <ExploreLink href="/foundations/scaling-laws/" />
       </ExplorableSection>
     </ExplorableLayout>
     </>

@@ -5,6 +5,12 @@ import { MATH_COLORS } from '../../lib/mathObjects';
 
 type GamePhase = 'setup' | 'countdown' | 'reveal'
 type AttentionType = 'mha' | 'gqa-4' | 'gqa-8' | 'mqa'
+const ATTENTION_TYPES: AttentionType[] = ['mha', 'gqa-4', 'gqa-8', 'mqa']
+
+/** Type guard for AttentionType */
+function isAttentionType(value: string): value is AttentionType {
+  return ATTENTION_TYPES.includes(value as AttentionType)
+}
 
 // Challenge scenarios for memory prediction game
 const CHALLENGE_SCENARIOS = [
@@ -427,7 +433,11 @@ export default function KVCacheDashboard() {
             <span style={{ color: MATH_COLORS.primary }}>Attention Architecture</span>
             <select
               value={attentionType}
-              onChange={(e) => setAttentionType(e.target.value as any)}
+              onChange={(e) => {
+                if (isAttentionType(e.target.value)) {
+                  setAttentionType(e.target.value)
+                }
+              }}
               className="attention-select"
             >
               <option value="mha">Multi-Head Attention (MHA) — H_kv = H_q</option>

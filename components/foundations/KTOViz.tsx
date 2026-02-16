@@ -17,7 +17,7 @@ interface BehaviorChallenge {
   explanation: string;
 }
 
-function getBehaviorType(beta: number, lambdaD: number, lambdaU: number): 'cautious' | 'balanced' | 'aggressive' | 'extreme-averse' {
+function _getBehaviorType(beta: number, lambdaD: number, lambdaU: number): 'cautious' | 'balanced' | 'aggressive' | 'extreme-averse' {
   const lossRatio = lambdaU / lambdaD;
   const isLossAverse = lossRatio > 1.3;
   const isGainFocused = lossRatio < 0.7;
@@ -266,6 +266,7 @@ export default function KTOViz({ width = 600, height = 400 }: KTOVizProps) {
     }
 
     return { desirable, undesirable }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- valueDesirable/valueUndesirable are stable functions
   }, [beta, lambdaD, lambdaU])
 
   const xScale = d3.scaleLinear()
@@ -570,7 +571,7 @@ export default function KTOViz({ width = 600, height = 400 }: KTOVizProps) {
         </div>
       </div>
 
-      <svg width={width} height={height}>
+      <svg width={width} height={height} role="img" aria-label="KTO loss visualization showing how desirable and undesirable responses are weighted differently">
         <g transform={`translate(${margin.left},${margin.top})`}>
           {/* Axes */}
           <g className="axis axis-x" transform={`translate(0,${h})`}>

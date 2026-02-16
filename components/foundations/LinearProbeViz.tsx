@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
+import { applyAxisToRef, applyDragToElement } from '../../lib/d3Types'
 
 type Sentiment = 'positive' | 'negative'
 
@@ -400,8 +401,8 @@ export default function LinearProbeVisualizer() {
     const xAxis = d3.axisBottom(xScale).ticks(5).tickSizeOuter(0)
     const yAxis = d3.axisLeft(yScale).ticks(5).tickSizeOuter(0)
 
-    d3.select(xAxisRef.current).call(xAxis as any)
-    d3.select(yAxisRef.current).call(yAxis as any)
+    applyAxisToRef(xAxisRef.current, xAxis)
+    applyAxisToRef(yAxisRef.current, yAxis)
 
     d3.select(xAxisRef.current)
       .selectAll('text')
@@ -439,7 +440,7 @@ export default function LinearProbeVisualizer() {
         setDirection({ dx: newX, dy: newY })
       })
 
-    d3.select(handle).call(dragBehavior as any)
+    applyDragToElement(handle, dragBehavior)
   }, [xScale, yScale])
 
   const directionEnd = {

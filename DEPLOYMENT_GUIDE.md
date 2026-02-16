@@ -1,45 +1,37 @@
 # Deployment Guide: Continuous Function
 
-Since your project is a Next.js application, you cannot simply upload the source files (`.tsx`, `.ts`) to the FTP server. You must **build** the project into static HTML/CSS/JS files first.
+Continuous Function is deployed as a **Next.js static export**. You upload the **built output** (the `out/` folder), not the source `.tsx/.ts` files.
 
-## 1. Fix Build Errors
-Currently, the build fails because of missing types for `react-d3-graph`.
-Create a file named `types.d.ts` in your project root (or inside a `types` folder) with this content:
-
-```typescript
-declare module 'react-d3-graph';
-```
-
-## 2. Configure for Static Export
-Open `next.config.mjs` and ensure you have the `output: 'export'` setting enabled. This tells Next.js to generate a purely static site.
-
-```javascript
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'export',
-  // ... other config
-};
-
-export default nextConfig;
-```
-
-## 3. Build the Project
+## 1. Build the Project
 Run the build command in your terminal:
 
 ```bash
 npm run build
 ```
 
-This will create an `out` folder containing the static site.
+This produces an `out/` folder containing the static site (HTML/CSS/JS).
 
-## 4. Upload to Hostinger via FTP
+Notes:
+- Static export is configured in `next.config.mjs` via `output: 'export'` and `trailingSlash: true`.
+- `npm run build` also runs `npm run generate-content` (via `prebuild`) to keep the filesystem-driven `/domains/*` pages wired up.
+
+## 2. Clean URLs + .htaccess
+
+We export with `trailingSlash: true`, so routes are exported as folders with `index.html` (e.g. `out/pillars/optimization/index.html`). Apache can serve these clean URLs without special rewrite rules.
+
+We still ship a small `public/.htaccess` for security headers + caching. It is copied into `out/.htaccess` during export, so it will be deployed automatically as long as you upload the `out/` contents.
+
+## 3. Upload to Hostinger via FTP
 
 ### Important: FTP Root Path
 
-The Hostinger FTP account starts in `/public_html/` but the **actual web root is the parent directory**. This means:
-- When you connect via FTP, you land in `/public_html/`
-- You must `cd ..` to get to the actual web-serving directory
-- Use `remotePath: "/.."` or navigate up one level before uploading
+Hostinger setups vary. Before your first deploy, confirm where the **web root** is for this account:
+
+```bash
+lftp -c \"set ftp:ssl-allow no; open -u USER,PASS ftp://HOST; pwd; ls; bye\"
+```
+
+Pick the directory that should contain `index.html` and `_next/`, and use that as the remote deploy directory.
 
 ### Using lftp (Command Line)
 
@@ -49,13 +41,35 @@ npm run build
 lftp -c "
 set ftp:ssl-allow no
 open -u u908281807.u908281808,'YOUR_PASSWORD' ftp://ftp.continuousfunction.ai
-cd ..
-mirror -R --verbose --exclude public_html/ out/ .
+cd /your/remote/webroot
+mirror -R --verbose out/ .
 bye
 "
 ```
 
-Note: The `cd ..` navigates to the actual web root, and `--exclude public_html/` prevents overwriting the (empty) public_html folder.
+If you want to remove remote files that no longer exist locally, add `--delete` to `mirror` (use with care).
+
+### Using the repo deploy script (recommended)
+
+Install `lftp`:
+
+```bash
+brew install lftp
+```
+
+Set env vars and deploy:
+
+```bash
+export CF_FTP_HOST="ftp.continuousfunction.ai"
+export CF_FTP_USER="u908281807.u908281808"
+export CF_FTP_PASS="YOUR_PASSWORD"
+export CF_FTP_REMOTE_DIR="/your/remote/webroot"  # e.g. /public_html or ..
+
+# Optional: also delete remote files that no longer exist locally.
+export CF_FTP_DELETE=1
+
+npm run deploy:hostinger
+```
 
 ### Using Cursor SFTP Extension
 
@@ -87,41 +101,23 @@ Then, after building:
 
 | Mistake | Result | Fix |
 |---------|--------|-----|
-| Using `remotePath: "/public_html"` | Creates nested `public_html/public_html/` | Use `remotePath: "/"` |
 | Uploading the `out` folder itself | Site files in wrong location | Upload contents OF `out`, not `out` itself |
 | Forgetting to build first | Source files uploaded instead of compiled | Always run `npm run build` first |
+| Deploying to the wrong remote directory | 404s everywhere | Confirm web root with `pwd` + `ls` before the first deploy |
 
-## 5. Enable Clean URLs (.htaccess)
+## 4. Verify Deployment
 
-Next.js static export generates `.html` files, but the site uses clean URLs (e.g., `/pillars/optimization` not `/pillars/optimization.html`).
-
-Create `out/.htaccess` with this content (already included in the build):
-
-```apache
-# Enable clean URLs (remove .html extension)
-RewriteEngine On
-
-# If the request doesn't have an extension and isn't a directory
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME}.html -f
-
-# Serve the .html file
-RewriteRule ^(.*)$ $1.html [L]
-```
-
-This file must be uploaded to the web root along with the other files.
-
-## 6. Verify Deployment
-
-After uploading, verify these files exist at web root (FTP `cd ..`):
+After uploading, verify these files exist at the configured web root:
 - `index.html`
 - `404.html`
 - `.htaccess`
 - `_next/` folder (contains JS/CSS)
 - `pillars/` folder
 - `concepts/` folder
+- `domains/` folder
 
 Test URLs:
 - https://continuousfunction.ai/ (homepage)
-- https://continuousfunction.ai/pillars/optimization (should work without .html)
+- https://continuousfunction.ai/pillars/optimization/ (trailing slash)
+- https://continuousfunction.ai/foundations/adam/ (legacy)
+- https://continuousfunction.ai/domains/linear-algebra/vector-spaces/ (filesystem content)

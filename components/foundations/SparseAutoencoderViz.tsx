@@ -54,7 +54,7 @@ const getFrontierFeedback = (
   mseValues: { l1: number; topk: number; gated: number }
 ): string => {
   const correct = predicted === actual;
-  const mseSorted = Object.entries(mseValues)
+  const _mseSorted = Object.entries(mseValues)
     .sort(([, a], [, b]) => a - b)
     .map(([type]) => type);
 
@@ -514,7 +514,7 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
         </div>
       </div>
 
-      <svg width={width} height={height}>
+      <svg width={width} height={height} role="img" aria-label="Sparse autoencoder visualization showing L0 sparsity vs reconstruction loss tradeoff">
         <g transform={`translate(${margin.left},${margin.top})`}>
           {/* Axes */}
           <g className="axis axis-x" transform={`translate(0,${h})`}>

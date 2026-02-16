@@ -63,7 +63,7 @@ function getSimilarityFeedback(
   mean: number
 ): string {
   const isCorrect = prediction === challenge.answer
-  const meanMag = Math.abs(mean)
+  const _meanMag = Math.abs(mean)
   const simValue = cosineSim?.toFixed(4) ?? 'N/A'
 
   if (isCorrect) {
@@ -404,7 +404,7 @@ export default function LayerNormVsRmsNorm() {
     setCountdown(3)
   }
 
-  const exitGameMode = () => {
+  const _exitGameMode = () => {
     setGameMode(false)
     resetGame()
   }

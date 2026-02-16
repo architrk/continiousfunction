@@ -1,0 +1,24 @@
+You are reviewing the Next.js/TypeScript code for the NEW filesystem-driven concept pages under /domains in Continuous Function.
+
+Goal: make /domains browsing + concept pages more intuitive (Intuition -> Math -> Code -> Demo), correct, robust, and pleasant.
+
+Files attached:
+- pages/domains/index.tsx
+- pages/domains/[domain]/index.tsx
+- pages/domains/[domain]/[slug].tsx
+- lib/contentLoader.ts
+- content/_generated/vizMap.ts
+- components/Layout.tsx
+- styles/globals.css
+
+Tasks:
+1) Teaching flow: Evaluate the UI and copy. Suggest improvements that make the concept page feel like a guided lesson (without losing depth).
+2) MDX rendering: Identify correctness/safety issues in our compile-to-static-HTML approach. Note any missing KaTeX/remark/rehype config, code block rendering, heading/link quirks.
+3) Interactive demo: Evaluate how the viz is loaded and embedded. Suggest a better pattern if needed (dynamic import, error boundary, skeletons, mobile handling).
+4) A11y: Suggest specific accessibility improvements (heading hierarchy, TOC semantics, skip links, keyboard focus, color contrast).
+5) Static export correctness: Confirm trailingSlash + getStaticPaths/getStaticProps are correct; look for pitfalls.
+
+Output format:
+- Prioritized list of issues/risks
+- Concrete code diffs (minimal changes) for top 3 improvements
+- Tests/checks to run

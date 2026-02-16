@@ -1,5 +1,8 @@
 # Continuous Function — Static Production Audit
 
+> Note (2026-02-06): This audit is a historical snapshot. The repo has evolved (Foundations now contains 100 concepts;
+> `/foundations/[id]` math rendering supports headings/rules/lists). Re-validate findings against current code before acting.
+
 > Scope + constraints: This is a **static, read-only audit** of the repository as-is (no `npm install`, no build, no runtime execution, no network lookups). All claims below are based on code inspection. Where "latest version / CVE" data would require internet access, I explicitly mark it as **requires network verification**.
 
 ---
@@ -41,7 +44,7 @@ The following P1 issues from this audit have been resolved:
 - **Foundations visualization mapping import is over-coupled**: `pages/foundations/[id].tsx` imports `conceptVisualizationMap` from `components/foundations/index.ts`, which also re-exports all foundations visualization modules. This can (depending on bundling/tree-shaking) pull large client-only code into the page build graph and hides “unwired”/future viz modules. See `pages/foundations/[id].tsx:6` and `components/foundations/index.ts:4-58`.  
 - **Dependency hygiene issues**: several packages are imported directly but not declared (e.g. `d3-scale`, `d3-shape`, `d3-random`, `d3-interpolate`), relying on transitive deps of `d3` (works with npm hoisting, breaks with strict package managers). See `components/visualizations/generative/DiffusionForwardReverse.tsx:4-6` and `package.json:10-31`.  
 - **Visualization wiring drift**: some visualization modules exist but are unreachable from any route (e.g. `components/foundations/DecodingSamplingViz.tsx`, `components/foundations/MambaViz.tsx`, `components/foundations/SSMViz.tsx`, `components/foundations/EquivarianceViz.tsx`). See `data/visualizationMappings.ts:4-32` (no `decoding-sampling` mapping) and `pages/foundations/[id].tsx:11-104` (no dynamic imports for these files).  
-- **Deployment documentation is stale / conflicting** with the current repo state (static export URL strategy, type fix already applied, `.htaccess` claim). See `DEPLOYMENT_GUIDE.md:6-18` and `DEPLOYMENT_GUIDE.md:73-101`.  
+- **Deployment documentation was stale / conflicting** with the repo state (static export URL strategy, `.htaccess` claim). **Fixed 2026-02-16**: refreshed `DEPLOYMENT_GUIDE.md`, checked in `public/.htaccess`, and added `npm run deploy:hostinger`.  
 
 **Top Fixes (5–10)**
 - Replace the custom “math + mini-markdown” renderer in `pages/foundations/[id].tsx` with a real Markdown pipeline (e.g. `react-markdown` + `remark-math` + `rehype-katex`) or migrate `coreMath` into MDX files; remove `dangerouslySetInnerHTML` fallbacks.  
@@ -230,7 +233,7 @@ Key concern: **exact duplicates exist across both trees** (see Issue Register).
 |---|---|---|---|
 | `CLAUDE.md` | doc | Repo overview + conventions | Mentions “33 concept pages” but data has 34 now. |
 | `ARCHITECTURE_MAP.md` | doc | High-level system map | Useful; may be slightly stale (33 vs 34). |
-| `DEPLOYMENT_GUIDE.md` | doc | FTP + Hostinger deployment guide | Stale/conflicting claims: build error already fixed; `.htaccess` “already included” is not source-controlled. |
+| `DEPLOYMENT_GUIDE.md` | doc | FTP + Hostinger deployment guide | Updated 2026-02-16: trailingSlash export notes, `public/.htaccess` checked in, and `npm run deploy:hostinger` added. |
 | `DEVELOPER_GUIDE.md` | doc | How-to for building these sites | General reference. |
 | `CONTENT_STRATEGY.md` | doc | Editorial/content roadmap | Mentions future work. |
 | `STATIC_EXPORT_REMEDIATION_SPEC.md` | doc | Prior remediation plan | Some items already landed; should be updated or marked historical. |
@@ -594,7 +597,7 @@ Notable per-file callouts:
 | P2 | LossLandscape3D keeps interval running after reaching final step | `components/visualizations/optimization/LossLandscape3D.tsx:401-415` | Once `currentStep` reaches the end, the interval continues firing every ~60ms doing useless work. | Stop the interval when `prev >= maxSteps - 1` (e.g., set `isPlaying=false` or clear interval). |
 | P2 | D3 zoom/drag listeners not removed on cleanup | `components/FoundationsGraph.tsx:66-223` | The simulation is stopped, but zoom handlers are attached to the SVG and can accumulate across remounts; similar risks exist for D3 drag in some viz modules. | In cleanup, call `svg.on('.zoom', null)` and remove drag listeners (`selection.on('.drag', null)`) or re-create the SVG node per mount. |
 | P2 | GSAP timelines/tweens not killed on unmount (potential leaks) | `components/visualizations/sequence/MoERouting.tsx:90-133`, `components/foundations/MoERoutingViz.tsx:90-133`, `components/visualizations/geometric/EquivarianceDemo.tsx:49-88` | Navigating away mid-animation can leave GSAP timelines running and holding DOM references. | Track timelines in refs and `kill()` them in `useEffect` cleanup; for one-off tweens use `gsap.context()` or `gsap.killTweensOf(node)` on unmount. |
-| P2 | Stale deployment docs | `DEPLOYMENT_GUIDE.md:6-18`, `DEPLOYMENT_GUIDE.md:73-101` | Misleads future deploys; `.htaccess` not source-controlled; build-failure claim already resolved. | Update docs to reflect `trailingSlash:true` strategy or check in host-specific rewrite config under `public/`. |
+| P2 | Deployment docs refresh | `DEPLOYMENT_GUIDE.md` + `public/.htaccess` | Previously stale/conflicting; fixed 2026-02-16 with trailingSlash notes, checked-in `.htaccess`, and a safe deploy script. | Keep docs aligned when export strategy changes; prefer `npm run deploy:hostinger`. |
 | P2 | External Google Fonts import (runtime network dependency) | `styles/globals.css:7` | Adds a third-party runtime fetch, can regress performance (FOIT/FOUT) and complicate strict CSP deployments. | Self-host fonts or switch to `next/font` and remove the CSS `@import`. |
 | P2 | Optimizer MDX pages rely on default `<title>` (SEO/shareability) | `pages/concepts/optimizers/overview.mdx:1-5`, `pages/concepts/optimizers/adamw.mdx:1-5`, `pages/concepts/optimizers/muon.mdx:1-5` | These routes will all share the default Layout title (“Continuous Function”), which hurts share previews and search snippets. | Add per-page `<Head><title>…</title></Head>` inside each MDX file (import `next/head`). |
 
@@ -909,7 +912,7 @@ import Link from 'next/link'
 4. Patch Foundations `MathContent` quickly to at least hide/convert `---` and `##` lines (stopgap) while implementing a real Markdown renderer.  
 5. Add a tiny build-time validator script (no runtime dependency) to assert that every `prereqs` ID exists and derive `dependents` (or fail if inconsistent).  
 6. Decide on one visualization source tree (`components/foundations` vs `components/visualizations`) and add a de-duplication plan.  
-7. Update `DEPLOYMENT_GUIDE.md` to match `trailingSlash:true` export strategy and remove stale “build fails” note.  
+7. Refresh deployment docs + `.htaccess` (done 2026-02-16).  
 
 ### Near-term (this month)
 1. Migrate foundations `coreMath` to MDX files or render it with `react-markdown` + `remark-math` + `rehype-katex` (+ sanitize).  
@@ -1103,4 +1106,4 @@ import Link from 'next/link'
   - Optional: Playwright smoke tests for key routes after export (static host simulation).
 
 #### J.3 Documentation drift
-- Some repo docs (notably `DEPLOYMENT_GUIDE.md` and `STATIC_EXPORT_REMEDIATION_SPEC.md`) contain stale claims relative to the current code/config. Treat them as needing a refresh, or mark them as historical to avoid misleading future changes.
+- Some repo docs (notably `STATIC_EXPORT_REMEDIATION_SPEC.md`) may be partially historical. `DEPLOYMENT_GUIDE.md` was refreshed 2026-02-16; keep docs aligned when export/deploy strategy changes.

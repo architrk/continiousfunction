@@ -1,0 +1,70 @@
+---
+title: "Vector Spaces"
+---
+
+## Intuition
+
+A vector space is what you get when you take the two operations that make geometry and algebra feel "linear" and insist they behave nicely:
+
+1. You can **add** two things of the same kind.
+2. You can **scale** a thing up or down by a number.
+
+If those two operations obey a small set of consistency rules (associativity, commutativity, a zero element, etc.), then a huge amount of math becomes possible: projections, least squares, gradients, eigenvectors, Fourier features, embeddings, and more.
+
+The key idea is not "arrows". Arrows in 2D are a great mental model, but the real power is that the objects can be many things: polynomials, functions, images, token embeddings, or model parameter updates. If you can add them and scale them consistently, you can treat them with the same tools.
+
+## Math
+
+**Definition (Vector space).** A vector space over a field $\mathbb{F}$ (usually $\mathbb{R}$ or $\mathbb{C}$) is a set $V$ with:
+
+- addition: $+: V \times V \to V$
+- scalar multiplication: $\cdot: \mathbb{F} \times V \to V$
+
+such that for all $u,v,w \in V$ and $a,b \in \mathbb{F}$:
+
+1. $(u+v)+w = u+(v+w)$
+2. $u+v = v+u$
+3. There exists $0 \in V$ with $v+0=v$
+4. For each $v$ there exists $-v$ with $v+(-v)=0$
+5. $a(bv) = (ab)v$
+6. $1\cdot v = v$
+7. $a(u+v)=au+av$
+8. $(a+b)v = av+bv$
+
+In ML, we often work in $\mathbb{R}^d$, but it's useful to remember that "vector" really means "element of some vector space".
+
+## Code
+
+```python
+import numpy as np
+
+# A tiny sanity-check: R^3 with usual + and scalar * behaves like a vector space.
+
+u = np.array([1.0, 2.0, 3.0])
+v = np.array([-1.0, 0.5, 4.0])
+a, b = 2.0, -0.25
+
+# Distributivity: a(u+v) = au + av
+lhs = a * (u + v)
+rhs = a * u + a * v
+print("distributivity error:", float(np.linalg.norm(lhs - rhs)))
+
+# Compatibility: a(bu) = (ab)u
+lhs = a * (b * u)
+rhs = (a * b) * u
+print("compatibility error:", float(np.linalg.norm(lhs - rhs)))
+
+# Zero + additive inverse
+zero = np.zeros_like(u)
+print("zero check:", bool(np.allclose(u + zero, u)))
+print("inverse check:", bool(np.allclose(u + (-u), zero)))
+```
+
+## Interactive Demo
+
+Try this:
+
+1. Drag **u** and **v** around.
+2. Move sliders **a** and **b** to form the linear combination $w = a u + b v$.
+
+Notice the closure intuition: if you stay inside a vector space, scaling and addition keep you inside.

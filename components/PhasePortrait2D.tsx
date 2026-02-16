@@ -181,6 +181,8 @@ export default function PhasePortrait2D({
       height={height}
       className="phase-portrait"
       style={{ borderRadius: '8px' }}
+      role="img"
+      aria-label={`Phase portrait visualization: ${field.label || 'vector field'} showing trajectories and flow direction`}
     />
   )
 }

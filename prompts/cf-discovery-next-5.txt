@@ -1,0 +1,25 @@
+You are building 'Continuous Function' - an ever-expanding interactive educational platform for mathematics and deep learning.
+
+CURRENT STATE:
+- Legacy curriculum: concept metadata lives in data/foundationsData.ts
+- Legacy visualization coverage is partial: see data/visualizationMappings.ts
+- New filesystem-driven content system exists under content/ (domains + concepts), but we are still migrating.
+
+YOUR TASK:
+Identify the next 5 ESSENTIAL legacy concepts to tackle next.
+Prefer concepts that:
+(a) lack an interactive visualization currently, OR
+(b) would benefit most from a rewrite for intuition/correctness, OR
+(c) are critical prerequisite hubs that unlock many downstream topics.
+
+For EACH concept provide:
+1) Number + ID + Title + Positioning (1-2 sentences)
+2) Core Math (2-3 LaTeX equations with brief explanation)
+3) Frontier Model Usage (2024-2025): where this shows up in modern LLM/diffusion/serving/alignment work
+4) Missing Intuition: what most tutorials get wrong or skip
+5) Canonical Papers (2-3) with arXiv URLs
+6) Visualization Ideas: an interactive demo concept (sliders/drag/hover) + what the 'aha' moment is
+7) Prerequisites (existing concept IDs)
+8) What It Unlocks (downstream concepts/skills)
+
+Be decisive: pick the 5 most impactful.

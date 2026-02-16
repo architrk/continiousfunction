@@ -2,6 +2,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
+import { callAxis } from '../../lib/d3Types'
+import { useKeyboardNav } from '../../lib/useKeyboardNav'
 
 // ─────────────────────────────────────────────────────────────
 // Gamification Types
@@ -48,6 +50,14 @@ const SAVINGS_CHALLENGES: SavingsChallenge[] = [
     answer: 'low',
     description: 'The very first cache hit... minimal savings?'
   },
+]
+
+// Prediction options for keyboard navigation
+const PREDICTION_OPTIONS = [
+  { value: 'low' as const, label: '📉 Low', desc: '<50%' },
+  { value: 'medium' as const, label: '📊 Medium', desc: '50-70%' },
+  { value: 'high' as const, label: '📈 High', desc: '70-85%' },
+  { value: 'extreme' as const, label: '🚀 Extreme', desc: '>85%' },
 ]
 
 // Calculate actual savings
@@ -156,6 +166,18 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
   const [score, setScore] = useState(0)
   const [completedChallenges, setCompletedChallenges] = useState<string[]>([])
 
+  // Keyboard navigation for prediction options
+  const predictionNav = useKeyboardNav({
+    options: PREDICTION_OPTIONS,
+    onSelect: (option) => submitPrediction(option.value),
+    onEscape: () => {
+      setGameMode(false)
+      setGamePhase('setup')
+      setSelectedChallenge(null)
+    },
+    enabled: gameMode && gamePhase === 'countdown',
+  })
+
   // Game control functions
   const startChallenge = (challenge: SavingsChallenge) => {
     setSelectedChallenge(challenge)
@@ -190,7 +212,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
     setCountdown(3)
   }
 
-  const exitGameMode = () => {
+  const _exitGameMode = () => {
     setGameMode(false)
     resetGame()
   }
@@ -311,7 +333,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .tickFormat(() => '')
 
     grid
-      .call(yGrid as any)
+      .call(callAxis(yGrid))
       .call(g =>
         g
           .selectAll('line')
@@ -333,11 +355,11 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
     g.append('g')
       .attr('class', 'kv-axis kv-axis-x')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(xAxis as any)
+      .call(callAxis(xAxis))
 
     g.append('g')
       .attr('class', 'kv-axis kv-axis-y')
-      .call(yAxis as any)
+      .call(callAxis(yAxis))
 
     g.selectAll('.kv-axis text')
       .attr('fill', '#9ca3af')
@@ -358,7 +380,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .y(d => y(d))
       .curve(d3.curveMonotoneX)
 
-    const noCachePath = g
+    const _noCachePath = g
       .append('path')
       .datum(noCacheSeries)
       .attr('fill', 'none')
@@ -595,18 +617,18 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
                 <p style={{ fontSize: '0.85rem', color: '#e5e7eb', marginBottom: 10 }}>
                   At {selectedChallenge.sequenceLength} tokens, how much compute is saved?
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
-                  {[
-                    { value: 'low' as const, label: '📉 Low', desc: '<50%' },
-                    { value: 'medium' as const, label: '📊 Medium', desc: '50-70%' },
-                    { value: 'high' as const, label: '📈 High', desc: '70-85%' },
-                    { value: 'extreme' as const, label: '🚀 Extreme', desc: '>85%' },
-                  ].map((option) => (
+                <p className="sr-only">Use arrow keys to navigate options, Enter to select, Escape to exit</p>
+                <div
+                  style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}
+                  {...predictionNav.containerProps}
+                  className="prediction-options"
+                >
+                  {PREDICTION_OPTIONS.map((option, index) => (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => submitPrediction(option.value)}
-                      className="kv-game-option"
+                      {...predictionNav.getOptionProps(option, index)}
+                      className={`kv-game-option ${predictionNav.focusedIndex === index ? 'kb-focused' : ''}`}
                     >
                       <div style={{ fontWeight: 500 }}>{option.label}</div>
                       <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: 2 }}>{option.desc}</div>
@@ -622,9 +644,10 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
             )}
 
             {gamePhase === 'revealed' && selectedChallenge && (
-              <div>
+              <div role="status" aria-live="polite" aria-atomic="true">
                 <div
                   className={`kv-game-result ${prediction === selectedChallenge.answer ? 'kv-game-correct' : 'kv-game-incorrect'}`}
+                  aria-label={prediction === selectedChallenge.answer ? 'Correct prediction' : 'Incorrect prediction'}
                 >
                   <p style={{ fontSize: '0.78rem', color: '#e5e7eb', lineHeight: 1.5, margin: 0 }}>
                     {getSavingsFeedback(prediction, selectedChallenge, calculateSavings(selectedChallenge.sequenceLength).percent)}
@@ -839,7 +862,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
           <div className="kv-right">
             <div className="kv-panel">
               <h3>4. Memory / compute with and without KV cache</h3>
-              <svg ref={chartRef} className="kv-chart-svg" />
+              <svg ref={chartRef} className="kv-chart-svg" role="img" aria-label="Memory and compute comparison chart showing O(L²) without KV cache vs O(L) with caching" />
               <p className="kv-caption">
                 Without caching you redo work for all previous tokens each step
                 (gray), giving <span className="kv-caption-strong">O(L²)</span> KV

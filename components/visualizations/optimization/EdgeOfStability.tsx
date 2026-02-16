@@ -239,6 +239,7 @@ export default function EdgeOfStabilityExplorer() {
     }
     const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
     return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- revealAnswer is stable callback
   }, [gamePhase, countdown]);
 
   // Reset animation when η changes

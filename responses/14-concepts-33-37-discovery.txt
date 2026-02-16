@@ -1,0 +1,339 @@
+Below are the **next 5 essential concepts** I’d add to *Continuous Function* as **#33–#37**. These are the missing “interfaces” between the math of models and what frontier systems actually *do* in 2024–2025: **how text becomes tokens, how probabilities become outputs, how data becomes capability, how models get grounded, and how models act.**
+
+---
+
+## 33. Tokenization & Vocabulary Design
+
+**Positioning:** *The discrete interface.* Everything you’ve built so far assumes “tokens exist,” but tokenization is a **silent architecture choice** that shapes capability (code, multilingual, math), cost (tokens per task), context efficiency, and even jailbreak surface area. Llama 3’s published **128,000 vocab** is a concrete sign this is now a frontier-level knob, not preprocessing trivia. ([ar5iv][1])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Tokenization is a segmentation of a byte/string into vocabulary items**
+   [
+   x = \text{concat}(t_1,\dots,t_n), \quad t_i \in \mathcal V
+   ]
+   The model never sees “characters” or “words”—it sees an index sequence in (\mathcal V).
+
+2. **Unigram (SentencePiece-style) tokenization as maximum-likelihood segmentation**
+   [
+   \hat{t}*{1:n} ;=;\arg\max*{t:,\text{concat}(t)=x};\sum_{i=1}^{n}\log p(t_i)
+   ]
+   This makes tokenization *itself* a probabilistic model: choose the segmentation that makes the string most likely under token priors.
+
+3. **Vocab size and softmax/embedding geometry are real model parameters**
+   [
+   W_{\text{embed}} \in \mathbb{R}^{|\mathcal V|\times d},\qquad \ell_t = h_t W_{\text{out}}^\top,;; W_{\text{out}}\in\mathbb{R}^{|\mathcal V|\times d}
+   ]
+   Larger (|\mathcal V|) changes parameter allocation (embedding + output head) and shifts the tradeoff between **fewer tokens** vs **larger vocabulary head**.
+
+### Frontier Model Usage (2024–2025)
+
+* **Large vocabularies are now standard in top open models** (e.g., Llama 3 reports **128k vocab**). ([ar5iv][1])
+* 2025 tokenizer analysis work explicitly compares modern frontier tokenizers and notes **byte-level/BPE-style tokenizers** across recent model families. ([arXiv][2])
+* Tokenization choice is increasingly coupled to **code + multilingual** performance (token boundary quality for identifiers, Unicode normalization, whitespace). (You see it indirectly in how model families revise tokenizers rather than “just scale.”) ([arXiv][2])
+
+### Missing Intuition (what tutorials get wrong)
+
+* **Tokens are not words.** The model’s “atoms of meaning” are whatever your tokenizer decided; this can make “simple” strings (JSON, equations, mixed Unicode) *hard*.
+* People treat tokenization as *lossless*. It isn’t—token boundaries create representational biases (especially for code, rare morphemes, and multilingual scripts).
+* Bigger vocab ≠ always better: you trade **sequence length** against **softmax head/embedding footprint**, and you can worsen generalization if you overfit to “memorized whole chunks.”
+
+### Canonical Papers (2–3, arXiv URLs)
+
+* Sennrich et al., *Neural Machine Translation of Rare Words with Subword Units* — `https://arxiv.org/abs/1508.07909`
+* Kudo & Richardson, *SentencePiece* — `https://arxiv.org/abs/1808.06226`
+* Xue et al., *ByT5: Token-Free Byte-to-Byte Models* — `https://arxiv.org/abs/2105.13626`
+
+### Visualization Ideas (interactive demos)
+
+* **Tokenizer microscope:** type a string → see token IDs, per-token logprobs, and how variants (BPE vs unigram vs byte-level) change length + “weird splits.”
+* **Cost lens:** “same prompt” under different tokenizers → show **token count**, estimated **KV cache memory**, and latency impact.
+* **Unicode + security playground:** show how invisible characters and normalization produce different tokenizations.
+
+### Prerequisites (existing concept IDs)
+
+* `maximum-likelihood`
+* `representations`
+* `efficiency`
+* `long-context`
+
+### What It Unlocks
+
+* Correct intuition for **why prompts “randomly” fail** (it’s often token boundaries).
+* Designing/choosing tokenizers for **code**, **multilingual**, and **structured outputs**.
+* Realistic accounting of **cost per request** (tokens are the real unit).
+
+---
+
+## 34. Decoding & Sampling
+
+**Positioning:** *Turning probabilities into behavior.* Training gives you (p_\theta(\cdot)); **decoding chooses what world you actually sample from**. This is the bridge between Maximum Likelihood (#1) and real assistant behavior, and it unifies LLM decoding with diffusion “guidance.” OpenAI exposes temperature/top_p directly in API knobs; diffusion stacks expose classifier-free guidance as a first-class parameter. ([arXiv][3])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Temperature-scaled softmax**
+   [
+   p_\tau(i\mid x_{<t})=\frac{e^{z_i/\tau}}{\sum_j e^{z_j/\tau}}
+   ]
+   (\tau \downarrow) sharpens (more deterministic), (\tau \uparrow) flattens (more exploratory).
+
+2. **Nucleus (top‑p) truncation**
+   [
+   S_p=\min\left{S:\sum_{i\in S}p(i)\ge p\right},\qquad
+   p'(i)=\frac{p(i)\mathbf{1}[i\in S_p]}{\sum_{j\in S_p}p(j)}
+   ]
+   You delete the unreliable tail *dynamically* per step; this was introduced to fight degeneration. ([arXiv][4])
+
+3. **Classifier-Free Guidance (diffusion) is “temperature-like” control**
+   [
+   \epsilon_{\text{guided}} = \epsilon_{\text{uncond}} + w\big(\epsilon_{\text{cond}}-\epsilon_{\text{uncond}}\big)
+   ]
+   (w) trades diversity for prompt fidelity; it’s the same *shape* of knob as truncation/low-temperature sampling. ([arXiv][3])
+
+### Frontier Model Usage (2024–2025)
+
+* **Frontier LLM APIs expose decoding as product surface area** (temperature/top_p are explicit knobs; OpenAI docs recommend tuning one or the other).
+* **Nucleus sampling** is a canonical response to text degeneration and remains a standard baseline mental model for “good sampling.” ([arXiv][4])
+* Diffusion systems commonly expose **guidance_scale** directly (e.g., Hugging Face diffusers defines it as CFG weight (w)).
+* Diffusion sampling speedups (e.g., **~10–20 step solvers**) are a major part of modern image/video generation stacks. ([arXiv][5])
+
+### Missing Intuition (what tutorials get wrong)
+
+* Decoding is not “formatting”—it is **implicit preference optimization at inference time**. You’re changing the effective distribution *without retraining*.
+* “Temperature = creativity” is sloppy. Temperature is distribution shaping; it can increase nonsense if the model isn’t calibrated for your prompt regime.
+* For diffusion, “more guidance is better” is false: high (w) can push off-manifold and degrade quality (the docs explicitly warn about deterioration/saturation).
+
+### Canonical Papers (2–3, arXiv URLs)
+
+* Holtzman et al., *The Curious Case of Neural Text Degeneration* — `https://arxiv.org/abs/1904.09751`
+* Meister et al., *Locally Typical Sampling* — `https://arxiv.org/abs/2202.00666`
+* Ho & Salimans, *Classifier-Free Diffusion Guidance* — `https://arxiv.org/abs/2207.12598`
+
+### Visualization Ideas (interactive demos)
+
+* **Probability simplex explorer:** show logits → softmax → apply temperature/top‑p → sample; visualize tail truncation.
+* **Degeneration lab:** same prompt, same model; sweep decoding settings to reproduce repetition collapse vs coherent diversity.
+* **CFG slider for diffusion:** animate sample trajectory as (w) changes; show fidelity/diversity tradeoff visually.
+
+### Prerequisites (existing concept IDs)
+
+* `maximum-likelihood`
+* `attention-transformers`
+* `diffusion`
+* `speculative-decoding`
+
+### What It Unlocks
+
+* Practical control over **determinism, diversity, and hallucination risk**.
+* Understanding why “the same model” behaves radically differently across products.
+* A unified language for **LLM sampling** and **diffusion guidance**.
+
+---
+
+## 35. Data Curation & Mixture Design
+
+**Positioning:** *The real scaling story.* Scaling laws (#14) tell you how to spend compute; **data mixture tells you what you buy with it**. In 2024–2025, open work like **Dolma** and **FineWeb** makes explicit that careful filtering/dedup/mixture decisions are capability-critical, not “dataset janitor work.” ([arXiv][6])
+
+### Core Math (2–3 equations + intuition)
+
+1. **Pretraining data is a mixture distribution**
+   [
+   p_{\text{data}}(x)=\sum_{k=1}^K w_k,p_k(x),\qquad \sum_k w_k=1,; w_k\ge 0
+   ]
+   Every choice of (w_k) is an implicit “curriculum.”
+
+2. **MLE over mixtures decomposes into weighted domain losses**
+   [
+   \mathcal{L}(\theta)=\mathbb{E}*{x\sim p*{\text{data}}}\big[-\log p_\theta(x)\big]
+   = \sum_{k=1}^K w_k,\mathbb{E}*{x\sim p_k}\big[-\log p*\theta(x)\big]
+   ]
+   This is why “just add more web” can hurt: you’re changing the weights.
+
+3. **Reweighting is importance sampling (domain targeting)**
+   [
+   \mathbb{E}*{x\sim p*{\text{target}}}[f(x)]
+   = \mathbb{E}*{x\sim p*{\text{data}}}\left[\frac{p_{\text{target}}(x)}{p_{\text{data}}(x)}f(x)\right]
+   ]
+   This is the clean math behind “upweight code,” “downweight spam,” “target reasoning text.”
+
+### Frontier Model Usage (2024–2025)
+
+* **Dolma** releases a curated **three-trillion-token** corpus and explicitly documents curation practices (mixture sources + dedup/filtering). ([arXiv][6])
+* **FineWeb** introduces a **15-trillion token** web dataset with documented dedup/filtering ablations; FineWeb‑Edu shows educational filtering can strongly affect reasoning benchmarks. ([arXiv][7])
+* Frontier open model reports increasingly emphasize tokenizer/context/vocab choices alongside data pipeline decisions (e.g., Llama 3’s published hyperparameter tables make those “silent” knobs explicit). ([ar5iv][1])
+
+### Missing Intuition (what tutorials get wrong)
+
+* “More tokens” is not monotonic improvement: mixture shifts can create **capability regressions** even if loss improves.
+* Dedup is not just about “saving space”—it changes memorization, privacy risk, and eval contamination.
+* Data is the **primary alignment substrate** too: post-training can’t reliably create skills that never appear in the support of the data distribution.
+
+### Canonical Papers (2–3, arXiv URLs)
+
+* Soldaini et al., *Dolma: an Open Corpus of Three Trillion Tokens…* — `https://arxiv.org/abs/2402.00159`
+* Penedo et al., *The FineWeb Datasets* — `https://arxiv.org/abs/2406.17557`
+* Gao et al., *The Pile* — `https://arxiv.org/abs/2101.00027`
+
+### Visualization Ideas (interactive demos)
+
+* **Mixture console:** sliders for (w_k) → show predicted shifts in domain perplexity / benchmark proxy scores.
+* **Dedup heatmap:** MinHash-style near-duplicate clusters; show how “duplicate neighborhoods” inflate memorization.
+* **Contamination detector demo:** given eval set → find overlap candidates in training shards, show why benchmarks can lie.
+
+### Prerequisites (existing concept IDs)
+
+* `maximum-likelihood`
+* `scaling-laws`
+* `double-descent`
+* `theory`
+
+### What It Unlocks
+
+* A real mental model for **why some training runs “just work”**.
+* Building domain-specific models (code/legal/biomed) by principled mixture design.
+* Understanding the limits of post-training when pretraining data support is missing.
+
+---
+
+## 36. Retrieval-Augmented Generation
+
+**Positioning:** *Non-parametric memory.* Long context (#30) increases what the model *can read*; RAG determines what it *should read*. This is the foundation for citations, freshness, enterprise search, and most production assistants. Core RAG/REALM/RETRO formalize this as marginalizing over retrieved documents.
+
+### Core Math (2–3 equations + intuition)
+
+1. **Dense retrieval as nearest neighbor in embedding space**
+   [
+   d^*=\arg\max_{d_i\in \mathcal C};\text{sim}(e_q,e_{d_i}),
+   \qquad
+   \text{sim}(u,v)=\frac{u^\top v}{|u|,|v|}
+   ]
+   Embeddings (from #10) become a *memory address*.
+
+2. **RAG as marginalization over retrieved latent documents**
+   [
+   p(y\mid x)=\sum_{z\in \text{TopK}(x)} p(y\mid x,z);p(z\mid x)
+   ]
+   Generation becomes “mixture over sources,” not pure parametric recall.
+
+3. **RETRO-style framing: scale knowledge without scaling parameters**
+   (Conceptual equation from the same idea)
+   [
+   \text{capability} \approx f(\text{params}) + g(\text{retrieved data})
+   ]
+   RETRO empirically demonstrates large gains by conditioning on retrieved chunks from huge corpora.
+
+### Frontier Model Usage (2024–2025)
+
+* Modern “agent” stacks ship retrieval as a **first-class tool** (e.g., OpenAI’s agent building blocks include **Web Search** and **File Search**).
+* Anthropic’s **Model Context Protocol (MCP)** explicitly targets standardized connectivity to external tools/data—RAG becomes an ecosystem primitive, not a bespoke integration.
+* Research direction: **adaptive retrieval** (retrieve only when needed, critique citations), e.g., Self‑RAG.
+
+### Missing Intuition (what tutorials get wrong)
+
+* RAG isn’t “paste docs into the prompt.” The core difficulty is **retrieval errors**: wrong chunk, wrong granularity, wrong freshness.
+* “Longer context” doesn’t fix retrieval—attention is not a search engine; you still need **indexing and ranking**.
+* Citation correctness is a systems property: retriever + chunker + reranker + generator must align, or you get “confidently cited nonsense.”
+
+### Canonical Papers (2–3, arXiv URLs)
+
+* Lewis et al., *Retrieval-Augmented Generation (RAG)* — `https://arxiv.org/abs/2005.11401`
+* Guu et al., *REALM* — `https://arxiv.org/abs/2002.08909`
+* Borgeaud et al., *RETRO* — `https://arxiv.org/abs/2112.04426`
+
+### Visualization Ideas (interactive demos)
+
+* **Live vector search sandbox:** query → top‑k chunks → show cosine scores and what the generator attends to.
+* **Chunking tradeoff explorer:** vary chunk size/overlap → measure recall@k and citation accuracy.
+* **Grounding meter:** compare generations with/without retrieval; highlight unsupported claims.
+
+### Prerequisites (existing concept IDs)
+
+* `representations`
+* `attention-transformers`
+* `long-context`
+* `llm-serving`
+* `multimodal`
+
+### What It Unlocks
+
+* Freshness + citations without retraining.
+* Enterprise assistants that can use private corpora safely (with access control).
+* The “memory layer” required for real agents.
+
+---
+
+## 37. Tool Use & Agentic Systems
+
+**Positioning:** *LLMs as policies, not just predictors.* In 2024–2025, frontier capability is increasingly delivered as **agent systems**: tool calling, browsing, code execution, computer use, connectors (MCP), orchestration frameworks, tracing. OpenAI and Anthropic both now publish explicit “agent building blocks” and tool-use flows in their docs.
+
+### Core Math (2–3 equations + intuition)
+
+1. **Agent as a policy over actions/tools**
+   [
+   a_t \sim \pi_\theta(a_t\mid s_t),
+   \qquad
+   J(\theta)=\mathbb{E}\Big[\sum_{t=0}^{T}\gamma^t r_t\Big]
+   ]
+   The LLM is a decision-maker: actions include “call_tool(name, args)”.
+
+2. **Behavioral cloning baseline for tool use**
+   [
+   \mathcal{L}*{\text{BC}}(\theta)=-\mathbb{E}*{(s,a)\sim \mathcal D}\big[\log \pi_\theta(a\mid s)\big]
+   ]
+   Most practical agents start here: supervised traces of correct tool calls.
+
+3. **Policy gradient for improving long-horizon behavior**
+   [
+   \nabla_\theta J(\theta)=\mathbb{E}\big[\nabla_\theta \log \pi_\theta(a_t\mid s_t),A_t\big]
+   ]
+   This is the “math under the hood” of improving tool policies via preference/RL signals (connecting back to #15, #24–#26).
+
+### Frontier Model Usage (2024–2025)
+
+* **OpenAI tool calling is explicitly formalized** as a multi-step tool calling flow; “Agents platform” building blocks and the Responses API are presented as infrastructure for agents.
+* **Anthropic tool use + computer use** are explicitly documented, and they publish advanced orchestration patterns (e.g., programmatic tool calling).
+* **MCP (announced Nov 25, 2024)** is an open standard aimed at solving the “many tools × many apps” integration problem; this is the ecosystem layer agents require.
+* Research foundations: **ReAct** (interleave reasoning + acting) and **Toolformer** (self-supervised tool use learning).
+
+### Missing Intuition (what tutorials get wrong)
+
+* Agents fail mainly due to **systems issues** (state, tool errors, latency, caching, auth, partial observability), not because “the prompt wasn’t good.”
+* Tool calling is an **action selection problem** with credit assignment; JSON formatting is the least interesting part.
+* “Just add more tools” often *reduces* performance unless you manage tool discovery, routing, and context budgeting (why protocols + orchestration exist).
+
+### Canonical Papers (2–3, arXiv URLs)
+
+* Yao et al., *ReAct* — `https://arxiv.org/abs/2210.03629`
+* Schick et al., *Toolformer* — `https://arxiv.org/abs/2302.04761`
+* Shinn et al., *Reflexion* — `https://arxiv.org/abs/2303.11366`
+
+### Visualization Ideas (interactive demos)
+
+* **Agent trace viewer:** timeline of tokens, tool calls, tool outputs, retries, and final answer; overlay latency + token cost.
+* **Failure injection lab:** randomly corrupt tool outputs → observe recovery strategies (re-ask, verify, switch tools).
+* **Policy routing map:** show which tool gets selected for which query distribution; visualize misroutes.
+
+### Prerequisites (existing concept IDs)
+
+* `attention-transformers`
+* `rlhf`
+* `dpo`
+* `llm-serving`
+* `long-context`
+* `multimodal`
+
+### What It Unlocks
+
+* End-to-end assistants that **search, run code, use GUIs, and complete tasks** reliably.
+* The conceptual foundation for **multi-agent orchestration**, tracing/evals for agents, and connector ecosystems.
+* The “real product layer” that turns a strong model into a useful system.
+
+---
+
+[1]: https://ar5iv.labs.arxiv.org/html/2407.21783?utm_source=chatgpt.com "[2407.21783] The Llama 3 Herd of Models - ar5iv - arXiv"
+[2]: https://arxiv.org/html/2506.18674v1?utm_source=chatgpt.com "Is There a Case for Conversation Optimized Tokenizers in ..."
+[3]: https://arxiv.org/abs/2207.12598?utm_source=chatgpt.com "Classifier-Free Diffusion Guidance"
+[4]: https://arxiv.org/abs/1904.09751?utm_source=chatgpt.com "The Curious Case of Neural Text Degeneration"
+[5]: https://arxiv.org/abs/2206.00927?utm_source=chatgpt.com "DPM-Solver: A Fast ODE Solver for Diffusion Probabilistic Model Sampling in Around 10 Steps"
+[6]: https://arxiv.org/abs/2402.00159?utm_source=chatgpt.com "Dolma: an Open Corpus of Three Trillion Tokens for Language Model Pretraining Research"
+[7]: https://arxiv.org/abs/2406.17557?utm_source=chatgpt.com "The FineWeb Datasets: Decanting the Web for the Finest Text Data at Scale"

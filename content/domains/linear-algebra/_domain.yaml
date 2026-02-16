@@ -1,0 +1,5 @@
+title: "Linear Algebra"
+description: "Vectors, matrices, and linear maps: the language of representations, optimization, and modern deep learning."
+icon: "sigma"
+color: "#0f766e"
+order: 10

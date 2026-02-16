@@ -221,13 +221,15 @@ function gradRosenbrock(x: number, y: number): [number, number] {
   return [dx, dy]
 }
 
-// Coordinate transforms
+// Coordinate transforms with NaN guard
 function paramXToSvg(x: number): number {
+  if (!Number.isFinite(x)) return PADDING + (LANDSCAPE_WIDTH - 2 * PADDING) / 2
   const t = (x - X_MIN) / (X_MAX - X_MIN)
   return PADDING + t * (LANDSCAPE_WIDTH - 2 * PADDING)
 }
 
 function paramYToSvg(y: number): number {
+  if (!Number.isFinite(y)) return LANDSCAPE_HEIGHT - PADDING - (LANDSCAPE_HEIGHT - 2 * PADDING) / 2
   const t = (y - Y_MIN) / (Y_MAX - Y_MIN)
   return (
     LANDSCAPE_HEIGHT - PADDING - t * (LANDSCAPE_HEIGHT - 2 * PADDING)
@@ -651,6 +653,7 @@ export default function AdamOptimizerDemo() {
     setGamePhase('setup')
     setPrediction(null)
     setLockedPrediction(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- START is a constant
   }, [])
 
   // Start the race
@@ -672,6 +675,7 @@ export default function AdamOptimizerDemo() {
     setPrediction(null)
     setLockedPrediction(null)
     setActiveRacePreset(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- START is a constant
   }, [])
 
   // Countdown effect
@@ -694,6 +698,7 @@ export default function AdamOptimizerDemo() {
     }
     const timer = setTimeout(() => stepOnce(), 80)
     return () => clearTimeout(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- stepOnce is stable within each gamePhase
   }, [gamePhase, steps])
 
   // Check if prediction was correct

@@ -323,6 +323,7 @@ export default function DiffusionProcessVisualizer({
     }
     const timer = setInterval(() => setCountdown((c) => c - 1), 1000)
     return () => clearInterval(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- revealAnswer is stable callback
   }, [gamePhase, countdown])
 
   // ─── Toggle showing step A or B during setup ───

@@ -1,4 +1,5 @@
 import { ReactNode, createContext, useContext, useState, useCallback, useMemo } from 'react'
+import Link from 'next/link'
 
 // Section title mapping for display
 const SECTION_TITLES: Record<string, string> = {
@@ -74,12 +75,18 @@ export function useExplorable() {
   return context
 }
 
+interface BreadcrumbItem {
+  label: string
+  href?: string
+}
+
 interface ExplorableLayoutProps {
   children: ReactNode
   visualPanel: ReactNode
   title: string
   subtitle?: string
   initialParams?: Record<string, number | string | boolean>
+  breadcrumb?: BreadcrumbItem[]
 }
 
 export default function ExplorableLayout({
@@ -88,6 +95,7 @@ export default function ExplorableLayout({
   title,
   subtitle,
   initialParams = {},
+  breadcrumb,
 }: ExplorableLayoutProps) {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [params, setParams] = useState<Record<string, number | string | boolean>>(initialParams)
@@ -110,6 +118,28 @@ export default function ExplorableLayout({
   return (
     <ExplorableContext.Provider value={{ activeSection, setActiveSection, params, setParam, resetParams, getSectionTitle }}>
       <div className="explorable-layout">
+        {breadcrumb && breadcrumb.length > 0 && (
+          <nav className="explorable-breadcrumb" style={{
+            fontSize: '0.85rem',
+            marginBottom: '1rem',
+            color: 'var(--text-muted)'
+          }}>
+            {breadcrumb.map((item, i) => (
+              <span key={i}>
+                {item.href ? (
+                  <Link href={item.href} style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span style={{ color: 'var(--text-primary)' }}>{item.label}</span>
+                )}
+                {i < breadcrumb.length - 1 && (
+                  <span style={{ margin: '0 0.5rem', opacity: 0.5 }}>/</span>
+                )}
+              </span>
+            ))}
+          </nav>
+        )}
         <header className="explorable-header">
           <h1 className="explorable-title">{title}</h1>
           {subtitle && <p className="explorable-subtitle">{subtitle}</p>}

@@ -1,0 +1,29 @@
+id: vector-spaces
+title: "Vector Spaces"
+domain: linear-algebra
+slug: vector-spaces
+difficulty: 2
+status: draft
+importance: critical
+prerequisites: []
+leads_to:
+  - linear-independence
+  - basis-and-span
+  - linear-transformations
+related:
+  - matrices
+  - dot-product
+  - norms
+  - eigenvalues
+  - svd
+tags:
+  - linear-algebra
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: highschool
+short_description: "A vector space is a set of objects you can add and scale, where those operations behave consistently."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 10

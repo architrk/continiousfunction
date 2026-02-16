@@ -15,7 +15,7 @@ A static educational website explaining deep learning mathematics through intera
 │  └─────────────┘    └──────────────┘    └─────────────┘    └─────────────┘  │
 │                                                                    │         │
 │  ┌─────────────┐    ┌──────────────┐                              ▼         │
-│  │ foundations │───▶│ getStaticProps│───▶ 33 concept pages ──▶ out/        │
+│  │ foundations │───▶│ getStaticProps│───▶ 100 concept pages ──▶ out/       │
 │  │  Data.ts    │    │ getStaticPaths│                                       │
 │  └─────────────┘    └──────────────┘                                        │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -72,12 +72,12 @@ continiousfunction/
 │   ├── KernelHeatmap.tsx           # Reusable heatmap
 │   ├── StateTimeline.tsx           # Reusable state evolution viz
 │   │
-│   ├── foundations/                # 33 concept-specific visualizations
+│   ├── foundations/                # Concept-specific visualizations (one file per viz)
 │   │   ├── index.ts                # Barrel export + viz mapping re-export
 │   │   ├── CrossEntropyViz.tsx
 │   │   ├── AttentionGeometryViz.tsx
-│   │   ├── TokenizationViz.tsx     # NEW: concept #33
-│   │   └── ... (33 total)
+│   │   ├── TokenizationViz.tsx
+│   │   └── ... (see folder for full list)
 │   │
 │   └── visualizations/             # Pillar-specific visualizations
 │       ├── sequence/               # Transformers, SSMs, Mamba
@@ -87,7 +87,7 @@ continiousfunction/
 │       └── mechinterp/             # Superposition, circuits
 │
 ├── data/
-│   ├── foundationsData.ts          # SOURCE OF TRUTH: 33 concepts
+│   ├── foundationsData.ts          # SOURCE OF TRUTH: 100 concepts
 │   ├── visualizationMappings.ts    # concept → viz component mapping
 │   └── conceptGraphData.ts         # Graph edges for KnowledgeGraph
 │
@@ -127,7 +127,7 @@ continiousfunction/
 │  │      prereqs: ['maximum-likelihood'],                              │  │
 │  │      dependents: ['rope', 'efficient-attention'],                  │  │
 │  │    },                                                              │  │
-│  │    ... (33 concepts total)                                         │  │
+│  │    ... (100 concepts total)                                        │  │
 │  │  ]                                                                 │  │
 │  └────────────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -136,7 +136,7 @@ continiousfunction/
 ┌──────────────────────────────────────────────────────────────────────────┐
 │  pages/foundations/[id].tsx (getStaticPaths + getStaticProps)            │
 │                                                                          │
-│  1. getStaticPaths(): Generate 33 paths from foundationsConcepts.map()  │
+│  1. getStaticPaths(): Generate 100 paths from foundationsConcepts.map()  │
 │  2. getStaticProps(): Lookup concept by id, compute prev/next           │
 │  3. Render: MathContent + vizMap[conceptVisualizationMap[id]]           │
 └──────────────────────────────────────────────────────────────────────────┘
@@ -202,7 +202,7 @@ pages/concepts/optimizers/overview.mdx
 │   ├── /maximum-likelihood
 │   ├── /attention-transformers
 │   ├── /adam
-│   ├── ... (33 dynamic routes)
+│   ├── ... (100 dynamic routes)
 │   └── /tokenization-vocabulary
 │
 ├── /pillars/               Five pillars index
@@ -306,7 +306,7 @@ User scrolls through /pillars/optimization
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| `data/foundationsData.ts` | Single source of truth for 33 concepts | ~1500 |
+| `data/foundationsData.ts` | Single source of truth for 100 concepts | ~1500 |
 | `data/visualizationMappings.ts` | Maps concept ID → viz component names | ~45 |
 | `pages/foundations/[id].tsx` | Dynamic concept page with KaTeX + viz | ~720 |
 | `components/FoundationsGraph.tsx` | D3 force-directed concept map | ~350 |
@@ -342,7 +342,7 @@ out/
 │   ├── index.html                # Concept grid
 │   ├── maximum-likelihood/index.html
 │   ├── attention-transformers/index.html
-│   └── ... (33 concept pages)
+│   └── ... (100 concept pages)
 ├── pillars/
 │   ├── index.html
 │   ├── optimization/index.html
@@ -359,17 +359,17 @@ out/
 
 ---
 
-## Adding a New Concept
+## Adding a New Concept (If Expanding Beyond 100)
 
 1. **Add to `data/foundationsData.ts`**:
    ```ts
-   {
-     id: 'new-concept',
-     number: 34,
-     title: 'New Concept Name',
-     ...
-   }
-   ```
+	   {
+	     id: 'new-concept',
+	     number: 101,
+	     title: 'New Concept Name',
+	     ...
+	   }
+	   ```
 
 2. **Create visualization** in `components/foundations/NewConceptViz.tsx`
 
@@ -393,8 +393,8 @@ out/
    'NewConceptViz': NewConceptViz,
    ```
 
-7. **Update counts** (currently 33 in multiple files)
+7. **Update counts** only if you intentionally changed the curriculum size (UI derives most counts from data)
 
 ---
 
-*Last updated: 2025-12-27 | 33 concepts | Static export build*
+*Last updated: 2026-02-06 | 100 concepts | Static export build*

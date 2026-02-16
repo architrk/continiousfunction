@@ -185,7 +185,7 @@ export default function ForceGraph({
             return source === d.id || target === d.id ? getNodeColor(d.category) : '#4b5563'
           })
       })
-      .on('mouseout', function(_, d) {
+      .on('mouseout', function() {
         d3.select(this).select('circle')
           .transition()
           .duration(150)

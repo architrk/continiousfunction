@@ -609,6 +609,8 @@ export default function TaskVectorPlayground() {
           width={SVG_WIDTH}
           height={SVG_HEIGHT}
           className="tv-chart"
+          role="img"
+          aria-label="Task vector visualization showing how model weight differences create arithmetic for capabilities"
           style={{ borderRadius: '12px', background: '#020617', flex: '0 0 auto' }}
           onPointerMove={handlePointerMove}
           onPointerUp={stopDragging}

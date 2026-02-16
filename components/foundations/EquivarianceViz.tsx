@@ -207,24 +207,29 @@ export default function EquivarianceInvarianceDemo() {
     const equivTransform = buildTransform(rotation, translation, reflection, 1)
     const invariantTransform = buildTransform(0, { x: 0, y: 0 }, { x: false, y: false }, 1)
 
-    if (inputShapeRef.current) {
-      gsap.to(inputShapeRef.current, {
+    // Capture refs for cleanup
+    const inputEl = inputShapeRef.current
+    const equivEl = equivariantShapeRef.current
+    const invariantEl = invariantShapeRef.current
+
+    if (inputEl) {
+      gsap.to(inputEl, {
         transform: inputTransform,
         duration: 0.35,
         ease: 'power2.out',
       })
     }
 
-    if (equivariantShapeRef.current) {
-      gsap.to(equivariantShapeRef.current, {
+    if (equivEl) {
+      gsap.to(equivEl, {
         transform: equivTransform,
         duration: 0.35,
         ease: 'power2.out',
       })
     }
 
-    if (invariantShapeRef.current) {
-      gsap.to(invariantShapeRef.current, {
+    if (invariantEl) {
+      gsap.to(invariantEl, {
         transform: invariantTransform,
         duration: 0.35,
         ease: 'power2.out',
@@ -233,9 +238,9 @@ export default function EquivarianceInvarianceDemo() {
 
     // Cleanup: kill any running tweens on unmount to prevent memory leaks
     return () => {
-      if (inputShapeRef.current) gsap.killTweensOf(inputShapeRef.current)
-      if (equivariantShapeRef.current) gsap.killTweensOf(equivariantShapeRef.current)
-      if (invariantShapeRef.current) gsap.killTweensOf(invariantShapeRef.current)
+      if (inputEl) gsap.killTweensOf(inputEl)
+      if (equivEl) gsap.killTweensOf(equivEl)
+      if (invariantEl) gsap.killTweensOf(invariantEl)
     }
   }, [rotation, tx, ty, reflectX, reflectY])
 
@@ -783,7 +788,7 @@ export default function EquivarianceInvarianceDemo() {
                 transformOrigin: '50% 50%',
               }}
             >
-              <svg viewBox="0 0 100 100" width="100%" height="100%">
+              <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Input arrow shape that transforms with rotation, translation, and reflection">
                 <polygon
                   points="50,10 90,50 70,50 70,90 30,90 30,50 10,50"
                   fill="rgba(20,184,166,0.14)"
@@ -863,7 +868,7 @@ export default function EquivarianceInvarianceDemo() {
                   transformOrigin: '50% 50%',
                 }}
               >
-                <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Output arrow showing network predictions maintain same transformation">
                   <polygon
                     points="50,10 90,50 70,50 70,90 30,90 30,50 10,50"
                     fill="rgba(245,158,11,0.16)"
@@ -899,7 +904,7 @@ export default function EquivarianceInvarianceDemo() {
                   <span style={{ fontSize: '0.72rem' }}>invariant</span>
                 </div>
                 <div style={{ display: 'grid', gap: '0.22rem' }}>
-                  {['background', 'triangle', 'arrow', 'square'].map((label, idx) => {
+                  {['background', 'triangle', 'arrow', 'square'].map((label, _idx) => {
                     const isArrow = label === 'arrow'
                     return (
                       <div
@@ -1061,7 +1066,7 @@ export default function EquivarianceInvarianceDemo() {
                     boxShadow: '0 0 0 1px rgba(15,23,42,0.9)',
                   }}
                 />
-                <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <svg viewBox="0 0 100 100" width="100%" height="100%" role="img" aria-label="Equivariant output arrow transformed by same rotation as input">
                   <polygon
                     points="50,10 90,50 70,50 70,90 30,90 30,50 10,50"
                     fill="rgba(245,158,11,0.16)"

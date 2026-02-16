@@ -63,7 +63,7 @@ const QUESTION_TYPES = [
 
 export default function NextMovesPanel({ concept }: Props) {
   const [expandedType, setExpandedType] = useState<string | null>(null)
-  const [hoveredRelation, setHoveredRelation] = useState<string | null>(null)
+  const [_hoveredRelation, setHoveredRelation] = useState<string | null>(null)
 
   const { outgoing, incoming } = getConceptRelations(concept.id)
 
@@ -148,7 +148,7 @@ export default function NextMovesPanel({ concept }: Props) {
                       return (
                         <Link
                           key={prereqId}
-                          href={`/foundations/${prereqId}`}
+                          href={`/foundations/${prereqId}/`}
                           className="relation-card"
                           style={{ borderColor: prereq.color }}
                         >
@@ -176,7 +176,7 @@ export default function NextMovesPanel({ concept }: Props) {
                       return (
                         <Link
                           key={`${rel.from}-${rel.to}-${i}`}
-                          href={`/foundations/${targetId}`}
+                          href={`/foundations/${targetId}/`}
                           className="relation-card"
                           style={{
                             borderColor: RELATION_COLORS[rel.type as keyof typeof RELATION_COLORS]
@@ -232,7 +232,7 @@ export default function NextMovesPanel({ concept }: Props) {
                     return (
                       <Link
                         key={`${rel.from}-${rel.to}-${i}`}
-                        href={`/foundations/${targetId}`}
+                        href={`/foundations/${targetId}/`}
                         className="relation-link"
                         title={rel.why}
                       >

@@ -7,12 +7,15 @@
 oracle --version  # Should be 0.5.0+
 
 # Basic query with file context
-oracle --engine browser --browser-chrome-profile "Profile 1" \
+oracle --engine browser --browser-manual-login \
   --slug "my-query-name" \
   --prompt "Your prompt here" \
   --file "path/to/file.tsx" \
   --write-output "responses/output.md" \
   --browser-timeout 30m
+
+# First run opens an Oracle-controlled Chrome window.
+# Sign into ChatGPT there once, then keep that window open during runs.
 ```
 
 ## Key Flags
@@ -20,7 +23,7 @@ oracle --engine browser --browser-chrome-profile "Profile 1" \
 | Flag | Purpose |
 |------|---------|
 | `--engine browser` | Use browser mode (required for GPT-5 Pro) |
-| `--browser-chrome-profile "Profile 1"` | Use specific Chrome profile |
+| `--browser-manual-login` | Recommended: Oracle uses a persistent automation profile; you sign into ChatGPT once |
 | `--browser-port 922x` | (Recommended for parallel runs) Use a unique Chrome DevTools port per session |
 | `--slug "name"` | Unique session ID (kebab-case, 3-5 words) |
 | `--prompt "..."` | The query text |
@@ -35,7 +38,7 @@ oracle --engine browser --browser-chrome-profile "Profile 1" \
 
 ### Single Query (Background)
 ```bash
-oracle --engine browser --browser-chrome-profile "Profile 1" \
+oracle --engine browser --browser-manual-login \
   --slug "attention-viz" \
   --prompt "$(cat prompts/attention.txt)" \
   --file "components/*.tsx" \
@@ -54,7 +57,7 @@ oracle --engine browser --browser-chrome-profile "Profile 1" \
 for prompt_file in prompts/*.txt; do
   name=$(basename "$prompt_file" .txt)
   
-  oracle --engine browser --browser-chrome-profile "Profile 1" \
+  oracle --engine browser --browser-manual-login \
     --slug "$name" \
     --prompt "$(cat $prompt_file)" \
     --file "components/GradientDescentPlayground.tsx" \

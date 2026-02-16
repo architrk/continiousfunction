@@ -112,7 +112,7 @@ function getKLFeedback(
   }
 }
 
-function entropy(p: number[]): number {
+function _entropy(p: number[]): number {
   let h = 0
   for (let i = 0; i < p.length; i++) {
     const v = clamp(p[i], EPS, 1)
@@ -216,8 +216,8 @@ export default function CrossEntropyKLDemo() {
     klPQ,
     klQP,
     ceContribs,
-    klPQContribs,
-    klQPContribs,
+    klPQContribs: _klPQContribs,
+    klQPContribs: _klQPContribs,
     maxCEContrib,
     forwardSpike,
     reverseSpike

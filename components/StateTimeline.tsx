@@ -67,7 +67,7 @@ export default function StateTimeline({
         const normalized = mapRange(activation, bounds.min, bounds.max, 0, 1)
 
         // Color gradient from dark to bright
-        const intensity = Math.round(normalized * 255)
+        const _intensity = Math.round(normalized * 255)
         const isHighlighted = highlightNeurons.includes(neuronIdx)
 
         if (isHighlighted) {

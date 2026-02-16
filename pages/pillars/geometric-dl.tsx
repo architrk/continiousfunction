@@ -1,10 +1,33 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
+import { useEffect, useRef, Suspense, lazy } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
-import { Point2D, MATH_COLORS, mapRange } from '../../lib/mathObjects'
+import { Point2D, MATH_COLORS } from '../../lib/mathObjects'
+
+// Explore in depth link component
+function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="explore-link">
+      {label} →
+      <style jsx>{`
+        .explore-link {
+          display: inline-block;
+          margin-top: 1rem;
+          font-size: 0.85rem;
+          color: var(--converge-teal);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .explore-link:hover {
+          color: var(--accent);
+        }
+      `}</style>
+    </Link>
+  )
+}
 
 // Import visualization components from foundations (canonical source with gamification)
 const EquivarianceDemo = lazy(() => import('../../components/foundations/EquivarianceViz'))
@@ -183,9 +206,14 @@ export default function GeometricDLPillar() {
       </Head>
       <ExplorableLayout
         title="Geometric Deep Learning"
-      subtitle="Symmetry as inductive bias"
-      visualPanel={<GeometricVisualPanel />}
-      initialParams={{ rotation: 0, showTransformed: true }}
+        subtitle="Symmetry as inductive bias"
+        visualPanel={<GeometricVisualPanel />}
+        initialParams={{ rotation: 0, showTransformed: true }}
+        breadcrumb={[
+          { label: 'Home', href: '/' },
+          { label: 'Pillars', href: '/pillars' },
+          { label: 'Geometric DL' }
+        ]}
     >
       <ExplorableSection id="intro">
         <h2>Why Geometry Matters</h2>
@@ -218,6 +246,7 @@ export default function GeometricDLPillar() {
           the transformed location.
         </p>
         <RotationControl />
+        <ExploreLink href="/foundations/lie-groups/" />
       </ExplorableSection>
 
       <ExplorableSection id="cnn">

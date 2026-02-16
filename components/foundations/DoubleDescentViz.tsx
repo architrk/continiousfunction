@@ -103,7 +103,7 @@ const getDoubleDescentInsight = (
   testError: number,
   trainError: number,
   noiseLevel: number,
-  toyRegime: 'under' | 'interpolation' | 'over'
+  _toyRegime: 'under' | 'interpolation' | 'over'
 ): string => {
   if (ratio < 0.5) {
     return '📚 Classical regime: Not enough parameters to fit the data well. High bias, but variance is controlled. The textbook says stop here!';

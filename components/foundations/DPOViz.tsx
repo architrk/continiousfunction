@@ -201,23 +201,33 @@ export default function RLHFDPOAlignment() {
     if (gamePhase !== 'running') return
 
     const duration = 2000
-    const startTime = Date.now()
+    const startTime = performance.now()
     const startProb = 0.5
     const endProb = finalProb
 
-    const animate = () => {
-      const elapsed = Date.now() - startTime
+    let rafId = 0
+    let cancelled = false
+
+    const animate = (now: number) => {
+      if (cancelled) return
+      const elapsed = now - startTime
       const progress = Math.min(1, elapsed / duration)
       const eased = 1 - Math.pow(1 - progress, 3)
       setAnimatedProb(startProb + (endProb - startProb) * eased)
 
       if (progress < 1) {
-        requestAnimationFrame(animate)
+        rafId = requestAnimationFrame(animate)
       } else {
         setGamePhase('revealed')
       }
     }
-    requestAnimationFrame(animate)
+
+    rafId = requestAnimationFrame(animate)
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+    }
   }, [gamePhase, finalProb])
 
   return (

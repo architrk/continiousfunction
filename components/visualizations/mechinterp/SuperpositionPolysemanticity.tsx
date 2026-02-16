@@ -307,7 +307,7 @@ export default function SuperpositionExplorer({
     }
 
     const arcGenerator = d3
-      .arc<any>()
+      .arc<ArcDatum>()
       .innerRadius(radius * 0.72)
       .outerRadius(radius * 0.98)
 

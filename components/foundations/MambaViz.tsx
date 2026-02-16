@@ -54,8 +54,8 @@ const getRecoveryFeedback = (
   presetName: string
 ): string => {
   const correct = predicted === actual;
-  const mambaNet = mambaScore.correct - mambaScore.incorrect;
-  const ltiNet = ltiScore.correct - ltiScore.incorrect;
+  const _mambaNet = mambaScore.correct - mambaScore.incorrect;
+  const _ltiNet = ltiScore.correct - ltiScore.incorrect;
 
   if (correct) {
     if (actual === 'mamba') {

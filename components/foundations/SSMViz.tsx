@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
+import { createColorScale } from '../../lib/d3Types'
 
 /**
  * Basic types
@@ -103,8 +104,8 @@ const BEHAVIOR_PRESETS = [
 ];
 
 // Dynamic educational insights based on system state
-const getSSMInsight = (rho: number, thetaDeg: number, bGain: number): string => {
-  const theta = thetaDeg * Math.PI / 180;
+const getSSMInsight = (rho: number, thetaDeg: number, _bGain: number): string => {
+  const _theta = thetaDeg * Math.PI / 180;
 
   if (rho > 1.0) {
     return `💥 UNSTABLE! |λ| = ${rho.toFixed(2)} > 1 means the state explodes exponentially. Real SSMs use careful initialization and normalization to stay stable.`;
@@ -284,7 +285,7 @@ const WaveformPlot: React.FC<WaveformPlotProps> = ({
   const markerPoint = visibleData.length > 0 ? visibleData[visibleData.length - 1] : data[0]
 
   return (
-    <svg width={width} height={height} style={{ background: backgroundColor, borderRadius: 8 }}>
+    <svg width={width} height={height} style={{ background: backgroundColor, borderRadius: 8 }} role="img" aria-label="State space model signal dynamics visualization">
       {/* Axes */}
       <line
         x1={margin.left}
@@ -458,7 +459,7 @@ const StateSpacePlot: React.FC<StateSpacePlotProps> = ({
   const current = visibleStates.length > 0 ? visibleStates[visibleStates.length - 1] : states[0]
 
   return (
-    <svg width={width} height={height} style={{ background: BG_COLOR, borderRadius: 8 }}>
+    <svg width={width} height={height} style={{ background: BG_COLOR, borderRadius: 8 }} role="img" aria-label="Phase plane visualization showing state space model trajectories">
       {/* Grid */}
       {[0.25, 0.5, 0.75].map((f, i) => {
         const x = margin.left + f * (width - margin.left - margin.right)
@@ -613,13 +614,8 @@ const MatrixHeatmap: React.FC<MatrixHeatmapProps> = ({
   const cellWidth = width / Math.max(cols, 1)
   const cellHeight = (height - 22) / Math.max(rows, 1)
 
-  const colorPos = (d3.scaleLinear() as any)
-    .domain([0, maxAbs])
-    .range(['rgba(148,163,184,0.1)', STATE_COLOR])
-
-  const colorNeg = (d3.scaleLinear() as any)
-    .domain([0, maxAbs])
-    .range(['rgba(148,163,184,0.1)', OUTPUT_COLOR])
+  const colorPos = createColorScale([0, maxAbs], ['rgba(148,163,184,0.1)', STATE_COLOR])
+  const colorNeg = createColorScale([0, maxAbs], ['rgba(148,163,184,0.1)', OUTPUT_COLOR])
 
   const colorFor = (v: number) => {
     if (v >= 0) return colorPos(v)
@@ -698,7 +694,7 @@ const RNNUnrollDiagram: React.FC<RNNDiagramProps> = ({ length, currentStep }) =>
   const activeIdx = currentStep % displayLen
 
   return (
-    <svg width={width} height={height} style={{ background: BG_COLOR, borderRadius: 8 }}>
+    <svg width={width} height={height} style={{ background: BG_COLOR, borderRadius: 8 }} role="img" aria-label="Comparison of RNN sequential processing vs SSM parallel processing patterns">
       <text
         x={margin.left}
         y={14}

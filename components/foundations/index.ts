@@ -1,5 +1,5 @@
 // Foundations visualization components index
-// Maps to the 34 core mathematical concepts
+// Barrel exports for concept visualizations (used by /foundations/[id] and pillar pages)
 
 export { default as CrossEntropyViz } from './CrossEntropyViz'
 export { default as AttentionGeometryViz } from './AttentionGeometryViz'

@@ -1,0 +1,31 @@
+# Continuous Function (static export)
+# Export config: `output: 'export'` + `trailingSlash: true`.
+# That means routes are exported as folders with `index.html`, so Apache can
+# serve clean URLs without custom rewrite rules.
+
+# Security Headers
+<IfModule mod_headers.c>
+  # Prevent MIME sniffing
+  Header set X-Content-Type-Options "nosniff"
+
+  # Prevent clickjacking
+  Header set X-Frame-Options "SAMEORIGIN"
+
+  # Referrer policy
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Permissions policy (restrictive)
+  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# Cache static assets aggressively (hashed filenames under `_next/static/`).
+# HTML should revalidate so deploys propagate quickly.
+<IfModule mod_headers.c>
+  <FilesMatch "\\.(?:css|js|mjs|map|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+
+  <FilesMatch "\\.(?:html)$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+</IfModule>

@@ -279,7 +279,7 @@ function svgToWorld(x: number, y: number): Vec2 {
 // ----------- Component -----------
 
 export default function NewtonSchulzOrthogonalizationDemo() {
-  const [initialMatrix, setInitialMatrix] =
+  const [_initialMatrix, setInitialMatrix] =
     useState<Matrix2>(DEFAULT_INITIAL)
   const [currentMatrix, setCurrentMatrix] =
     useState<Matrix2>(DEFAULT_INITIAL)
@@ -585,14 +585,18 @@ export default function NewtonSchulzOrthogonalizationDemo() {
 
   // Cleanup: kill all GSAP tweens on unmount to prevent memory leaks
   useEffect(() => {
+    // Capture refs for cleanup
+    const gridLines = gridLineRefs.current
+    const basisE1El = basisE1Ref.current
+    const basisE2El = basisE2Ref.current
     return () => {
       // Kill tweens on grid lines
-      gridLineRefs.current.forEach((el) => {
+      gridLines.forEach((el) => {
         if (el) gsap.killTweensOf(el)
       })
       // Kill tweens on basis vectors
-      if (basisE1Ref.current) gsap.killTweensOf(basisE1Ref.current)
-      if (basisE2Ref.current) gsap.killTweensOf(basisE2Ref.current)
+      if (basisE1El) gsap.killTweensOf(basisE1El)
+      if (basisE2El) gsap.killTweensOf(basisE2El)
     }
   }, [])
 
@@ -621,7 +625,7 @@ export default function NewtonSchulzOrthogonalizationDemo() {
     const rect = svgRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    let [wx, wy] = svgToWorld(x, y)
+    const [wx, wy] = svgToWorld(x, y)
 
     // Clamp basis vector length so the iteration stays sane
     const maxRadius = 1.6

@@ -31,7 +31,7 @@ function calculateExpectedSpeedup(quality: number, k: number): number {
   return (alpha * k) / (1 + (1 - alpha) * k);
 }
 
-function getSpeedupRange(speedup: number): '<1×' | '1-2×' | '2-3×' | '>3×' {
+function _getSpeedupRange(speedup: number): '<1×' | '1-2×' | '2-3×' | '>3×' {
   if (speedup < 1) return '<1×';
   if (speedup < 2) return '1-2×';
   if (speedup < 3) return '2-3×';
@@ -212,6 +212,7 @@ export default function SpeculativeDecodingViz() {
     }
 
     return { proposals, acceptanceRate: accepted / numTokens };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- seed is used for reproducible randomization
   }, [draftQuality, numTokens, seed]);
 
   // Calculate theoretical speedup

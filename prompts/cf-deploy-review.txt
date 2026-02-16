@@ -1,0 +1,17 @@
+You are reviewing deployment for a Next.js static export site (output: 'export', trailingSlash: true) hosted on Hostinger via FTP.
+
+Files attached:
+- DEPLOYMENT_GUIDE.md
+- next.config.mjs
+- package.json
+
+Tasks:
+1) Verify the deployment guide is accurate and consistent with current Next.js static export behavior.
+2) Identify any pitfalls with clean URLs, trailingSlash, and Hostinger/Apache behavior.
+3) Propose an improved deploy script that uploads out/ safely via FTP (no secrets committed) and can be run as npm scripts.
+4) Propose a GitHub Actions workflow skeleton that builds and deploys via FTP using repository secrets.
+
+Output format:
+- Prioritized issues
+- Updated DEPLOYMENT_GUIDE.md text (diff or replacement sections)
+- Proposed scripts/workflow (copy-pasteable)

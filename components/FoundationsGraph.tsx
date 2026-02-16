@@ -8,17 +8,20 @@ import {
   RELATION_COLORS,
   RELATION_LABELS,
   GraphNode,
-  GraphLink,
-  LinkType
+  GraphLink
 } from '../data/foundationsData'
+import {
+  SimulationNode,
+  getNodeId,
+  getLinkX,
+  getLinkY,
+  createNodeDrag,
+  selectCircleFromGroup,
+  transitionCircle
+} from '../lib/d3Types'
 
 // Extend GraphNode with d3 simulation properties
-interface Node extends GraphNode {
-  x?: number
-  y?: number
-  fx?: number | null
-  fy?: number | null
-}
+interface Node extends GraphNode, SimulationNode {}
 
 interface Link extends Omit<GraphLink, 'source' | 'target'> {
   source: string | Node
@@ -52,6 +55,9 @@ interface Props {
   onNodeClick?: (conceptId: string) => void
 }
 
+// All available relation types
+const ALL_RELATION_TYPES = Object.keys(RELATION_LABELS) as (keyof typeof RELATION_LABELS)[]
+
 export default function FoundationsGraph({
   width = 900,
   height = 600,
@@ -60,7 +66,34 @@ export default function FoundationsGraph({
   const svgRef = useRef<SVGSVGElement>(null)
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
 
+  // Relation type filter state - all visible by default
+  const [visibleRelations, setVisibleRelations] = useState<Set<string>>(
+    () => new Set(ALL_RELATION_TYPES)
+  )
+
   const graphData = useMemo(() => generateFoundationsGraphData(), [])
+
+  // Filter links based on visible relation types
+  const filteredLinks = useMemo(() => {
+    return graphData.links.filter(link => visibleRelations.has(link.type))
+  }, [graphData.links, visibleRelations])
+
+  // Toggle a relation type's visibility
+  const toggleRelationType = (type: string) => {
+    setVisibleRelations(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) {
+        next.delete(type)
+      } else {
+        next.add(type)
+      }
+      return next
+    })
+  }
+
+  // Show all / hide all helpers
+  const showAllRelations = () => setVisibleRelations(new Set(ALL_RELATION_TYPES))
+  const hideAllRelations = () => setVisibleRelations(new Set())
 
   useEffect(() => {
     if (!svgRef.current) return
@@ -95,7 +128,7 @@ export default function FoundationsGraph({
 
     // Create force simulation with phase-anchored layout (subway-map style)
     const simulation = d3.forceSimulation<Node>(graphData.nodes as Node[])
-      .force('link', d3.forceLink<Node, Link>(graphData.links as Link[])
+      .force('link', d3.forceLink<Node, Link>(filteredLinks as Link[])
         .id(d => d.id)
         .distance(100)
         .strength(0.3))
@@ -125,37 +158,28 @@ export default function FoundationsGraph({
     // Create links with typed colors
     const link = g.append('g')
       .attr('class', 'links')
-      .selectAll('line')
-      .data(graphData.links)
+      .selectAll<SVGLineElement, Link>('line')
+      .data(filteredLinks as Link[])
       .join('line')
-      .attr('stroke', (d: any) => RELATION_COLORS[d.type as keyof typeof RELATION_COLORS] || 'rgba(245, 158, 11, 0.3)')
-      .attr('stroke-width', (d: any) => d.type === 'prereq' ? 1.5 : 2)
-      .attr('stroke-dasharray', (d: any) => d.type === 'analogy' ? '4,2' : 'none')
-      .attr('marker-end', (d: any) => `url(#arrowhead-${d.type})`)
+      .attr('stroke', (d: Link) => RELATION_COLORS[d.type as keyof typeof RELATION_COLORS] || 'rgba(245, 158, 11, 0.3)')
+      .attr('stroke-width', (d: Link) => d.type === 'prereq' ? 1.5 : 2)
+      .attr('stroke-dasharray', (d: Link) => d.type === 'analogy' ? '4,2' : 'none')
+      .attr('marker-end', (d: Link) => `url(#arrowhead-${d.type})`)
+
+    // Create drag behavior for nodes
+    const dragBehavior = createNodeDrag<Node>(simulation)
 
     // Create node groups
     const node = g.append('g')
       .attr('class', 'nodes')
-      .selectAll('g')
-      .data(graphData.nodes)
+      .selectAll<SVGGElement, Node>('g')
+      .data(graphData.nodes as Node[])
       .join('g')
       .attr('class', 'node-group')
       .style('cursor', 'pointer')
-      .call(d3.drag<SVGGElement, Node>()
-        .on('start', (event, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart()
-          d.fx = d.x
-          d.fy = d.y
-        })
-        .on('drag', (event, d) => {
-          d.fx = event.x
-          d.fy = event.y
-        })
-        .on('end', (event, d) => {
-          if (!event.active) simulation.alphaTarget(0)
-          d.fx = null
-          d.fy = null
-        }) as any)
+
+    // Apply drag behavior
+    node.call(dragBehavior)
 
     // Node circle background
     node.append('circle')
@@ -202,36 +226,28 @@ export default function FoundationsGraph({
 
     // Hover and click interactions
     node
-      .on('mouseover', function(event, d) {
+      .on('mouseover', function(this: SVGGElement, event, d) {
         setHoveredNode(d.id)
-        ;(d3.select(this).select('circle') as any)
-          .transition()
-          .duration(150)
-          .attr('r', 32)
-          .attr('fill-opacity', 0.25)
-          .attr('stroke-width', 3)
+        const circle = selectCircleFromGroup(this)
+        transitionCircle(circle, 150, { r: 32, fillOpacity: 0.25, strokeWidth: 3 })
 
         // Highlight connected links
         link
-          .attr('stroke-opacity', (l: any) => {
-            const source = typeof l.source === 'string' ? l.source : l.source.id
-            const target = typeof l.target === 'string' ? l.target : l.target.id
-            return source === d.id || target === d.id ? 1 : 0.2
+          .attr('stroke-opacity', (l: Link) => {
+            const sourceId = getNodeId(l.source)
+            const targetId = getNodeId(l.target)
+            return sourceId === d.id || targetId === d.id ? 1 : 0.2
           })
-          .attr('stroke-width', (l: any) => {
-            const source = typeof l.source === 'string' ? l.source : l.source.id
-            const target = typeof l.target === 'string' ? l.target : l.target.id
-            return source === d.id || target === d.id ? 2.5 : 1
+          .attr('stroke-width', (l: Link) => {
+            const sourceId = getNodeId(l.source)
+            const targetId = getNodeId(l.target)
+            return sourceId === d.id || targetId === d.id ? 2.5 : 1
           })
       })
-      .on('mouseout', function(event, d) {
+      .on('mouseout', function(this: SVGGElement) {
         setHoveredNode(null)
-        ;(d3.select(this).select('circle') as any)
-          .transition()
-          .duration(150)
-          .attr('r', 28)
-          .attr('fill-opacity', 0.15)
-          .attr('stroke-width', 2)
+        const circle = selectCircleFromGroup(this)
+        transitionCircle(circle, 150, { r: 28, fillOpacity: 0.15, strokeWidth: 2 })
 
         link
           .attr('stroke-opacity', 0.3)
@@ -246,19 +262,19 @@ export default function FoundationsGraph({
     // Update positions on tick
     simulation.on('tick', () => {
       link
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y)
+        .attr('x1', (d: Link) => getLinkX(d.source))
+        .attr('y1', (d: Link) => getLinkY(d.source))
+        .attr('x2', (d: Link) => getLinkX(d.target))
+        .attr('y2', (d: Link) => getLinkY(d.target))
 
-      node.attr('transform', (d: any) => `translate(${d.x},${d.y})`)
+      node.attr('transform', (d: Node) => `translate(${d.x ?? 0},${d.y ?? 0})`)
     })
 
     // Cleanup
     return () => {
       simulation.stop()
     }
-  }, [graphData, width, height, onNodeClick])
+  }, [graphData, filteredLinks, width, height, onNodeClick])
 
   // Get hovered concept details
   const hoveredConcept = hoveredNode
@@ -270,7 +286,7 @@ export default function FoundationsGraph({
       <div className="graph-header">
         <h2>Mathematical Foundations of Deep Learning</h2>
         <p className="muted">
-          34 core concepts explaining GPT-4, Claude, Gemini, Llama, Stable Diffusion, and Sora.
+          {foundationsConcepts.length} core concepts explaining GPT-4, Claude, Gemini, Llama, Stable Diffusion, and Sora.
           Drag nodes to explore. Click to see details.
         </p>
       </div>
@@ -288,20 +304,45 @@ export default function FoundationsGraph({
             </div>
           ))}
         </div>
-        <div className="legend-section">
-          <span className="legend-title">Edges:</span>
-          {Object.entries(RELATION_LABELS).map(([key, label]) => (
-            <div key={key} className="legend-item">
-              <span
-                className="legend-line"
-                style={{
-                  backgroundColor: RELATION_COLORS[key as keyof typeof RELATION_COLORS],
-                  borderStyle: key === 'analogy' ? 'dashed' : 'solid'
-                }}
-              />
-              <span className="legend-label">{label}</span>
-            </div>
-          ))}
+        <div className="legend-section legend-filters">
+          <span className="legend-title">Filter Edges:</span>
+          {Object.entries(RELATION_LABELS).map(([key, label]) => {
+            const isActive = visibleRelations.has(key)
+            return (
+              <button
+                key={key}
+                className={`filter-chip ${isActive ? 'active' : 'inactive'}`}
+                onClick={() => toggleRelationType(key)}
+                aria-pressed={isActive}
+                title={`${isActive ? 'Hide' : 'Show'} ${label} edges`}
+              >
+                <span
+                  className="legend-line"
+                  style={{
+                    backgroundColor: RELATION_COLORS[key as keyof typeof RELATION_COLORS],
+                    borderStyle: key === 'analogy' ? 'dashed' : 'solid'
+                  }}
+                />
+                <span className="legend-label">{label}</span>
+              </button>
+            )
+          })}
+          <div className="filter-actions">
+            <button
+              className="filter-action-btn"
+              onClick={showAllRelations}
+              title="Show all edge types"
+            >
+              All
+            </button>
+            <button
+              className="filter-action-btn"
+              onClick={hideAllRelations}
+              title="Hide all edges"
+            >
+              None
+            </button>
+          </div>
         </div>
       </div>
 
@@ -346,6 +387,10 @@ export default function FoundationsGraph({
           font-family: var(--font-display);
           font-size: 1.5rem;
           margin-bottom: 0.5rem;
+          padding-left: 0;
+        }
+        .graph-header h2::before {
+          display: none;
         }
         .graph-legend {
           display: flex;
@@ -385,6 +430,55 @@ export default function FoundationsGraph({
         }
         .legend-label {
           color: var(--text-secondary);
+        }
+        .legend-filters {
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+        .filter-chip {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 0.35rem 0.6rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .filter-chip:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(245, 158, 11, 0.3);
+        }
+        .filter-chip.active {
+          background: rgba(245, 158, 11, 0.15);
+          border-color: rgba(245, 158, 11, 0.4);
+        }
+        .filter-chip.inactive {
+          opacity: 0.5;
+        }
+        .filter-chip.inactive .legend-line {
+          opacity: 0.3;
+        }
+        .filter-actions {
+          display: flex;
+          gap: 0.25rem;
+          margin-left: 0.5rem;
+        }
+        .filter-action-btn {
+          padding: 0.25rem 0.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          border-radius: 3px;
+          font-size: 0.65rem;
+          color: var(--text-tertiary);
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .filter-action-btn:hover {
+          background: rgba(245, 158, 11, 0.2);
+          border-color: rgba(245, 158, 11, 0.4);
+          color: var(--text-primary);
         }
         .graph-container {
           position: relative;

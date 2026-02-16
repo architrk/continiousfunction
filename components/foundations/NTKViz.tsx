@@ -203,6 +203,7 @@ function FunctionPlot({
       d += `${cmd} ${xToSvg(gridX[i])} ${yToSvg(gridTarget[i])} `
     }
     return d
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- xToSvg/yToSvg are stable coordinate transforms
   }, [gridX, gridTarget])
 
   const predPath = useMemo(() => {
@@ -213,6 +214,7 @@ function FunctionPlot({
       d += `${cmd} ${xToSvg(gridX[i])} ${yToSvg(gridPred[i])} `
     }
     return d
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- xToSvg/yToSvg are stable coordinate transforms
   }, [gridX, gridPred])
 
   return (

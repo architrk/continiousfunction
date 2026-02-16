@@ -1,5 +1,9 @@
 # Static Production Audit Report — Continuous Function
 
+> Note (2026-02-06): This audit report is a historical snapshot. The repo has evolved since it was generated
+> (Foundations now contains 100 concepts; `/foundations/[id]` math rendering now supports headings/rules/lists).
+> Re-validate findings against current code before acting on them.
+
 ## 1) Executive Summary
 
 **Overall readiness:** The repo is broadly aligned with **static export** (`output: 'export'`) and the **pages router**, with deterministic build-time data for `/foundations/[id]`. The main production risks are (a) **trailing-slash portability on static hosts**, (b) a **latent XSS footgun** in KaTeX fallback HTML, and (c) a couple of **animation loops without unmount cancellation** in interactive visualizations. Evidence: `next.config.mjs:19-22`, `pages/foundations/[id].tsx:715-744`, `pages/foundations/[id].tsx:127-138`, `components/foundations/DPOViz.tsx:199-221`, `components/foundations/ScalingLawsViz.tsx:429-453`.

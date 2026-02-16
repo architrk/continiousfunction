@@ -2,10 +2,33 @@
 
 import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import PhasePortrait2D from '../../components/PhasePortrait2D'
 import { VectorField2D, Point2D } from '../../lib/mathObjects'
+
+// Explore in depth link component
+function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="explore-link">
+      {label} →
+      <style jsx>{`
+        .explore-link {
+          display: inline-block;
+          margin-top: 1rem;
+          font-size: 0.85rem;
+          color: var(--converge-teal);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .explore-link:hover {
+          color: var(--accent);
+        }
+      `}</style>
+    </Link>
+  )
+}
 
 // Import visualization components from foundations (canonical source with gamification)
 const DiffusionForwardReverse = lazy(() => import('../../components/foundations/DiffusionProcessViz'))
@@ -86,7 +109,7 @@ function GenerativeVisualPanel() {
       (Math.random() - 0.5) * 4,
       (Math.random() - 0.5) * 4,
     ])
-    let trajs: Point2D[][] = pts.map((p) => [p])
+    const trajs: Point2D[][] = pts.map((p) => [p])
 
     let step = 0
     const maxSteps = 100
@@ -187,9 +210,14 @@ export default function GenerativePhysicsPillar() {
       </Head>
       <ExplorableLayout
         title="Generative Physics"
-      subtitle="Diffusion, flow matching, and the geometry of generation"
-      visualPanel={<GenerativeVisualPanel />}
-      initialParams={{ noiseScale: 0.3, time: 0 }}
+        subtitle="Diffusion, flow matching, and the geometry of generation"
+        visualPanel={<GenerativeVisualPanel />}
+        initialParams={{ noiseScale: 0.3, time: 0 }}
+        breadcrumb={[
+          { label: 'Home', href: '/' },
+          { label: 'Pillars', href: '/pillars' },
+          { label: 'Generative Physics' }
+        ]}
     >
       <ExplorableSection id="intro">
         <h2>Generation as Gradient Flow</h2>
@@ -242,6 +270,7 @@ export default function GenerativePhysicsPillar() {
           the diffusion process and generate samples.
         </p>
         <NoiseControl />
+        <ExploreLink href="/foundations/diffusion/" />
       </ExplorableSection>
 
       <ExplorableSection id="flow">
@@ -263,6 +292,7 @@ export default function GenerativePhysicsPillar() {
           enabling few-step generation.
         </p>
         <TimeControl />
+        <ExploreLink href="/foundations/flow-matching/" />
       </ExplorableSection>
 
       <ExplorableSection id="comparison">

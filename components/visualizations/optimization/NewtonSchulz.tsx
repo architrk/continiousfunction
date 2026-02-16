@@ -218,7 +218,7 @@ function svgToWorld(x: number, y: number): Vec2 {
 // ----------- Component -----------
 
 export default function NewtonSchulzOrthogonalizationDemo() {
-  const [initialMatrix, setInitialMatrix] =
+  const [_initialMatrix, setInitialMatrix] =
     useState<Matrix2>(DEFAULT_INITIAL)
   const [currentMatrix, setCurrentMatrix] =
     useState<Matrix2>(DEFAULT_INITIAL)
@@ -513,7 +513,7 @@ export default function NewtonSchulzOrthogonalizationDemo() {
     const rect = svgRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    let [wx, wy] = svgToWorld(x, y)
+    const [wx, wy] = svgToWorld(x, y)
 
     // Clamp basis vector length so the iteration stays sane
     const maxRadius = 1.6

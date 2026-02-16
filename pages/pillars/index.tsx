@@ -60,6 +60,14 @@ export default function PillarsIndex() {
       <Head>
         <title>Five Pillars — Continuous Function</title>
       </Head>
+
+      {/* Breadcrumb navigation */}
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <Link href="/">Home</Link>
+        <span className="breadcrumb-separator">/</span>
+        <span className="breadcrumb-current">Pillars</span>
+      </nav>
+
       <section className="hero" style={{ paddingBottom: '1.5rem' }}>
         <h1>Five Pillars</h1>
         <p className="hero-tagline">
@@ -90,6 +98,7 @@ export default function PillarsIndex() {
                 <span key={topic} className="topic-tag">{topic}</span>
               ))}
             </div>
+            <span className="pillar-cta">Explore →</span>
           </Link>
         ))}
       </div>
@@ -102,6 +111,28 @@ export default function PillarsIndex() {
           <Link href="/graph">knowledge graph</Link>.
         </p>
       </section>
+
+      <style jsx>{`
+        .breadcrumb {
+          font-size: 0.85rem;
+          margin-bottom: 1.5rem;
+          color: #7a7468;
+        }
+        .breadcrumb :global(a) {
+          color: var(--converge-teal);
+          text-decoration: none;
+        }
+        .breadcrumb :global(a):hover {
+          text-decoration: underline;
+        }
+        .breadcrumb-separator {
+          margin: 0 0.5rem;
+          color: #5a5448;
+        }
+        .breadcrumb-current {
+          color: #b8b0a0;
+        }
+      `}</style>
     </div>
   )
 }

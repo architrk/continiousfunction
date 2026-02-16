@@ -2,6 +2,11 @@ import createMDX from '@next/mdx'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import rehypeSlug from 'rehype-slug'
+import bundleAnalyzer from '@next/bundle-analyzer'
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+})
 
 const withMDX = createMDX({
   extension: /\.mdx?$/,
@@ -21,4 +26,4 @@ const nextConfig = {
   trailingSlash: true
 }
 
-export default withMDX(nextConfig)
+export default withBundleAnalyzer(withMDX(nextConfig))

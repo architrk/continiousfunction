@@ -577,7 +577,7 @@ export default function LoRADemo() {
     setGamePhase('countdown')
   }
 
-  const resetGame = () => {
+  const _resetGame = () => {
     setGameMode(false)
     setGamePhase('setup')
     setSelectedChallenge(null)

@@ -27,14 +27,17 @@ export default function Layout({ children }: Props) {
             <span className="brand-text">Continuous Function</span>
           </Link>
           <nav className="nav">
-            <Link href="/foundations" className="nav-link">
+            <Link href="/foundations/" className="nav-link">
               Foundations
+            </Link>
+            <Link href="/domains/" className="nav-link">
+              Domains
             </Link>
             <Link href="/pillars" className="nav-link">
               Pillars
             </Link>
-            <Link href="/concepts/optimizers/overview" className="nav-link">
-              Optimizers
+            <Link href="/pillars/optimization" className="nav-link">
+              Optimization
             </Link>
             <Link href="/graph" className="nav-link">
               Graph
@@ -49,7 +52,7 @@ export default function Layout({ children }: Props) {
         <div className="app-main-inner">{children}</div>
       </main>
       <footer className="app-footer">
-        <p>Explorable explanations of optimization in deep learning.</p>
+        <p>Interactive explorations of deep learning mathematics.</p>
         <a
           href="https://www.linkedin.com/in/architkhare/"
           target="_blank"

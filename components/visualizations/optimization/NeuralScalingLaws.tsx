@@ -47,7 +47,7 @@ const SCALING_CHALLENGES: ScalingChallenge[] = [
 
 function getScalingFeedback(predicted: ModelChoice, challenge: ScalingChallenge): string {
   const correct = predicted === challenge.answer
-  const modelLabels: Record<string, string> = {
+  const _modelLabels: Record<string, string> = {
     gpt3: 'GPT-3 175B',
     chinchilla: 'Chinchilla 70B',
     llama65: 'LLaMA-1 65B',
@@ -285,11 +285,12 @@ export default function NeuralScalingLawsExplorer() {
     }
     const timer = setInterval(() => setCountdown((c) => c - 1), 1000)
     return () => clearInterval(timer)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- revealAnswer is stable callback
   }, [gamePhase, countdown])
 
   const plotState = useMemo<PlotState>(() => {
     let xLabel: string
-    let yLabel = 'Loss (nats/token, schematic)'
+    const yLabel = 'Loss (nats/token, schematic)'
     let curveLabel: string
     let lineColor: string
 

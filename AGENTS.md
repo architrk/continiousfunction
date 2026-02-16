@@ -1,542 +1,324 @@
-# Autonomous AI Curriculum: 100 Concepts Powered by Oracle
+# Continuous Function (AGENTS)
 
-## Continuous Function: Oracle-Driven Discovery & Development
+This file defines how Codex should work in this repository.
 
-You are building **Continuous Function** — the definitive 100-concept curriculum for modern AI.
+Codex reads `AGENTS.md` files hierarchically (repo root → nested directories) and merges instructions for the files it’s editing. Keep this file under the Codex size limit (32 KiB). If it starts getting long, move details into focused docs and link them.
 
-**Oracle is your primary tool.** Use it for EVERYTHING: discovery, development, deepening, connecting, debugging, and refining.
-
-In this repo, **"Oracle" refers to the Codex skill `oracle-browser`** (Oracle CLI in browser mode for GPT-5 Pro).
+Reference: Codex docs on `AGENTS.md` custom instructions: https://developers.openai.com/codex/agents
 
 ---
 
-## 🔮 ORACLE-FIRST PHILOSOPHY
+## Role
 
-**Oracle is not optional. Oracle is the engine.**
+You are the builder of **Continuous Function**: an ever-expanding interactive educational platform for mathematics, deep learning, and adjacent domains.
 
-| Task | Use Oracle For |
-|------|----------------|
-| **Discovery** | "What are the next 5 essential concepts?" |
-| **Development** | "Write the implementation for concept X" |
-| **Deepening** | "Explain the deeper math behind X" |
-| **Connecting** | "How does X relate to Y and Z?" |
-| **Visualization** | "Design an interactive demo for X" |
-| **Debugging** | "Why isn't this visualization working?" |
-| **Refinement** | "Improve this explanation for clarity" |
-| **Papers** | "Summarize the key insights from paper X" |
-| **Code** | "Write the D3/React visualization component" |
-| **Math** | "Derive this equation step by step" |
+Your job never ends.
 
-**Rule: When in doubt, ask Oracle.**
+Every session:
+1. pick the **highest-impact** task,
+2. execute it well,
+3. validate,
+4. leave the repo better than you found it,
+5. leave a non-empty queue for the next session.
 
 ---
 
-## 🎯 THE VISION: 100 Concepts That Explain Everything
+## What This Project Is
 
-These 100 concepts should collectively answer:
-- How does GPT-4 / Claude / Gemini actually work?
-- How does Stable Diffusion / Sora generate images and video?
-- How do we align models to be helpful and safe?
-- How do we scale training to trillions of tokens?
-- How do we interpret what's happening inside?
+A static-exported **Next.js (Pages Router) + TypeScript** site that teaches deep learning and mathematics through interactive visualizations.
 
-**Pattern: Intuition → Math → Code → Interactive Demo**
+Pedagogy is always:
 
----
+**Intuition → Math → Code → Interactive Demo**
 
-## 🔧 CURRENT STATE
+The site is not limited to a fixed number of concepts. It is a living knowledge base spanning:
+- linear algebra, calculus, probability, statistics
+- optimization, information theory, differential equations
+- neural nets, transformers/attention, generative models
+- RL, geometric deep learning, mechanistic interpretability
+- topology for ML, causal inference, and connected topics
 
-**33 concepts implemented** — target: **100 concepts**
-
-Progress: ███████░░░░░░░░░░░░░ 33%
-
----
-
-## 🔄 THE ORACLE-POWERED WORKFLOW
-
-### EVERY STEP USES ORACLE. No exceptions.
+Tone:
+- humble and exploratory ("let’s reason it out"), never condescending
+- multiple representations (words, equations, code, pictures)
 
 ---
 
-### 📍 STEP 1: CONCEPT DISCOVERY (Oracle)
-
-**Run Oracle to discover next concepts:**
+## Commands (Common)
 
 ```bash
-oracle --engine browser --model "gpt-5 pro" -p "You are building 'Continuous Function' - the definitive 100-concept AI curriculum.
-
-CURRENT: 33/100 concepts implemented.
-
-YOUR TASK: Identify the next 5 ESSENTIAL concepts (#34-38).
-
-For EACH concept provide:
-1. Number + Title + Positioning
-2. Core Math (2-3 LaTeX equations with explanation)
-3. Frontier Model Usage (2024-2025)
-4. Missing Intuition (what tutorials get wrong)
-5. Canonical Papers (2-3 with arXiv URLs)
-6. Visualization Ideas (interactive demos)
-7. Prerequisites (existing concept IDs)
-8. What It Unlocks
-
-Be decisive. Pick the 5 most impactful." --file data/foundationsData.ts
+npm install
+npm run dev
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run validate-content
 ```
-
-**⏰ Oracle takes 20-30 minutes. Wait for completion.**
 
 ---
 
-### 📍 STEP 2: CONCEPT DEEPENING (Oracle)
+## Repo Structure (Key Paths)
 
-**After discovery, DEEPEN each concept with Oracle:**
+Legacy system (still powers the live `/foundations/*` pages today):
+- `data/foundationsData.ts` (legacy concept metadata)
+- `data/visualizationMappings.ts` (legacy concept-id → viz components)
+- `pages/foundations/[id].tsx` (legacy concept page)
+- `components/foundations/` (legacy viz components)
+
+New system (filesystem-driven, expands forever):
+- `content/domains/{domain}/_domain.yaml` (domain metadata)
+- `content/domains/{domain}/concepts/{concept-id}/concept.yaml` (concept metadata + edges)
+- `content/domains/{domain}/concepts/{concept-id}/content.mdx` (Intuition/Math/Code/Demo)
+- `content/domains/{domain}/concepts/{concept-id}/viz.tsx` (optional co-located visualization)
+- `content/_agent/TODO.yaml` (task queue; read this first)
+- `content/paths/` (curated learning paths)
+
+Infrastructure:
+- `lib/contentLoader.ts` (auto-discovers content/ concepts)
+- `scripts/validate-content.ts` (build-time validation)
+
+Research outputs:
+- `responses/` (Oracle outputs and research notes)
+
+---
+
+## Continuous Loop (Every Session)
+
+1. **READ**
+   - Open `content/_agent/TODO.yaml` and select the top `pending` task by priority.
+
+2. **EXECUTE**
+   - Do the task end-to-end (create concept, fix bug, deepen content, add viz, build infra).
+
+3. **VALIDATE**
+   - Run `npm run validate-content`.
+   - Run the relevant engineering checks (`npm run typecheck`, `npm test`, `npm run build`) when you touched code.
+
+4. **UPDATE**
+   - Mark the task done in `content/_agent/TODO.yaml`.
+   - Add new tasks you discovered (never end with an empty queue).
+
+5. **COMMIT**
+   - Prefer small, scoped commits with clear messages (see below).
+
+6. **REPEAT**
+   - Pick the next highest-impact item.
+
+---
+
+## Priority Stack (How To Pick Work)
+
+In order:
+1. Fix broken things (build errors, broken viz, wrong math, rendering bugs)
+2. Fill prerequisite gaps (if A requires B and B doesn’t exist: create B or add a P0 task)
+3. Deepen shallow concepts (missing Intuition/Math/Code/Demo)
+4. Expand core domains (P0 domains below)
+5. Discover and encode cross-domain links
+6. Add new domains
+7. Improve visualizations (interactivity, clarity, performance)
+8. Build infrastructure (navigation, search, learning paths, domain browser)
+9. Write pillar pages (syntheses)
+
+---
+
+## How To Add A New Concept (Filesystem System)
+
+1. Create the folder:
 
 ```bash
-oracle --engine browser --model "gpt-5 pro" -p "I'm implementing Concept #NN: [TITLE] for an interactive AI education site.
-
-Here's what I have so far:
-[paste the discovery summary]
-
-Please provide:
-
-1. Extended Math Derivation
-  - Step-by-step derivation of the core equations
-  - What each term means geometrically
-  - Common misconceptions about the math
-2. Implementation Details
-  - Exact TypeScript interfaces needed
-  - Edge cases to handle
-  - Numerical stability considerations
-3. Visualization Deep Dive
-  - Specific D3.js/React approach
-  - What should animate and why
-  - Slider ranges and defaults
-  - Color scheme for clarity
-4. Connection Map
-  - How this connects to concepts #X, #Y, #Z
-  - Shared mathematical structures
-  - Learning path implications
-5. Teaching Sequence
-  - What to show first
-  - Where students get confused
-  - The 'aha moment' trigger
-
-Go deep. This will be THE explanation of this concept." --file data/foundationsData.ts
+mkdir -p content/domains/{domain}/concepts/{concept-id}
 ```
+
+2. Create `concept.yaml` (required fields):
+
+```yaml
+id: {concept-id}
+title: "Human-Readable Title"
+domain: {domain}
+slug: {concept-id}
+difficulty: 3              # 1 (intro) to 5 (research-level)
+status: published          # draft | review | published
+importance: important      # critical | important | supplementary | advanced
+prerequisites:
+  - some-other-concept     # MUST exist (content/ or legacy) or be created
+leads_to:
+  - downstream-concept
+related:
+  - cross-domain-concept
+tags:
+  - {domain}
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate  # intuitive | highschool | undergraduate | graduate | research
+short_description: "One sentence explaining what this concept is."
+author: codex
+created: "YYYY-MM-DD"
+updated: "YYYY-MM-DD"
+estimated_read_time: 10
+```
+
+3. Create `content.mdx` (always this structure):
+
+```mdx
+---
+title: "Human-Readable Title"
+---
+
+## Intuition
+
+## Math
+
+## Code
+
+```python
+# numpy/pytorch, runnable, <= 40 lines
+```
+
+## Interactive Demo
+
+{/* viz.tsx component renders here if it exists */}
+```
+
+4. Optional: add `viz.tsx` (React + D3/Three/GSAP)
+- sensible defaults
+- interactive (sliders/drag/hover)
+- reinforces the Intuition section
+- cleans up on unmount
+
+5. Migration rule (until content pages are wired into the UI)
+- If you need the concept to appear on the site right now, also register it in:
+  - `data/foundationsData.ts`
+  - `data/visualizationMappings.ts`
+
+6. Validate
+- `npm run validate-content`
 
 ---
 
-### 📍 STEP 3: IMPLEMENTATION CODE (Oracle)
-
-**Get the actual code from Oracle:**
+## How To Add A New Domain
 
 ```bash
-oracle --engine browser --model "gpt-5 pro" -p "Write the complete implementation for Concept #NN: [TITLE]
+mkdir -p content/domains/{domain-name}/concepts
+```
 
-CONTEXT:
-- Site uses Next.js + TypeScript + D3.js
-- Data lives in data/foundationsData.ts
-- Visualizations in components/foundations/
-- Follow existing patterns (see attached file)
+Create `content/domains/{domain-name}/_domain.yaml`:
 
-PROVIDE:
-
-1. foundationsData.ts entry
-Complete TypeScript object with:
-  - id, number, title, shortTitle, icon
-  - category, canonicalPapers
-  - coreMath (full LaTeX with explanations)
-  - coreEquation (single key formula)
-  - whyItMatters (5 points)
-  - missingIntuition (5 points)
-  - prereqs, dependents, color
-2. Visualization Component
-Complete React + D3 component:
-  - Interactive controls (sliders, toggles)
-  - Animated visualization
-  - Responsive SVG
-  - Styled with CSS-in-JS
-  - Educational annotations
-3. Index exports
-What to add to components/foundations/index.ts
-4. Dynamic import
-What to add to pages/foundations/[id].tsx
-
-Make it production-ready." --file data/foundationsData.ts --file components/foundations/index.ts
+```yaml
+title: "Domain Display Name"
+description: "One paragraph explaining what this domain covers and why it matters."
+icon: "brain"      # lucide icon name
+color: "#8b5cf6"   # hex
+order: 10
 ```
 
 ---
 
-### 📍 STEP 4: CONCEPT CONNECTIONS (Oracle)
+## Domain Expansion Targets
 
-**Map how concepts relate to each other:**
+P0 (expand aggressively):
+- linear-algebra
+- calculus
+- probability
+- optimization
+- neural-networks
 
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "I'm building a knowledge graph of 100 AI concepts.
+P1 (steady expansion):
+- attention-transformers
+- generative-models
+- information-theory
+- reinforcement-learning
 
-Currently implemented concepts:
-[list concept IDs and titles]
+P2 (frontier, as foundations fill in):
+- geometric-deep-learning
+- mechanistic-interpretability
+- differential-equations
+- topology-for-ml
+- causal-inference
 
-Just added:
-- #NN: [Title]
-- #NN+1: [Title]
-...
+---
 
-Please analyze:
+## Content Quality Rules
 
-1. Prerequisite Chains
-  - What must be understood before each new concept?
-  - Are there missing foundational concepts we need?
-2. Concept Clusters
-  - Which concepts naturally group together?
-  - What are the major learning arcs?
-3. Bridge Concepts
-  - Which concepts connect multiple domains?
-  - What are the 'hub' concepts with many connections?
-4. Learning Paths
-  - Optimal sequence for a beginner?
-  - Optimal sequence for someone who knows transformers?
-  - Optimal sequence for someone interested in alignment?
-5. Gap Analysis
-  - What important concepts are still missing?
-  - Which tiers are under-represented?
+Tone:
+- curious, patient, and specific
+- no “obviously”; admit confusion and then clarify
 
-Be comprehensive. This graph is core to the site." --file data/foundationsData.ts
+Math:
+- KaTeX: `$inline$`, `$$display$$`
+- define every symbol before using it
+- show derivations step-by-step
+
+Code:
+- Python (numpy/pytorch)
+- runnable, copy-pasteable, <= 40 lines
+- notation matches the Math section
+
+Visualizations:
+- D3 for 2D, Three for 3D, GSAP for animation
+- always interactive
+- mobile-friendly
+- performance-aware (`requestAnimationFrame`, cleanup)
+
+Prerequisites:
+- prerequisites must exist (content/ or legacy)
+- dangling prerequisites are bugs: fix immediately or add a P0 TODO
+
+---
+
+## TODO.yaml Contract
+
+`content/_agent/TODO.yaml` is the source of truth for the task queue.
+
+Required shape:
+
+```yaml
+current_focus: "what you’re working on"
+
+last_completed:
+  - concept: concept-id
+    date: YYYY-MM-DD
+    action: created | deepened | fixed | connected
+    notes: "what you did"
+
+queue:
+  - action: create_concept | deepen | fix | connect | expand_domain | build_feature
+    id: concept-id
+    domain: domain-name
+    description: "what needs to be done"
+    priority: P0 | P1 | P2 | P3
+    status: pending | in_progress | done
+
+audit_log:
+  - date: YYYY-MM-DD
+    summary: "what you checked and found"
+
+discovered_connections:
+  - source: concept-a
+    target: concept-b
+    insight: "why these are connected"
 ```
 
 ---
 
-### 📍 STEP 5: VISUALIZATION REFINEMENT (Oracle)
+## Commit Messages
 
-**Improve visualizations with Oracle:**
+Format:
 
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "I have a visualization for Concept #NN: [TITLE]
+`[domain] action: concept-id — brief description`
 
-Current implementation:
-[paste the component code]
-
-Please improve:
-
-1. Pedagogical Effectiveness
-  - Is the 'aha moment' clear?
-  - What's confusing that could be clearer?
-  - What animation would help understanding?
-2. Interactivity
-  - What controls should be added?
-  - What ranges make sense?
-  - What should happen on hover/click?
-3. Visual Design
-  - Color improvements for clarity
-  - Typography and labeling
-  - Responsive considerations
-4. Performance
-  - Any optimization opportunities?
-  - Memoization suggestions?
-5. Code Quality
-  - TypeScript improvements
-  - React best practices
-  - D3 idioms
-
-Provide the improved code." --file [current-component-path]
-```
+Examples:
+- `[linear-algebra] add: svd — intuition, math, code, demo`
+- `[neural-networks] deepen: backprop — computational graph viz`
+- `[infrastructure] fix: validate-content — detect circular prereqs`
 
 ---
 
-### 📍 STEP 6: MATH VERIFICATION (Oracle)
-
-**Verify and deepen the mathematics:**
-
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Verify and deepen the math for Concept #NN: [TITLE]
-
-Current coreMath:
-[paste the LaTeX content]
-
-Please:
-
-1. Verify Correctness
-  - Are the equations correct?
-  - Is the notation consistent?
-  - Any errors or typos?
-2. Add Derivations
-  - How do we get from equation 1 to equation 2?
-  - What are the key steps?
-3. Geometric Interpretation
-  - What does each equation mean geometrically?
-  - How would you visualize the math?
-4. Edge Cases
-  - When does this break down?
-  - What are the assumptions?
-5. Connections
-  - How does this math relate to concept X?
-  - Shared structures with other concepts?
-
-Be rigorous but accessible."
-```
-
----
-
-### 📍 STEP 7: PAPER SYNTHESIS (Oracle)
-
-**Extract insights from research papers:**
-
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Synthesize the key papers for Concept #NN: [TITLE]
-
-Papers:
-1. [Paper Title 1] - [arXiv URL]
-2. [Paper Title 2] - [arXiv URL]
-3. [Paper Title 3] - [arXiv URL]
-
-For each paper, extract:
-
-1. Core Contribution
-  - What's the main idea in one sentence?
-2. Key Equations
-  - The 1-2 equations that matter most
-3. Surprising Insights
-  - What's non-obvious from the paper?
-4. Limitations
-  - What doesn't the paper address?
-5. How It Connects
-  - Relationship to other papers/concepts
-
-Then synthesize:
-- What's the unified understanding across all papers?
-- What's the teaching narrative?
-- What visualization would capture the essence?"
-```
-
----
-
-### 📍 STEP 8: QUALITY REVIEW (Oracle)
-
-**Review implemented concepts for quality:**
-
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Review Concept #NN: [TITLE] for quality.
-
-Implementation:
-[paste the foundationsData entry]
-
-Visualization:
-[paste the component code]
-
-Evaluate:
-
-1. Completeness (1-10)
-  - Is everything covered?
-  - Missing aspects?
-2. Clarity (1-10)
-  - Would a smart beginner understand?
-  - Jargon that needs explaining?
-3. Accuracy (1-10)
-  - Math correct?
-  - Up-to-date with 2024-2025 research?
-4. Visualization Quality (1-10)
-  - Does the demo teach effectively?
-  - Interaction intuitive?
-5. Connections (1-10)
-  - Well-linked to other concepts?
-  - Prerequisites make sense?
-
-Provide specific improvements for anything below 8."
-```
-
----
-
-### 📍 STEP 9: BATCH PLANNING (Oracle)
-
-**Plan the next implementation batch:**
-
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Plan the next implementation batch for Continuous Function.
-
-Current state:
-- Implemented: [list of concept IDs]
-- Researched but not implemented: [list]
-- Total: NN/100
-
-Consider:
-- Tier balance (foundations, generative, scaling, etc.)
-- Prerequisite dependencies
-- Implementation complexity
-- Educational impact
-
-Recommend:
-1. Which 5 concepts to implement next?
-2. In what order?
-3. Which need visualizations vs. text-only first?
-4. Estimated complexity for each?
-5. Any new concepts to discover first?
-
-Be strategic. We're building the best AI curriculum." --file data/foundationsData.ts
-```
-
----
-
-### 📍 STEP 10: CONTINUOUS DISCOVERY (Oracle)
-
-**After every implementation, discover more:**
-
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Continuous Function now has NN/100 concepts.
-
-Just implemented:
-- #X: [Title]
-- #Y: [Title]
-...
-
-Analyze what's next:
-
-1. Gap Analysis
-  - What essential concepts are still missing?
-  - Which tiers need more coverage?
-2. Next 5 Concepts
-  - Recommend concepts #NN to #NN+4
-  - Prioritize by educational impact
-3. Emerging Topics
-  - Any 2024-2025 developments we should add?
-  - Papers published in last 3 months worth covering?
-4. Connection Opportunities
-  - New links between existing concepts?
-  - Concepts that should reference each other?
-
-Keep the discovery loop running." --file data/foundationsData.ts
-```
-
----
-
-## 🔁 THE CONTINUOUS LOOP
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                                                             │
-│   ┌──────────┐    ┌──────────┐    ┌──────────┐             │
-│   │ DISCOVER │───▶│  DEEPEN  │───▶│IMPLEMENT │             │
-│   │ (Oracle) │    │ (Oracle) │    │ (Oracle) │             │
-│   └──────────┘    └──────────┘    └──────────┘             │
-│        │                               │                    │
-│        │         ┌──────────┐          │                    │
-│        │         │  REVIEW  │◀─────────┘                    │
-│        │         │ (Oracle) │                               │
-│        │         └──────────┘                               │
-│        │               │                                    │
-│        │         ┌──────────┐                               │
-│        └────────▶│ CONNECT  │                               │
-│                  │ (Oracle) │                               │
-│                  └──────────┘                               │
-│                        │                                    │
-│                        ▼                                    │
-│                  ┌──────────┐                               │
-│                  │  REPEAT  │───────────────────────────────┘
-│                  └──────────┘
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-Every box uses Oracle. There is no step without Oracle.
-
----
-
-## 📋 ORACLE USAGE CHECKLIST
-
-For EVERY concept, use Oracle for:
-
-- [ ] **Discovery**: What is this concept?
-- [ ] **Deepening**: Explain the math in detail
-- [ ] **Papers**: Synthesize the key research
-- [ ] **Code**: Write the data entry
-- [ ] **Visualization**: Design the interactive demo
-- [ ] **Implementation**: Write the React/D3 component
-- [ ] **Connections**: How does it link to others?
-- [ ] **Review**: Is the quality high enough?
-- [ ] **Refinement**: How can we improve it?
-
-**9 Oracle queries per concept is normal. Don't skimp.**
-
----
-
-## ⏰ TIMING EXPECTATIONS
-
-| Oracle Query Type | Expected Time |
-|-------------------|---------------|
-| Discovery (5 concepts) | 20-30 min |
-| Deepening (1 concept) | 15-20 min |
-| Implementation code | 15-20 min |
-| Visualization design | 15-20 min |
-| Paper synthesis | 15-20 min |
-| Connection mapping | 10-15 min |
-| Quality review | 10-15 min |
-
-**Oracle is slow. That's okay. Quality takes time.**
-
-While Oracle runs:
-- Document previous responses
-- Update AUTONOMOUS_LOOP_STATUS.md
-- Review existing implementations
-- Plan next queries
-
----
-
-## 🚨 CRITICAL RULES
-
-1. **ORACLE FOR EVERYTHING** — No task is too small for Oracle
-2. **QUEUE MULTIPLE QUERIES** — While one runs, prepare the next
-3. **SAVE EVERY RESPONSE** — `responses/` directory is your knowledge base
-4. **BE PATIENT** — 20-30 min per query is normal and worth it
-5. **ITERATE WITH ORACLE** — First response not perfect? Query again
-6. **TRUST ORACLE'S DEPTH** — It knows the papers, the math, the code
-7. **NEVER SKIP ORACLE** — "I'll just do this myself" = quality drops
-8. **DOCUMENT THE JOURNEY** — Every Oracle session in AUTONOMOUS_LOOP_STATUS.md
-
----
-
-## 🎯 ORACLE QUERY TEMPLATES
-
-Save these for quick access:
-
-### Quick Discovery
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Next 5 essential AI concepts for our 100-concept curriculum. Currently at NN/100." --file data/foundationsData.ts
-```
-
-### Quick Implementation
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Write complete foundationsData.ts entry + React visualization for Concept #NN: [TITLE]" --file data/foundationsData.ts
-```
-
-### Quick Deepening
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Deep dive on the math and intuition for [CONCEPT]. Derive equations, explain geometry, identify misconceptions."
-```
-
-### Quick Connection
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "How does [CONCEPT A] connect to [CONCEPT B] and [CONCEPT C]? Shared math structures? Learning path?"
-```
-
-### Quick Review
-```bash
-oracle --engine browser --model "gpt-5 pro" -p "Review this implementation for quality. Score 1-10 on completeness, clarity, accuracy. Suggest improvements." --file [path]
-```
-
----
-
-## 🏁 START NOW
-
-**Current: 33/100 concepts (33%)**
-**Remaining: 68 concepts**
-**Oracle queries needed: ~600+ (68 concepts × 9 queries each)**
-
-This is a marathon of Oracle queries. Embrace it.
-
-1. Run Oracle for discovery
-2. Run Oracle for deepening
-3. Run Oracle for implementation
-4. Run Oracle for connections
-5. Run Oracle for review
-6. Save everything
-7. Repeat until 100
-
-**Oracle is your co-author. Use it relentlessly.**
+## Oracle-First (For Non-Trivial Work)
+
+For non-trivial concepts, tricky math, or new visualizations:
+- use the Oracle workflow in `ORACLE_GUIDE.md`
+- use `--browser-manual-login` (default in this repo) and keep the Oracle Chrome window open until completion
+- always set `--slug` and `--write-output responses/...` so research is saved
+- keep Oracle outputs as a durable knowledge base

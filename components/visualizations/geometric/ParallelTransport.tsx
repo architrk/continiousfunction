@@ -237,7 +237,7 @@ export default function ParallelTransportDemo() {
     basis: null,
   }))
 
-  const [closedLoop, setClosedLoop] = useState(false)
+  const [_closedLoop, setClosedLoop] = useState(false)
   const [sphereAngleDeg, setSphereAngleDeg] = useState<number | null>(null)
   const [planeAngleDeg, setPlaneAngleDeg] = useState<number | null>(null)
 

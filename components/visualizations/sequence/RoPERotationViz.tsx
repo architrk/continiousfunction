@@ -179,9 +179,10 @@ export default function RoPEGeometryVisualizer() {
     }
     const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
     return () => clearInterval(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- revealAnswer is stable callback
   }, [gamePhase, countdown]);
 
-  const { thetaA, thetaB, deltaTheta, cosA, sinA, cosB, sinB, dot } = useMemo(() => {
+  const { thetaA, thetaB, deltaTheta, cosA, sinA, cosB: _cosB, sinB: _sinB, dot } = useMemo(() => {
     const thetaAInner = positionA * thetaStep;
     const thetaBInner = positionB * thetaStep;
     const delta = thetaBInner - thetaAInner;

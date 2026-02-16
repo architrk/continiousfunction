@@ -1,12 +1,35 @@
 'use client'
 
-import { useState, useMemo, useCallback, Suspense, lazy } from 'react'
+import { useMemo, Suspense, lazy } from 'react'
 import Head from 'next/head'
+import Link from 'next/link'
 import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
 import ExplorableSection from '../../components/ExplorableSection'
 import KernelHeatmap from '../../components/KernelHeatmap'
 import TimeSeriesPlot from '../../components/TimeSeriesPlot'
 import { Matrix2D, TimeSeries, softmax } from '../../lib/mathObjects'
+
+// Explore in depth link component
+function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label?: string }) {
+  return (
+    <Link href={href} className="explore-link">
+      {label} →
+      <style jsx>{`
+        .explore-link {
+          display: inline-block;
+          margin-top: 1rem;
+          font-size: 0.85rem;
+          color: var(--converge-teal);
+          text-decoration: none;
+          transition: color 0.2s;
+        }
+        .explore-link:hover {
+          color: var(--accent);
+        }
+      `}</style>
+    </Link>
+  )
+}
 
 // Import visualization components from foundations (canonical source with gamification)
 const AttentionMatrixViz = lazy(() => import('../../components/foundations/AttentionGeometryViz'))
@@ -243,9 +266,14 @@ export default function SequenceModelingPillar() {
       </Head>
       <ExplorableLayout
         title="Sequence Modeling"
-      subtitle="From recurrence to attention to selective state spaces"
-      visualPanel={<SequenceVisualPanel />}
-      initialParams={{ temperature: 1.0, causal: true, selectivity: 0.5 }}
+        subtitle="From recurrence to attention to selective state spaces"
+        visualPanel={<SequenceVisualPanel />}
+        initialParams={{ temperature: 1.0, causal: true, selectivity: 0.5 }}
+        breadcrumb={[
+          { label: 'Home', href: '/' },
+          { label: 'Pillars', href: '/pillars' },
+          { label: 'Sequence Modeling' }
+        ]}
     >
       <ExplorableSection id="intro">
         <h2>The Challenge of Sequences</h2>
@@ -277,6 +305,7 @@ export default function SequenceModelingPillar() {
           For long sequences, this becomes prohibitive.
         </p>
         <TemperatureControl />
+        <ExploreLink href="/foundations/attention-transformers/" />
       </ExplorableSection>
 
       <ExplorableSection id="rope">
@@ -295,6 +324,7 @@ export default function SequenceModelingPillar() {
           The key insight: relative positions are encoded in the angle between rotated vectors,
           enabling length generalization beyond training context.
         </p>
+        <ExploreLink href="/foundations/rope/" />
       </ExplorableSection>
 
       <ExplorableSection id="kvcache">
@@ -315,6 +345,7 @@ export default function SequenceModelingPillar() {
           This reduces per-token compute from O(n²) to O(n), but requires O(n·d) memory per layer.
           For long contexts, this memory cost dominates.
         </p>
+        <ExploreLink href="/foundations/efficient-attention/" />
       </ExplorableSection>
 
       <ExplorableSection id="gqa">
@@ -335,6 +366,7 @@ export default function SequenceModelingPillar() {
           MQA (Multi-Query Attention) is the extreme case: all query heads share a single K, V pair.
           GQA balances memory efficiency with model quality.
         </p>
+        <ExploreLink href="/foundations/efficient-attention/" />
       </ExplorableSection>
 
       <ExplorableSection id="swiglu">
@@ -460,6 +492,7 @@ export default function SequenceModelingPillar() {
           while maintaining O(1) memory per step during inference.
         </p>
         <SelectivityControl />
+        <ExploreLink href="/foundations/ssm-hybrids/" />
       </ExplorableSection>
 
       <ExplorableSection id="mamba">
@@ -481,6 +514,7 @@ export default function SequenceModelingPillar() {
           This breaks the convolution structure but enables hardware-efficient selective scanning
           that achieves linear scaling with sequence length.
         </p>
+        <ExploreLink href="/foundations/ssm-hybrids/" />
       </ExplorableSection>
 
       <ExplorableSection id="comparison">

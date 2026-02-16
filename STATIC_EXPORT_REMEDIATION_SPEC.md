@@ -18,9 +18,16 @@ This remediation spec is **partially outdated** relative to the current repo sta
 
 For the current prioritized issue list and patch-style diffs, see `AUDIT_REPORT.md` (especially §7).
 
+## Status update (Feb 16, 2026)
+
+Deployment + deep-linking notes in this spec are now **historical**:
+- `DEPLOYMENT_GUIDE.md` has been refreshed to match `output: 'export'` + `trailingSlash: true`.
+- `public/.htaccess` is now source-controlled (security headers + caching; no `.html` rewrite).
+- Clean URLs should work on Apache via normal directory `index.html` behavior.
+
 ## Overview: Why it’s not production-ready today
 
-**Primary blocker (P0):** The site is configured for Next.js static export (`output: 'export'`), but clean URL deep links (e.g. `/pillars/optimization`) are not guaranteed to work on a generic static host without server rewrites. The repo’s `DEPLOYMENT_GUIDE.md` acknowledges this and describes an `.htaccess` rewrite, but **the rewrite file is not source-controlled** and is **host-specific** (Apache).
+**Primary blocker (P0, historical):** Clean URL deep links on static hosts. This has been addressed by adopting `trailingSlash: true`, refreshing deployment docs, and checking in `public/.htaccess`. See `DEPLOYMENT_GUIDE.md`.
 
 Secondary issues (P1/P2) include:
 - MDX pages lack stable heading IDs (no slug plugin), but graph navigation relies on `#hash` fragments.
@@ -55,13 +62,10 @@ Secondary issues (P1/P2) include:
 
 ## Task CF-001 (P0): Make clean URLs work in pure static export
 
-### Problem
-- `next.config.mjs` sets:
-  ```js
-  output: 'export'
-  ```
-  but does not set `trailingSlash: true`.
-- `DEPLOYMENT_GUIDE.md` states clean URLs require `.htaccess` rewrite, but `find . -name .htaccess` yields none (not checked in).
+### Problem (resolved)
+- `next.config.mjs` sets `output: 'export'` **and** `trailingSlash: true`.
+- `public/.htaccess` is now source-controlled (and copied to `out/.htaccess` on export).
+- `DEPLOYMENT_GUIDE.md` has been updated to reflect the trailing-slash directory export strategy.
 
 ### Root cause
 Default Next export commonly emits `out/route.html` (or host-dependent structure). Without:

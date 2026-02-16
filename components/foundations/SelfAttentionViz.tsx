@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { createColorScale } from '../../lib/d3Types';
 
 type Matrix = number[][];
 
@@ -120,9 +121,7 @@ const Heatmap: React.FC<HeatmapProps> = ({
     const maxAbs = d3.max(cells, (d) => Math.abs(d.value)) || 1;
 
     // 0 -> dark slate, 1 -> bright orange
-    const color = (d3.scaleLinear() as any)
-      .domain([0, maxAbs])
-      .range(['#020617', '#f59e0b']);
+    const color = createColorScale([0, maxAbs], ['#020617', '#f59e0b']);
 
     const cellW = innerWidth / cols;
     const cellH = innerHeight / rows;
@@ -309,7 +308,7 @@ function getSelfAttentionInsight(
 ): string {
   const entropy = computeEntropy(attentionRow);
   const maxEntropy = Math.log2(tokens.length);
-  const focusRatio = 1 - (entropy / maxEntropy);
+  const _focusRatio = 1 - (entropy / maxEntropy);
   const maxWeight = Math.max(...attentionRow);
   const topIndex = attentionRow.indexOf(maxWeight);
   const topToken = tokens[topIndex];
@@ -418,7 +417,7 @@ const SelfAttentionExplorer: React.FC = () => {
   }, [baseEmbeddings, temperature]);
 
   const activeIndex = hoveredIndex ?? 0;
-  const activeAttentionRow = attention[activeIndex] ?? [];
+  const activeAttentionRow = useMemo(() => attention[activeIndex] ?? [], [attention, activeIndex]);
 
   // Compute entropy for current query
   const currentEntropy = useMemo(() => computeEntropy(activeAttentionRow), [activeAttentionRow]);

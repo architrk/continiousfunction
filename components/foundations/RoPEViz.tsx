@@ -134,7 +134,7 @@ export default function RoPEGeometryVisualizer() {
 
   const thetaStep = useMemo(() => (thetaStepDeg * Math.PI) / 180, [thetaStepDeg]);
 
-  const { thetaA, thetaB, deltaTheta, cosA, sinA, cosB, sinB, dot } = useMemo(() => {
+  const { thetaA, thetaB, deltaTheta, cosA, sinA, cosB: _cosB, sinB: _sinB, dot } = useMemo(() => {
     // Apply global shift to both positions
     const effectivePosA = positionA + globalShift;
     const effectivePosB = positionB + globalShift;

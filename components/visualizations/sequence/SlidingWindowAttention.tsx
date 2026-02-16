@@ -156,7 +156,7 @@ const SlidingWindowAttentionDemo: React.FC<SlidingWindowAttentionProps> = ({
 
   const windowTokens = windowSizeCells * TOKENS_PER_CELL
   const effectiveContextTokens = numLayers * windowTokens
-  const approximateK = effectiveContextTokens / 1024
+  const _approximateK = effectiveContextTokens / 1024
   const seqTokens = seqLen * TOKENS_PER_CELL
   const clampedEffective = Math.min(effectiveContextTokens, seqTokens)
 
@@ -939,7 +939,7 @@ interface MemoryBarChartProps {
 
 const MemoryBarChart: React.FC<MemoryBarChartProps> = ({
   seqLen,
-  windowSizeCells,
+  windowSizeCells: _windowSizeCells,
   fullComplexity,
   slidingComplexity,
   savingsFactor,

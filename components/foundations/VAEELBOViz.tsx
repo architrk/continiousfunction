@@ -67,7 +67,7 @@ function getBalanceFeedback(
 ): string {
   const reconHigher = avgRecon > klWeighted * 1.2
   const klHigher = klWeighted > avgRecon * 1.2
-  const isBalanced = !reconHigher && !klHigher
+  const _isBalanced = !reconHigher && !klHigher
 
   let winner: BalancePrediction = 'balanced'
   if (reconHigher) winner = 'recon'
@@ -100,9 +100,9 @@ const getVAEInsight = (
   beta: number,
   avgRecon: number,
   avgKl: number,
-  latentDim: number
+  _latentDim: number
 ): string => {
-  const klReconRatio = avgKl / (avgRecon + 0.001);
+  const _klReconRatio = avgKl / (avgRecon + 0.001);
 
   if (beta < 0.5) {
     return '🎨 Very low β: Almost ignoring the KL term. Reconstructions are sharp, but latent space is disorganized - no guarantee of smooth interpolation!';
@@ -382,7 +382,7 @@ export default function VAEElboDemo() {
     }
   }, [beta, latentDim, sampleSeed, examples])
 
-  const { simExamples, avgRecon, avgKl, klWeighted, elboLowerBound, betaNorm } =
+  const { simExamples, avgRecon, avgKl, klWeighted, elboLowerBound, betaNorm: _betaNorm } =
     simulation
 
   const selectedExample =

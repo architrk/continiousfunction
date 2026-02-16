@@ -1,0 +1,27 @@
+You are designing a search feature for Continuous Function.
+
+Constraints:
+- Next.js static export (no server).
+- Content sources:
+  1) Legacy concepts: data/foundationsData.ts (100 entries)
+  2) New filesystem concepts: content/domains/**/concept.yaml + content.mdx
+
+Goal:
+- Add a fast search UI for concepts (title, tags, short_description, and optionally fulltext snippets from Intuition/Math).
+- Keep bundle size reasonable and build-time generation simple.
+
+Files attached:
+- lib/contentLoader.ts
+- scripts/validate-content.ts
+- data/foundationsData.ts
+
+Deliverables:
+1) Architecture recommendation (build-time index JSON vs client-side index build)
+2) Exact data schema for the index
+3) Minimal implementation plan for a Search page + search box in Layout
+4) If you recommend fuzzy search, propose a lightweight library (or a simple custom approach)
+
+Output format:
+- Recommendation
+- Proposed file list + key code snippets
+- Tests/checks

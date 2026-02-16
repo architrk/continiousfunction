@@ -39,6 +39,12 @@ Thumbs.db
 
 # Oracle CLI (when HOME is redirected into repo)
 .oracle-home/
+oracle-outputs/
+oracle-queries/
+
+# Local assistant state
+.claude/
+.mcp.json
 
 # Testing
 coverage/
@@ -46,6 +52,3 @@ coverage/
 # Ralph Loop (local development only - not deployed)
 RALPH_CONTINUOUS_FUNCTION.md
 state/
-responses/
-AUTONOMOUS_LOOP.md
-AUTONOMOUS_LOOP_STATUS.md
