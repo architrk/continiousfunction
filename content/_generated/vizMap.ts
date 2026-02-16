@@ -28,6 +28,7 @@ export const contentConceptVizMap: Record<string, ContentVizComponent> = {
   'kl-divergence': dynamic(() => import('../domains/information-theory/concepts/kl-divergence/viz'), { ssr: false }),
   'kto': dynamic(() => import('../domains/alignment/concepts/kto/viz'), { ssr: false }),
   'layer-normalization': dynamic(() => import('../domains/attention-transformers/concepts/layer-normalization/viz'), { ssr: false }),
+  'learning-rate-schedules': dynamic(() => import('../domains/optimization/concepts/learning-rate-schedules/viz'), { ssr: false }),
   'llm-serving': dynamic(() => import('../domains/llm-systems/concepts/llm-serving/viz'), { ssr: false }),
   'long-context': dynamic(() => import('../domains/attention-transformers/concepts/long-context/viz'), { ssr: false }),
   'loss-landscapes': dynamic(() => import('../domains/optimization/concepts/loss-landscapes/viz'), { ssr: false }),

@@ -1,4 +1,4 @@
-current_focus: "Start migration batch 5 (NTK + learning-rate-schedules + normalization) and keep the optimization/scaling graph connected and demo-rich"
+current_focus: "Start migration batch 6 (residuals + regularization/stability hubs) and add missing interactive demos (positional encodings, batchnorm)"
 
 last_completed:
   - concept: content-loader
@@ -276,6 +276,16 @@ last_completed:
     action: created
     notes: "Batch 5: migrated layer-normalization into filesystem content (attention-transformers domain) and reused LayerNormViz as the interactive demo."
 
+  - concept: learning-rate-schedules
+    date: 2026-02-16
+    action: created
+    notes: "Batch 5: migrated learning-rate-schedules into filesystem content and added a new interactive schedule-curve viz with sliders (warmup/decay/avg LR)."
+
+  - concept: batch-normalization
+    date: 2026-02-16
+    action: created
+    notes: "Batch 5: migrated batch-normalization into filesystem content (text-first; no demo yet) and linked it to layer-normalization."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -309,9 +319,15 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-5
-    description: "Migrate the next 3-5 theory/optimization hubs that are prerequisites for the new optimization pages (suggested: ntk, learning-rate-schedules, layer-normalization, batch-normalization). Reuse existing visualizations via wrappers where possible. (Progress: 2 migrated: ntk, layer-normalization)"
+    description: "Migrate the next 3-5 theory/optimization hubs that are prerequisites for the new optimization pages (suggested: ntk, learning-rate-schedules, layer-normalization, batch-normalization). Reuse existing visualizations via wrappers where possible. (Progress: 4 migrated: ntk, layer-normalization, learning-rate-schedules, batch-normalization)"
     priority: P0
-    status: in_progress
+    status: done
+
+  - action: build_feature
+    id: migrate-foundations-to-content-batch-6
+    description: "Migrate the next 4-6 training-stability hubs needed across transformers and optimization (suggested: residual-connections, sgd-momentum, weight-decay-adamw, gradient-clipping, batch-normalization demo)."
+    priority: P1
+    status: pending
 
   - action: deepen
     id: positional-encoding

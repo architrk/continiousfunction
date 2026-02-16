@@ -1,0 +1,54 @@
+---
+title: "Batch Normalization"
+---
+
+## Intuition
+
+BatchNorm was one of the key tricks that made very deep convolutional networks train reliably.
+
+The basic idea is simple: for each feature channel, normalize activations using the mean and variance computed over the current mini-batch. This keeps activations in a stable numeric range and often makes optimization easier.
+
+But BatchNorm has an important downside: it introduces a **train vs inference mismatch**. During training you use batch statistics; at inference you use running averages. This is one reason transformers prefer LayerNorm/RMSNorm.
+
+## Math
+
+For a batch of activations $x\\in\\mathbb R^{m\\times d}$ (batch size $m$, features $d$), BatchNorm normalizes each feature dimension:
+
+$$\\hat x_{b,j} = \\frac{x_{b,j} - \\mu_j}{\\sqrt{\\sigma_j^2 + \\epsilon}},$$
+
+where
+
+$$\\mu_j = \\frac{1}{m}\\sum_{b=1}^m x_{b,j},\\qquad \\sigma_j^2 = \\frac{1}{m}\\sum_{b=1}^m (x_{b,j} - \\mu_j)^2.$$
+
+Then apply learned scale and shift:
+
+$$y_{b,j} = \\gamma_j\\,\\hat x_{b,j} + \\beta_j.$$
+
+At inference, you typically use running averages of $(\\mu_j,\\sigma_j^2)$ accumulated during training instead of per-batch values.
+
+## Code
+
+```python
+import numpy as np
+
+rs = np.random.RandomState(0)
+x = rs.randn(6, 4) * 3.0 + 5.0  # batch activations with nonzero mean/scale
+eps = 1e-5
+
+mu = x.mean(axis=0, keepdims=True)
+var = ((x - mu) ** 2).mean(axis=0, keepdims=True)
+xhat = (x - mu) / np.sqrt(var + eps)
+
+print("per-feature mean before:", np.round(x.mean(axis=0), 3))
+print("per-feature mean after :", np.round(xhat.mean(axis=0), 3))
+print("per-feature var after  :", np.round(xhat.var(axis=0), 3))
+```
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A good next step is a small visualization that shows:
+
+- how batch size affects the noise in batch statistics,
+- why small batches can destabilize BatchNorm,
+- why LayerNorm avoids the batch coupling.
+
