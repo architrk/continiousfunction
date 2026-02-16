@@ -151,6 +151,11 @@ last_completed:
     action: created
     notes: "Batch 2: migrated decoding-sampling into filesystem content and reused DecodingSamplingViz as the interactive demo."
 
+  - concept: vaes
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated vaes into filesystem content and reused VAEELBOViz as the interactive demo (ELBO + reparameterization)."
+
 queue:
   - action: expand_domain
     domain: linear-algebra

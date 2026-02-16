@@ -1,0 +1,88 @@
+---
+title: "Variational Autoencoders & Variational Inference"
+---
+
+## Intuition
+
+Many generative models want a hidden cause: a compact latent variable $z$ that explains an observation $x$ (an image, an audio clip, a text embedding).
+
+If we could compute the posterior $p(z\\mid x)$, learning would be easy: infer the latent cause, then train the decoder to reconstruct $x$ from it. But in interesting neural models, that posterior is intractable.
+
+A VAE turns this into an optimization problem. We introduce an **encoder** $q_\\phi(z\\mid x)$ that approximates the true posterior, and we train it jointly with the decoder $p_\\theta(x\\mid z)$.
+
+The training objective (the ELBO) has a clean story:
+
+- a **reconstruction term**: "can the decoder explain the data using the sampled $z$?"
+- a **regularization term**: "does the encoder stay close to a simple prior (usually $\\mathcal N(0,I)$) so we can sample?"
+
+## Math
+
+### Latent variable model + intractable posterior
+
+Assume a prior and decoder:
+
+$$p(z),\\qquad p_\\theta(x\\mid z),\\qquad p_\\theta(x)=\\int p(z)\\,p_\\theta(x\\mid z)\\,dz.$$
+
+The true posterior is:
+
+$$p_\\theta(z\\mid x)=\\frac{p(z)p_\\theta(x\\mid z)}{p_\\theta(x)},$$
+
+but computing $p_\\theta(x)$ (the evidence) requires the same integral that makes things hard.
+
+### The ELBO (evidence lower bound)
+
+Pick an approximate posterior (encoder) $q_\\phi(z\\mid x)$. Then:
+
+$$\\log p_\\theta(x) \\ge \\underbrace{\\mathbb E_{q_\\phi(z\\mid x)}\\big[\\log p_\\theta(x\\mid z)\\big]}_{\\text{reconstruction}} - \\underbrace{\\mathrm{KL}\\big(q_\\phi(z\\mid x)\\,\\|\\,p(z)\\big)}_{\\text{regularize toward prior}}.$$
+
+This is the **ELBO**. Maximizing it increases likelihood while keeping the latent space usable for sampling.
+
+### Reparameterization trick (Gaussian case)
+
+For a diagonal Gaussian encoder:
+
+$$q_\\phi(z\\mid x)=\\mathcal N\\big(\\mu_\\phi(x),\\ \\mathrm{diag}(\\sigma_\\phi(x)^2)\\big),$$
+
+we sample via:
+
+$$\\epsilon\\sim\\mathcal N(0,I),\\qquad z = \\mu_\\phi(x) + \\sigma_\\phi(x)\\odot \\epsilon.$$
+
+This makes the sampling path differentiable with respect to $\\phi$ (gradients flow through $\\mu,\\sigma$).
+
+## Code
+
+```python
+import numpy as np
+
+def kl_std_normal(mu, logvar):
+    # KL(N(mu, exp(logvar)) || N(0,1)) for diagonal Gaussian
+    return 0.5 * np.sum(np.exp(logvar) + mu**2 - 1.0 - logvar)
+
+def log_normal(x, mean, logvar):
+    return -0.5 * (np.log(2*np.pi) + logvar + (x - mean)**2 / np.exp(logvar))
+
+rs = np.random.RandomState(0)
+x = np.array([1.5])                 # one observed scalar
+mu = np.array([0.3]); logvar = np.array([-0.7])  # encoder outputs
+
+# decoder: p(x|z) = N(w z + b, sigma_x^2)
+w, b, logvar_x = 1.2, -0.1, np.log(0.3**2)
+
+eps = rs.randn(5000, 1)
+z = mu + np.exp(0.5 * logvar) * eps  # reparameterization
+mean_x = w * z + b
+recon = log_normal(x, mean_x, logvar_x).mean()
+kl = kl_std_normal(mu, logvar)
+elbo = recon - kl
+
+print("E_q[log p(x|z)] =", round(float(recon), 3))
+print("KL(q||p)        =", round(float(kl), 3))
+print("ELBO            =", round(float(elbo), 3))
+```
+
+## Interactive Demo
+
+Use the demo to see how the ELBO splits into reconstruction and KL, and how changing the encoder variance trades off fidelity (sharp reconstructions) vs a smooth, sampleable latent space.
+
+{/* viz.tsx component renders here if it exists */}
+
