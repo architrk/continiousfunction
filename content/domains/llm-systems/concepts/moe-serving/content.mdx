@@ -1,0 +1,73 @@
+---
+title: "MoE Serving & Scheduling: Token Dispatch, All-to-All, Disaggregated Parallelism"
+---
+
+## Intuition
+
+MoE looks like "cheaper inference": only run a few experts per token.
+
+In serving, the story flips. MoE becomes a **systems scheduling problem**:
+
+- tokens get routed unevenly, so some experts become bottlenecks (stragglers),
+- each MoE layer requires dispatching token activations to the right expert weights (all-to-all),
+- at decode time, you also carry the KV cache burden, so you are juggling both memory and communication.
+
+This is why production MoE systems invest heavily in batching, token packing, and disaggregation strategies. The biggest wins often come from keeping GPUs busy despite skew, not from the raw FLOPs saved by sparse compute.
+
+## Math
+
+### Token dispatch communication (why all-to-all matters)
+
+Per MoE layer, tokens are routed to experts and then combined back. A crude but useful byte-count is:
+
+$$\\mathrm{Bytes}_{\\mathrm{comm}} \\approx 2\\cdot T\\cdot k\\cdot d_{\\mathrm{model}}\\cdot b,$$
+
+where:
+
+- $T$ is tokens in the microbatch,
+- $k$ is top-$k$ experts per token,
+- $d_{\\mathrm{model}}$ is hidden width,
+- $b$ is bytes per element (e.g., 2 for fp16),
+- the factor of 2 is dispatch + combine.
+
+If communication is the bottleneck, adding more experts can make you slower even if compute drops.
+
+### Stragglers from routing skew
+
+Let $n_e$ be the number of tokens routed to expert $e$ in a microbatch. If expert compute time is proportional to token count, then layer time is dominated by:
+
+$$t_{\\mathrm{layer}} \\approx \\max_e\\; t_e \\propto \\max_e\\; n_e.$$
+
+Even if the *average* load is small, the *maximum* load can be much larger when routing is skewed. Tail latency kills throughput.
+
+### Disaggregation (separate pools)
+
+One modern response is disaggregation: run attention in one pool of GPUs and experts in another, pipelining between them. This trades extra communication for higher utilization and better resource matching.
+
+## Code
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+E = 16        # experts
+T = 4096      # tokens in a microbatch
+
+# A skewed routing distribution (one "popular" expert)
+p = np.ones(E) * 0.9
+p[0] = 6.0
+p = p / p.sum()
+
+choices = rng.choice(E, size=T, p=p)  # top-1 for simplicity
+counts = np.bincount(choices, minlength=E)
+
+print("avg tokens/expert:", round(float(counts.mean()), 2))
+print("max tokens/expert:", int(counts.max()))
+print("straggler factor max/mean:", round(float(counts.max() / counts.mean()), 2))
+print("top-5 expert loads:", np.sort(counts)[-5:][::-1].tolist())
+```
+
+## Interactive Demo
+
+No demo yet for this concept. A good demo would let you adjust $E, T, k$ and routing skew, then visualize per-expert loads, straggler latency, and the dispatch/combine communication volume.
+

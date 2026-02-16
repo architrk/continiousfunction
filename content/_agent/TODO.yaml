@@ -231,6 +231,11 @@ last_completed:
     action: created
     notes: "Batch 3: migrated flash-attention into filesystem content (no demo yet) with an online-softmax explanation to connect memory traffic to speedups."
 
+  - concept: moe-serving
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3: migrated moe-serving into filesystem content (no demo yet) to connect sparse MoE routing to real serving bottlenecks (stragglers + all-to-all)."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -252,7 +257,7 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-3
-    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers. (Progress: 8 migrated: kto, mixture-of-experts, score-matching, normalizing-flows, quantization, pruning, knowledge-distillation, flash-attention)"
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers. (Progress: 9 migrated: kto, mixture-of-experts, moe-serving, score-matching, normalizing-flows, quantization, pruning, knowledge-distillation, flash-attention)"
     priority: P0
     status: in_progress
 
@@ -297,7 +302,7 @@ audit_log:
     summary: "Search: added build-time extraction of short Intuition/Math snippets from content.mdx so /search can match more than metadata without inflating bundles."
 
   - date: 2026-02-16
-    summary: "Migration batch 3: migrated kto, mixture-of-experts, score-matching, normalizing-flows, quantization, pruning, knowledge-distillation, flash-attention; regenerated vizMap; validate/typecheck/build passed."
+    summary: "Migration batch 3: migrated kto, mixture-of-experts, moe-serving, score-matching, normalizing-flows, quantization, pruning, knowledge-distillation, flash-attention; regenerated vizMap; validate/typecheck/build passed."
 
 discovered_connections:
   - source: tokenization-vocabulary

@@ -1,0 +1,32 @@
+id: moe-serving
+title: "MoE Serving & Scheduling: Token Dispatch, All-to-All, Disaggregated Parallelism"
+domain: llm-systems
+slug: moe-serving
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - attention-transformers
+  - efficient-attention
+  - llm-serving
+  - mixture-of-experts
+leads_to: []
+related:
+  - efficiency
+  - long-context
+tags:
+  - llm-systems
+  - moe
+  - serving
+  - scheduling
+  - all-to-all
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: graduate
+short_description: "Serving MoE turns sparse compute into a scheduling problem: routing skew creates stragglers and all-to-all communication dominates, motivating disaggregated expert parallelism."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 20
+
