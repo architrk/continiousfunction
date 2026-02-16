@@ -166,7 +166,7 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-2
-    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize prerequisites + high-traffic pages). Use wrapper demos when possible; otherwise add lightweight new viz.tsx."
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize prerequisites + high-traffic pages). Use wrapper demos when possible; otherwise add lightweight new viz.tsx. (Progress: 4 migrated: representations, llm-serving, speculative-decoding, decoding-sampling)"
     priority: P0
     status: in_progress
 
