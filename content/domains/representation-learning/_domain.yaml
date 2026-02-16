@@ -1,0 +1,6 @@
+title: "Representation Learning"
+description: "Embeddings and the geometry of meaning: similarity, normalization, contrastive objectives, and why vector spaces become usable interfaces for models."
+icon: "orbit"
+color: "#22c55e"
+order: 55
+
