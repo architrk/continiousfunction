@@ -1,0 +1,28 @@
+id: maximum-likelihood
+title: "Maximum Likelihood, Cross-Entropy & KL"
+domain: probability
+slug: maximum-likelihood
+difficulty: 3
+status: published
+importance: critical
+prerequisites:
+  - random-variables
+  - derivatives
+leads_to:
+  - cross-entropy
+  - bayesian-inference
+related:
+  - adam
+tags:
+  - probability
+  - optimization
+  - information-theory
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+short_description: "Maximum likelihood fits parameters by making observed data most probable; for models it becomes minimizing cross-entropy and (implicitly) KL divergence."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 18

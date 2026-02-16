@@ -1,0 +1,51 @@
+---
+title: "Random Variables"
+---
+
+## Intuition
+
+A random variable is how we turn an uncertain situation into a number we can do math with.
+
+For example:
+
+- $X$ = number of heads in 10 coin flips
+- $Y$ = pixel intensity at a location
+- $Z$ = model loss on a random training example
+
+Once you have a random variable, you can talk about its distribution, its average behavior (expectation), and how spread out it is (variance).
+
+## Math
+
+A **random variable** is a function
+
+$$X: \Omega \to \mathbb{R}.$$
+
+For a discrete random variable, the distribution is a probability mass function $p(x)=P(X=x)$. The expectation is
+
+$$\mathbb{E}[X] = \sum_x x\, p(x).$$
+
+Variance measures spread:
+
+$$\operatorname{Var}(X) = \mathbb{E}[(X-\mathbb{E}[X])^2] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2.$$
+
+For continuous variables with density $p(x)$, sums become integrals:
+
+$$\mathbb{E}[X] = \int x\, p(x)\, dx.$$
+
+## Code
+
+```python
+import numpy as np
+
+# X = number of heads in 10 biased coin flips
+p = 0.3
+n = 200_000
+X = (np.random.rand(n, 10) < p).sum(axis=1)
+
+print("E[X] approx:", X.mean())
+print("Var[X] approx:", X.var())
+```
+
+## Interactive Demo
+
+No interactive demo yet. A good demo: choose a distribution and watch samples, histogram, mean, and variance update.

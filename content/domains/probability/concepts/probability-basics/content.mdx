@@ -1,0 +1,65 @@
+---
+title: "Probability Basics"
+---
+
+## Intuition
+
+Probability is what we use when we can’t predict an outcome exactly, but we can reason about *how often* outcomes happen in the long run.
+
+A clean way to think about it is: there is a space of possible worlds, and an event is a subset of those worlds. Probability assigns a number between 0 and 1 to events.
+
+In ML, probability is the backbone of:
+
+- likelihood (how well a model explains data)
+- uncertainty and calibration
+- losses like cross-entropy
+
+## Math
+
+A probability space is $(\Omega, \mathcal{F}, P)$:
+
+- $\Omega$: sample space (all outcomes)
+- $\mathcal{F}$: events (a collection of subsets of $\Omega$)
+- $P$: probability measure
+
+Axioms:
+
+1. $P(A) \ge 0$
+2. $P(\Omega)=1$
+3. If $A$ and $B$ are disjoint, then $P(A\cup B)=P(A)+P(B)$
+
+**Conditional probability** (update probabilities after observing $B$):
+
+$$P(A\mid B) = \frac{P(A\cap B)}{P(B)} \quad (P(B)>0).$$
+
+**Independence** means learning $B$ doesn’t change $A$:
+
+$$A \perp B \iff P(A\cap B)=P(A)P(B).$$
+
+Bayes’ rule follows directly:
+
+$$P(A\mid B) = \frac{P(B\mid A)P(A)}{P(B)}.$$
+
+## Code
+
+```python
+import numpy as np
+
+# Estimate P(H) for a biased coin
+p = 0.65
+n = 100_000
+flips = (np.random.rand(n) < p)
+print("P(H) approx:", flips.mean())
+
+# Conditional probability example with two coins: choose coin then flip
+coin = (np.random.rand(n) < 0.5)  # False=coin0, True=coin1
+p0, p1 = 0.2, 0.8
+heads = np.where(coin, np.random.rand(n) < p1, np.random.rand(n) < p0)
+
+# P(coin1 | heads)
+print("P(coin1 | heads) approx:", coin[heads].mean())
+```
+
+## Interactive Demo
+
+No interactive demo yet. A good demo: sliders for priors and likelihoods, showing Bayes' rule updating a posterior.

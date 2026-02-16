@@ -17,6 +17,7 @@ export const contentConceptVizMap: Record<string, ContentVizComponent> = {
   'adam': dynamic(() => import('../domains/optimization/concepts/adam/viz'), { ssr: false }),
   'derivatives': dynamic(() => import('../domains/calculus/concepts/derivatives/viz'), { ssr: false }),
   'dot-product': dynamic(() => import('../domains/linear-algebra/concepts/dot-product/viz'), { ssr: false }),
+  'maximum-likelihood': dynamic(() => import('../domains/probability/concepts/maximum-likelihood/viz'), { ssr: false }),
   'vector-spaces': dynamic(() => import('../domains/linear-algebra/concepts/vector-spaces/viz'), { ssr: false }),
 }
 

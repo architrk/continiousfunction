@@ -1,0 +1,26 @@
+id: random-variables
+title: "Random Variables"
+domain: probability
+slug: random-variables
+difficulty: 2
+status: published
+importance: critical
+prerequisites:
+  - probability-basics
+leads_to:
+  - maximum-likelihood
+related:
+  - distributions
+tags:
+  - probability
+  - expectation
+  - variance
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate
+short_description: "A random variable is a function from outcomes to numbers; its distribution lets you compute expectations, variances, and likelihoods."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 14
