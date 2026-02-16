@@ -146,6 +146,11 @@ last_completed:
     action: created
     notes: "Batch 2: migrated speculative-decoding into filesystem content and reused SpeculativeDecodingViz as the interactive demo."
 
+  - concept: decoding-sampling
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated decoding-sampling into filesystem content and reused DecodingSamplingViz as the interactive demo."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
