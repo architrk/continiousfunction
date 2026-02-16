@@ -8,7 +8,15 @@ Key principle: **manual login always**. We do that by running Oracle against a *
 
 ## Quick Start (Recommended: Remote Chrome Profile)
 
-1. Start a dedicated Chrome instance with a persistent profile + DevTools port:
+1. Start a dedicated Chrome instance with a persistent profile + DevTools port.
+
+Recommended (macOS helper):
+
+```bash
+./scripts/oracle/start-chrome-profile.sh 9223 "$HOME/ChromeOracleProfileA"
+```
+
+Alternative (manual command; less reliable on macOS):
 
 ```bash
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
@@ -16,12 +24,6 @@ Key principle: **manual login always**. We do that by running Oracle against a *
   --user-data-dir "$HOME/ChromeOracleProfileA" \
   --no-first-run --no-default-browser-check \
   "https://chatgpt.com/" >/dev/null 2>&1 &
-```
-
-Or use the helper:
-
-```bash
-./scripts/oracle/start-chrome-profile.sh 9223 "$HOME/ChromeOracleProfileA"
 ```
 
 2. Verify DevTools is reachable:
@@ -73,17 +75,8 @@ oracle --engine browser --model "gpt-5 pro" --wait \
 To run multiple queries in parallel, start multiple Chrome instances on different ports and profiles:
 
 ```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9223 \
-  --user-data-dir "$HOME/ChromeOracleProfileA" \
-  --no-first-run --no-default-browser-check \
-  "https://chatgpt.com/" >/dev/null 2>&1 &
-
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9224 \
-  --user-data-dir "$HOME/ChromeOracleProfileB" \
-  --no-first-run --no-default-browser-check \
-  "https://chatgpt.com/" >/dev/null 2>&1 &
+./scripts/oracle/start-chrome-profile.sh 9223 "$HOME/ChromeOracleProfileA"
+./scripts/oracle/start-chrome-profile.sh 9224 "$HOME/ChromeOracleProfileB"
 ```
 
 Log into ChatGPT once in each window, then run:
@@ -128,3 +121,23 @@ awk 'BEGIN{found=0} /^Answer:/{found=1; next} {if(found) print}' \
 - **zsh bracket paths:** quote files like `--file 'pages/foundations/[id].tsx'`.
 - **Stale-tab capture:** keep a single ChatGPT tab open per Oracle Chrome profile; if output looks unrelated, rerun with a new `--slug` and `--force`.
 - **Too much parallelism:** keep to 2-4 browser sessions at a time.
+
+---
+
+## Prompt Templates In This Repo
+
+We keep reusable Oracle prompts under `prompts/` (and write outputs under `responses/`).
+
+Examples:
+
+```bash
+oracle --engine browser --model "gpt-5 pro" --wait \
+  --remote-chrome 127.0.0.1:9223 \
+  --slug "cf-discovery-next-5" \
+  --prompt "$(cat prompts/cf-discovery-next-5.txt)" \
+  --file data/foundationsData.ts \
+  --file data/visualizationMappings.ts \
+  --write-output responses/cf-discovery-next-5.md \
+  --browser-attachments always --browser-bundle-files \
+  --timeout auto --heartbeat 60
+```
