@@ -1,4 +1,4 @@
-current_focus: "Migrate high-traffic legacy concepts into content/ (filesystem-first) and deepen cross-links"
+current_focus: "Complete the first 5-10 concept migration batch into content/ (filesystem-first) and tighten navigation/search during the transition"
 
 last_completed:
   - concept: content-loader
@@ -76,6 +76,51 @@ last_completed:
     action: created
     notes: "Migrated legacy concept id=maximum-likelihood into filesystem content (/domains/probability/maximum-likelihood) and reused CrossEntropyViz via a wrapper viz.tsx"
 
+  - concept: attention-transformers-domain
+    date: 2026-02-16
+    action: created
+    notes: "Added attention-transformers domain + migrated core transformer concepts using wrapper demos (tokenization, attention, RoPE, efficient attention)"
+
+  - concept: tokenization-vocabulary
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=tokenization-vocabulary into filesystem content (/domains/attention-transformers/tokenization-vocabulary) and reused TokenizationViz via wrapper viz.tsx"
+
+  - concept: attention-transformers
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=attention-transformers into filesystem content and added a tabbed wrapper demo (geometry, mechanics, architecture, backprop)"
+
+  - concept: rope
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=rope into filesystem content (/domains/attention-transformers/rope) and reused RoPEViz via wrapper viz.tsx"
+
+  - concept: efficient-attention
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=efficient-attention into filesystem content and added a tabbed wrapper demo (KV cache dashboard/mechanics, GQA)"
+
+  - concept: generative-models-domain
+    date: 2026-02-16
+    action: created
+    notes: "Added generative-models domain and migrated diffusion with a multi-demo wrapper (process/score/flow)"
+
+  - concept: diffusion
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=diffusion into filesystem content (/domains/generative-models/diffusion) and reused diffusion demos via wrapper viz.tsx"
+
+  - concept: alignment-domain
+    date: 2026-02-16
+    action: created
+    notes: "Added alignment domain and migrated RLHF with a tabbed wrapper demo (RLHF/DPO)"
+
+  - concept: rlhf
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=rlhf into filesystem content (/domains/alignment/rlhf) and reused RLHFViz/DPOViz via wrapper viz.tsx"
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -85,9 +130,15 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content
-    description: "Start migration: move 5-10 highest-traffic legacy concepts into content/domains/* so the filesystem system becomes primary over time (keep /foundations working during transition). (Progress: 2 migrated)"
+    description: "Start migration: move 5-10 highest-traffic legacy concepts into content/domains/* so the filesystem system becomes primary over time (keep /foundations working during transition). (Progress: 8 migrated)"
     priority: P0
-    status: in_progress
+    status: done
+
+  - action: build_feature
+    id: migrate-foundations-to-content-batch-2
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize prerequisites + high-traffic pages). Use wrapper demos when possible; otherwise add lightweight new viz.tsx."
+    priority: P0
+    status: pending
 
   - action: build_feature
     id: concept-search
@@ -123,4 +174,11 @@ audit_log:
   - date: 2026-02-16
     summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra/calculus/probability; added /search; migrated legacy concepts: maximum-likelihood + adam"
 
-discovered_connections: []
+discovered_connections:
+  - source: tokenization-vocabulary
+    target: efficient-attention
+    insight: "Token counts determine context length and KV cache growth; tokenizer choices directly change inference memory and latency."
+
+  - source: rope
+    target: long-context
+    insight: "RoPE phase behavior is the main constraint in length extrapolation; long-context methods often rescale/interpolate positions to avoid phase drift."

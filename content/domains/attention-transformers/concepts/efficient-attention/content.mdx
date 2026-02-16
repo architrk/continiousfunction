@@ -1,0 +1,62 @@
+---
+title: "Efficient Attention at Scale: KV Cache, GQA & FlashAttention"
+---
+
+## Intuition
+
+"Attention is $O(T^2)$" is true on paper, but in production the pain often feels different:
+
+- During **decoding**, you only compute attention for the *new* token, but you must attend over all past tokens.
+- You therefore store past keys/values in a **KV cache**. At long context, the KV cache can dominate memory.
+
+Modern serving is mostly a game of managing *memory bandwidth* and *cache size*:
+
+- **KV cache** avoids recomputing keys/values for all past tokens.
+- **Grouped-query attention (GQA)** reduces KV cache size by sharing keys/values across multiple query heads.
+- **FlashAttention** keeps the exact attention math but changes *how* it is computed so the attention matrix is never materialized in slow memory.
+
+## Math
+
+With a KV cache, the attention output for the new token at time $t$ is:
+
+$$o_t = \\mathrm{softmax}\\!\\left(\\frac{q_t K_{1:t}^{\\top}}{\\sqrt{d_k}}\\right) V_{1:t},$$
+
+where $(K_{1:t},V_{1:t})$ are cached.
+
+### KV cache memory scaling
+
+Per layer, the KV cache stores keys and values for all $T$ positions:
+
+$$\\mathrm{Mem}_{KV} \\propto T\\cdot H_{kv}\\cdot d_{\\mathrm{head}}\\cdot 2 \\cdot \\mathrm{bytes}.$$
+
+The factor of 2 is for storing both $K$ and $V$.
+
+### Grouped-query attention (GQA)
+
+Let there be $H_q$ query heads but only $H_{kv}$ key/value heads, with a mapping $g(h)$ from query head $h$ to a KV head:
+
+$$o_h = \\mathrm{softmax}\\!\\left(\\frac{Q_h K_{g(h)}^{\\top}}{\\sqrt{d_k}}\\right) V_{g(h)}.$$
+
+This reduces KV cache memory roughly by a factor of $H_{kv}/H_q$ compared to full multi-head attention.
+
+## Code
+
+```python
+def kv_cache_gb(T, layers, h_kv, d_head, bytes_per_elem=2):
+    # keys + values
+    elems = layers * T * h_kv * d_head * 2
+    return elems * bytes_per_elem / 1e9
+
+T = 128_000
+layers = 80
+d_head = 128
+
+for h_q, h_kv in [(64, 64), (64, 8), (64, 1)]:
+    gb = kv_cache_gb(T=T, layers=layers, h_kv=h_kv, d_head=d_head, bytes_per_elem=2)  # fp16
+    print(f"Hq={h_q:>2} Hkv={h_kv:>2}  KV cache ~ {gb:6.1f} GB (fp16)")
+```
+
+## Interactive Demo
+
+Use the demo to explore how KV cache size grows with context length, and how GQA changes the memory/latency tradeoff without changing the basic attention mechanism.
+

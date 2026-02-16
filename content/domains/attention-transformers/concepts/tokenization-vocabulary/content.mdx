@@ -1,0 +1,96 @@
+---
+title: "Tokenization & Vocabulary Design"
+---
+
+## Intuition
+
+Transformers do not read characters or words. They read *tokens*: discrete IDs from a fixed vocabulary.
+
+Tokenization is the (often invisible) step that decides what the model's "atoms" are. If your tokenizer splits `function_name` into 6 pieces, the model must do 6 steps of attention and decoding to handle it. If it gets a single token, it can treat it like one object.
+
+There is always a tradeoff:
+
+- Bigger vocabulary: fewer tokens per prompt, but a larger embedding/output table and more brittle edge cases.
+- Smaller vocabulary (or bytes): more robust, but longer sequences, larger KV caches, and higher compute for the same text.
+
+## Math
+
+Let the vocabulary be a set of strings (or byte sequences) $\mathcal V$. A tokenizer maps an input string $x$ into a sequence of tokens:
+
+$$x = \\mathrm{concat}(t_1,\\dots,t_n), \\qquad t_i \\in \\mathcal V.$$
+
+### Unigram tokenization (SentencePiece-style) as MAP segmentation
+
+Given token priors $p(t)$, pick the most likely segmentation:
+
+$$\\hat t_{1:n} = \\arg\\max_{t:\\;\\mathrm{concat}(t)=x}\\;\\sum_{i=1}^n \\log p(t_i).$$
+
+This can be solved by dynamic programming (a Viterbi-like shortest-path problem over string positions).
+
+### BPE (byte-pair encoding) builds a vocabulary by merges
+
+Starting from base symbols (characters or bytes), repeatedly merge the most frequent adjacent pair:
+
+$$ (a,b)^* = \\arg\\max_{(a,b)}\\;\\mathrm{count}(ab) \\qquad\\Rightarrow\\qquad a\\,b \\to ab.$$
+
+### Vocabulary size affects parameter count
+
+If embeddings and output logits both use a $|\\mathcal V|\\times d$ matrix, then token-related parameters scale like:
+
+$$\\mathrm{params}_{\\mathrm{token}} \\approx 2\\,|\\mathcal V|\\,d.$$
+
+So the tokenizer is not just preprocessing: it changes model size, latency, and what patterns become easy to represent.
+
+## Code
+
+```python
+import math
+
+def best_unigram_segmentation(x, tok_logp):
+    n = len(x)
+    neg_inf = -1e30
+    dp = [neg_inf] * (n + 1)
+    back = [None] * (n + 1)
+    dp[0] = 0.0
+
+    for i in range(n):
+        if dp[i] <= neg_inf / 2:
+            continue
+        for tok, lp in tok_logp.items():
+            if x.startswith(tok, i):
+                j = i + len(tok)
+                s = dp[i] + lp
+                if s > dp[j]:
+                    dp[j] = s
+                    back[j] = (i, tok)
+
+    out = []
+    j = n
+    while j > 0 and back[j] is not None:
+        i, tok = back[j]
+        out.append(tok)
+        j = i
+    return list(reversed(out)) if j == 0 else None
+
+tok_logp = {
+    "the": math.log(0.08),
+    "there": math.log(0.02),
+    "re": math.log(0.05),
+    "th": math.log(0.06),
+    "e": math.log(0.07),
+    "r": math.log(0.03),
+    "t": math.log(0.02),
+    "h": math.log(0.02),
+}
+
+x = "there"
+seg = best_unigram_segmentation(x, tok_logp)
+print("x:", x)
+print("best segmentation:", seg)
+print("num tokens:", len(seg))
+```
+
+## Interactive Demo
+
+Use the demo to see how different tokenizer designs change token boundaries, token counts, and what the model treats as a single unit.
+

@@ -1,0 +1,51 @@
+---
+title: "Diffusion, Score-Based Models & Flow Matching"
+---
+
+## Intuition
+
+Diffusion models generate by *starting from noise* and repeatedly denoising.
+
+The forward process is easy: take data (an image latent, an audio chunk, a video patch) and add a little noise, again and again, until it becomes almost pure Gaussian noise.
+
+The reverse process is the learning problem: train a network that, given a slightly-noised sample, predicts how to move it back toward the data manifold. Sampling is then "run the denoiser many times."
+
+## Math
+
+A common discrete-time forward process (DDPM-style) is:
+
+$$q(x_t\\mid x_0) = \\mathcal N\\!\\big(\\sqrt{\\bar\\alpha_t}\\,x_0,\\ (1-\\bar\\alpha_t)I\\big),$$
+
+where $\\bar\\alpha_t = \\prod_{s=1}^t \\alpha_s$ and $\\alpha_s = 1-\\beta_s$ for a noise schedule $\\beta_s$.
+
+Equivalently, you can sample:
+
+$$x_t = \\sqrt{\\bar\\alpha_t}\\,x_0 + \\sqrt{1-\\bar\\alpha_t}\\,\\epsilon,\\quad \\epsilon\\sim\\mathcal N(0,I).$$
+
+Training often uses the noise-prediction loss:
+
+$$\\mathcal L = \\mathbb E_{x_0,t,\\epsilon}\\,\\big\\|\\epsilon - \\epsilon_\\theta(x_t,t)\\big\\|^2.$$
+
+The "score" view connects denoising to the gradient of log-density $\\nabla_x\\log p_t(x)$, and flow matching reframes sampling as learning a continuous vector field.
+
+## Code
+
+```python
+import numpy as np
+
+T = 1000
+beta = np.linspace(1e-4, 0.02, T)
+alpha = 1.0 - beta
+alpha_bar = np.cumprod(alpha)
+
+x0 = np.array([1.0, -1.0])
+for t in [0, 10, 100, 500, 999]:
+    eps = np.random.randn(*x0.shape)
+    xt = np.sqrt(alpha_bar[t]) * x0 + np.sqrt(1.0 - alpha_bar[t]) * eps
+    print(f"t={t:>3}  xt={np.round(xt, 3)}  noise_std={np.sqrt(1.0 - alpha_bar[t]):.3f}")
+```
+
+## Interactive Demo
+
+Use the demo to see the forward noising process and how reverse denoising (or score-based updates) can recover samples step by step.
+

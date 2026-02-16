@@ -1,0 +1,6 @@
+title: "Alignment"
+description: "How we shape model behavior: preference learning, reward modeling, KL-regularized fine-tuning, and the failure modes that appear when you optimize the wrong thing."
+icon: "shield"
+color: "#ef4444"
+order: 70
+

@@ -319,6 +319,6 @@ Examples:
 
 For non-trivial concepts, tricky math, or new visualizations:
 - use the Oracle workflow in `ORACLE_GUIDE.md`
-- use `--browser-manual-login` (default in this repo) and keep the Oracle Chrome window open until completion
+- use a dedicated remote-Chrome profile (`--remote-chrome 127.0.0.1:922x`) and log into ChatGPT manually once; keep that window open until completion
 - always set `--slug` and `--write-output responses/...` so research is saved
 - keep Oracle outputs as a durable knowledge base

@@ -1,0 +1,6 @@
+title: "Attention & Transformers"
+description: "The sequence model backbone: tokenization, self-attention, positional encodings, and the transformer block that powers modern LLMs."
+icon: "layers"
+color: "#6366f1"
+order: 50
+

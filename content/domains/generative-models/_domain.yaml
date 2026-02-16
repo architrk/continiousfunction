@@ -1,0 +1,6 @@
+title: "Generative Models"
+description: "How models generate: likelihood, latent variables, diffusion/score models, flows, and the training tricks that make sampling work."
+icon: "sparkles"
+color: "#ec4899"
+order: 60
+

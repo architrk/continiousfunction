@@ -1,0 +1,33 @@
+id: attention-transformers
+title: "Scaled Dot-Product Attention & Transformer Layers"
+domain: attention-transformers
+slug: attention-transformers
+difficulty: 3
+status: published
+importance: critical
+prerequisites:
+  - maximum-likelihood
+  - dot-product
+leads_to:
+  - rope
+  - efficient-attention
+  - induction-heads
+  - scaling-laws
+related:
+  - tokenization-vocabulary
+  - decoding-sampling
+tags:
+  - attention-transformers
+  - transformers
+  - attention
+  - self-attention
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+short_description: "The core transformer operation: compute attention weights from query-key dot products, then mix values to copy information across a sequence."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 18
+

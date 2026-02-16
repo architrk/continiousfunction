@@ -1,0 +1,30 @@
+id: rope
+title: "Rotary Position Embeddings (RoPE)"
+domain: attention-transformers
+slug: rope
+difficulty: 3
+status: published
+importance: important
+prerequisites:
+  - attention-transformers
+leads_to:
+  - efficient-attention
+  - long-context
+related:
+  - tokenization-vocabulary
+  - long-context
+tags:
+  - attention-transformers
+  - rope
+  - positional-encoding
+  - long-context
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+short_description: "A positional encoding that rotates queries and keys so attention depends on relative position via phase differences."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 14
+

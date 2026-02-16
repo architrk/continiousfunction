@@ -1,0 +1,63 @@
+---
+title: "Preference-Based Alignment: RLHF, Reward Modeling, Constitutional AI"
+---
+
+## Intuition
+
+Pretraining teaches a model to predict the next token. It does not directly teach it to be helpful, honest, or harmless.
+
+RLHF-style alignment adds a second training signal: *preferences*. Humans (or another model following a rubric) compare two candidate outputs and choose which is better. From those comparisons, we train a **reward model** that scores outputs. Then we optimize the policy to produce higher-reward outputs, while penalizing large departures from a reference model so the policy does not drift into weird, reward-hacking behavior.
+
+You can think of it as: "keep the model mostly the same, but nudge probability mass toward responses people prefer."
+
+## Math
+
+### Reward modeling from comparisons (Bradley-Terry)
+
+Given two candidate outputs $y_a, y_b$ for a prompt $x$, a common likelihood model is:
+
+$$P(y_a \\succ y_b\\mid x) = \\frac{\\exp(r_\\phi(x,y_a))}{\\exp(r_\\phi(x,y_a)) + \\exp(r_\\phi(x,y_b))}.$$
+
+### KL-regularized policy optimization
+
+Let $\\pi_\\theta$ be the policy and $\\pi_0$ a reference model. A standard objective is:
+
+$$\\max_\\theta\\; \\mathbb E_{x,y\\sim\\pi_\\theta}[r_\\phi(x,y)] - \\beta\\,\\mathrm{KL}(\\pi_\\theta(\\cdot\\mid x)\\,\\|\\,\\pi_0(\\cdot\\mid x)).$$
+
+The KL term is not decoration: it is the main knob that trades off "follow preferences" against "stay in-distribution."
+
+## Code
+
+```python
+import numpy as np
+
+# Pairwise preferences between 4 "responses" (0..3): (a, b) means a preferred over b.
+pairs = np.array([
+    [0, 1],
+    [0, 2],
+    [3, 1],
+    [0, 3],
+    [2, 1],
+])
+
+r = np.zeros(4)
+lr = 0.2
+
+for _ in range(400):
+    a, b = pairs[:, 0], pairs[:, 1]
+    diff = r[a] - r[b]
+    p = 1.0 / (1.0 + np.exp(-diff))  # sigmoid
+    grad = np.zeros_like(r)
+    g = -(1.0 - p)  # d/d(diff) of -log(sigmoid(diff))
+    np.add.at(grad, a, g)
+    np.add.at(grad, b, -g)
+    r -= lr * grad / len(pairs)
+
+print("learned rewards:", np.round(r, 3))
+print("ranking (best to worst):", np.argsort(-r))
+```
+
+## Interactive Demo
+
+Use the demo to explore reward modeling, KL regularization, and why direct preference optimization (DPO) can behave similarly to RLHF while being simpler to train.
+

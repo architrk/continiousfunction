@@ -76,9 +76,13 @@ export const getStaticProps: GetStaticProps<Props> = async () => {
     tags: Array.isArray(m.tags) ? m.tags : [],
   }))
 
+  // During migration, prefer filesystem concepts when IDs collide.
+  const contentIds = new Set(contentItems.map((c) => c.id))
+  const dedupedFoundationItems = foundationItems.filter((f) => !contentIds.has(f.id))
+
   return {
     props: {
-      items: [...contentItems, ...foundationItems],
+      items: [...contentItems, ...dedupedFoundationItems],
     },
   }
 }
@@ -206,11 +210,11 @@ export default function SearchPage({ items }: Props) {
               dot product
             </Link>
             ,{' '}
-            <Link href="/foundations/attention-transformers/" className="inlineLink">
+            <Link href="/domains/attention-transformers/attention-transformers/" className="inlineLink">
               attention
             </Link>
             ,{' '}
-            <Link href="/foundations/adam/" className="inlineLink">
+            <Link href="/domains/optimization/adam/" className="inlineLink">
               Adam
             </Link>
             .
@@ -438,4 +442,3 @@ export default function SearchPage({ items }: Props) {
     </div>
   )
 }
-
