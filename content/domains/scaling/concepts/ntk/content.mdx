@@ -1,0 +1,75 @@
+---
+title: "Neural Tangent Kernel (NTK) & Infinite-Width Limits"
+---
+
+## Intuition
+
+Neural networks can learn features: the representation changes during training.
+
+The NTK perspective asks a different question:
+
+What if the network is so wide that, during training, it barely moves in parameter space?
+
+If parameters move only a little, the network behaves like its own first-order Taylor expansion around initialization. In that regime, training is no longer mysterious nonlinear feature learning. It becomes a **kernel method** in disguise, where the "features" are the gradients of the network output with respect to its parameters.
+
+This is useful because kernel methods are mathematically tractable: you can often predict learning dynamics and generalization behavior without simulating full training.
+
+## Math
+
+Let $f_\\theta(x)$ be a network and $\\theta$ its parameters. The neural tangent kernel is:
+
+$$\\Theta(x,x') = \\nabla_\\theta f_\\theta(x)^\\top \\nabla_\\theta f_\\theta(x').$$
+
+Consider gradient flow on a squared loss over training points $(x_i,y_i)$:
+
+$$\\mathcal L(\\theta) = \\tfrac12\\sum_i (f_\\theta(x_i) - y_i)^2.$$
+
+In the infinite-width limit (for common parameterizations), $\\Theta$ becomes deterministic and stays approximately constant during training. The function evolves according to:
+
+$$\\partial_t f_t(x) = -\\sum_i \\Theta(x,x_i)\\,(f_t(x_i) - y_i),$$
+
+which is a linear ODE in function space. The solution corresponds to kernel regression with kernel $\\Theta$ (with details depending on loss, step size, and regularization).
+
+## Code
+
+```python
+import numpy as np
+
+rs = np.random.RandomState(0)
+m = 128  # "width"
+w = rs.randn(m)
+v = rs.randn(m)
+
+def grad_f(x):
+    z = w * x
+    s = (z > 0).astype(float)
+    g_v = np.maximum(z, 0) / np.sqrt(m)
+    g_w = (v * s * x) / np.sqrt(m)
+    return np.concatenate([g_v, g_w])
+
+def K(x, xp):
+    g1, g2 = grad_f(x), grad_f(xp)
+    return float(g1 @ g2)
+
+xtr = np.linspace(-1, 1, 40)
+ytr = np.sin(3 * xtr)
+Ktr = np.array([[K(x, xp) for xp in xtr] for x in xtr])
+
+lam = 1e-3
+alpha = np.linalg.solve(Ktr + lam * np.eye(len(xtr)), ytr)
+
+xte = np.linspace(-1, 1, 200)
+Kte = np.array([[K(x, xp) for xp in xtr] for x in xte])
+pred = Kte @ alpha
+mse = np.mean((pred - np.sin(3 * xte)) ** 2)
+print("test MSE:", round(float(mse), 4))
+```
+
+## Interactive Demo
+
+Use the demo to compare:
+
+- kernel-like learning dynamics (fixed features / linearized training),
+- feature learning (representations change), and
+- how width and parameterization push you toward one regime or the other.
+

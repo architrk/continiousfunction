@@ -266,6 +266,16 @@ last_completed:
     action: created
     notes: "Batch 4: migrated label-smoothing into filesystem content (text-first; no demo yet) and linked it to KL divergence + distillation."
 
+  - concept: ntk
+    date: 2026-02-16
+    action: created
+    notes: "Batch 5 start: migrated ntk into filesystem content (scaling domain) and reused NTKViz as the interactive demo."
+
+  - concept: layer-normalization
+    date: 2026-02-16
+    action: created
+    notes: "Batch 5: migrated layer-normalization into filesystem content (attention-transformers domain) and reused LayerNormViz as the interactive demo."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -299,9 +309,9 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-5
-    description: "Migrate the next 3-5 theory/optimization hubs that are prerequisites for the new optimization pages (suggested: ntk, learning-rate-schedules, layer-normalization, batch-normalization). Reuse existing visualizations via wrappers where possible."
+    description: "Migrate the next 3-5 theory/optimization hubs that are prerequisites for the new optimization pages (suggested: ntk, learning-rate-schedules, layer-normalization, batch-normalization). Reuse existing visualizations via wrappers where possible. (Progress: 2 migrated: ntk, layer-normalization)"
     priority: P0
-    status: pending
+    status: in_progress
 
   - action: deepen
     id: positional-encoding

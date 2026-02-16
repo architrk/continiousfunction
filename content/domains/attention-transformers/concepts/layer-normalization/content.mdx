@@ -1,0 +1,73 @@
+---
+title: "Layer Normalization & RMSNorm"
+---
+
+## Intuition
+
+Deep networks are sensitive to scale.
+
+If activations grow over layers, gradients can explode. If activations shrink, gradients vanish. Normalization methods keep the signal in a "reasonable range" so training is stable.
+
+Transformers almost always use **LayerNorm** (or **RMSNorm**) instead of BatchNorm because:
+
+- sequence models often have small or variable batch sizes,
+- we want behavior that does not depend on other examples in the batch,
+- decoding/inference should behave the same as training.
+
+RMSNorm is a popular simplification (used in LLaMA-like models): it drops the mean-centering step and normalizes only by the RMS.
+
+## Math
+
+For a vector of activations $x\\in\\mathbb R^d$ (for one token / one example), LayerNorm is:
+
+$$\\mathrm{LN}(x) = \\gamma \\odot \\frac{x - \\mu}{\\sigma + \\epsilon} + \\beta,$$
+
+where
+
+$$\\mu = \\frac{1}{d}\\sum_{i=1}^d x_i,\\qquad \\sigma = \\sqrt{\\frac{1}{d}\\sum_{i=1}^d (x_i - \\mu)^2}.$$
+
+RMSNorm removes mean-centering and uses:
+
+$$\\mathrm{RMSNorm}(x) = \\gamma \\odot \\frac{x}{\\mathrm{RMS}(x) + \\epsilon},\\qquad \\mathrm{RMS}(x)=\\sqrt{\\frac{1}{d}\\sum_i x_i^2}.$$
+
+Two practical insights:
+
+- Normalization makes the layer output less sensitive to the overall scale of $x$.
+- In **pre-norm** transformers, you normalize before attention/MLP, which tends to improve gradient flow in very deep stacks.
+
+## Code
+
+```python
+import numpy as np
+
+rs = np.random.RandomState(0)
+x = rs.randn(8) * 2.0 + 3.0  # nonzero mean on purpose
+eps = 1e-5
+
+def layernorm(x):
+    mu = x.mean()
+    var = ((x - mu) ** 2).mean()
+    return (x - mu) / np.sqrt(var + eps)
+
+def rmsnorm(x):
+    rms = np.sqrt((x ** 2).mean())
+    return x / (rms + eps)
+
+ln = layernorm(x)
+rn = rmsnorm(x)
+cos = float((ln @ rn) / (np.linalg.norm(ln) * np.linalg.norm(rn)))
+
+print("mean(x), std(x):", round(float(x.mean()), 3), round(float(x.std()), 3))
+print("cos(LN, RMS):", round(cos, 3))
+print("LN mean/std:", round(float(ln.mean()), 3), round(float(ln.std()), 3))
+print("RMS mean/rms:", round(float(rn.mean()), 3), round(float(np.sqrt((rn ** 2).mean())), 3))
+```
+
+## Interactive Demo
+
+Use the demo to see:
+
+- how centering (LayerNorm) vs non-centering (RMSNorm) changes the direction of a vector,
+- how learned $\\gamma,\\beta$ let the network keep normalization while still representing useful scales,
+- why normalization is a core stability trick in transformer training.
+
