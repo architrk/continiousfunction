@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 
-import RLHFViz from '../../../../../components/foundations/RLHFViz'
-import DPOViz from '../../../../../components/foundations/DPOViz'
+import dynamic from 'next/dynamic'
+
+const RLHFViz = dynamic(() => import('../../../../../components/foundations/RLHFViz'), { ssr: false })
+const DPOViz = dynamic(() => import('../../../../../components/foundations/DPOViz'), { ssr: false })
 
 type TabId = 'rlhf' | 'dpo'
 
 export default function RLHFDemo() {
+  const uid = useId()
   const tabs = useMemo(
     () =>
       [
@@ -29,6 +33,22 @@ export default function RLHFDemo() {
   const current = tabs.find((t) => t.id === active) ?? tabs[0]
   const Active = current.Component
 
+  const panelId = `${uid}-panel`
+  const tabId = (id: TabId) => `${uid}-tab-${id}`
+  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    const idx = tabs.findIndex((t) => t.id === active)
+    if (idx < 0) return
+    let next: TabId | null = null
+    if (e.key === 'ArrowRight') next = tabs[(idx + 1) % tabs.length].id
+    else if (e.key === 'ArrowLeft') next = tabs[(idx - 1 + tabs.length) % tabs.length].id
+    else if (e.key === 'Home') next = tabs[0].id
+    else if (e.key === 'End') next = tabs[tabs.length - 1].id
+    if (!next) return
+    e.preventDefault()
+    setActive(next)
+    requestAnimationFrame(() => document.getElementById(tabId(next))?.focus())
+  }
+
   return (
     <div className="wrap">
       <div className="tabs" role="tablist" aria-label="Alignment demos">
@@ -38,8 +58,12 @@ export default function RLHFDemo() {
             type="button"
             className={`tab ${t.id === active ? 'active' : ''}`}
             role="tab"
+            id={tabId(t.id)}
             aria-selected={t.id === active}
+            aria-controls={panelId}
+            tabIndex={t.id === active ? 0 : -1}
             onClick={() => setActive(t.id)}
+            onKeyDown={onKeyDown}
           >
             {t.label}
           </button>
@@ -48,7 +72,7 @@ export default function RLHFDemo() {
 
       <div className="note">{current.note}</div>
 
-      <div className="panel" role="tabpanel">
+      <div className="panel" role="tabpanel" id={panelId} aria-labelledby={tabId(active)} tabIndex={0}>
         <Active />
       </div>
 
@@ -82,6 +106,11 @@ export default function RLHFDemo() {
           color: var(--text-primary);
         }
 
+        .tab:focus-visible {
+          outline: 2px solid rgba(148, 163, 184, 0.6);
+          outline-offset: 2px;
+        }
+
         .tab.active {
           border-color: rgba(239, 68, 68, 0.85);
           background: rgba(239, 68, 68, 0.14);
@@ -104,4 +133,3 @@ export default function RLHFDemo() {
     </div>
   )
 }
-

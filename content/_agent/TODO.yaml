@@ -1,4 +1,4 @@
-current_focus: "Complete the first 5-10 concept migration batch into content/ (filesystem-first) and tighten navigation/search during the transition"
+current_focus: "Start migration batch 2 (prereq hubs + high-traffic LLM serving/alignment concepts) and keep migrated pages high-quality via Oracle review fixes"
 
 last_completed:
   - concept: content-loader
@@ -126,6 +126,11 @@ last_completed:
     action: fixed
     notes: "Added a banner on legacy /foundations pages linking to the migrated /domains version when a filesystem concept with the same id exists."
 
+  - concept: migrated-batch-1-review-fixes
+    date: 2026-02-16
+    action: fixed
+    notes: "Applied Oracle review fixes to migrated transformer/diffusion/RLHF concepts (math↔code correctness, clearer explanations, robust code snippets), improved tabbed wrapper demos (a11y + dynamic imports), and saved the Oracle review output to responses/."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -143,7 +148,7 @@ queue:
     id: migrate-foundations-to-content-batch-2
     description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize prerequisites + high-traffic pages). Use wrapper demos when possible; otherwise add lightweight new viz.tsx."
     priority: P0
-    status: pending
+    status: in_progress
 
   - action: build_feature
     id: concept-search

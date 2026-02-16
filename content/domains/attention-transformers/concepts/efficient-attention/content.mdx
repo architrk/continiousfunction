@@ -25,9 +25,9 @@ where $(K_{1:t},V_{1:t})$ are cached.
 
 ### KV cache memory scaling
 
-Per layer, the KV cache stores keys and values for all $T$ positions:
+Across a batch of $B$ sequences and $L$ layers, the KV cache stores keys and values for all $T$ positions:
 
-$$\\mathrm{Mem}_{KV} \\propto T\\cdot H_{kv}\\cdot d_{\\mathrm{head}}\\cdot 2 \\cdot \\mathrm{bytes}.$$
+$$\\mathrm{Mem}_{KV} \\approx B\\cdot L\\cdot T\\cdot H_{kv}\\cdot d_{\\mathrm{head}}\\cdot 2 \\cdot \\mathrm{bytes}.$$
 
 The factor of 2 is for storing both $K$ and $V$.
 
@@ -38,25 +38,23 @@ Let there be $H_q$ query heads but only $H_{kv}$ key/value heads, with a mapping
 $$o_h = \\mathrm{softmax}\\!\\left(\\frac{Q_h K_{g(h)}^{\\top}}{\\sqrt{d_k}}\\right) V_{g(h)}.$$
 
 This reduces KV cache memory roughly by a factor of $H_{kv}/H_q$ compared to full multi-head attention.
+Equivalently: the KV cache becomes about $(H_{kv}/H_q)$ of full multi-head attention (so it’s reduced by roughly $H_q/H_{kv}\\times$ when $H_{kv} < H_q$).
 
 ## Code
 
 ```python
-def kv_cache_gb(T, layers, h_kv, d_head, bytes_per_elem=2):
-    # keys + values
-    elems = layers * T * h_kv * d_head * 2
+def kv_cache_gb(T, layers, h_kv, d_head, batch=1, bytes_per_elem=2):
+    elems = batch * layers * T * h_kv * d_head * 2  # keys + values
     return elems * bytes_per_elem / 1e9
 
-T = 128_000
-layers = 80
-d_head = 128
+T, layers, d_head, batch = 128_000, 80, 128, 1
+full = kv_cache_gb(T, layers, h_kv=64, d_head=d_head, batch=batch)
 
 for h_q, h_kv in [(64, 64), (64, 8), (64, 1)]:
-    gb = kv_cache_gb(T=T, layers=layers, h_kv=h_kv, d_head=d_head, bytes_per_elem=2)  # fp16
-    print(f"Hq={h_q:>2} Hkv={h_kv:>2}  KV cache ~ {gb:6.1f} GB (fp16)")
+    gb = kv_cache_gb(T, layers, h_kv=h_kv, d_head=d_head, batch=batch)  # fp16
+    print(f"Hq={h_q:>2} Hkv={h_kv:>2}  KV ~ {gb:6.1f} GB  ({gb/full:.1%} of full)")
 ```
 
 ## Interactive Demo
 
 Use the demo to explore how KV cache size grows with context length, and how GQA changes the memory/latency tradeoff without changing the basic attention mechanism.
-

@@ -6,7 +6,7 @@ title: "Tokenization & Vocabulary Design"
 
 Transformers do not read characters or words. They read *tokens*: discrete IDs from a fixed vocabulary.
 
-Tokenization is the (often invisible) step that decides what the model's "atoms" are. If your tokenizer splits `function_name` into 6 pieces, the model must do 6 steps of attention and decoding to handle it. If it gets a single token, it can treat it like one object.
+Tokenization is the (often invisible) step that decides what the model's "atoms" are. If your tokenizer splits `function_name` into 6 tokens, the model must process 6 positions (and at generation time emit 6 tokens) to handle it. If it gets a single token, it can treat it like one object.
 
 There is always a tradeoff:
 
@@ -15,7 +15,7 @@ There is always a tradeoff:
 
 ## Math
 
-Let the vocabulary be a set of strings (or byte sequences) $\mathcal V$. A tokenizer maps an input string $x$ into a sequence of tokens:
+Let the vocabulary be a set of strings (or byte sequences) $\mathcal V$. A tokenizer maps an input string $x$ into a sequence of tokens (where $n$ is the token count):
 
 $$x = \\mathrm{concat}(t_1,\\dots,t_n), \\qquad t_i \\in \\mathcal V.$$
 
@@ -39,6 +39,8 @@ If embeddings and output logits both use a $|\\mathcal V|\\times d$ matrix, then
 
 $$\\mathrm{params}_{\\mathrm{token}} \\approx 2\\,|\\mathcal V|\\,d.$$
 
+If you **tie** input/output embeddings (common in LLMs), this is closer to $|\\mathcal V|\\,d$.
+
 So the tokenizer is not just preprocessing: it changes model size, latency, and what patterns become easy to represent.
 
 ## Code
@@ -46,51 +48,40 @@ So the tokenizer is not just preprocessing: it changes model size, latency, and 
 ```python
 import math
 
-def best_unigram_segmentation(x, tok_logp):
-    n = len(x)
-    neg_inf = -1e30
-    dp = [neg_inf] * (n + 1)
-    back = [None] * (n + 1)
+def unigram_map(x, tok_logp):
+    n, NEG = len(x), -1e30
+    dp, back = [NEG] * (n + 1), [None] * (n + 1)
     dp[0] = 0.0
-
+    buckets = {}
+    for tok, lp in tok_logp.items():
+        buckets.setdefault(tok[0], []).append((tok, lp))
     for i in range(n):
-        if dp[i] <= neg_inf / 2:
+        if dp[i] <= NEG / 2:
             continue
-        for tok, lp in tok_logp.items():
+        for tok, lp in buckets.get(x[i], []):
             if x.startswith(tok, i):
-                j = i + len(tok)
-                s = dp[i] + lp
+                j, s = i + len(tok), dp[i] + lp
                 if s > dp[j]:
-                    dp[j] = s
-                    back[j] = (i, tok)
-
-    out = []
-    j = n
-    while j > 0 and back[j] is not None:
+                    dp[j], back[j] = s, (i, tok)
+    if back[n] is None:
+        return None
+    out, j = [], n
+    while j > 0:
         i, tok = back[j]
         out.append(tok)
         j = i
-    return list(reversed(out)) if j == 0 else None
+    return out[::-1], dp[n]
 
-tok_logp = {
-    "the": math.log(0.08),
-    "there": math.log(0.02),
-    "re": math.log(0.05),
-    "th": math.log(0.06),
-    "e": math.log(0.07),
-    "r": math.log(0.03),
-    "t": math.log(0.02),
-    "h": math.log(0.02),
-}
-
+probs = {"the": 0.08, "there": 0.02, "re": 0.05, "th": 0.06, "e": 0.07, "r": 0.03, "t": 0.02, "h": 0.02}
+tok_logp = {t: math.log(p) for t, p in probs.items()}
 x = "there"
-seg = best_unigram_segmentation(x, tok_logp)
+res = unigram_map(x, tok_logp)
+assert res is not None, "No valid segmentation"
+seg, score = res
 print("x:", x)
-print("best segmentation:", seg)
-print("num tokens:", len(seg))
+print("seg:", seg, "tokens:", len(seg), "logp:", round(score, 3))
 ```
 
 ## Interactive Demo
 
 Use the demo to see how different tokenizer designs change token boundaries, token counts, and what the model treats as a single unit.
-

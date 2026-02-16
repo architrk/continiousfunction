@@ -7,13 +7,13 @@ status: published
 importance: important
 prerequisites:
   - maximum-likelihood
-  - scaling-laws
 leads_to:
   - dpo
   - reward-hacking
 related:
   - dpo
   - reward-hacking
+  - scaling-laws
 tags:
   - alignment
   - rlhf

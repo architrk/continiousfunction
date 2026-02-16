@@ -26,7 +26,11 @@ Training often uses the noise-prediction loss:
 
 $$\\mathcal L = \\mathbb E_{x_0,t,\\epsilon}\\,\\big\\|\\epsilon - \\epsilon_\\theta(x_t,t)\\big\\|^2.$$
 
-The "score" view connects denoising to the gradient of log-density $\\nabla_x\\log p_t(x)$, and flow matching reframes sampling as learning a continuous vector field.
+The "score" view connects denoising to the gradient of log-density $\\nabla_x\\log p_t(x)$. In the DDPM parameterization above, predicting noise also gives (up to a known scale) a score estimate:
+
+$$s_\\theta(x_t,t) \\approx \\nabla_{x_t}\\log p_t(x_t) \\;\\propto\\; -\\frac{\\epsilon_\\theta(x_t,t)}{\\sqrt{1-\\bar\\alpha_t}}.$$
+
+Flow matching reframes sampling as learning a continuous vector field.
 
 ## Code
 
@@ -36,10 +40,10 @@ import numpy as np
 T = 1000
 beta = np.linspace(1e-4, 0.02, T)
 alpha = 1.0 - beta
-alpha_bar = np.cumprod(alpha)
+alpha_bar = np.concatenate([[1.0], np.cumprod(alpha)])  # alpha_bar[0]=1 (no noise)
 
 x0 = np.array([1.0, -1.0])
-for t in [0, 10, 100, 500, 999]:
+for t in [0, 10, 100, 500, 1000]:
     eps = np.random.randn(*x0.shape)
     xt = np.sqrt(alpha_bar[t]) * x0 + np.sqrt(1.0 - alpha_bar[t]) * eps
     print(f"t={t:>3}  xt={np.round(xt, 3)}  noise_std={np.sqrt(1.0 - alpha_bar[t]):.3f}")
@@ -48,4 +52,3 @@ for t in [0, 10, 100, 500, 999]:
 ## Interactive Demo
 
 Use the demo to see the forward noising process and how reverse denoising (or score-based updates) can recover samples step by step.
-

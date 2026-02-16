@@ -21,11 +21,11 @@ $$R(\\theta) = \\begin{pmatrix} \\cos\\theta & -\\sin\\theta \\\\ \\sin\\theta &
 
 RoPE rotates queries/keys by position-dependent angles:
 
-$$\\tilde q_p = R(\\theta_p) q, \\qquad \\tilde k_q = R(\\theta_q) k.$$
+$$\\tilde q_p = R(\\theta_p) q_p, \\qquad \\tilde k_q = R(\\theta_q) k_q.$$
 
 Then the dot product becomes:
 
-$$\\tilde q_p^\\top \\tilde k_q = q^\\top R(\\theta_p)^\\top R(\\theta_q) k = q^\\top R(\\theta_q - \\theta_p) k.$$
+$$\\tilde q_p^\\top \\tilde k_q = q_p^\\top R(\\theta_p)^\\top R(\\theta_q) k_q = q_p^\\top R(\\theta_q - \\theta_p) k_q.$$
 
 So attention can depend on *relative position* through $(\\theta_q-\\theta_p)$.
 
@@ -34,6 +34,8 @@ In practice, RoPE applies this to many 2D pairs with different frequencies. A co
 $$\\theta_{p,i} = p\\,\\omega_i, \\qquad \\omega_i = \\mathrm{base}^{-2i/d},$$
 
 where $d$ is head dimension and $i$ indexes the 2D pairs.
+
+RoPE applies this rotation independently to each 2D coordinate pair $(2i,2i+1)$ of a head, so $d$ is typically even and $i \\in \\{0,\\dots,\\frac d2-1\\}$.
 
 ## Code
 
@@ -44,19 +46,19 @@ def R(theta):
     c, s = np.cos(theta), np.sin(theta)
     return np.array([[c, -s], [s, c]])
 
+def rope_dot(q, k, p, qpos, w):
+    return float((R(p * w) @ q) @ (R(qpos * w) @ k))
+
 q = np.array([1.0, 0.2])
 k = np.array([0.3, 1.0])
 w = 0.7  # one frequency, for illustration
 
 for delta in [0, 1, 2, 4, 8]:
-    theta_p = 0.0
-    theta_q = delta * w
-    q_tilde = R(theta_p) @ q
-    k_tilde = R(theta_q) @ k
-    print("delta =", delta, "dot =", float(q_tilde @ k_tilde))
+    a = rope_dot(q, k, p=0, qpos=delta, w=w)
+    b = rope_dot(q, k, p=5, qpos=5 + delta, w=w)  # same relative offset
+    print("delta =", delta, "dot =", round(a, 3), "dot (shifted) =", round(b, 3))
 ```
 
 ## Interactive Demo
 
 Use the demo to rotate queries/keys and see how relative position becomes a phase difference that attention can learn to exploit.
-
