@@ -33,6 +33,9 @@ export default function Layout({ children }: Props) {
             <Link href="/domains/" className="nav-link">
               Domains
             </Link>
+            <Link href="/search/" className="nav-link">
+              Search
+            </Link>
             <Link href="/pillars" className="nav-link">
               Pillars
             </Link>

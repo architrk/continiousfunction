@@ -71,6 +71,16 @@ export CF_FTP_DELETE=1
 npm run deploy:hostinger
 ```
 
+### Optional: GitHub Actions (CI deploy)
+
+If this repo is hosted on GitHub, there is a workflow at `.github/workflows/deploy-hostinger.yml` that builds and deploys on pushes to `main`.
+
+Required repository secrets:
+- `CF_FTP_HOST`
+- `CF_FTP_USER`
+- `CF_FTP_PASS`
+- `CF_FTP_REMOTE_DIR` (example: `/public_html/`)
+
 ### Using Cursor SFTP Extension
 
 Update `.vscode/sftp.json`:

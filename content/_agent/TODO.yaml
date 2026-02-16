@@ -1,4 +1,4 @@
-current_focus: "Migrate high-traffic legacy concepts into content/ and add fast concept search"
+current_focus: "Migrate high-traffic legacy concepts into content/ and seed calculus domain"
 
 last_completed:
   - concept: content-loader
@@ -51,6 +51,11 @@ last_completed:
     action: created
     notes: "Added concept.yaml + content.mdx; covered L1/L2/Linf + norm axioms"
 
+  - concept: concept-search
+    date: 2026-02-16
+    action: created
+    notes: "Added /search page indexing /domains + /foundations metadata; added nav link"
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -68,12 +73,18 @@ queue:
     id: concept-search
     description: "Add search across concept metadata + MDX (client-side index or build-time JSON)"
     priority: P1
-    status: pending
+    status: done
 
   - action: expand_domain
     domain: calculus
     description: "Create domain metadata + seed 1-2 core concepts (derivatives, chain-rule)"
     priority: P1
+    status: pending
+
+  - action: build_feature
+    id: search-fulltext
+    description: "Upgrade /search to include lightweight fulltext snippets from content.mdx (Intuition/Math) without blowing up bundle size."
+    priority: P2
     status: pending
 
   - action: build_feature
@@ -90,6 +101,6 @@ queue:
 
 audit_log:
   - date: 2026-02-16
-    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra with 5 core concepts + a dot-product interactive demo"
+    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra with 5 core concepts + dot-product demo; added /search across domains+foundations"
 
 discovered_connections: []
