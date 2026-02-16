@@ -24,6 +24,7 @@ export const contentConceptVizMap: Record<string, ContentVizComponent> = {
   'efficiency': dynamic(() => import('../domains/efficiency/concepts/efficiency/viz'), { ssr: false }),
   'efficient-attention': dynamic(() => import('../domains/attention-transformers/concepts/efficient-attention/viz'), { ssr: false }),
   'flow-matching': dynamic(() => import('../domains/generative-models/concepts/flow-matching/viz'), { ssr: false }),
+  'kl-divergence': dynamic(() => import('../domains/information-theory/concepts/kl-divergence/viz'), { ssr: false }),
   'kto': dynamic(() => import('../domains/alignment/concepts/kto/viz'), { ssr: false }),
   'llm-serving': dynamic(() => import('../domains/llm-systems/concepts/llm-serving/viz'), { ssr: false }),
   'long-context': dynamic(() => import('../domains/attention-transformers/concepts/long-context/viz'), { ssr: false }),

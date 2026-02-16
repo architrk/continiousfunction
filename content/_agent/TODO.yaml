@@ -1,4 +1,4 @@
-current_focus: "Start migration batch 3 (kto + mixture-of-experts + flash-attention + quantization/pruning/distillation) and run Oracle deepens/reviews to keep migrated concepts crisp"
+current_focus: "Unblock graph edges by adding missing hubs (KL divergence, positional encoding), then start the next migration batch (loss-landscapes + double-descent + weight-init + label-smoothing)"
 
 last_completed:
   - concept: content-loader
@@ -236,6 +236,16 @@ last_completed:
     action: created
     notes: "Batch 3: migrated moe-serving into filesystem content (no demo yet) to connect sparse MoE routing to real serving bottlenecks (stragglers + all-to-all)."
 
+  - concept: positional-encoding
+    date: 2026-02-16
+    action: created
+    notes: "Added positional-encoding concept to serve as a hub for RoPE/long-context links (no demo yet)."
+
+  - concept: kl-divergence
+    date: 2026-02-16
+    action: created
+    notes: "Added information-theory domain + kl-divergence concept (reused CrossEntropyViz) and wired it as an explicit RLHF prerequisite."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -260,6 +270,26 @@ queue:
     description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers. (Progress: 9 migrated: kto, mixture-of-experts, moe-serving, score-matching, normalizing-flows, quantization, pruning, knowledge-distillation, flash-attention)"
     priority: P0
     status: in_progress
+
+  - action: build_feature
+    id: migrate-foundations-to-content-batch-4
+    description: "Migrate the next 4-6 prerequisite hubs that are heavily linked but still legacy-only (suggested: loss-landscapes, double-descent, weight-initialization, label-smoothing). Prefer wrapper demos if they exist; otherwise ship text-first concepts."
+    priority: P0
+    status: pending
+
+  - action: deepen
+    id: positional-encoding
+    domain: attention-transformers
+    description: "Add a small interactive viz for positional encodings (sinusoidal circle view + compare to RoPE) and link it from RoPE/long-context."
+    priority: P2
+    status: pending
+
+  - action: deepen
+    id: kl-divergence
+    domain: information-theory
+    description: "Tighten KL divergence teaching: add a short section contrasting forward vs reverse KL with a concrete 'mode-covering vs mode-seeking' example and link to VAEs + RLHF."
+    priority: P1
+    status: pending
 
   - action: build_feature
     id: concept-search

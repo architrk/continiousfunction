@@ -1,0 +1,72 @@
+---
+title: "Positional Encoding"
+---
+
+## Intuition
+
+Self-attention compares tokens by content (queries vs keys). But content alone does not tell you **where** a token is in the sequence.
+
+If you shuffle the tokens in a sequence and keep their embeddings the same, plain attention has no built-in way to notice the shuffle. In other words, attention is *permutation-equivariant* unless we inject order information.
+
+Positional encodings are the mechanism that turns "a bag of token vectors" into "an ordered sequence". There are many variants:
+
+- **Absolute position** (sinusoidal or learned): add a position vector to each token.
+- **Relative position** (RoPE, ALiBi, etc.): make attention scores depend on relative offsets.
+
+RoPE is one modern relative-position method, but it is easier to appreciate once you understand the basic goal: the model needs a stable coordinate system for time/position.
+
+## Math
+
+The classic sinusoidal encoding (Vaswani et al.) defines, for model dimension $d$ and position $p$:
+
+$$\\mathrm{PE}(p,2i) = \\sin\\left(p\\,\\omega_i\\right),\\qquad \\mathrm{PE}(p,2i+1) = \\cos\\left(p\\,\\omega_i\\right),$$
+
+with frequencies
+
+$$\\omega_i = \\mathrm{base}^{-2i/d},\\qquad i\\in\\{0,\\dots,\\tfrac d2-1\\}.$$
+
+Two useful facts:
+
+1. **Shift structure:** the dot product between two positions depends only on their offset:
+
+$$\\mathrm{PE}(p)\\cdot \\mathrm{PE}(q) = \\sum_i \\cos\\left(\\omega_i\\,(p-q)\\right).$$
+
+2. **Additive absolute encoding:** the simplest way to use PE is to add it to token embeddings:
+
+$$h_p = e_p + \\mathrm{PE}(p).$$
+
+Relative-position methods (like RoPE) instead modify the attention computation so that $q_p^\\top k_q$ depends on $(p-q)$ directly.
+
+## Code
+
+```python
+import numpy as np
+
+def sinusoidal_pe(T, d, base=10000.0):
+    assert d % 2 == 0
+    pos = np.arange(T)[:, None]
+    i = np.arange(d // 2)[None, :]
+    w = base ** (-2 * i / d)
+    angles = pos * w
+    pe = np.zeros((T, d))
+    pe[:, 0::2] = np.sin(angles)
+    pe[:, 1::2] = np.cos(angles)
+    return pe
+
+pe = sinusoidal_pe(T=32, d=16)
+dot = lambda p, q: float(pe[p] @ pe[q])
+
+for delta in [0, 1, 5, 10]:
+    a = dot(0, delta)
+    b = dot(7, 7 + delta)  # same relative offset
+    print("delta =", delta, "dot =", round(a, 3), "dot (shifted) =", round(b, 3))
+```
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A good next step is a small 2D plot that lets you:
+
+- choose a dimension pair $(2i,2i+1)$,
+- slide position $p$ and watch $(\\sin(p\\omega_i), \\cos(p\\omega_i))$ trace a circle,
+- compare sinusoidal PE vs RoPE rotations side-by-side.
+

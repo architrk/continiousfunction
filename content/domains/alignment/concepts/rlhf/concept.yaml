@@ -7,6 +7,7 @@ status: published
 importance: important
 prerequisites:
   - maximum-likelihood
+  - kl-divergence
 leads_to:
   - dpo
   - reward-hacking

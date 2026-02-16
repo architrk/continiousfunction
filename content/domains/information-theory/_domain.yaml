@@ -1,0 +1,6 @@
+title: "Information Theory"
+description: "How we measure information and mismatch between distributions: entropy, cross-entropy, KL divergence, mutual information, and why they appear everywhere in ML."
+icon: "info"
+color: "#0ea5e9"
+order: 45
+
