@@ -1,0 +1,5 @@
+title: "Optimization"
+description: "How we train models: gradients, learning rates, curvature, and the practical tricks that make deep nets converge."
+icon: "trending-up"
+color: "#3b82f6"
+order: 30

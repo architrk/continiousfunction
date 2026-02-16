@@ -61,6 +61,11 @@ last_completed:
     action: created
     notes: "Added calculus domain + seeded functions, derivatives (with secant→tangent demo), and chain-rule concepts"
 
+  - concept: adam
+    date: 2026-02-16
+    action: created
+    notes: "Migrated legacy concept id=adam into filesystem content (/domains/optimization/adam) and reused existing Adam visualization via a wrapper viz.tsx"
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -72,7 +77,7 @@ queue:
     id: migrate-foundations-to-content
     description: "Start migration: move 5-10 highest-traffic legacy concepts into content/domains/* so the filesystem system becomes primary over time (keep /foundations working during transition)."
     priority: P0
-    status: pending
+    status: in_progress
 
   - action: build_feature
     id: concept-search
@@ -106,6 +111,6 @@ queue:
 
 audit_log:
   - date: 2026-02-16
-    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra + calculus (derivatives demo); added /search across domains+foundations"
+    summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra + calculus; added /search; began legacy migration by adding /domains/optimization/adam"
 
 discovered_connections: []
