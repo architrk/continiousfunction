@@ -28,6 +28,7 @@ export const contentConceptVizMap: Record<string, ContentVizComponent> = {
   'rope': dynamic(() => import('../domains/attention-transformers/concepts/rope/viz'), { ssr: false }),
   'speculative-decoding': dynamic(() => import('../domains/llm-systems/concepts/speculative-decoding/viz'), { ssr: false }),
   'tokenization-vocabulary': dynamic(() => import('../domains/attention-transformers/concepts/tokenization-vocabulary/viz'), { ssr: false }),
+  'vaes': dynamic(() => import('../domains/generative-models/concepts/vaes/viz'), { ssr: false }),
   'vector-spaces': dynamic(() => import('../domains/linear-algebra/concepts/vector-spaces/viz'), { ssr: false }),
 }
 
