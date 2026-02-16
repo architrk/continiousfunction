@@ -1,0 +1,93 @@
+---
+title: "Efficiency: Quantization, Distillation, LoRA & Sparse MoE"
+---
+
+## Intuition
+
+"Efficiency" in modern deep learning is not one trick. It's a toolkit for getting *similar behavior* at *lower cost*.
+
+There are four especially common moves:
+
+- **Quantization**: make the numbers cheaper (fp16 -> int8 -> 4-bit) so memory and bandwidth stop bottlenecking you.
+- **Distillation**: compress a strong teacher into a smaller student by matching distributions, not labels.
+- **LoRA**: adapt a big frozen model with a tiny low-rank update instead of full fine-tuning.
+- **Sparse MoE**: keep a huge pool of parameters, but only run a few "experts" per token so compute stays affordable.
+
+A helpful mental model is "paying with different currencies." If you're bottlenecked by memory bandwidth (common in inference), quantization helps. If you need many variants of a model, LoRA helps. If you want *capacity* without *dense compute*, MoE helps.
+
+## Math
+
+### Distillation (match the teacher distribution)
+
+Let the teacher define a distribution over outputs $y$ given input $x$, and let $T>0$ be a temperature:
+
+$$p_{\\theta}^{(T)}(y\\mid x) = \\mathrm{softmax}(z_\\theta(x)/T), \\qquad q_{\\psi}^{(T)}(y\\mid x) = \\mathrm{softmax}(z_\\psi(x)/T).$$
+
+A standard distillation objective is:
+
+$$\\mathcal L_{\\text{distill}} = T^2\\,\\mathrm{KL}\\!\\left(p_{\\theta}^{(T)}(\\cdot\\mid x)\\ \\|\\ q_{\\psi}^{(T)}(\\cdot\\mid x)\\right).$$
+
+The temperature $T$ "softens" probabilities so the student can learn *dark knowledge* (relative preferences among non-top classes/tokens). The $T^2$ factor keeps gradient magnitudes comparable as $T$ changes.
+
+### Quantization (coarse numbers, cheaper memory)
+
+A simple uniform quantizer for a weight $w$ with step size $\\Delta$ is:
+
+$$\\tilde w = \\Delta\\cdot\\mathrm{round}(w/\\Delta).$$
+
+Quantization turns memory and bandwidth savings into speed. In practice you use per-channel scales, careful rounding, and sometimes quantization-aware training to keep error from amplifying.
+
+### LoRA (low-rank weight updates)
+
+For a weight matrix $W\\in\\mathbb R^{d_{\\text{out}}\\times d_{\\text{in}}}$, LoRA parameterizes the adapted weight as:
+
+$$W' = W + BA,$$
+
+where $B\\in\\mathbb R^{d_{\\text{out}}\\times r}$, $A\\in\\mathbb R^{r\\times d_{\\text{in}}}$, and $r\\ll\\min(d_{\\text{in}}, d_{\\text{out}})$.
+
+Key fact: $\\mathrm{rank}(BA)\\le r$. You get an expressive update direction while training only $r(d_{\\text{in}}+d_{\\text{out}})$ parameters instead of $d_{\\text{in}}d_{\\text{out}}$.
+
+### Sparse MoE (sparsity buys capacity)
+
+Let $\\{f_e\\}_{e=1}^E$ be expert networks and let a router produce weights $g(x)\\in\\Delta^E$ (a probability simplex). A common MoE layer is:
+
+$$\\mathrm{MoE}(x) = \\sum_{e\\in\\mathrm{TopK}(g(x))} g_e(x)\\, f_e(x).$$
+
+Only a few experts run per token, so *active compute* is small even if total parameter count is huge.
+
+## Code
+
+```python
+import numpy as np
+
+d_out, d_in, r = 512, 512, 8
+
+# Full dense weight
+W = np.random.randn(d_out, d_in)
+
+# LoRA low-rank update BA
+A = np.random.randn(r, d_in)
+B = np.random.randn(d_out, r)
+delta = B @ A
+
+# Numerical rank of the update is <= r
+s = np.linalg.svd(delta, compute_uv=False)
+rank = int((s > 1e-6).sum())
+
+full_params = d_out * d_in
+lora_params = r * d_in + d_out * r
+
+print("full params:", full_params)
+print("LoRA trainable params:", lora_params, f"({lora_params/full_params:.2%} of full)")
+print("rank(BA):", rank, "(<= r =", r, ")")
+```
+
+## Interactive Demo
+
+Use the demos to build intuition for how each trick "buys" efficiency:
+
+- LoRA: low-rank edits to weights
+- MoE: sparse routing and load balance
+- Task vectors: additive behavior steering and its tradeoffs
+
+{/* viz.tsx component renders here if it exists */}

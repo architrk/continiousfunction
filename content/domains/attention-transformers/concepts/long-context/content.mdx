@@ -1,0 +1,75 @@
+---
+title: "Long Context Engineering: RoPE Scaling, KV Compression & Memory Optimization"
+---
+
+## Intuition
+
+Long context feels like "the model remembers more." In practice it's two different problems:
+
+1. **Position extrapolation**: the model must make sense of token positions it never saw during training (position is out-of-distribution).
+2. **Memory and bandwidth**: even if the model *could* use a million tokens, you still have to store and read the **KV cache** efficiently.
+
+That's why long-context work is a two-front war. RoPE scaling methods (YaRN, LongRoPE, position interpolation) attack the "angle OOD" issue, while KV techniques (GQA/MQA, paging, quantization, eviction) attack the memory wall.
+
+If you want a single production mental model: long-context inference is usually **memory-bound**, not compute-bound.
+
+## Math
+
+### Sliding window attention (reduce $T^2$ compute)
+
+If each token attends only to the previous $W$ tokens, then attention compute is closer to $O(TW)$ instead of $O(T^2)$. One way to express this is with a mask:
+
+$$M_{ij} =
+\\begin{cases}
+0 & \\text{if } j \\le i \\text{ and } i-j \\le W \\\\
+-\\infty & \\text{otherwise}
+\\end{cases}$$
+
+and:
+
+$$\\mathrm{Attn}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}}+M\\right)V.$$
+
+### KV cache memory (the bottleneck at long $T$)
+
+Across a batch of $B$ sequences and $L$ layers, storing keys and values for $T$ tokens costs roughly:
+
+$$\\mathrm{Mem}_{KV} \\approx B\\cdot L\\cdot T\\cdot H_{kv}\\cdot d_{head}\\cdot 2 \\cdot \\mathrm{bytes}.$$
+
+This grows linearly in $T$, and at long context it dominates the serving budget.
+
+### RoPE scaling (fix position OOD)
+
+RoPE encodes position by rotating queries/keys. At positions far beyond training, those rotations can become out-of-distribution (especially for low-frequency dimensions). RoPE scaling methods effectively change the mapping $p \\mapsto \\theta(p)$ so the model sees "less extreme" phases at long context, while preserving short-range detail.
+
+## Code
+
+```python
+import numpy as np
+
+def kv_gb(T, L, Hkv, d_head, B=1, bytes_per_elem=2):
+    elems = B * L * T * Hkv * d_head * 2  # K and V
+    return elems * bytes_per_elem / 1e9
+
+L, Hkv, d_head, B = 80, 8, 128, 8  # example: 80 layers, GQA with 8 KV heads, fp16
+for T in [2048, 8192, 32768, 131072]:
+    print("T=", T, "KV~", round(kv_gb(T, L, Hkv, d_head, B), 2), "GB")
+
+def attn_work(T, W, d):
+    # crude: per token ~ 2 * W * d multiply-adds (QK + weights*V)
+    return T * W * d * 2
+
+T, d = 131072, 128
+full = attn_work(T, T, d)
+for W in [128, 512, 2048, T]:
+    print("window=", W, "relative attention work:", round(attn_work(T, W, d) / full, 6))
+```
+
+## Interactive Demo
+
+Use the demos to connect the "math knobs" to what serving systems actually feel:
+
+- Sliding window reduces attention compute (but can hurt long-range retrieval).
+- RoPE makes relative position usable at longer sequences.
+- KV cache dashboards make the memory wall concrete.
+
+{/* viz.tsx component renders here if it exists */}

@@ -1,4 +1,4 @@
-current_focus: "Start migration batch 2 (prereq hubs + high-traffic LLM serving/alignment concepts) and keep migrated pages high-quality via Oracle review fixes"
+current_focus: "Finish migration batch 2 (missing hubs: efficiency/long-context/scaling-laws + alignment/generative follow-ons) and keep migrated pages high-quality via Oracle"
 
 last_completed:
   - concept: content-loader
@@ -156,6 +156,36 @@ last_completed:
     action: created
     notes: "Batch 2: migrated vaes into filesystem content and reused VAEELBOViz as the interactive demo (ELBO + reparameterization)."
 
+  - concept: efficiency
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated efficiency into filesystem content (new efficiency domain) and reused existing LoRA/MoE/TaskVector demos via an accessible tabbed wrapper."
+
+  - concept: scaling-laws
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated scaling-laws into filesystem content (new scaling domain) and reused scaling visualizations via an accessible tabbed wrapper."
+
+  - concept: long-context
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated long-context into filesystem content and reused sliding-window/RoPE/KV cache demos via an accessible tabbed wrapper."
+
+  - concept: dpo
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated dpo into filesystem content and reused DPOViz as the interactive demo."
+
+  - concept: reward-hacking
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated reward-hacking into filesystem content and reused RewardHackingViz as the interactive demo."
+
+  - concept: flow-matching
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated flow-matching into filesystem content and reused FlowMatchingViz as the interactive demo."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -171,9 +201,15 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-2
-    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize prerequisites + high-traffic pages). Use wrapper demos when possible; otherwise add lightweight new viz.tsx. (Progress: 4 migrated: representations, llm-serving, speculative-decoding, decoding-sampling)"
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize prerequisites + high-traffic pages). Use wrapper demos when possible; otherwise add lightweight new viz.tsx. (Progress: 11 migrated: representations, llm-serving, speculative-decoding, decoding-sampling, vaes, efficiency, scaling-laws, long-context, dpo, reward-hacking, flow-matching)"
     priority: P0
-    status: in_progress
+    status: done
+
+  - action: build_feature
+    id: migrate-foundations-to-content-batch-3
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers."
+    priority: P0
+    status: pending
 
   - action: build_feature
     id: concept-search
@@ -208,6 +244,9 @@ queue:
 audit_log:
   - date: 2026-02-16
     summary: "Bootstrap: content/ + /domains pages wired; validation passes; expanded linear-algebra/calculus/probability; added /search; migrated legacy concepts: maximum-likelihood + adam"
+
+  - date: 2026-02-16
+    summary: "Migration batch 2: added efficiency + scaling domains; migrated efficiency, scaling-laws, long-context, dpo, reward-hacking, flow-matching; regenerated vizMap; validate/typecheck/build passed."
 
 discovered_connections:
   - source: tokenization-vocabulary

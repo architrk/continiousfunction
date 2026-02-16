@@ -1,0 +1,81 @@
+---
+title: "Scaling Laws & Emergent Abilities"
+---
+
+## Intuition
+
+If you train a family of models the same way (same architecture class, data pipeline, optimizer recipe), then "bigger model" and "more data" usually give you *predictably better loss*.
+
+Scaling laws turn that predictability into a planning tool. Instead of guessing, you can fit a curve from small runs, then forecast how far a larger run will go, and how to spend a fixed compute budget:
+
+- Should we buy **more parameters** or **more tokens**?
+- If we only get one big run, what is the compute-optimal choice?
+- Why do some task behaviors look like they "appear suddenly"?
+
+The key mindset is: scaling laws are *not a proof about intelligence*. They are an *empirical control system* for allocating compute.
+
+## Math
+
+### Power-law loss scaling
+
+A common empirical form for test loss $L$ is:
+
+$$L(N, D) \\approx L_\\infty + a\\,N^{-\\alpha} + b\\,D^{-\\beta},$$
+
+where:
+
+- $N$ is parameter count,
+- $D$ is number of training tokens (or examples),
+- $\\alpha,\\beta>0$ are exponents you fit from data,
+- $L_\\infty$ is the irreducible loss floor for the dataset/model class.
+
+On a log-log plot, $N^{-\\alpha}$ and $D^{-\\beta}$ look like straight lines. That's why power laws are useful: they extrapolate smoothly.
+
+### Compute-optimal allocation (Chinchilla-style rule of thumb)
+
+Very roughly, training compute scales like:
+
+$$C \\propto N\\cdot D.$$
+
+Under this constraint, minimizing the loss above typically yields a near-linear rule:
+
+$$D \\propto N.$$
+
+Interpretation: for a fixed compute budget, don't overscale parameters without scaling data too, or you spend compute learning the same patterns repeatedly.
+
+### "Emergent abilities" as sharp transitions
+
+When you measure a capability with a **thresholded metric** ("accuracy above 50%", "passes a benchmark"), smooth curves in loss can turn into sharp-looking transitions. The underlying performance can still be continuous.
+
+## Code
+
+```python
+import numpy as np
+
+# A toy scaling law: L(N,D) = L_inf + a N^-alpha + b D^-beta
+L_inf, a, b = 1.5, 1.0, 1.0
+alpha, beta = 0.07, 0.095
+
+def loss(N, D):
+    return L_inf + a * N**(-alpha) + b * D**(-beta)
+
+C = 1e12  # compute budget in arbitrary units ~ N*D
+Ns = np.logspace(7, 10, 40)  # 10M..10B params
+
+best = None
+for N in Ns:
+    D = C / N
+    L = loss(N, D)
+    if best is None or L < best[0]:
+        best = (L, N, D)
+
+L, N, D = best
+print("best loss:", round(float(L), 4))
+print("N:", f"{N:.2e}", "D:", f"{D:.2e}", "D/N:", round(float(D / N), 2))
+```
+
+## Interactive Demo
+
+Use the demo to explore how loss changes as you scale $N$ and $D$, and why compute-optimal frontiers often prefer more data than you expect.
+
+{/* viz.tsx component renders here if it exists */}

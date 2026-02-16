@@ -1,0 +1,6 @@
+title: "Efficiency"
+description: "How we make models cheaper to train and serve: quantization, distillation, low-rank adapters, sparsity, and the memory/latency tradeoffs that dominate real deployments."
+icon: "zap"
+color: "#3b82f6"
+order: 75
+

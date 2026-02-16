@@ -1,0 +1,6 @@
+title: "Scaling"
+description: "How loss and capability change with parameters, data, and compute; how to allocate a training budget; and why some abilities appear suddenly at scale."
+icon: "rocket"
+color: "#ef4444"
+order: 65
+

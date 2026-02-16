@@ -1,0 +1,81 @@
+---
+title: "Direct Preference Optimization: RL-Free Alignment from Human Preferences"
+---
+
+## Intuition
+
+RLHF has two moving parts: learn a reward model from comparisons, then run an RL algorithm (often PPO) to push the policy toward high reward while staying close to a reference model.
+
+DPO keeps the *core idea* (move probability mass toward preferred outputs, stay anchored to a reference), but drops the RL loop. Instead, it becomes a supervised learning problem on preference pairs:
+
+- For a prompt $x$, you have a preferred completion $y_w$ (winner) and a dispreferred one $y_\\ell$ (loser).
+- You want your policy $\\pi_\\theta$ to assign **higher relative odds** to $y_w$ than to $y_\\ell$, compared to a reference $\\pi_{\\text{ref}}$.
+- A single scalar $\\beta$ controls how far you're willing to move.
+
+If you remember one sentence: **DPO is logistic regression on log-probability ratios.**
+
+## Math
+
+### The KL-regularized objective (what we're secretly trying to do)
+
+For a fixed prompt $x$, a common goal is:
+
+$$\\max_{\\pi}\\; \\mathbb E_{y\\sim\\pi(\\cdot\\mid x)}[r(x,y)] - \\beta\\,\\mathrm{KL}(\\pi(\\cdot\\mid x)\\,\\|\\,\\pi_{\\text{ref}}(\\cdot\\mid x)).$$
+
+This says: increase reward, but don't drift too far from the reference distribution.
+
+The optimizer has a "reweighting" form:
+
+$$\\pi^*(y\\mid x) \\propto \\pi_{\\text{ref}}(y\\mid x)\\,\\exp\\!\\left(r(x,y)/\\beta\\right).$$
+
+### DPO loss (fit the reweighting from comparisons)
+
+Given pair $(x, y_w, y_\\ell)$, DPO uses:
+
+$$\\mathcal{L}_{\\text{DPO}}(\\theta) =
+-\\log\\sigma\\!\\left(
+\\beta\\Big[
+\\log\\tfrac{\\pi_\\theta(y_w\\mid x)}{\\pi_{\\text{ref}}(y_w\\mid x)}
+-\\log\\tfrac{\\pi_\\theta(y_\\ell\\mid x)}{\\pi_{\\text{ref}}(y_\\ell\\mid x)}
+\\Big]
+\\right).$$
+
+Interpretation:
+
+- If the winner already has higher relative odds than the loser, the margin is positive and the loss is small.
+- If not, the loss pushes $\\pi_\\theta$ to increase $\\log\\pi_\\theta(y_w\\mid x)$ and/or decrease $\\log\\pi_\\theta(y_\\ell\\mid x)$, without forgetting the reference baseline.
+
+## Code
+
+```python
+import numpy as np
+
+def softmax(z):
+    z = z - z.max()
+    e = np.exp(z)
+    return e / e.sum()
+
+beta = 2.0
+pi_ref = np.array([0.2, 0.8])  # [winner, loser]
+log_ref = np.log(pi_ref)
+
+logits = np.array([0.0, 0.0])  # learn policy logits for [winner, loser]
+lr = 0.4
+
+for _ in range(40):
+    pi = softmax(logits)
+    log_pi = np.log(pi + 1e-12)
+    margin = beta * ((log_pi[0] - log_ref[0]) - (log_pi[1] - log_ref[1]))
+    p = 1.0 / (1.0 + np.exp(-margin))          # sigmoid(margin)
+    grad = (p - 1.0) * beta * np.array([1.0, -1.0])  # d/dlogits of -log(sigmoid(margin))
+    logits -= lr * grad
+
+print("ref probs   [w,l]:", np.round(pi_ref, 3))
+print("learned probs[w,l]:", np.round(softmax(logits), 3))
+```
+
+## Interactive Demo
+
+Use the demo to see how $\\beta$ and the reference policy shape the update, and why DPO is best thought of as "moving probability mass" under a trust-region constraint.
+
+{/* viz.tsx component renders here if it exists */}

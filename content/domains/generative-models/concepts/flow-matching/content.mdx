@@ -1,0 +1,67 @@
+---
+title: "Flow Matching & Rectified Flows"
+---
+
+## Intuition
+
+Diffusion models teach a model to "undo noise" step by step. Flow matching teaches a model something more direct: **which direction to move**.
+
+Imagine starting with a cloud of noise points and wanting to morph it into a cloud shaped like your data. If you knew a time-dependent "wind field" $v(x,t)$ that pushes particles, you could just integrate an ODE and watch noise turn into samples.
+
+Rectified flows are an especially simple version: they choose *straight-line paths* between noise and data. Straight paths are easy to approximate with a small number of steps, which is why flow matching is a route to fast sampling.
+
+## Math
+
+### A generative flow as an ODE
+
+We model a trajectory $x_t$ via:
+
+$$\\frac{dx_t}{dt} = v_\\theta(x_t, t), \\qquad t\\in[0,1],$$
+
+where $v_\\theta$ is a neural network predicting a velocity vector at position $x_t$ and time $t$.
+
+### Conditional flow matching objective
+
+Flow matching trains $v_\\theta$ to match a target velocity field $u_t$:
+
+$$\\mathcal{L} = \\mathbb E_{t, x_0, x_1}\\,\\big\\|v_\\theta(x_t, t) - u_t\\big\\|^2.$$
+
+### Rectified flow (straight paths)
+
+Choose a straight interpolation between noise $x_0$ and data $x_1$:
+
+$$x_t = (1-t)x_0 + t x_1.$$
+
+Then the target velocity is constant along the path:
+
+$$u_t = \\frac{d}{dt}x_t = x_1 - x_0.$$
+
+This simplicity is the main appeal: the model learns velocities directly instead of learning to denoise under a noise schedule.
+
+## Code
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+x0 = rng.standard_normal(5)
+
+# A simple deterministic "data" mapping for the toy example
+x1 = 2.0 * x0 + 1.0
+
+for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
+    xt = (1 - t) * x0 + t * x1
+    u = x1 - x0
+
+    # For this toy mapping, the exact velocity field can be written as v(xt,t):
+    # xt = (1+t)x0 + t  =>  x0 = (xt - t)/(1+t)  =>  u = x0 + 1 = (xt + 1)/(1+t)
+    v = (xt + 1.0) / (1.0 + t)
+    print("t=", t, "max|u-v|=", float(np.max(np.abs(u - v))))
+```
+
+## Interactive Demo
+
+Use the demo to see trajectories and velocities, and how "learn the wind field" differs from "learn to denoise."
+
+{/* viz.tsx component renders here if it exists */}
+

@@ -1,0 +1,70 @@
+---
+title: "Reward Hacking & Overoptimization: Goodhart's Law in Preference Optimization"
+---
+
+## Intuition
+
+Reward hacking is Goodhart's law in ML form: *when a measure becomes a target, it stops being a good measure*.
+
+In preference optimization, the "reward" is not the true thing you care about. It's a learned proxy (a reward model, or an implicit preference objective) trained on finite, noisy comparisons. As you optimize the policy, you push it into regions where:
+
+- the reward model has **less data** (distribution shift),
+- small prediction errors get **amplified** by optimization pressure,
+- the policy discovers **loopholes** that score well but are actually bad.
+
+This is why modern post-training recipes use conservative objectives, ensembles, monitoring, and KL anchors. The point is not "solve Goodhart forever" but "slow it down and detect it early."
+
+## Math
+
+### Proxy reward optimization with a trust region
+
+A common shape (RLHF-style) is:
+
+$$\\max_{\\pi_\\theta}\\;\\mathbb E_{y\\sim\\pi_\\theta(\\cdot\\mid x)}[\\hat r_\\phi(x,y)] - \\beta\\,\\mathrm{KL}\\!\\left(\\pi_\\theta(\\cdot\\mid x)\\ \\|\\ \\pi_{\\text{ref}}(\\cdot\\mid x)\\right).$$
+
+The KL term helps, but it's not a magic shield: you can still find high-scoring hacks inside the trust region if the proxy is wrong there.
+
+### Conservative optimization via ensembles (a practical anti-Goodhart move)
+
+With an ensemble of reward models $\\{r_{\\phi_j}\\}_{j=1}^K$, define mean and standard deviation:
+
+$$\\mu(x,y)=\\frac{1}{K}\\sum_{j=1}^K r_{\\phi_j}(x,y),\\qquad
+\\sigma(x,y)=\\sqrt{\\frac{1}{K}\\sum_{j=1}^K\\left(r_{\\phi_j}(x,y)-\\mu(x,y)\\right)^2}.$$
+
+Then optimize a lower confidence bound:
+
+$$r_{\\text{LCB}}(x,y)=\\mu(x,y)-\\lambda\\,\\sigma(x,y).$$
+
+Intuition: prefer high reward you are *confident* about, not just high mean reward.
+
+## Code
+
+```python
+import numpy as np
+
+x = np.linspace(-3, 3, 401)
+r_true = -(x - 1.0) ** 2                      # true objective (unknown in practice)
+
+# A proxy reward that "extrapolates wrong" beyond where it was trained
+bias = 0.6 * np.tanh(2 * (x - 1.5))
+r_hat = r_true + bias
+
+# Uncertainty grows off-distribution (toy model)
+sigma = 0.1 + 0.4 * np.abs(x - 1.0)
+lam = 1.0
+r_lcb = r_hat - lam * sigma
+
+x_true = float(x[np.argmax(r_true)])
+x_proxy = float(x[np.argmax(r_hat)])
+x_lcb = float(x[np.argmax(r_lcb)])
+
+print("true optimum x~", round(x_true, 3))
+print("proxy optimum x~", round(x_proxy, 3))
+print("LCB optimum  x~", round(x_lcb, 3))
+```
+
+## Interactive Demo
+
+Use the demo to see how optimization pressure, KL anchors, and uncertainty penalties change where the policy moves, and why "over-optimizing the proxy" is expected behavior.
+
+{/* viz.tsx component renders here if it exists */}

@@ -1,0 +1,30 @@
+id: flow-matching
+title: "Flow Matching & Rectified Flows"
+domain: generative-models
+slug: flow-matching
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - diffusion
+  - normalizing-flows
+leads_to:
+  - efficiency
+related:
+  - diffusion
+  - vaes
+tags:
+  - generative-models
+  - flow-matching
+  - rectified-flows
+  - odes
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: graduate
+short_description: "Learn a time-dependent velocity field that transports noise into data. Rectified flows use straight paths, enabling fast few-step sampling."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 16
+
