@@ -34,6 +34,50 @@ oracle --engine browser --browser-manual-login \
 | `--browser-attachments always` | (Recommended for big contexts) Always upload attachments vs pasting inline |
 | `--browser-bundle-files` | (Recommended) Bundle attachments into a single archive upload |
 
+## Parallel Sessions (Reliable Manual-Login Setup)
+
+`--browser-manual-login` uses a single persistent automation profile (`~/.oracle/browser-profile`). In practice, **run one session at a time** with this mode, unless you explicitly isolate Chrome instances.
+
+For truly parallel runs with **manual login**, prefer **remote Chrome** with separate profiles/ports:
+
+```bash
+# Terminal A (Profile A on port 9222)
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir "$HOME/ChromeOracleProfileA" \
+  --no-first-run --no-default-browser-check \
+  "https://chatgpt.com" >/dev/null 2>&1 &
+
+# Terminal B (Profile B on port 9223)
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9223 \
+  --user-data-dir "$HOME/ChromeOracleProfileB" \
+  --no-first-run --no-default-browser-check \
+  "https://chatgpt.com" >/dev/null 2>&1 &
+```
+
+Log into ChatGPT once in each window, then run Oracle against each DevTools endpoint:
+
+```bash
+oracle --engine browser --model "gpt-5 pro" \
+  --remote-chrome 127.0.0.1:9222 \
+  --slug "cf-query-a" \
+  --prompt "..." \
+  --file "..." \
+  --write-output "responses/cf-query-a.md" \
+  --browser-timeout 30m &
+
+oracle --engine browser --model "gpt-5 pro" \
+  --remote-chrome 127.0.0.1:9223 \
+  --slug "cf-query-b" \
+  --prompt "..." \
+  --file "..." \
+  --write-output "responses/cf-query-b.md" \
+  --browser-timeout 30m &
+```
+
+This avoids controller collisions and keeps sessions isolated.
+
 ## Running Queries in Background
 
 ### Single Query (Background)
