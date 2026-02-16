@@ -141,6 +141,11 @@ last_completed:
     action: created
     notes: "Batch 2: migrated llm-serving into filesystem content (new llm-systems domain) and reused ServingLatencyViz as the interactive demo."
 
+  - concept: speculative-decoding
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated speculative-decoding into filesystem content and reused SpeculativeDecodingViz as the interactive demo."
+
 queue:
   - action: expand_domain
     domain: linear-algebra

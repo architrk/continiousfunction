@@ -1,0 +1,68 @@
+---
+title: "Speculative Decoding: Lossless Multi-Token Generation"
+---
+
+## Intuition
+
+Autoregressive decoding is painfully sequential: one forward pass per token.
+
+Speculative decoding gets around this by splitting work into two roles:
+
+- a fast **draft** model proposes a chunk of $k$ next tokens,
+- the expensive **target** model verifies the chunk in parallel.
+
+If the draft and target agree, you accept multiple tokens at once and "skip ahead" in the sequence. If they disagree, you reject at the first mismatch and fall back to the target model for that token. The key promise is that this is **lossless**: the final distribution of generated text is exactly what you would have sampled from the target model alone.
+
+So the win is systems-level: fewer expensive sequential target steps, same output distribution.
+
+## Math
+
+Let $q_i$ be the draft distribution at position $i$ and $p_i$ be the target distribution. If the draft proposes token $x_i$, the acceptance probability is:
+
+$$\\alpha_i = \\min\\!\\left(1, \\frac{p_i[x_i]}{q_i[x_i]}\\right).$$
+
+If a proposed token is rejected, you sample from a **residual** distribution that corrects for what the draft already "used up":
+
+$$x_i \\sim \\mathrm{Normalize}\\!\\left(\\max(0,\\ p_i - q_i)\\right).$$
+
+This rejection/residual mechanism is what makes the method lossless: accepted tokens come from $q$ but are filtered to match $p$, and rejected positions are repaired to restore the exact $p$ distribution.
+
+A rough intuition for speedup: if the draft is often right, you accept a long prefix of the $k$ proposed tokens, and the target model advances several tokens per verification step.
+
+## Code
+
+```python
+import numpy as np
+
+def expected_accepted(alpha, k):
+    # Expected length of consecutive acceptances (prefix), capped at k.
+    if alpha == 1.0:
+        return float(k)
+    return alpha * (1.0 - alpha**k) / (1.0 - alpha)
+
+def simulate(alpha, k, trials=50000, seed=0):
+    rng = np.random.RandomState(seed)
+    total = 0
+    for _ in range(trials):
+        a = 0
+        for _ in range(k):
+            if rng.rand() < alpha:
+                a += 1
+            else:
+                break
+        total += a
+    return total / trials
+
+for alpha in [0.3, 0.6, 0.85]:
+    for k in [2, 4, 8]:
+        theo = expected_accepted(alpha, k)
+        mc = simulate(alpha, k)
+        print(f\"alpha={alpha:.2f} k={k:>2}  E[accepted] theo={theo:.3f}  mc={mc:.3f}\")
+```
+
+## Interactive Demo
+
+Use the demo to see how acceptance probability, draft length, and distribution mismatch affect expected speedup, and why verification is "free" only if your target model can score the chunk efficiently.
+
+{/* viz.tsx component renders here if it exists */}
+
