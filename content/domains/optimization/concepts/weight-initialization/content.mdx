@@ -1,0 +1,64 @@
+---
+title: "Weight Initialization: Xavier, He & muP"
+---
+
+## Intuition
+
+Initialization is the starting geometry of learning.
+
+If weights are too small, signals shrink as they pass through layers and gradients vanish. If weights are too large, activations and gradients explode and training becomes unstable.
+
+Good initializations aim to keep the "scale" of information roughly constant as it flows forward (activations) and backward (gradients).
+
+Two classics:
+
+- **Xavier/Glorot**: good for tanh/sigmoid-like activations.
+- **He/Kaiming**: good for ReLU-like activations (because ReLU zeros out about half of inputs).
+
+Modern scaling work adds another layer: you want hyperparameters to transfer as width changes. **muP** is one way to parameterize networks so you can tune on a small model and scale up with fewer surprises.
+
+## Math
+
+Consider a linear layer $h = Wx$ where $x\\in\\mathbb R^{n_{in}}$ has i.i.d. components with $\\mathrm{Var}(x_i)=\\sigma^2$.
+Assume $W_{ij}$ are i.i.d. with mean 0 and variance $\\mathrm{Var}(W_{ij}) = v$.
+
+Then each output coordinate is a sum of $n_{in}$ terms, so:
+
+$$\\mathrm{Var}(h_j) \\approx n_{in}\\,v\\,\\sigma^2.$$
+
+To keep variance stable across layers ($\\mathrm{Var}(h_j) \\approx \\sigma^2$), set:
+
+$$v \\approx \\frac{1}{n_{in}}.$$
+
+This motivates Xavier-like scaling. For ReLU, roughly half the mass is zeroed, so to keep variance stable you use about twice the variance:
+
+$$\\mathrm{Var}(W_{ij}) \\approx \\frac{2}{n_{in}}.$$
+
+muP (Maximal Update Parameterization) extends this idea to *updates*: scale parameters and learning rates with width so that update magnitudes stay comparable across model sizes.
+
+## Code
+
+```python
+import numpy as np
+
+rs = np.random.RandomState(0)
+
+def run(depth=20, width=512, scale=1.0, relu=True):
+    x = rs.randn(width)
+    vars = []
+    for _ in range(depth):
+        W = rs.randn(width, width) * (scale / np.sqrt(width))
+        x = W @ x
+        if relu: x = np.maximum(x, 0)
+        vars.append(float(x.var()))
+    return vars
+
+for name, scale in [("too small", 0.3), ("xavier-ish", 1.0), ("too large", 3.0)]:
+    v = run(scale=scale)
+    print(name, "var@layer1", round(v[0], 3), "var@layer20", round(v[-1], 3))
+```
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A good next step is a small "signal propagation" visualization that shows activation variance and gradient variance vs depth for different init choices.
+

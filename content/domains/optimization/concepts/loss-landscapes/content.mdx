@@ -1,0 +1,75 @@
+---
+title: "Loss Landscapes, Sharpness & Flat Minima"
+---
+
+## Intuition
+
+Training is "roll downhill on a surface", but for neural nets that surface lives in a space with millions (or billions) of dimensions.
+
+So when people show a 2D loss landscape, it is not the landscape. It is a **slice**: a tiny window into how loss changes along a couple of directions in parameter space.
+
+Even so, those slices teach something real:
+
+- **Sharp minima**: a tiny weight perturbation makes loss jump. These often correlate with brittle generalization and sensitivity.
+- **Flat minima**: you can wiggle weights a bit and loss barely changes. These often correlate with better generalization and robustness.
+
+Modern training tricks can be read as "bias the optimizer toward flat basins":
+
+- mini-batch noise and weight decay (implicit smoothing),
+- weight averaging,
+- **SAM** (Sharpness-Aware Minimization), which explicitly optimizes worst-case loss in a neighborhood.
+
+## Math
+
+Let $L(w)$ be the training loss for parameters $w$. Near a point $w$, a quadratic approximation is:
+
+$$L(w+\\epsilon) \\approx L(w) + \\epsilon^\\top \\nabla L(w) + \\tfrac12\\,\\epsilon^\\top H(w)\\,\\epsilon,$$
+
+where $H(w) = \\nabla^2 L(w)$ is the Hessian (curvature).
+
+A common proxy for "sharpness" is how much loss can increase under a small perturbation:
+
+$$\\Delta_{\\rho}(w) := \\max_{\\|\\epsilon\\|_2 \\le \\rho} \\big(L(w+\\epsilon) - L(w)\\big).$$
+
+SAM makes this explicit by optimizing worst-case loss in a neighborhood:
+
+$$\\min_w \\; \\max_{\\|\\epsilon\\|_2 \\le \\rho} L(w+\\epsilon).$$
+
+In practice, the inner maximizer is approximated with a single step in the gradient direction:
+
+$$\\epsilon(w) \\approx \\rho\\,\\frac{\\nabla L(w)}{\\|\\nabla L(w)\\|_2},$$
+
+and the update uses the gradient at the perturbed weights $\\nabla L(w+\\epsilon(w))$.
+
+## Code
+
+```python
+import numpy as np
+
+# Anisotropic quadratic: sharp along x (large curvature), flat along y (small curvature).
+a, b = 20.0, 1.0  # Hessian eigenvalues
+lam_max = max(a, b)
+
+def L(w): return 0.5 * (a * w[0] ** 2 + b * w[1] ** 2)
+def grad(w): return np.array([a * w[0], b * w[1]])
+
+print("stable if eta < 2/lambda_max =", round(2.0 / lam_max, 3))
+
+for eta in [0.02, 0.08, 0.12]:
+    w = np.array([1.0, 1.0])
+    ok = True
+    for _ in range(60):
+        w = w - eta * grad(w)
+        if not np.isfinite(L(w)) or np.linalg.norm(w) > 1e6:
+            ok = False; break
+    print("eta =", eta, "final L =", round(L(w), 6), "status =", "ok" if ok else "diverged")
+```
+
+## Interactive Demo
+
+Use the demos to build an intuition for:
+
+- 2D slices of a landscape and how trajectories move across valleys/ridges,
+- how "sharpness" relates to curvature and local stability,
+- what it means to train near an "edge of stability" (large learning rates flirting with divergence).
+

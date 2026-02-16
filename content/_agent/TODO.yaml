@@ -1,4 +1,4 @@
-current_focus: "Unblock graph edges by adding missing hubs (KL divergence, positional encoding), then start the next migration batch (loss-landscapes + double-descent + weight-init + label-smoothing)"
+current_focus: "Start migration batch 5 (NTK + learning-rate-schedules + normalization) and keep the optimization/scaling graph connected and demo-rich"
 
 last_completed:
   - concept: content-loader
@@ -246,6 +246,26 @@ last_completed:
     action: created
     notes: "Added information-theory domain + kl-divergence concept (reused CrossEntropyViz) and wired it as an explicit RLHF prerequisite."
 
+  - concept: loss-landscapes
+    date: 2026-02-16
+    action: created
+    notes: "Batch 4: migrated loss-landscapes into filesystem content and added an accessible tabbed wrapper demo (2D slice, 3D surface, edge-of-stability)."
+
+  - concept: double-descent
+    date: 2026-02-16
+    action: created
+    notes: "Batch 4: migrated double-descent into filesystem content (scaling domain) and reused DoubleDescentViz/GrokkingViz via an accessible tabbed wrapper."
+
+  - concept: weight-initialization
+    date: 2026-02-16
+    action: created
+    notes: "Batch 4: migrated weight-initialization into filesystem content (text-first; no demo yet) and linked it to loss-landscapes/NTK."
+
+  - concept: label-smoothing
+    date: 2026-02-16
+    action: created
+    notes: "Batch 4: migrated label-smoothing into filesystem content (text-first; no demo yet) and linked it to KL divergence + distillation."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -273,7 +293,13 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-4
-    description: "Migrate the next 4-6 prerequisite hubs that are heavily linked but still legacy-only (suggested: loss-landscapes, double-descent, weight-initialization, label-smoothing). Prefer wrapper demos if they exist; otherwise ship text-first concepts."
+    description: "Migrate the next 4-6 prerequisite hubs that are heavily linked but still legacy-only (suggested: loss-landscapes, double-descent, weight-initialization, label-smoothing). Prefer wrapper demos if they exist; otherwise ship text-first concepts. (Progress: 4 migrated: loss-landscapes, double-descent, weight-initialization, label-smoothing)"
+    priority: P0
+    status: done
+
+  - action: build_feature
+    id: migrate-foundations-to-content-batch-5
+    description: "Migrate the next 3-5 theory/optimization hubs that are prerequisites for the new optimization pages (suggested: ntk, learning-rate-schedules, layer-normalization, batch-normalization). Reuse existing visualizations via wrappers where possible."
     priority: P0
     status: pending
 
