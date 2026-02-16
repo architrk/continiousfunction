@@ -1,0 +1,63 @@
+---
+title: "Quantization: Compressing Models to Integers"
+---
+
+## Intuition
+
+Large models are often bottlenecked by **memory bandwidth**, not raw FLOPs. If you can move 4x less data, you often get close to 2-4x speedups in the real world.
+
+Quantization is the core trick: store weights (and sometimes activations) in low-bit integers like INT8 or INT4, with a scale factor that maps those integers back to approximate floating-point values.
+
+The main enemy is not "rounding error in the average case." It's **outliers**: a small number of large weights/activations can force a scale that wastes resolution for everything else.
+
+## Math
+
+### Uniform quantization (per-tensor)
+
+Given a tensor of weights with min/max values, choose a step size:
+
+$$\\Delta = \\frac{w_{\\max}-w_{\\min}}{2^b-1},$$
+
+and quantize to integers:
+
+$$w_q = \\mathrm{round}\\left(\\frac{w-w_{\\min}}{\\Delta}\\right),\\qquad
+\\hat w = w_q\\,\\Delta + w_{\\min}.$$
+
+Here $b$ is the number of bits (8 for INT8, 4 for INT4).
+
+### Per-channel scaling (common for LLMs)
+
+Instead of one scale for the whole matrix, use one per output channel/row:
+
+$$W_q=\\mathrm{round}(W/s),\\qquad s_i=\\max\\big(|W_{i,:}|\\big)/127.$$
+
+This usually improves quality because different channels have different dynamic ranges.
+
+## Code
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+w = rng.normal(size=10000).astype(np.float32)
+
+def quantize_uniform(w, bits=8):
+    qmin, qmax = 0, 2**bits - 1
+    wmin, wmax = float(w.min()), float(w.max())
+    delta = (wmax - wmin) / (qmax - qmin)
+    wq = np.clip(np.round((w - wmin) / delta), qmin, qmax).astype(np.int32)
+    what = (wq * delta + wmin).astype(np.float32)
+    return what, float(delta)
+
+what8, d8 = quantize_uniform(w, bits=8)
+what4, d4 = quantize_uniform(w, bits=4)
+
+print("RMSE INT8:", round(float(np.sqrt(((w - what8) ** 2).mean())), 6), "delta:", round(d8, 6))
+print("RMSE INT4:", round(float(np.sqrt(((w - what4) ** 2).mean())), 6), "delta:", round(d4, 6))
+print("memory reduction: fp16->int8 ~2x, fp16->int4 ~4x (weight storage)")
+```
+
+## Interactive Demo
+
+No demo yet for this concept. A good demo would show how different scaling choices change quantization error, and how outliers destroy effective resolution.
+

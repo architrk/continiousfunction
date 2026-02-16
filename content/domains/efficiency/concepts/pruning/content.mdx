@@ -1,0 +1,53 @@
+---
+title: "Pruning: Removing Unnecessary Weights"
+---
+
+## Intuition
+
+Deep nets are often heavily overparameterized. Pruning asks: can we remove weights (or whole structures like neurons/heads) while keeping most of the performance?
+
+Two big distinctions matter:
+
+- **Unstructured pruning**: set individual weights to zero. This can give huge sparsity numbers, but you only get speedups if your hardware/software stack has sparse kernels.
+- **Structured pruning**: remove whole channels/heads/blocks. This usually gives smaller compression but real wall-clock speedups on standard GPUs.
+
+The surprising part is that naive rules (like "prune small weights") often work decently, even though they are not theoretically optimal.
+
+## Math
+
+### Magnitude pruning (a common baseline)
+
+Let $W$ be a weight matrix and let $\\theta$ be a threshold. Define a mask:
+
+$$M_{ij}=\\mathbf 1[|W_{ij}|>\\theta],\\qquad W_{\\text{pruned}}=W\\odot M.$$
+
+### Structured pruning (remove units)
+
+If you remove a set of columns/heads $S$, you effectively keep only those indices:
+
+$$W_{\\text{pruned}} = W[:,\\,S].$$
+
+This changes the model shape, which is why it tends to translate into real speedups.
+
+## Code
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+W = rng.normal(size=(256, 256)).astype(np.float32)
+
+sparsity = 0.7  # prune 70% of weights by magnitude
+th = np.quantile(np.abs(W), sparsity)
+M = (np.abs(W) > th).astype(np.float32)
+W_pruned = W * M
+
+print("target sparsity:", sparsity)
+print("actual sparsity:", round(float((M == 0).mean()), 3))
+print("L2 norm ratio ||W_pruned||/||W||:", round(float(np.linalg.norm(W_pruned) / np.linalg.norm(W)), 3))
+```
+
+## Interactive Demo
+
+No demo yet for this concept. A good demo would compare unstructured vs structured pruning and show when sparsity actually becomes a speedup.
+

@@ -211,6 +211,16 @@ last_completed:
     action: created
     notes: "Batch 3: migrated normalizing-flows into filesystem content (no demo yet) to unblock flow-matching prerequisites."
 
+  - concept: quantization
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3: migrated quantization into filesystem content (no demo yet) to anchor low-bit deployment and KV cache scaling discussions."
+
+  - concept: pruning
+    date: 2026-02-16
+    action: created
+    notes: "Batch 3: migrated pruning into filesystem content (no demo yet) to cover sparsity tradeoffs and structured vs unstructured speedups."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -232,7 +242,7 @@ queue:
 
   - action: build_feature
     id: migrate-foundations-to-content-batch-3
-    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers. (Progress: 4 migrated: kto, mixture-of-experts, score-matching, normalizing-flows)"
+    description: "Migrate the next 8-12 high-leverage legacy concepts (prioritize: kto, mixture-of-experts, flash-attention, quantization, pruning, distillation, normalizing-flows, score-matching). Prefer reusing existing foundations visualizations via wrappers. (Progress: 6 migrated: kto, mixture-of-experts, score-matching, normalizing-flows, quantization, pruning)"
     priority: P0
     status: in_progress
 
@@ -277,7 +287,7 @@ audit_log:
     summary: "Search: added build-time extraction of short Intuition/Math snippets from content.mdx so /search can match more than metadata without inflating bundles."
 
   - date: 2026-02-16
-    summary: "Migration batch 3 start: migrated kto, mixture-of-experts, score-matching, and normalizing-flows; regenerated vizMap; validate/typecheck/build passed."
+    summary: "Migration batch 3: migrated kto, mixture-of-experts, score-matching, normalizing-flows, quantization, pruning; regenerated vizMap; validate/typecheck/build passed."
 
 discovered_connections:
   - source: tokenization-vocabulary
