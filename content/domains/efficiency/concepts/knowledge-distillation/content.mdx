@@ -1,0 +1,69 @@
+---
+title: "Knowledge Distillation: Learning from Teachers"
+---
+
+## Intuition
+
+If you train a model on hard labels, every example is treated like a one-bit fact: "this is a cat."
+
+A good teacher model knows more than that. It might say:
+
+- 0.84 cat
+- 0.12 dog
+- 0.04 fox
+
+Those "almost" probabilities are **dark knowledge**: they encode similarity structure learned from data. Distillation trains a student to match the teacher's distribution, so the student can inherit the teacher's behavior even with fewer parameters or a different architecture.
+
+In LLMs, distillation often looks like "train a smaller model to match the next-token distribution of a larger model." This is also the idea behind draft models for speculative decoding: the draft is a distilled approximation of the final model.
+
+## Math
+
+Let the teacher and student produce logits $z_T(x)$ and $z_S(x)$ over a discrete output space.
+
+With temperature $\\tau>0$, define softened probabilities:
+
+$$p_T^{(\\tau)}(y\\mid x)=\\mathrm{softmax}(z_T(x)/\\tau),\\qquad
+p_S^{(\\tau)}(y\\mid x)=\\mathrm{softmax}(z_S(x)/\\tau).$$
+
+A standard distillation term matches these distributions with KL divergence:
+
+$$\\mathcal L_{\\text{KD}} = \\tau^2\\,\\mathrm{KL}\\!\\left(p_T^{(\\tau)}(\\cdot\\mid x)\\ \\|\\ p_S^{(\\tau)}(\\cdot\\mid x)\\right),$$
+
+where:
+
+$$\\mathrm{KL}(p\\|q)=\\sum_y p(y)\\log\\frac{p(y)}{q(y)}.$$
+
+Often you mix distillation with a hard-label loss (classification) or a standard next-token loss (LLMs):
+
+$$\\mathcal L = (1-\\alpha)\\,\\mathcal L_{\\text{hard}} + \\alpha\\,\\mathcal L_{\\text{KD}}.$$
+
+Rule of thumb: increasing $\\tau$ makes the teacher distribution softer (more informative about non-top classes), but if $\\tau$ is too large it becomes nearly uniform and carries little signal.
+
+## Code
+
+```python
+import numpy as np
+
+def softmax(z, tau=1.0):
+    z = z / tau
+    z = z - z.max()
+    e = np.exp(z)
+    return e / e.sum()
+
+def kl(p, q):
+    eps = 1e-12
+    return float(np.sum(p * (np.log(p + eps) - np.log(q + eps))))
+
+teacher_logits = np.array([4.0, 2.0, 0.0])
+student_logits = np.array([3.0, 0.5, -0.5])
+
+for tau in [1.0, 2.0, 4.0]:
+    pT = softmax(teacher_logits, tau)
+    pS = softmax(student_logits, tau)
+    print("tau=", tau, "pT=", np.round(pT, 3), "pS=", np.round(pS, 3), "KL=", round(kl(pT, pS), 3))
+```
+
+## Interactive Demo
+
+No demo yet for this concept. A good demo would let you drag teacher/student logits, adjust $\\tau$ and $\\alpha$, and watch how the student distribution is pulled toward the teacher.
+
