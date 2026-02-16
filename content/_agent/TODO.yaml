@@ -136,6 +136,11 @@ last_completed:
     action: created
     notes: "Batch 2 start: migrated legacy representations into filesystem content (new representation-learning domain) and wrapped existing embedding-geometry demos with accessible tabs."
 
+  - concept: llm-serving
+    date: 2026-02-16
+    action: created
+    notes: "Batch 2: migrated llm-serving into filesystem content (new llm-systems domain) and reused ServingLatencyViz as the interactive demo."
+
 queue:
   - action: expand_domain
     domain: linear-algebra

@@ -1,0 +1,32 @@
+id: llm-serving
+title: "LLM Serving at Scale: Prefill, Decode & Continuous Batching"
+domain: llm-systems
+slug: llm-serving
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - attention-transformers
+  - efficient-attention
+leads_to:
+  - speculative-decoding
+  - long-context
+related:
+  - efficiency
+  - tokenization-vocabulary
+tags:
+  - llm-systems
+  - serving
+  - batching
+  - kv-cache
+  - latency
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+short_description: "The production mental model for LLM inference: prefill vs decode, TTFT vs TPOT, batching/scheduling, and why KV cache memory dominates."
+author: codex
+created: "2026-02-16"
+updated: "2026-02-16"
+estimated_read_time: 22
+
