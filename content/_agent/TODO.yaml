@@ -1,4 +1,4 @@
-current_focus: "Finish migration batch 2 (missing hubs: efficiency/long-context/scaling-laws + alignment/generative follow-ons) and keep migrated pages high-quality via Oracle"
+current_focus: "Start migration batch 3 (kto + mixture-of-experts + flash-attention + quantization/pruning/distillation) and run Oracle deepens/reviews to keep migrated concepts crisp"
 
 last_completed:
   - concept: content-loader
@@ -186,6 +186,11 @@ last_completed:
     action: created
     notes: "Batch 2: migrated flow-matching into filesystem content and reused FlowMatchingViz as the interactive demo."
 
+  - concept: search-fulltext
+    date: 2026-02-16
+    action: created
+    notes: "Upgraded /search to include lightweight snippets extracted from content.mdx (Intuition/Math) for better relevance without large bundle size impact."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
@@ -227,7 +232,7 @@ queue:
     id: search-fulltext
     description: "Upgrade /search to include lightweight fulltext snippets from content.mdx (Intuition/Math) without blowing up bundle size."
     priority: P2
-    status: pending
+    status: done
 
   - action: build_feature
     id: wire-content-pages
@@ -247,6 +252,9 @@ audit_log:
 
   - date: 2026-02-16
     summary: "Migration batch 2: added efficiency + scaling domains; migrated efficiency, scaling-laws, long-context, dpo, reward-hacking, flow-matching; regenerated vizMap; validate/typecheck/build passed."
+
+  - date: 2026-02-16
+    summary: "Search: added build-time extraction of short Intuition/Math snippets from content.mdx so /search can match more than metadata without inflating bundles."
 
 discovered_connections:
   - source: tokenization-vocabulary

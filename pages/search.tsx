@@ -11,6 +11,7 @@ type SearchItem = {
   href: string
   badge: string
   description: string
+  snippet?: string
   tags: string[]
 }
 
@@ -27,9 +28,10 @@ const scoreItem = (qTokens: string[], item: SearchItem): number => {
   const id = normalize(item.id)
   const badge = normalize(item.badge)
   const desc = normalize(item.description)
+  const snippet = normalize(item.snippet ?? '')
   const tags = item.tags.map(normalize).join(' ')
 
-  const hay = `${title} ${id} ${badge} ${tags} ${desc}`
+  const hay = `${title} ${id} ${badge} ${tags} ${desc} ${snippet}`
 
   let score = 0
   for (const t of qTokens) {
@@ -52,6 +54,56 @@ export const getStaticProps: GetStaticProps<Props> = async () => {
     import('../lib/contentLoader'),
   ])
 
+  const fs = await import('node:fs')
+
+  const stripFrontmatter = (raw: string): string => {
+    const normalized = raw.replace(/\r\n/g, '\n')
+    const fm = /^---\n[\s\S]*?\n---\n/.exec(normalized)
+    return fm ? normalized.slice(fm[0].length) : normalized
+  }
+
+  const parseMdxSections = (raw: string): { intuition: string; math: string } => {
+    const body = stripFrontmatter(raw)
+    const headingRe = /^##\s+(.+)\s*$/gm
+    const headings: Array<{ title: string; start: number; contentStart: number }> = []
+    let m: RegExpExecArray | null
+    while ((m = headingRe.exec(body))) headings.push({ title: m[1].trim(), start: m.index, contentStart: headingRe.lastIndex })
+
+    const sections = new Map<string, string>()
+    for (let i = 0; i < headings.length; i++) {
+      const h = headings[i]
+      const end = headings[i + 1]?.start ?? body.length
+      sections.set(h.title, body.slice(h.contentStart, end).trim())
+    }
+
+    return { intuition: sections.get('Intuition') ?? '', math: sections.get('Math') ?? '' }
+  }
+
+  const mdxToPlainText = (mdx: string): string => {
+    let s = mdx
+    s = s.replace(/```[\s\S]*?```/g, ' ') // code fences
+    s = s.replace(/\$\$[\s\S]*?\$\$/g, ' ') // display math
+    s = s.replace(/\$[^$]*\$/g, ' ') // inline math (best-effort)
+    s = s.replace(/!\[[^\]]*\]\([^)]+\)/g, ' ') // images
+    s = s.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links -> text
+    s = s.replace(/<[^>]+>/g, ' ') // mdx/jsx tags
+    s = s.replace(/[>*#_`]/g, ' ')
+    s = s.replace(/\s+/g, ' ').trim()
+    return s
+  }
+
+  const snippetFor = (mdxPath: string): string => {
+    try {
+      const raw = fs.readFileSync(mdxPath, 'utf8')
+      const { intuition, math } = parseMdxSections(raw)
+      const text = [mdxToPlainText(intuition), mdxToPlainText(math)].filter(Boolean).join(' ')
+      if (!text) return ''
+      return text.slice(0, 280)
+    } catch {
+      return ''
+    }
+  }
+
   const domains = loadDomains()
   const concepts = loadConceptMetas()
   const domainTitleById = new Map(domains.map((d) => [d.id, d.title] as const))
@@ -73,6 +125,7 @@ export const getStaticProps: GetStaticProps<Props> = async () => {
     href: `/domains/${m.domain}/${m.slug}/`,
     badge: domainTitleById.get(m.domain) ?? m.domain,
     description: m.short_description ?? '',
+    snippet: snippetFor(m._contentMdxPath),
     tags: Array.isArray(m.tags) ? m.tags : [],
   }))
 
@@ -188,6 +241,7 @@ export default function SearchPage({ items }: Props) {
               </div>
               <div className="title">{r.title}</div>
               {r.description ? <div className="desc">{r.description}</div> : null}
+              {r.kind === 'content' && r.snippet ? <div className="snippet">{r.snippet}</div> : null}
               {r.tags.length ? (
                 <div className="tags">
                   {r.tags.slice(0, 8).map((t) => (
@@ -392,6 +446,13 @@ export default function SearchPage({ items }: Props) {
           margin-top: 0.45rem;
           color: rgba(148, 163, 184, 0.88);
           font-size: 0.92rem;
+          line-height: 1.35;
+        }
+
+        .snippet {
+          margin-top: 0.45rem;
+          color: rgba(148, 163, 184, 0.78);
+          font-size: 0.86rem;
           line-height: 1.35;
         }
 
