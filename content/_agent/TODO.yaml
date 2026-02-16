@@ -121,6 +121,11 @@ last_completed:
     action: created
     notes: "Migrated legacy concept id=rlhf into filesystem content (/domains/alignment/rlhf) and reused RLHFViz/DPOViz via wrapper viz.tsx"
 
+  - concept: foundations-migration-notice
+    date: 2026-02-16
+    action: fixed
+    notes: "Added a banner on legacy /foundations pages linking to the migrated /domains version when a filesystem concept with the same id exists."
+
 queue:
   - action: expand_domain
     domain: linear-algebra
