@@ -22,6 +22,7 @@ interface Props {
   prevConcept: Concept | null
   nextConcept: Concept | null
   studyPhase: { phase: number; title: string } | null
+  migratedHref: string | null
 }
 
 // Lazy load visualizations (client-only chunks; keep SSR stable)
@@ -590,7 +591,7 @@ function MathContent({ content }: { content: string }) {
   )
 }
 
-export default function ConceptPage({ concept, prevConcept, nextConcept, studyPhase }: Props) {
+export default function ConceptPage({ concept, prevConcept, nextConcept, studyPhase, migratedHref }: Props) {
   // Get visualizations for this concept
   const vizNames = conceptVisualizationMap[concept.id] || []
   const visualizations = vizNames.map(name => vizMap[name]).filter(Boolean)
@@ -629,6 +630,18 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
             </span>
           </div>
         )}
+
+        {migratedHref ? (
+          <div className="migration-banner" role="note" aria-label="Migrated concept notice">
+            <span className="migration-label">Migrated:</span>
+            <Link href={migratedHref} className="migration-link">
+              view the updated version in <span className="mono">/domains</span> →
+            </Link>
+            <span className="migration-hint">
+              This <span className="mono">/foundations</span> page is legacy during migration.
+            </span>
+          </div>
+        ) : null}
 
         <nav className="concept-nav">
           <Link href="/foundations/" className="back-link">
@@ -907,6 +920,45 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
 
         .context-position {
           color: var(--text-muted);
+        }
+
+        .migration-banner {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.6rem;
+          padding: 0.75rem 1rem;
+          border-radius: 12px;
+          border: 1px solid rgba(99, 102, 241, 0.35);
+          background: rgba(99, 102, 241, 0.10);
+          margin-bottom: 1.5rem;
+        }
+
+        .migration-label {
+          font-family: var(--font-mono);
+          font-size: 0.75rem;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: rgba(199, 210, 254, 0.95);
+          background: rgba(99, 102, 241, 0.22);
+          border: 1px solid rgba(99, 102, 241, 0.35);
+          border-radius: 999px;
+          padding: 0.18rem 0.55rem;
+        }
+
+        .migration-link {
+          color: #c7d2fe;
+          text-decoration: none;
+          font-weight: 500;
+        }
+
+        .migration-link:hover {
+          text-decoration: underline;
+        }
+
+        .migration-hint {
+          color: rgba(148, 163, 184, 0.95);
+          font-size: 0.85rem;
         }
 
         .concept-nav {
@@ -1308,12 +1360,23 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
     : null
   const studyPhase = getStudyPhase(id)
 
+  let migratedHref: string | null = null
+  try {
+    const { loadConceptMetas } = await import('../../lib/contentLoader')
+    const metas = loadConceptMetas()
+    const meta = metas.find((m) => m.id === id)
+    if (meta) migratedHref = `/domains/${meta.domain}/${meta.slug}/`
+  } catch {
+    // Best-effort: /foundations should remain buildable even if content loader changes.
+  }
+
   return {
     props: {
       concept,
       prevConcept,
       nextConcept,
-      studyPhase
+      studyPhase,
+      migratedHref,
     }
   }
 }
