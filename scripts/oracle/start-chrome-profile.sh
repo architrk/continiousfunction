@@ -8,53 +8,35 @@ LOG_FILE="${4:-/tmp/chrome-oracle-${PORT}.log}"
 
 CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
-if [ ! -x "$CHROME_BIN" ]; then
-  echo "Chrome not found at: $CHROME_BIN" >&2
-  echo "Edit scripts/oracle/start-chrome-profile.sh for your platform." >&2
-  exit 1
-fi
-
 mkdir -p "$PROFILE_DIR"
 
-# NOTE: On macOS, launching Chrome without these "automation-friendly" flags can
-# cause it to attach to an existing session and ignore --remote-debugging-port.
-# This flag set matches Oracle's browser engine so we reliably get a dedicated
-# instance + DevTools port.
-"$CHROME_BIN" \
-  --remote-debugging-port="$PORT" \
-  --user-data-dir="$PROFILE_DIR" \
-  --disable-features=Translate,OptimizationHints,MediaRouter,DialMediaRouteProvider,CalculateNativeWinOcclusion,InterestFeedContentSuggestions,CertificateTransparencyComponentUpdater,AutofillServerCommunication,PrivacySandboxSettings4,RenderDocument \
-  --disable-extensions \
-  --disable-component-extensions-with-background-pages \
-  --disable-background-networking \
-  --disable-component-update \
-  --disable-client-side-phishing-detection \
-  --disable-sync \
-  --metrics-recording-only \
-  --disable-default-apps \
-  --mute-audio \
-  --no-default-browser-check \
-  --no-first-run \
-  --disable-backgrounding-occluded-windows \
-  --disable-renderer-backgrounding \
-  --disable-background-timer-throttling \
-  --disable-ipc-flooding-protection \
-  --password-store=basic \
-  --use-mock-keychain \
-  --force-fieldtrials='*BackgroundTracing/default/' \
-  --disable-hang-monitor \
-  --disable-prompt-on-repost \
-  --disable-domain-reliability \
-  --propagate-iph-for-testing \
-  --disable-breakpad \
-  --disable-popup-blocking \
-  --disable-translate \
-  --safebrowsing-disable-auto-update \
-  --disable-features=TranslateUI,AutomationControlled \
-  --window-size=1280,720 \
-  --lang=en-US \
-  --accept-lang=en-US,en \
-  "$URL" >"$LOG_FILE" 2>&1 &
+LAUNCH_ARGS=(
+  --remote-debugging-port="$PORT"
+  --user-data-dir="$PROFILE_DIR"
+  --no-default-browser-check
+  --no-first-run
+  --window-size=1280,720
+  --lang=en-US
+  --accept-lang=en-US,en
+  "$URL"
+)
+
+# NOTE: We prefer launching via `open -na` on macOS. We've seen cases where
+# exec'ing the Chrome binary directly causes MachPort rendezvous permission
+# errors and the process exits immediately.
+if command -v open >/dev/null 2>&1; then
+  echo "Launching Chrome via 'open -na' (logs not captured)."
+  echo "If you need verbose logs, run the Chrome binary directly instead." >"$LOG_FILE"
+  open -na "Google Chrome" --args "${LAUNCH_ARGS[@]}" >/dev/null 2>&1 &
+else
+  if [ ! -x "$CHROME_BIN" ]; then
+    echo "Chrome not found at: $CHROME_BIN" >&2
+    echo "Edit scripts/oracle/start-chrome-profile.sh for your platform." >&2
+    exit 1
+  fi
+
+  "$CHROME_BIN" "${LAUNCH_ARGS[@]}" >"$LOG_FILE" 2>&1 &
+fi
 
 # Give Chrome a moment to bind the DevTools socket.
 for _ in $(seq 1 10); do
