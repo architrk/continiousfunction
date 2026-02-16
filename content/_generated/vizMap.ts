@@ -16,13 +16,17 @@ export type ContentVizComponent = ComponentType<any>
 export const contentConceptVizMap: Record<string, ContentVizComponent> = {
   'adam': dynamic(() => import('../domains/optimization/concepts/adam/viz'), { ssr: false }),
   'attention-transformers': dynamic(() => import('../domains/attention-transformers/concepts/attention-transformers/viz'), { ssr: false }),
+  'decoding-sampling': dynamic(() => import('../domains/llm-systems/concepts/decoding-sampling/viz'), { ssr: false }),
   'derivatives': dynamic(() => import('../domains/calculus/concepts/derivatives/viz'), { ssr: false }),
   'diffusion': dynamic(() => import('../domains/generative-models/concepts/diffusion/viz'), { ssr: false }),
   'dot-product': dynamic(() => import('../domains/linear-algebra/concepts/dot-product/viz'), { ssr: false }),
   'efficient-attention': dynamic(() => import('../domains/attention-transformers/concepts/efficient-attention/viz'), { ssr: false }),
+  'llm-serving': dynamic(() => import('../domains/llm-systems/concepts/llm-serving/viz'), { ssr: false }),
   'maximum-likelihood': dynamic(() => import('../domains/probability/concepts/maximum-likelihood/viz'), { ssr: false }),
+  'representations': dynamic(() => import('../domains/representation-learning/concepts/representations/viz'), { ssr: false }),
   'rlhf': dynamic(() => import('../domains/alignment/concepts/rlhf/viz'), { ssr: false }),
   'rope': dynamic(() => import('../domains/attention-transformers/concepts/rope/viz'), { ssr: false }),
+  'speculative-decoding': dynamic(() => import('../domains/llm-systems/concepts/speculative-decoding/viz'), { ssr: false }),
   'tokenization-vocabulary': dynamic(() => import('../domains/attention-transformers/concepts/tokenization-vocabulary/viz'), { ssr: false }),
   'vector-spaces': dynamic(() => import('../domains/linear-algebra/concepts/vector-spaces/viz'), { ssr: false }),
 }
