@@ -137,7 +137,6 @@ function getEquivarianceInsight(
   const parts = [];
   if (rotation !== 0) parts.push(`${rotation}° rotation`);
   if (tx !== 0 || ty !== 0) parts.push('translation');
-  if (reflectX || reflectY) parts.push('reflection');
 
   return `🌀 Compound transform: ${parts.join(' + ')}. This is an element of SE(2) × Z₂² (special Euclidean group with reflections).`;
 }

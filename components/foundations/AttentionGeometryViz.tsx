@@ -595,8 +595,8 @@ export default function AttentionGeometryDemo() {
                   const score = scaledScores[i][j]
                   const weight = attentionWeights[i][j]
 
-                  let fill: string = MATH_COLORS.primary
-                  let fillOpacity = 0.1
+                  let fill: string
+                  let fillOpacity: number
                   let displayValue: string
 
                   if (isScoresView) {

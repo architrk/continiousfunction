@@ -672,7 +672,7 @@ export default function DoubleDescent() {
     const xs: number[] = []
     if (nTrain <= 1) return xs
     for (let i = 0; i < nTrain; i++) {
-      const t = nTrain === 1 ? 0.5 : i / (nTrain - 1)
+      const t = i / (nTrain - 1)
       const x = X_DOMAIN_MIN + (X_DOMAIN_MAX - X_DOMAIN_MIN) * t
       xs.push(x)
     }
@@ -702,8 +702,6 @@ export default function DoubleDescent() {
     toyRegime = 'interpolation'
   } else if (polyDegree > thresholdDegree + 1) {
     toyRegime = 'over'
-  } else {
-    toyRegime = 'under'
   }
 
   let modelFn: Interpolator

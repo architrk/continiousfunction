@@ -145,7 +145,7 @@ function getDiffusionInsight(
     return `⚖️ Intermediate stage (t=${noiseLevel.toFixed(2)}). ᾱ=${alphaBar.toFixed(3)}. This is where the magic happens—the model learns to distinguish signal from noise.`;
   }
 
-  return `📊 Low noise (t=${noiseLevel.toFixed(2)}). ᾱ=${alphaBar.toFixed(3)}. Two clusters are clearly separated. ${showScores ? 'The score vectors point toward high-density regions.' : ''}`
+  return `📊 Low noise (t=${noiseLevel.toFixed(2)}). ᾱ=${alphaBar.toFixed(3)}. Two clusters are clearly separated. ${showScores ? 'The score vectors point toward high-density regions.' : ''}`;
 }
 
 type DataPoint = {

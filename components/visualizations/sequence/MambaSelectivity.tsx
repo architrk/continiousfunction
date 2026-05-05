@@ -946,9 +946,9 @@ function Row({ label, tokens, selected, mode }: RowProps) {
           const isSelected = selected[idx]
           const isPassword = token.kind === 'password'
 
-          let bg = 'transparent'
-          let color = '#6b7280'
-          let border = '1px dashed #374151'
+          let bg: string
+          let color: string
+          let border: string
 
           if (mode === 'input') {
             if (isPassword) {
