@@ -43,6 +43,11 @@ const walk = (dirRel, exts, out = []) => {
   return out
 }
 
+const allRepoFiles = () =>
+  [
+    ...walk('.', new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.json', '.yaml', '.yml', '.md', '.mdx', '.sh'])),
+  ].filter((rel) => !rel.startsWith('package-lock.json'))
+
 const deployFiles = [
   '.github/workflows/deploy-hostinger.yml',
   'DEPLOYMENT_GUIDE.md',
@@ -94,6 +99,36 @@ const foundationsRoute = 'pages/foundations/[id].tsx'
 assertFileHas(foundationsRoute, 'sanitizeRenderedHtml', 'Legacy foundations route must sanitize rendered KaTeX HTML')
 assertFileHas(foundationsRoute, 'getSafeExternalHref', 'Legacy foundations route must filter external paper links')
 
+const htaccess = 'public/.htaccess'
+assertFileHas(htaccess, 'Strict-Transport-Security', 'Static deploy must send HSTS')
+assertFileHas(htaccess, 'Content-Security-Policy', 'Static deploy must send a Content Security Policy')
+assertFileHas(htaccess, "default-src 'self'", 'CSP must default to same-origin')
+assertFileHas(htaccess, "object-src 'none'", 'CSP must block plugin/object content')
+assertFileHas(htaccess, "frame-ancestors 'none'", 'CSP must block framing')
+assertFileHas(htaccess, 'X-Content-Type-Options "nosniff"', 'Static deploy must prevent MIME sniffing')
+assertFileHas(htaccess, 'X-Frame-Options "DENY"', 'Static deploy must deny legacy framing')
+assertFileHas(htaccess, 'Referrer-Policy "strict-origin-when-cross-origin"', 'Static deploy must keep a strict referrer policy')
+assertFileHas(htaccess, 'Permissions-Policy', 'Static deploy must restrict browser capabilities')
+
+const productionSources = ['data', 'pages', 'components', 'content', 'lib']
+  .flatMap((dir) => walk(dir, new Set(['.ts', '.tsx', '.js', '.jsx', '.mdx', '.yaml', '.yml'])))
+
+for (const rel of productionSources) {
+  assertFileDoesNotMatch(rel, /\burl\s*:\s*['"]http:\/\//i, 'Production content links should use HTTPS URLs')
+}
+
+for (const rel of [...productionSources, ...walk('pages', new Set(['.mdx'])), ...walk('components', new Set(['.mdx']))]) {
+  const lines = read(rel).split(/\r?\n/)
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].includes('target="_blank"') && !lines[i].includes("target='_blank'")) continue
+
+    const nearby = lines.slice(i, Math.min(i + 6, lines.length)).join('\n')
+    if (!/rel=["'][^"']*\bnoopener\b[^"']*\bnoreferrer\b[^"']*["']/.test(nearby)) {
+      fail('External links opened in a new tab must include rel="noopener noreferrer"', rel, `Line ${i + 1}`)
+    }
+  }
+}
+
 const allowedDangerousHtmlFiles = new Set([domainRoute, foundationsRoute])
 const sourceFiles = ['pages', 'components', 'lib'].flatMap((dir) => walk(dir, new Set(['.ts', '.tsx', '.js', '.jsx'])))
 for (const rel of sourceFiles) {
@@ -110,6 +145,25 @@ for (const rel of sourceFiles) {
 
   if (rel === foundationsRoute && !source.includes('renderLatex')) {
     fail('Foundations dangerouslySetInnerHTML should stay limited to sanitized KaTeX rendering', rel)
+  }
+}
+
+const secretPatterns = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  /\bsk-[A-Za-z0-9_-]{20,}/,
+  /\bgh[pousr]_[A-Za-z0-9_]{20,}/,
+  /\bgithub_pat_[A-Za-z0-9_]{20,}/,
+  /\bxox[baprs]-[A-Za-z0-9-]{20,}/,
+  /\bAKIA[0-9A-Z]{16}\b/,
+]
+
+for (const rel of allRepoFiles()) {
+  const source = read(rel)
+  for (const pattern of secretPatterns) {
+    const match = pattern.exec(source)
+    if (match) {
+      fail('Potential committed secret detected', rel, `Matched: ${match[0].slice(0, 24)}...`)
+    }
   }
 }
 

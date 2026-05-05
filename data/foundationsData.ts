@@ -3943,7 +3943,7 @@ Dropout approximates **ensemble averaging** over $2^n$ sub-networks.`,
         authors: 'LeCun et al.',
         year: 2006,
         venue: 'MIT Press',
-        url: 'http://yann.lecun.com/exdb/publis/pdf/lecun-06.pdf'
+        url: 'https://cs.nyu.edu/~yann/talks/tutorial-nips-2006.html'
       }
     ],
     coreMath: `**Energy-based models** define probability via unnormalized energy:

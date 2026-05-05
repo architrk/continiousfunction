@@ -5,17 +5,22 @@
 
 # Security Headers
 <IfModule mod_headers.c>
-  # Prevent MIME sniffing
-  Header set X-Content-Type-Options "nosniff"
+  # Require HTTPS on future visits once the site is reached over TLS.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
-  # Prevent clickjacking
-  Header set X-Frame-Options "SAMEORIGIN"
+  # Defense-in-depth for a static Next export. Next still needs inline
+  # bootstrap scripts/styles, but all network script/style loads stay same-origin.
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; form-action 'self'; manifest-src 'self'; upgrade-insecure-requests"
 
-  # Referrer policy
-  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  # Prevent MIME sniffing and clickjacking in older browsers.
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
 
-  # Permissions policy (restrictive)
-  Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  # Privacy and browser capability restrictions.
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "accelerometer=(), autoplay=(), camera=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set X-Permitted-Cross-Domain-Policies "none"
 </IfModule>
 
 # Cache static assets aggressively (hashed filenames under `_next/static/`).
