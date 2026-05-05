@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { parseConceptMdxSections, sanitizeRenderedHtml } from './safeMdx'
+import { sanitizeRenderedHtml } from './htmlSafety'
+import { parseConceptMdxSections } from './safeMdx'
 
 describe('safe MDX rendering', () => {
   it('parses the expected concept content sections', () => {

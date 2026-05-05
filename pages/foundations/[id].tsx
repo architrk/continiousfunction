@@ -6,6 +6,7 @@ import katex from 'katex'
 import { foundationsConcepts, Concept, CATEGORY_LABELS, getDependents, studyOrder } from '../../data/foundationsData'
 import { conceptVisualizationMap } from '../../data/visualizationMappings'
 import NextMovesPanel from '../../components/foundations/NextMovesPanel'
+import { sanitizeRenderedHtml } from '../../lib/htmlSafety'
 
 // Helper to find which study phase a concept belongs to
 function getStudyPhase(conceptId: string): { phase: number; title: string } | null {
@@ -156,15 +157,27 @@ const toPlainText = (raw: string): string => {
 // Render LaTeX string to HTML (safe defaults: no trust, no throw)
 const renderLatex = (latex: string, displayMode: boolean = false): string => {
   try {
-    return katex.renderToString(latex, {
-      displayMode,
-      throwOnError: false,
-      strict: 'warn',
-      trust: false,
-    })
+    return sanitizeRenderedHtml(
+      katex.renderToString(latex, {
+        displayMode,
+        throwOnError: false,
+        strict: 'warn',
+        trust: false,
+      })
+    )
   } catch (e) {
     console.error('KaTeX error:', e)
     return `<code>${escapeHtml(latex)}</code>`
+  }
+}
+
+const getSafeExternalHref = (rawUrl?: string): string | null => {
+  if (!rawUrl) return null
+  try {
+    const url = new URL(rawUrl)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null
+  } catch {
+    return null
   }
 }
 
@@ -766,26 +779,29 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         <section id="papers" className="content-section">
           <h2>Canonical Papers</h2>
           <div className="papers-list">
-            {concept.canonicalPapers.map((paper, i) => (
-              <div key={i} className="paper-card">
-                <h3>{paper.title}</h3>
-                <div className="paper-meta">
-                  <span>{paper.authors}</span>
-                  <span>{paper.year}</span>
-                  {paper.venue && <span>{paper.venue}</span>}
+            {concept.canonicalPapers.map((paper, i) => {
+              const paperHref = getSafeExternalHref(paper.url)
+              return (
+                <div key={i} className="paper-card">
+                  <h3>{paper.title}</h3>
+                  <div className="paper-meta">
+                    <span>{paper.authors}</span>
+                    <span>{paper.year}</span>
+                    {paper.venue && <span>{paper.venue}</span>}
+                  </div>
+                  {paperHref && (
+                    <a
+                      href={paperHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="paper-link"
+                    >
+                      Read paper →
+                    </a>
+                  )}
                 </div>
-                {paper.url && (
-                  <a
-                    href={paper.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="paper-link"
-                  >
-                    Read paper →
-                  </a>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
 
