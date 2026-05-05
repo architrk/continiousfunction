@@ -27,12 +27,30 @@ Do not deploy over plaintext FTP. FTP sends the deploy username, password, and
 uploaded site files without transport encryption. Use FTPS for Hostinger FTP
 accounts, or SFTP when SSH/SFTP access is available.
 
+Do not paste the deploy password directly into a command. Prompt for it or load
+it from a local secret manager so it does not land in shell history.
+
 ### Important: FTP Root Path
 
 Hostinger setups vary. Before your first deploy, confirm where the **web root** is for this account:
 
 ```bash
-lftp -c \"set ftp:ssl-force yes; set ftp:ssl-protect-data yes; set ssl:verify-certificate yes; open -u USER,PASS ftp://HOST; pwd; ls; bye\"
+export CF_FTP_HOST="ftp.continuousfunction.ai"
+export CF_FTP_USER="YOUR_USERNAME"
+read -rsp "CF_FTP_PASS: " CF_FTP_PASS
+echo
+export CF_FTP_PASS
+
+lftp "ftps://${CF_FTP_HOST}" <<LFTP
+set cmd:fail-exit yes
+set ftp:ssl-force yes
+set ftp:ssl-protect-data yes
+set ssl:verify-certificate yes
+user "${CF_FTP_USER}" "${CF_FTP_PASS}"
+pwd
+ls
+bye
+LFTP
 ```
 
 Pick the directory that should contain `index.html` and `_next/`, and use that as the remote deploy directory.
@@ -42,15 +60,23 @@ Pick the directory that should contain `index.html` and `_next/`, and use that a
 ```bash
 cd /path/to/continiousfunction
 npm run build
-lftp -c "
+export CF_FTP_HOST="ftp.continuousfunction.ai"
+export CF_FTP_USER="YOUR_USERNAME"
+export CF_FTP_REMOTE_DIR="/your/remote/webroot"
+read -rsp "CF_FTP_PASS: " CF_FTP_PASS
+echo
+export CF_FTP_PASS
+
+lftp "ftps://${CF_FTP_HOST}" <<LFTP
+set cmd:fail-exit yes
 set ftp:ssl-force yes
 set ftp:ssl-protect-data yes
 set ssl:verify-certificate yes
-open -u YOUR_USERNAME,'YOUR_PASSWORD' ftp://ftp.continuousfunction.ai
-cd /your/remote/webroot
+user "${CF_FTP_USER}" "${CF_FTP_PASS}"
+cd "${CF_FTP_REMOTE_DIR}"
 mirror -R --verbose out/ .
 bye
-"
+LFTP
 ```
 
 If you want to remove remote files that no longer exist locally, add `--delete` to `mirror` (use with care).
@@ -69,8 +95,10 @@ Set env vars and deploy:
 export CF_FTP_HOST="ftp.continuousfunction.ai"
 export CF_FTP_PROTOCOL="ftps" # default; use "sftp" only if SSH/SFTP is enabled
 export CF_FTP_USER="YOUR_USERNAME"
-export CF_FTP_PASS="YOUR_PASSWORD"
 export CF_FTP_REMOTE_DIR="/your/remote/webroot"  # e.g. /public_html or ..
+read -rsp "CF_FTP_PASS: " CF_FTP_PASS
+echo
+export CF_FTP_PASS
 
 # Optional: also delete remote files that no longer exist locally.
 export CF_FTP_DELETE=1
@@ -102,7 +130,7 @@ Update `.vscode/sftp.json`:
     "protocol": "sftp",
     "port": 22,
     "username": "YOUR_USERNAME",
-    "password": "YOUR_PASSWORD",
+    "privateKeyPath": "~/.ssh/id_ed25519",
     "remotePath": "/public_html",
     "context": "out",
     "uploadOnSave": false
@@ -110,7 +138,8 @@ Update `.vscode/sftp.json`:
 ```
 
 **Key settings:**
-- `"remotePath": "/"` - Upload to FTP root (which IS public_html due to chroot)
+- `"privateKeyPath": "~/.ssh/id_ed25519"` - Prefer key-based SFTP auth over storing a password in editor config.
+- `"remotePath": "/public_html"` - Upload to the web root for the site.
 - `"context": "out"` - Only upload contents of the `out` folder
 
 Then, after building:

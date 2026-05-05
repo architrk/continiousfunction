@@ -27,7 +27,7 @@ LFTP_SECURITY_SETTINGS=""
 
 case "${CF_FTP_PROTOCOL}" in
   ftps)
-    LFTP_URL="ftp://${CF_FTP_HOST}"
+    LFTP_URL="ftps://${CF_FTP_HOST}"
     if [[ -n "${CF_FTP_PORT:-}" ]]; then
       LFTP_URL="${LFTP_URL}:${CF_FTP_PORT}"
     fi
@@ -40,22 +40,9 @@ case "${CF_FTP_PROTOCOL}" in
     fi
     LFTP_SECURITY_SETTINGS=$'set sftp:auto-confirm yes'
     ;;
-  ftp)
-    if [[ "${CF_FTP_ALLOW_INSECURE:-0}" != "1" ]]; then
-      echo "[deploy] Refusing insecure FTP."
-      echo "[deploy] Use CF_FTP_PROTOCOL=ftps, or CF_FTP_PROTOCOL=sftp when SSH/SFTP is available."
-      echo "[deploy] If you truly must use plaintext FTP, set CF_FTP_ALLOW_INSECURE=1 explicitly."
-      exit 1
-    fi
-    LFTP_URL="ftp://${CF_FTP_HOST}"
-    if [[ -n "${CF_FTP_PORT:-}" ]]; then
-      LFTP_URL="${LFTP_URL}:${CF_FTP_PORT}"
-    fi
-    LFTP_SECURITY_SETTINGS=$'set ftp:ssl-allow no'
-    ;;
   *)
     echo "[deploy] Unsupported CF_FTP_PROTOCOL: ${CF_FTP_PROTOCOL}"
-    echo "[deploy] Supported values: ftps, sftp, ftp"
+    echo "[deploy] Supported values: ftps, sftp"
     exit 1
     ;;
 esac
