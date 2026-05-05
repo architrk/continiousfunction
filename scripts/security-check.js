@@ -68,6 +68,18 @@ assertFileHas(
   'Deploy step must stay guarded by a secrets-present check',
 )
 
+for (const rel of walk('.github/workflows', new Set(['.yml', '.yaml']))) {
+  const source = read(rel)
+  const usesRe = /^\s*uses:\s+([^@\s]+)@([^\s#]+)/gm
+  let match
+  while ((match = usesRe.exec(source))) {
+    const [, action, ref] = match
+    if (!/^[a-f0-9]{40}$/i.test(ref)) {
+      fail('GitHub Actions must be pinned to immutable commit SHAs', rel, `Found ${action}@${ref}`)
+    }
+  }
+}
+
 const domainRoute = 'pages/domains/[domain]/[slug].tsx'
 assertFileHas(domainRoute, 'compileSafeMarkdownToHtml', 'Domain concept route must render content through the safe markdown pipeline')
 assertFileDoesNotMatch(domainRoute, /@mdx-js\/mdx|@mdx-js\/react|providerImportSource/, 'Domain concept route must not compile or execute MDX directly')
