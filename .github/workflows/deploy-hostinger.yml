@@ -1,4 +1,4 @@
-name: Deploy (Hostinger FTP)
+name: Deploy (Hostinger FTPS)
 
 on:
   push:
@@ -29,16 +29,17 @@ jobs:
         run: npm run build
 
       # Configure repository secrets:
-      # - CF_FTP_HOST: ftp.continuousfunction.ai (or your FTP host)
+      # - CF_FTP_HOST: ftp.continuousfunction.ai (or your FTPS host)
       # - CF_FTP_USER: username
       # - CF_FTP_PASS: password
       # - CF_FTP_REMOTE_DIR: remote webroot directory (example: /public_html/)
+      # - CF_FTP_PORT: optional, defaults to the action's FTPS port handling
       - name: Deploy
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.CF_FTP_HOST }}
           username: ${{ secrets.CF_FTP_USER }}
           password: ${{ secrets.CF_FTP_PASS }}
+          protocol: ftps
           local-dir: out/
           server-dir: ${{ secrets.CF_FTP_REMOTE_DIR }}
-

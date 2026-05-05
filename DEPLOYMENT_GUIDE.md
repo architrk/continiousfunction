@@ -21,26 +21,32 @@ We export with `trailingSlash: true`, so routes are exported as folders with `in
 
 We still ship a small `public/.htaccess` for security headers + caching. It is copied into `out/.htaccess` during export, so it will be deployed automatically as long as you upload the `out/` contents.
 
-## 3. Upload to Hostinger via FTP
+## 3. Upload to Hostinger via FTPS or SFTP
+
+Do not deploy over plaintext FTP. FTP sends the deploy username, password, and
+uploaded site files without transport encryption. Use FTPS for Hostinger FTP
+accounts, or SFTP when SSH/SFTP access is available.
 
 ### Important: FTP Root Path
 
 Hostinger setups vary. Before your first deploy, confirm where the **web root** is for this account:
 
 ```bash
-lftp -c \"set ftp:ssl-allow no; open -u USER,PASS ftp://HOST; pwd; ls; bye\"
+lftp -c \"set ftp:ssl-force yes; set ftp:ssl-protect-data yes; set ssl:verify-certificate yes; open -u USER,PASS ftp://HOST; pwd; ls; bye\"
 ```
 
 Pick the directory that should contain `index.html` and `_next/`, and use that as the remote deploy directory.
 
-### Using lftp (Command Line)
+### Using lftp with FTPS (Command Line)
 
 ```bash
 cd /path/to/continiousfunction
 npm run build
 lftp -c "
-set ftp:ssl-allow no
-open -u u908281807.u908281808,'YOUR_PASSWORD' ftp://ftp.continuousfunction.ai
+set ftp:ssl-force yes
+set ftp:ssl-protect-data yes
+set ssl:verify-certificate yes
+open -u YOUR_USERNAME,'YOUR_PASSWORD' ftp://ftp.continuousfunction.ai
 cd /your/remote/webroot
 mirror -R --verbose out/ .
 bye
@@ -61,7 +67,8 @@ Set env vars and deploy:
 
 ```bash
 export CF_FTP_HOST="ftp.continuousfunction.ai"
-export CF_FTP_USER="u908281807.u908281808"
+export CF_FTP_PROTOCOL="ftps" # default; use "sftp" only if SSH/SFTP is enabled
+export CF_FTP_USER="YOUR_USERNAME"
 export CF_FTP_PASS="YOUR_PASSWORD"
 export CF_FTP_REMOTE_DIR="/your/remote/webroot"  # e.g. /public_html or ..
 
@@ -81,6 +88,9 @@ Required repository secrets:
 - `CF_FTP_PASS`
 - `CF_FTP_REMOTE_DIR` (example: `/public_html/`)
 
+The workflow sets `protocol: ftps` for `SamKirkland/FTP-Deploy-Action`, so CI
+will refuse to use the action's plaintext FTP default.
+
 ### Using Cursor SFTP Extension
 
 Update `.vscode/sftp.json`:
@@ -88,12 +98,12 @@ Update `.vscode/sftp.json`:
 ```json
 {
     "name": "Hostinger - continuousfunction.ai",
-    "host": "ftp.continuousfunction.ai",
-    "protocol": "ftp",
-    "port": 21,
-    "username": "u908281807.u908281808",
+    "host": "sftp.example.com",
+    "protocol": "sftp",
+    "port": 22,
+    "username": "YOUR_USERNAME",
     "password": "YOUR_PASSWORD",
-    "remotePath": "/",
+    "remotePath": "/public_html",
     "context": "out",
     "uploadOnSave": false
 }
