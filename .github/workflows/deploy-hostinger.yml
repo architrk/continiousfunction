@@ -34,7 +34,23 @@ jobs:
       # - CF_FTP_PASS: password
       # - CF_FTP_REMOTE_DIR: remote webroot directory (example: /public_html/)
       # - CF_FTP_PORT: optional, defaults to the action's FTPS port handling
+      - name: Check deploy secrets
+        id: deploy-config
+        env:
+          CF_FTP_HOST: ${{ secrets.CF_FTP_HOST }}
+          CF_FTP_USER: ${{ secrets.CF_FTP_USER }}
+          CF_FTP_PASS: ${{ secrets.CF_FTP_PASS }}
+          CF_FTP_REMOTE_DIR: ${{ secrets.CF_FTP_REMOTE_DIR }}
+        run: |
+          if [[ -n "${CF_FTP_HOST}" && -n "${CF_FTP_USER}" && -n "${CF_FTP_PASS}" && -n "${CF_FTP_REMOTE_DIR}" ]]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Skipping Hostinger deploy because required CF_FTP_* secrets are not configured."
+          fi
+
       - name: Deploy
+        if: steps.deploy-config.outputs.configured == 'true'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.CF_FTP_HOST }}
