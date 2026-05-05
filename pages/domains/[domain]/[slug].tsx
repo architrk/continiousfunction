@@ -1,9 +1,9 @@
 import type { GetStaticPaths, GetStaticProps } from 'next'
 import Head from 'next/head'
 import Link from 'next/link'
-import type { ComponentType } from 'react'
 import { contentConceptVizMap } from '../../../content/_generated/vizMap'
 import type { ConceptMeta } from '../../../lib/contentLoader'
+import { compileSafeMarkdownToHtml, parseConceptMdxSections } from '../../../lib/safeMdx'
 
 type ConceptMetaPublic = Omit<ConceptMeta, '_dirPath' | '_conceptYamlPath' | '_contentMdxPath' | '_vizPath'>
 
@@ -39,36 +39,6 @@ const stripInternalMeta = (meta: ConceptMeta): ConceptMetaPublic => {
   return publicMeta
 }
 
-const parseMdxSections = (raw: string): { intuition: string; math: string; code: string; demo: string } => {
-  const normalized = raw.replace(/\r\n/g, '\n')
-
-  // Strip frontmatter if present.
-  const fm = /^---\n[\s\S]*?\n---\n/.exec(normalized)
-  const body = fm ? normalized.slice(fm[0].length) : normalized
-
-  const headingRe = /^##\s+(.+)\s*$/gm
-  const headings: Array<{ title: string; start: number; contentStart: number }> = []
-  let m: RegExpExecArray | null
-  while ((m = headingRe.exec(body))) {
-    headings.push({ title: m[1].trim(), start: m.index, contentStart: headingRe.lastIndex })
-  }
-
-  const sections = new Map<string, string>()
-  for (let i = 0; i < headings.length; i++) {
-    const h = headings[i]
-    const end = headings[i + 1]?.start ?? body.length
-    const content = body.slice(h.contentStart, end).trim()
-    sections.set(h.title, content)
-  }
-
-  return {
-    intuition: sections.get('Intuition') ?? '',
-    math: sections.get('Math') ?? '',
-    code: sections.get('Code') ?? '',
-    demo: sections.get('Interactive Demo') ?? '',
-  }
-}
-
 export const getStaticPaths: GetStaticPaths = async () => {
   const { loadConceptMetas } = await import('../../../lib/contentLoader')
   const concepts = loadConceptMetas()
@@ -95,61 +65,15 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
 
   const fs = await import('node:fs')
   const mdxRaw = fs.readFileSync(meta._contentMdxPath, 'utf8')
-  const parsed = parseMdxSections(mdxRaw)
-
-  const [
-    mdxMod,
-    mdxReactMod,
-    remarkMathMod,
-    rehypeKatexMod,
-    rehypeSlugMod,
-    serverMod,
-    runtime,
-  ] = await Promise.all([
-    import('@mdx-js/mdx'),
-    import('@mdx-js/react'),
-    import('remark-math'),
-    import('rehype-katex'),
-    import('rehype-slug'),
-    import('react-dom/server'),
-    import('react/jsx-runtime'),
-  ] as const)
-
-  const { compile, run } = mdxMod
-  const { useMDXComponents } = mdxReactMod
-
-  // Some remark/rehype plugins are published as ESM default exports but may be
-  // loaded through CJS interop depending on the environment.
-  const remarkMath = remarkMathMod.default ?? remarkMathMod
-  const rehypeKatex = rehypeKatexMod.default ?? rehypeKatexMod
-  const rehypeSlug = rehypeSlugMod.default ?? rehypeSlugMod
-
-  const { renderToStaticMarkup } = serverMod
-
-  const compileToHtml = async (mdx: string): Promise<string> => {
-    if (!mdx.trim()) return ''
-
-    const compiled = await compile(mdx, {
-      outputFormat: 'function-body',
-      providerImportSource: '@mdx-js/react',
-      remarkPlugins: [remarkMath],
-      rehypePlugins: [[rehypeKatex, { trust: false, strict: 'warn', throwOnError: false }], rehypeSlug],
-    })
-
-    const evaluated = await run(compiled, { ...runtime, useMDXComponents })
-    const MDXContent = (evaluated as unknown as { default: ComponentType<Record<string, unknown>> }).default
-
-    // Important: render through React so hooks (useMDXComponents) have a valid dispatcher.
-    return renderToStaticMarkup(runtime.jsx(MDXContent, {}))
-  }
+  const parsed = parseConceptMdxSections(mdxRaw)
 
   const [intuitionHtml, mathHtml, codeHtml] = await Promise.all([
-    compileToHtml(parsed.intuition),
-    compileToHtml(parsed.math),
-    compileToHtml(parsed.code),
+    compileSafeMarkdownToHtml(parsed.intuition),
+    compileSafeMarkdownToHtml(parsed.math),
+    compileSafeMarkdownToHtml(parsed.code),
   ])
 
-  const demoHtml = await compileToHtml(parsed.demo)
+  const demoHtml = await compileSafeMarkdownToHtml(parsed.demo)
 
   // Resolve cross-links (prefer content/ concepts; fall back to legacy /foundations when possible).
   const contentIndex = new Map(metas.map((m) => [m.id, m] as const))
