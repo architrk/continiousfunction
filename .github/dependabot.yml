@@ -10,6 +10,8 @@ updates:
       # Keep patch/minor updates flowing, but do the majors intentionally.
       - dependency-name: "@react-three/drei"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "@react-three/fiber"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint-config-next"
