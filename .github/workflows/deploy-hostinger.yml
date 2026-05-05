@@ -25,6 +25,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Security checks
+        run: |
+          npm run security:check
+          npm audit --omit=dev
+
       - name: Build (static export -> out/)
         run: npm run build
 
