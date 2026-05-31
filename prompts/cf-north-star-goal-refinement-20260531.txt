@@ -1,0 +1,47 @@
+You are advising on Continuous Function, a Next.js learning platform for the mathematics behind modern deep learning and frontier AI.
+
+Task:
+Define the best high-level goal for this app, then translate it into an operational goal that an implementation agent can pursue immediately.
+
+Use the attached repo documents as source context:
+- PRODUCT_NORTH_STAR.md: current product identity and prioritization
+- CONCEPT_QUALITY_BAR.md: publication/pedagogy standard
+- DESIGN_LANGUAGE.md: Living Notebook Lab aesthetic and interaction language
+- HIGH_SIGNAL_AI_LEARNING_PLATFORM_ROADMAP.md: larger product roadmap
+
+Current implementation context from TODO.yaml:
+- Current focus: turn Paper Mapper's first viewport into the same image-board-grade paper-to-atlas cockpit, then extract the reusable Living Notebook Lab shell contract.
+- Recent major work already completed:
+  - Concept notebook first viewport was upgraded into a Living Notebook Lab cockpit.
+  - Efficient Attention has a KV-cache memory equation flagship lab with role lenses, prediction, controls, measurements, evidence, invariant, and next move.
+  - The app has role lenses for Learner, Researcher, Experimenter, and Professor across key surfaces.
+  - Object rooms, selected object bars, witness triads, observation ledgers, route continuity, account memory previews, and AI handoff packets exist as early surfaces.
+  - Search, Graph, Paper Mapper, homepage, domains, and concept notebooks now share pieces of the same Question -> Object -> Prediction -> Evidence -> Invariant -> Next Move grammar, but the experience is not yet consistently excellent across the whole app.
+  - Tests/build recently pass for validation/typecheck/lint/build, with known raw-image lint warnings and stale Jest assertion failures in some older UI tests.
+
+The user wants the app to become one of the world's best learning experiences for math, machine learning, deep learning, and frontier AI. The goal should therefore be ambitious but not vague.
+
+Please produce:
+
+1. One-sentence north star.
+   It should be memorable, specific, and product-guiding.
+
+2. A stricter operational goal.
+   Define what the app must make possible for a serious learner, researcher, engineer, or teacher in one sitting.
+
+3. The core learning loop.
+   Name the recurring loop that should appear across homepage, search, graph, concept pages, paper mapper, and study memory.
+
+4. What to optimize for and what to stop optimizing for.
+   Be direct. Identify misleading goals such as more pages, more animation, generic AI chat, broad community, or decorative polish if they are not the right objective.
+
+5. First flagship slice.
+   Choose the single most leverageful near-term slice in the current app, given the docs. It should be concrete enough to implement now.
+
+6. Acceptance criteria.
+   Define 5-8 checks that would prove the next slice moved the app toward the north star. Include pedagogy, UI/UX, AI/object context, and browser-verifiable behavior.
+
+7. Risks.
+   Name the top 5 ways this goal could be implemented badly.
+
+Be rigorous. Avoid slogans unless they change prioritization. Assume the implementation agent can edit the repo, run tests, inspect the browser, and iterate.

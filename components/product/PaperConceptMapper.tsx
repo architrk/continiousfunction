@@ -104,6 +104,18 @@ type PaperLensObject = {
   routeObject: LearningRouteSourceObject
 }
 
+type RouteSaveStatus = 'idle' | 'saved-with-prior' | 'saved-new' | 'saved-invariant'
+
+type PaperPredictionOption = {
+  id: string
+  label: string
+  claim: string
+  evidence: string
+  invariant: string
+  nextMove: string
+  accent: string
+}
+
 const paperMapperGatewayUrl = process.env.NEXT_PUBLIC_CF_PAPER_MAPPER_GATEWAY_URL?.trim() ?? ''
 const maxClientPdfBytes = 6 * 1024 * 1024
 
@@ -552,6 +564,103 @@ function paperLensObjectRouteObject(object: PaperLensObject): LearningRouteSourc
   }
 }
 
+function paperPredictionOptionsForMapping(mapping: Mapping, equation: EquationCard): PaperPredictionOption[] {
+  if (mapping.id === 'kv-cache') {
+    return [
+      {
+        id: 'kv-memory-scales',
+        label: 'Token memory grows',
+        claim: 'If cached tokens increase while model shape and precision stay fixed, KV memory should grow linearly.',
+        evidence: `${equation.label}: ${equation.equation}`,
+        invariant: 'For fixed shape and precision, KV-cache memory is proportional to B x N_layers x T x H_kv x d_head x bytes.',
+        nextMove: 'Open the KV memory lab, double context length, and check that the memory result roughly doubles.',
+        accent: '#1f6f78',
+      },
+      {
+        id: 'kv-head-sharing',
+        label: 'Head sharing saves memory',
+        claim: 'If a method reduces KV heads, memory can fall without changing the learner-facing attention question.',
+        evidence: 'Compare MHA, GQA, and MQA as different values of H_kv in the same memory witness.',
+        invariant: 'KV compression must name what is held fixed: layers, context, head dimension, batch, and precision.',
+        nextMove: 'Keep T fixed in the lab, reduce KV heads, and ask what retrieval quality might pay for the saving.',
+        accent: '#8b5cf6',
+      },
+      {
+        id: 'kv-quality-boundary',
+        label: 'Quality needs a witness',
+        claim: 'A memory saving is not automatically an attention-quality saving.',
+        evidence: 'The paper route needs a source span, equation, or toy retrieval witness before trusting quality claims.',
+        invariant: 'Serving wins are only interpretable when memory, latency, and retrieval quality are separated.',
+        nextMove: 'Attach the exact source span or benchmark that claims quality survives compression.',
+        accent: '#c76548',
+      },
+    ]
+  }
+
+  if (mapping.id === 'mamba-ssm') {
+    return [
+      {
+        id: 'ssm-state-compression',
+        label: 'State compresses history',
+        claim: 'If the model uses a fixed recurrent state, long-context cost can fall while the retained information changes.',
+        evidence: `${equation.label}: ${equation.equation}`,
+        invariant: 'A fixed state is a learned summary of history, not a free replacement for addressable token memory.',
+        nextMove: 'Compare the recurrence equation against attention and ask which past token details can still be recovered.',
+        accent: '#1f6f78',
+      },
+      {
+        id: 'ssm-selectivity',
+        label: 'Input gates memory',
+        claim: 'If the update matrices depend on the input, the model can choose what to retain at each step.',
+        evidence: 'Source-check the selective update terms before treating the mechanism as paper-specific.',
+        invariant: 'Selectivity is meaningful only when the input-dependent part is identified and contrasted with a baseline recurrence.',
+        nextMove: 'Mark the symbol that changes with x_t and the symbol that stays baseline.',
+        accent: '#8b5cf6',
+      },
+    ]
+  }
+
+  return [
+    {
+      id: 'paper-mechanism-witness',
+      label: 'Mechanism needs witness',
+      claim: `If this paper's contribution is real, one measurable behavior should change from the baseline route.`,
+      evidence: `${equation.label}: ${equation.equation}`,
+      invariant: 'A paper is understood when its claim is tied to a source object, equation, witness, and transfer question.',
+      nextMove: `Repair ${mapping.nextRepair.label}, then write the smallest experiment that would move confidence.`,
+      accent: '#1f6f78',
+    },
+    {
+      id: 'paper-source-boundary',
+      label: 'Source boundary first',
+      claim: 'Metadata, novelty, and benchmark claims should remain provisional until live source lookup confirms them.',
+      evidence: mapping.sources.map((source) => source.label).slice(0, 3).join(', '),
+      invariant: 'The route can reason from local clues, but it must label what is verified versus inferred.',
+      nextMove: 'Run or attach a source check before turning the paper clue into a teaching object.',
+      accent: '#c76548',
+    },
+  ]
+}
+
+function buildPaperPredictionObservation({
+  prediction,
+  activeObject,
+  lensRole,
+}: {
+  prediction: PaperPredictionOption
+  activeObject: PaperLensObject
+  lensRole: PaperLensRole
+}): NonNullable<LearningRouteSnapshot['lastObservation']> {
+  return {
+    label: compactSnapshotText(`${lensRole}: ${prediction.label}`, 80),
+    value: compactSnapshotText(prediction.invariant, 160),
+    detail: compactSnapshotText(`${activeObject.typeLabel}: ${activeObject.title}. Prediction: ${prediction.claim}`, 360),
+    nextQuestion: compactSnapshotText(prediction.nextMove, 220),
+    source: 'prediction-checkpoint',
+    updatedAt: new Date().toISOString(),
+  }
+}
+
 function paperIdentitySegment({
   mappingId,
   paperText,
@@ -717,10 +826,12 @@ export default function PaperConceptMapper() {
   const [activeEquation, setActiveEquation] = useState(0)
   const [activeEquationObject, setActiveEquationObject] = useState(0)
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
-  const [routeSaveStatus, setRouteSaveStatus] = useState<'idle' | 'saved-with-prior' | 'saved-new'>('idle')
+  const [handoffCopyStatus, setHandoffCopyStatus] = useState<'idle' | 'copied' | 'error'>('idle')
+  const [routeSaveStatus, setRouteSaveStatus] = useState<RouteSaveStatus>('idle')
   const [carrySavedObservation, setCarrySavedObservation] = useState(false)
   const [activePaperObjectId, setActivePaperObjectId] = useState('paper-object')
   const [activePaperLensRole, setActivePaperLensRole] = useState<PaperLensRole>('Learner')
+  const [activePredictionId, setActivePredictionId] = useState('kv-memory-scales')
   const [gatewayState, setGatewayState] = useState<GatewayState>('idle')
   const [gatewaySummary, setGatewaySummary] = useState<GatewaySummary | null>(null)
   const [gatewayEquationObjects, setGatewayEquationObjects] = useState<PaperEquationObject[] | null>(null)
@@ -1145,6 +1256,21 @@ export default function PaperConceptMapper() {
   )
   const activePaperLens = paperLensModes.find((mode) => mode.role === activePaperLensRole) ?? paperLensModes[0]
   const paperLensActionHref = activePaperLens.href ?? activePaperObject.href
+  const paperPredictionOptions = useMemo(
+    () => paperPredictionOptionsForMapping(mapping, primaryEquation),
+    [mapping, primaryEquation]
+  )
+  const activePrediction =
+    paperPredictionOptions.find((prediction) => prediction.id === activePredictionId) ??
+    paperPredictionOptions[0] ?? {
+      id: 'fallback-prediction',
+      label: 'Route invariant',
+      claim: `If ${mapping.title} matters, one source-grounded behavior should change from the baseline.`,
+      evidence: primaryEquation.equation,
+      invariant: 'Understanding means linking the paper object to a question, equation, witness, and next move.',
+      nextMove: `Repair ${nextRepair}, then test one measurable claim.`,
+      accent: '#1f6f78',
+    }
   const routePrimaryEquation = selectedEquationObject
     ? {
         label: selectedEquationObject.label,
@@ -1162,6 +1288,38 @@ export default function PaperConceptMapper() {
   const labActionLabel = mapping.lab.status === 'live' ? 'Try' : 'Planned lab'
   const labSummary = mapping.lab.status === 'live' ? mapping.labSpec : `Lab question to carry: ${mapping.labSpec}`
   const carriedObservation = carrySavedObservation ? savedRouteSnapshot?.lastObservation : undefined
+  const cockpitSteps = [
+    {
+      label: 'Question',
+      value: activePaperLens.question,
+      detail: mapping.currentQuestion,
+    },
+    {
+      label: 'Object',
+      value: activePaperObject.title,
+      detail: activePaperObject.typeLabel,
+    },
+    {
+      label: 'Prediction',
+      value: activePrediction.claim,
+      detail: activePrediction.label,
+    },
+    {
+      label: 'Evidence',
+      value: activePrediction.evidence,
+      detail: groundingStatus,
+    },
+    {
+      label: 'Invariant',
+      value: activePrediction.invariant,
+      detail: 'Save this as the route memory.',
+    },
+    {
+      label: 'Next',
+      value: activePrediction.nextMove,
+      detail: nextRepair,
+    },
+  ]
   const observationSearchHref = savedRouteSnapshot?.lastObservation
     ? `/search/?q=${encodeURIComponent(
         savedRouteSnapshot.lastObservation.nextQuestion ??
@@ -1174,6 +1332,9 @@ export default function PaperConceptMapper() {
     `I am studying: ${paperClueLabel}`,
     `Mapped route: ${mapping.title}`,
     carriedObservation ? `Saved observation to preserve: ${carriedObservation.label}: ${carriedObservation.value}` : null,
+    `Current object: ${activePaperObject.typeLabel}: ${activePaperObject.title}`,
+    `Committed prediction: ${activePrediction.claim}`,
+    `Invariant to test: ${activePrediction.invariant}`,
     `Route: ${routeLabels.join(' -> ')}`,
     `Read first: ${nextRepair}`,
     `Equation to inspect: ${primaryEquation.label}: ${primaryEquation.equation}`,
@@ -1181,6 +1342,27 @@ export default function PaperConceptMapper() {
     `Ask: ${mapping.currentQuestion}`,
     'Keep author, date, benchmark, and novelty claims unverified until source lookup is connected.',
   ].filter(Boolean).join('\n')
+  const aiHandoffPacket = [
+    'Continuous Function object handoff',
+    `Paper clue: ${paperClueLabel}`,
+    `Route: ${routeLabels.join(' -> ')}`,
+    `Learner role: ${activePaperLens.role}`,
+    `Question: ${activePaperLens.question}`,
+    `Object: ${activePaperObject.typeLabel}: ${activePaperObject.title}`,
+    `Prediction: ${activePrediction.claim}`,
+    `Evidence boundary: ${activePrediction.evidence}`,
+    `Invariant: ${activePrediction.invariant}`,
+    `Next move: ${activePrediction.nextMove}`,
+    `Grounding status: ${groundingStatus}`,
+  ].join('\n')
+  const saveInvariantLabel =
+    routeSaveStatus === 'saved-invariant'
+      ? 'Saved invariant'
+      : routeSaveStatus === 'saved-with-prior'
+        ? 'Saved with prior witness'
+        : routeSaveStatus === 'saved-new'
+          ? 'Saved route'
+          : 'Save invariant'
 
   const setSample = (sample: string) => {
     setPaperText(sample)
@@ -1188,9 +1370,11 @@ export default function PaperConceptMapper() {
     setActiveEquation(0)
     setActiveEquationObject(0)
     setCopyStatus('idle')
+    setHandoffCopyStatus('idle')
     setRouteSaveStatus('idle')
     setCarrySavedObservation(false)
     setActivePaperObjectId('paper-object')
+    setActivePredictionId('kv-memory-scales')
     setGatewayState('idle')
     setGatewaySummary(null)
     setGatewayEquationObjects(null)
@@ -1202,9 +1386,11 @@ export default function PaperConceptMapper() {
     setActiveEquation(0)
     setActiveEquationObject(0)
     setCopyStatus('idle')
+    setHandoffCopyStatus('idle')
     setRouteSaveStatus('idle')
     setCarrySavedObservation(false)
     setActivePaperObjectId('paper-object')
+    setActivePredictionId('kv-memory-scales')
     setGatewayState('idle')
     setGatewaySummary(null)
     setGatewayEquationObjects(null)
@@ -1215,6 +1401,8 @@ export default function PaperConceptMapper() {
     setGatewayEquationObjects(null)
     setCarrySavedObservation(false)
     setActivePaperObjectId('paper-object')
+    setActivePredictionId('kv-memory-scales')
+    setHandoffCopyStatus('idle')
 
     if (!file) {
       setPdfUpload(null)
@@ -1259,6 +1447,7 @@ export default function PaperConceptMapper() {
     setActiveEquation(0)
     setActiveEquationObject(0)
     setCopyStatus('idle')
+    setHandoffCopyStatus('idle')
     setRouteSaveStatus('idle')
     setGatewayState('idle')
   }
@@ -1269,9 +1458,11 @@ export default function PaperConceptMapper() {
       currentQuestion?: string
       labGoal?: string
       currentObject?: LearningRouteSourceObject
+      lastObservation?: LearningRouteSnapshot['lastObservation']
     }
   ): LearningRouteSnapshot => {
     const preservedObservation = carrySavedObservation ? savedRouteSnapshot?.lastObservation : undefined
+    const lastObservation = override?.lastObservation ?? preservedObservation
     const routeHandoffObject = preservedObservation ? routeHandoffSourceObject(savedRouteSnapshot) : null
     const lensObject = override?.currentObject
     const baseSourceObjects = lensObject
@@ -1320,7 +1511,7 @@ export default function PaperConceptMapper() {
       labStatus: mapping.lab.status,
       sourceObjects,
       currentObject: override?.currentObject ?? currentRouteObject,
-      lastObservation: preservedObservation,
+      lastObservation,
       groundingStatus,
       createdAt: new Date().toISOString(),
     }
@@ -1328,16 +1519,22 @@ export default function PaperConceptMapper() {
 
   const saveCurrentRoute = () => {
     const lensRouteObject = paperLensObjectRouteObject(activePaperObject)
+    const paperObservation = buildPaperPredictionObservation({
+      prediction: activePrediction,
+      activeObject: activePaperObject,
+      lensRole: activePaperLens.role,
+    })
     const snapshot = buildRouteSnapshot('paper-map', {
       currentQuestion: activePaperLens.question,
       labGoal: activePaperLens.instruction,
+      lastObservation: paperObservation,
       currentObject: {
         ...lensRouteObject,
         status: `${activePaperLens.role.toLowerCase()} lens selected`,
       },
     })
-    saveLearningRouteSnapshot(snapshot)
-    setRouteSaveStatus(snapshot.lastObservation ? 'saved-with-prior' : 'saved-new')
+    const didSave = saveLearningRouteSnapshot(snapshot)
+    setRouteSaveStatus(didSave ? 'saved-invariant' : snapshot.lastObservation ? 'saved-with-prior' : 'saved-new')
   }
 
   const focusDiscussionObject = (item: DiscussionAnchorListItem) => {
@@ -1348,10 +1545,15 @@ export default function PaperConceptMapper() {
       currentQuestion: activePaperLens.question,
       labGoal: activePaperLens.instruction,
       currentObject: focusedObject,
+      lastObservation: buildPaperPredictionObservation({
+        prediction: activePrediction,
+        activeObject: matchingPaperObject ?? activePaperObject,
+        lensRole: activePaperLens.role,
+      }),
     })
     const sourceObjects = nextSnapshot.sourceObjects ?? routeSourceObjects
 
-    saveLearningRouteSnapshot({
+    const didSave = saveLearningRouteSnapshot({
       ...nextSnapshot,
       sourceObjects: [
         focusedObject,
@@ -1363,7 +1565,7 @@ export default function PaperConceptMapper() {
       ].slice(0, 12),
       currentObject: focusedObject,
     })
-    setRouteSaveStatus(nextSnapshot.lastObservation ? 'saved-with-prior' : 'saved-new')
+    setRouteSaveStatus(didSave ? 'saved-invariant' : nextSnapshot.lastObservation ? 'saved-with-prior' : 'saved-new')
   }
 
   const copyStudyPrompt = async () => {
@@ -1374,6 +1576,17 @@ export default function PaperConceptMapper() {
       setCopyStatus('copied')
     } catch {
       setCopyStatus('error')
+    }
+  }
+
+  const copyAiHandoffPacket = async () => {
+    saveCurrentRoute()
+
+    try {
+      await navigator.clipboard.writeText(aiHandoffPacket)
+      setHandoffCopyStatus('copied')
+    } catch {
+      setHandoffCopyStatus('error')
     }
   }
 
@@ -1485,6 +1698,97 @@ export default function PaperConceptMapper() {
 
   return (
     <section id="paper-mapper-tool" className="mapper-tool" aria-label="Paper-to-concept mapper">
+      <section
+        className="paper-cockpit"
+        aria-labelledby="paper-cockpit-title"
+        data-paper-cockpit="question-to-invariant"
+      >
+        <div className="paper-cockpit-header">
+          <div>
+            <p className="eyebrow">Question To Invariant</p>
+            <h2 id="paper-cockpit-title">Turn one paper clue into a tested route.</h2>
+            <p>
+              Pick the object, commit the prediction, name the evidence boundary, and save the invariant before
+              continuing into the lab or graph.
+            </p>
+          </div>
+
+          <div className="cockpit-object-badge" aria-label="Selected paper object">
+            <span>{activePaperObject.typeLabel}</span>
+            <strong>{activePaperObject.title}</strong>
+            <em>{activePaperLens.role} lens</em>
+          </div>
+        </div>
+
+        <div className="cockpit-loop" aria-label="Paper learning loop">
+          {cockpitSteps.map((step, index) => (
+            <article key={step.label}>
+              <span>{index + 1}</span>
+              <strong>{step.label}</strong>
+              <p>{step.value}</p>
+              <em>{step.detail}</em>
+            </article>
+          ))}
+        </div>
+
+        <div className="prediction-cockpit-grid">
+          <div className="prediction-gate" aria-label="Commit a paper prediction">
+            <div>
+              <p className="eyebrow">Prediction Gate</p>
+              <h3>What should change if this paper mechanism is real?</h3>
+            </div>
+            <div className="prediction-option-list">
+              {paperPredictionOptions.map((prediction) => (
+                <button
+                  key={prediction.id}
+                  type="button"
+                  className={prediction.id === activePrediction.id ? 'active' : ''}
+                  style={{ '--prediction-accent': prediction.accent } as CSSProperties}
+                  aria-pressed={prediction.id === activePrediction.id}
+                  onClick={() => {
+                    setActivePredictionId(prediction.id)
+                    setRouteSaveStatus('idle')
+                    setHandoffCopyStatus('idle')
+                  }}
+                >
+                  <span>{prediction.label}</span>
+                  <strong>{prediction.claim}</strong>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <article
+            className="cockpit-invariant-card"
+            style={{ '--prediction-accent': activePrediction.accent } as CSSProperties}
+          >
+            <span>Invariant To Carry</span>
+            <strong>{activePrediction.invariant}</strong>
+            <p>{activePrediction.evidence}</p>
+            <div className="cockpit-actions">
+              <button type="button" onClick={saveCurrentRoute}>
+                {saveInvariantLabel}
+              </button>
+              {mapping.lab.status === 'live' && mapping.lab.href ? (
+                <Link href={mapping.lab.href} onClick={saveCurrentRoute}>
+                  Open lab witness
+                </Link>
+              ) : null}
+              <Link href={primaryRouteHref} onClick={saveCurrentRoute}>
+                Continue route
+              </Link>
+              <button type="button" onClick={() => void copyAiHandoffPacket()}>
+                {handoffCopyStatus === 'copied'
+                  ? 'Copied AI handoff'
+                  : handoffCopyStatus === 'error'
+                    ? 'Copy failed'
+                    : 'Copy AI handoff'}
+              </button>
+            </div>
+          </article>
+        </div>
+      </section>
+
       {savedRouteSnapshot?.lastObservation ? (
         <section
           className="paper-route-bridge"
@@ -1776,11 +2080,7 @@ export default function PaperConceptMapper() {
                   </button>
                 )}
                 <button type="button" className="secondary" onClick={saveCurrentRoute}>
-                  {routeSaveStatus === 'saved-with-prior'
-                    ? 'Saved with prior witness'
-                    : routeSaveStatus === 'saved-new'
-                      ? 'Saved object lens'
-                      : 'Save object lens'}
+                  {routeSaveStatus === 'idle' ? 'Save object lens' : saveInvariantLabel}
                 </button>
               </div>
             </article>
@@ -1822,7 +2122,9 @@ export default function PaperConceptMapper() {
             Do not treat author, date, benchmark, or exact novelty claims as verified until source lookup is connected.
           </p>
           <p className="save-behavior-note">
-            {carrySavedObservation ? 'Will save with prior witness.' : 'Will save as new paper route.'}
+            {carrySavedObservation
+              ? 'Will save the committed invariant with the prior witness kept in the handoff.'
+              : 'Will save the committed invariant as this route memory.'}
           </p>
 
           <div className="continue-actions">
@@ -1835,11 +2137,7 @@ export default function PaperConceptMapper() {
               </Link>
             ) : null}
             <button type="button" onClick={saveCurrentRoute}>
-              {routeSaveStatus === 'saved-with-prior'
-                ? 'Saved with prior witness'
-                : routeSaveStatus === 'saved-new'
-                  ? 'Saved as new paper route'
-                  : 'Remember on home'}
+              {routeSaveStatus === 'idle' ? 'Remember on home' : saveInvariantLabel}
             </button>
             <button type="button" onClick={() => void copyStudyPrompt()}>
               {copyStatus === 'copied' ? 'Copied prompt' : copyStatus === 'error' ? 'Copy failed' : 'Copy study prompt'}
@@ -2074,6 +2372,7 @@ export default function PaperConceptMapper() {
 
         .input-pane,
         .output-pane,
+        .paper-cockpit,
         .ingestion-card,
         .paper-object-lens-panel,
         .continue-card,
@@ -2097,6 +2396,235 @@ export default function PaperConceptMapper() {
           gap: 1rem;
           padding: 1rem;
           border-radius: 24px;
+        }
+
+        .paper-cockpit {
+          display: grid;
+          grid-column: 1 / -1;
+          gap: 0.9rem;
+          min-width: 0;
+          padding: 1rem;
+          border-radius: 24px;
+          background:
+            linear-gradient(135deg, rgba(231, 248, 244, 0.86), rgba(255, 251, 245, 0.92) 48%, rgba(255, 244, 238, 0.76)),
+            rgba(255, 251, 245, 0.9);
+        }
+
+        .paper-cockpit-header {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.35fr);
+          gap: 0.85rem;
+          align-items: stretch;
+          min-width: 0;
+        }
+
+        .paper-cockpit-header p:not(.eyebrow) {
+          margin: 0.62rem 0 0;
+          color: #455361;
+          line-height: 1.62;
+        }
+
+        .cockpit-object-badge {
+          display: grid;
+          align-content: center;
+          gap: 0.35rem;
+          min-width: 0;
+          padding: 0.8rem;
+          border-radius: 18px;
+          border: 1px solid rgba(31, 111, 120, 0.16);
+          background: rgba(255, 251, 245, 0.84);
+        }
+
+        .cockpit-object-badge span,
+        .cockpit-object-badge em,
+        .cockpit-loop span,
+        .cockpit-loop em,
+        .cockpit-invariant-card > span,
+        .prediction-option-list span {
+          font-family: var(--font-mono);
+          font-size: 0.64rem;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .cockpit-object-badge span,
+        .cockpit-loop span,
+        .cockpit-invariant-card > span,
+        .prediction-option-list span {
+          color: #1f6f78;
+        }
+
+        .cockpit-object-badge strong {
+          color: #151d27;
+          line-height: 1.25;
+          overflow-wrap: anywhere;
+        }
+
+        .cockpit-object-badge em {
+          color: #c24a2d;
+          font-style: normal;
+        }
+
+        .cockpit-loop {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 0.5rem;
+          min-width: 0;
+        }
+
+        .cockpit-loop article {
+          display: grid;
+          align-content: start;
+          gap: 0.32rem;
+          min-width: 0;
+          min-height: 148px;
+          padding: 0.68rem;
+          border-radius: 16px;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          background: rgba(255, 251, 245, 0.82);
+        }
+
+        .cockpit-loop strong {
+          color: #151d27;
+          line-height: 1.25;
+        }
+
+        .cockpit-loop p {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 4;
+          margin: 0;
+          overflow: hidden;
+          color: #455361;
+          font-size: 0.84rem;
+          line-height: 1.42;
+          overflow-wrap: anywhere;
+        }
+
+        .cockpit-loop em {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          margin-top: auto;
+          overflow: hidden;
+          color: #6a5660;
+          font-style: normal;
+          line-height: 1.32;
+          text-transform: none;
+          letter-spacing: 0;
+          overflow-wrap: anywhere;
+        }
+
+        .prediction-cockpit-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.05fr) minmax(18rem, 0.85fr);
+          gap: 0.75rem;
+          min-width: 0;
+        }
+
+        .prediction-gate,
+        .cockpit-invariant-card {
+          display: grid;
+          align-content: start;
+          gap: 0.65rem;
+          min-width: 0;
+          padding: 0.85rem;
+          border-radius: 18px;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          background: rgba(255, 251, 245, 0.82);
+        }
+
+        .prediction-gate h3,
+        .cockpit-invariant-card strong {
+          margin: 0;
+          color: #151d27;
+          line-height: 1.16;
+        }
+
+        .prediction-option-list {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.5rem;
+          min-width: 0;
+        }
+
+        .prediction-option-list button {
+          display: grid;
+          gap: 0.35rem;
+          min-width: 0;
+          min-height: 128px;
+          padding: 0.68rem;
+          border-radius: 15px;
+          border-color: color-mix(in srgb, var(--prediction-accent) 20%, rgba(27, 36, 48, 0.1));
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--prediction-accent) 11%, transparent), transparent 78%),
+            rgba(255, 251, 245, 0.88);
+          text-align: left;
+        }
+
+        .prediction-option-list button.active,
+        .prediction-option-list button:hover {
+          border-color: color-mix(in srgb, var(--prediction-accent) 54%, rgba(27, 36, 48, 0.1));
+          background:
+            linear-gradient(180deg, color-mix(in srgb, var(--prediction-accent) 18%, transparent), transparent 76%),
+            rgba(255, 251, 245, 0.94);
+        }
+
+        .prediction-option-list strong {
+          color: #24313e;
+          font-size: 0.86rem;
+          line-height: 1.38;
+          overflow-wrap: anywhere;
+        }
+
+        .cockpit-invariant-card {
+          border-color: color-mix(in srgb, var(--prediction-accent) 28%, rgba(27, 36, 48, 0.08));
+          border-left: 4px solid var(--prediction-accent);
+        }
+
+        .cockpit-invariant-card p {
+          margin: 0;
+          color: #455361;
+          line-height: 1.55;
+          overflow-wrap: anywhere;
+        }
+
+        .cockpit-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .cockpit-actions :global(a),
+        .cockpit-actions button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 42px;
+          max-width: 100%;
+          padding: 0.58rem 0.82rem;
+          border-radius: 999px;
+          border: 1px solid rgba(27, 36, 48, 0.1);
+          background: #1b2430;
+          color: #fbf4e8;
+          font: inherit;
+          font-weight: 760;
+          line-height: 1.15;
+          text-align: center;
+          text-decoration: none;
+        }
+
+        .cockpit-actions :global(a),
+        .cockpit-actions button:nth-of-type(2) {
+          background: rgba(255, 251, 245, 0.9);
+          color: #1b2430;
+        }
+
+        .cockpit-actions :global(a:hover),
+        .cockpit-actions button:hover {
+          border-color: rgba(31, 111, 120, 0.28);
+          background: #1f6f78;
+          color: #fbf4e8;
         }
 
         .paper-object-lens-panel {
@@ -3182,6 +3710,8 @@ export default function PaperConceptMapper() {
 
         @media (max-width: 1120px) {
           .mapper-tool,
+          .paper-cockpit-header,
+          .prediction-cockpit-grid,
           .source-grounding-grid,
           .equation-object-layout,
           .paper-lens-layout,
@@ -3189,6 +3719,10 @@ export default function PaperConceptMapper() {
           .detail-grid,
           .lab-discussion-grid {
             grid-template-columns: 1fr;
+          }
+
+          .cockpit-loop {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
 
           .paper-route-bridge {
@@ -3204,6 +3738,26 @@ export default function PaperConceptMapper() {
           .paper-route-bridge {
             padding: 0.82rem;
             border-radius: 19px;
+          }
+
+          .paper-cockpit {
+            padding: 0.9rem;
+            border-radius: 20px;
+          }
+
+          .cockpit-loop,
+          .prediction-option-list {
+            grid-template-columns: 1fr;
+          }
+
+          .cockpit-loop article {
+            min-height: 0;
+          }
+
+          .cockpit-actions,
+          .cockpit-actions :global(a),
+          .cockpit-actions button {
+            width: 100%;
           }
 
           .input-pane,

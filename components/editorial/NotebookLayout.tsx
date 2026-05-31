@@ -453,11 +453,11 @@ export default function NotebookLayout({
 
           .notebook-page .hero-copy h1 {
             max-width: 100%;
-            font-size: clamp(1.62rem, 7.4vw, 1.95rem);
+            font-size: clamp(1.45rem, 6.2vw, 1.68rem);
             line-height: 1.04;
             overflow-wrap: anywhere;
             word-break: normal;
-            text-wrap: wrap;
+            text-wrap: balance;
           }
 
           .notebook-page.long-title .hero-copy h1 {
