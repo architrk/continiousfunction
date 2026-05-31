@@ -1,0 +1,22 @@
+{
+  "resumeCount": 1,
+  "resumeHref": "/domains/attention-transformers/efficient-attention/#math-object-2",
+  "computed": {
+    "display": "flex",
+    "minHeight": "44px",
+    "background": "rgba(31, 111, 120, 0.1)"
+  },
+  "afterClick": {
+    "url": "http://127.0.0.1:3000/domains/attention-transformers/efficient-attention/#math-object-2",
+    "title": "Efficient Attention at Scale: KV Cache, GQA & FlashAttention — Attention & Transformers — Continuous Function",
+    "hash": "#math-object-2",
+    "savedRestoreHref": "/domains/attention-transformers/efficient-attention/#math-object-2",
+    "savedPredictionText": "It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA"
+  },
+  "mobile": {
+    "hasResumeLink": true,
+    "overflowX": 0,
+    "scrollWidth": 390,
+    "clientWidth": 390
+  }
+}

@@ -133,6 +133,7 @@ export default function AccountMemoryPreview() {
   )
   const workbenchObservation = preview.workbenchObservation
   const workbenchResultLabel = resultLabel(workbenchObservation?.result)
+  const workbenchResumeHref = workbenchObservation?.restoreHref ?? workbenchObservation?.objectHref
   const snapshotIdentity = `${snapshot?.createdAt ?? 'empty'}:${snapshot?.currentObject?.objectKey ?? 'none'}:${snapshot?.lastObservation?.updatedAt ?? 'none'}`
   const [serverCheck, setServerCheck] = useState<ServerCheckState>({
     status: 'idle',
@@ -374,6 +375,19 @@ export default function AccountMemoryPreview() {
                       fixed {item.symbol} = {item.value}
                     </span>
                   ))}
+                </div>
+              ) : null}
+
+              {workbenchResumeHref ? (
+                <div className="workbench-actions">
+                  <Link href={workbenchResumeHref} className="memory-button secondary">
+                    Resume this workbench
+                  </Link>
+                  {workbenchObservation.objectHref && workbenchObservation.objectHref !== workbenchResumeHref ? (
+                    <Link href={workbenchObservation.objectHref} className="memory-button quiet">
+                      Open equation object
+                    </Link>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -686,7 +700,7 @@ export default function AccountMemoryPreview() {
           gap: 1rem;
         }
 
-        .memory-button {
+        :global(.account-memory-page .memory-button) {
           display: inline-flex;
           width: fit-content;
           min-height: 44px;
@@ -701,10 +715,15 @@ export default function AccountMemoryPreview() {
           text-decoration: none;
         }
 
-        .memory-button.secondary {
+        :global(.account-memory-page .memory-button.secondary) {
           margin-top: 0.9rem;
           color: var(--memory-ink);
           background: rgba(31, 111, 120, 0.1);
+        }
+
+        :global(.account-memory-page .memory-button.quiet) {
+          color: var(--memory-ink);
+          background: rgba(255, 255, 255, 0.5);
         }
 
         .object-facts {
@@ -811,10 +830,19 @@ export default function AccountMemoryPreview() {
         }
 
         .workbench-variable-strip,
+        .workbench-actions,
         .workbench-boundary {
           display: flex;
           flex-wrap: wrap;
           gap: 0.4rem;
+        }
+
+        .workbench-actions {
+          margin-top: 0.15rem;
+        }
+
+        :global(.account-memory-page .workbench-actions .memory-button) {
+          margin-top: 0;
         }
 
         .workbench-variable-strip span {
