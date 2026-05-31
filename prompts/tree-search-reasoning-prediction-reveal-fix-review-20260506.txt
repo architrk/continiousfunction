@@ -1,0 +1,38 @@
+You are reviewing the fix for a previously no-publish Continuous Function slice.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- This slice is `scaling/tree-search-reasoning`.
+- It must stay static-export-safe and must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+- The desired learning mechanism is prediction-first: learners predict which root branch A/B/C the visible max-backup recommends before seeing selected path, V values, V(root), root backups, or hidden correctness.
+
+Previous Oracle/GPT Pro review returned `no-publish` for one blocker:
+- `components/foundations/TreeSearchReasoningViz.tsx` used inline `style={{ gridColumn: row.depth + 1 }}` on each `NodeCard`.
+- The mobile media query changed `.tree` to one column, but the inline grid placement could still create implicit off-screen columns on narrow screens.
+
+Fix applied:
+- Imported `type CSSProperties`.
+- Replaced inline `gridColumn` with a CSS custom property:
+  - `style={{ '--tree-column': String(row.depth + 1) } as CSSProperties}`
+- Moved placement into component CSS:
+  - `.node { grid-column: var(--tree-column); }`
+  - `@media (max-width: 1040px) { .node { grid-column: 1; } }`
+- Applied the non-blocking copy improvements:
+  - legend says `backed-up path after reveal`
+  - reveal explanation says the selected root branch has the largest root score
+  - noisy truth-on copy says the search rule did not see truth and amplified a verifier false positive
+- Added the non-blocking tests you suggested:
+  - clean/noisy budget-2 exact root branch backup score assertions
+  - hidden correctness toggled back off redacts `selected terminal correctness` from the emitted state
+
+Local verification after the fix:
+- `npm test -- TreeSearchReasoningViz --runInBand` passed: 1 suite, 5 tests. It still emits the known styled-jsx jsdom warning seen across this repo.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+
+Please review only whether the prior no-publish blocker is closed and whether the small follow-up changes introduced any new blocker.
+
+Return:
+- Start with `publish` or `no-publish`.
+- If no-publish, list exact remaining blockers and concrete fixes.
+- If publish, list any remaining non-blocking checks to run locally, especially mobile browser verification.

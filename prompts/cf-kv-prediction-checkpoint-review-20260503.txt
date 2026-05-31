@@ -1,0 +1,23 @@
+Project: Continuous Function, a static-export Next.js learning atlas. The first complete product loop is paper map -> graph route -> attention-serving KV-cache lab. The product philosophy is slow-growth, rigorous, joyful learning: learners should predict, manipulate, observe, and carry the same question across routes without feeling like they are in a demo gallery.
+
+Current target:
+The attention-serving module already has a KV memory calculator and a passive "Predict first" paragraph. I want to turn this into a compact active prediction checkpoint that makes the learner commit to an intuition before changing sliders.
+
+Proposed micro-exercise:
+- Prompt: "Context length and model size stay fixed. A paper changes MHA to GQA/MQA. Which symbol in Mem_KV = B * N_layers * T * H_kv * d_head * 2 * bytes is it directly reducing?"
+- Choices: H_kv, T, bytes, N_layers.
+- Selecting a choice reveals whether it is correct and explains the actual tradeoff:
+  - H_kv is correct for GQA/MQA head sharing.
+  - T is context length, not head sharing.
+  - bytes is quantization/precision, a different compression family.
+  - N_layers is model depth, usually not changed by a cache method.
+- The checkpoint should then point the learner to change KV heads in the live calculator and watch the memory result.
+
+Question:
+Review this proposed micro-exercise as GPT Pro / Oracle in the role of a rigorous pedagogy and UI critic. Is this the right next small step for making the site more joyful, interactive, and non-trivial? Identify only high-leverage fixes before implementation. Separate:
+1. Blocking correctness/trust issues.
+2. Pedagogical improvements to make the learner think better.
+3. UI/copy refinements to keep it compact.
+4. What should stay out of scope.
+
+Please be concrete and tie feedback to `components/product/AttentionServingModule.tsx`.

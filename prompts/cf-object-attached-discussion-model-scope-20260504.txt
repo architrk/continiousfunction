@@ -1,0 +1,34 @@
+We are building Continuous Function, a Next.js/static-export-friendly learning platform for frontier AI papers, deep learning math, interactive concept notebooks, paper mapping, graph routes, equation objects, toy labs, and source-grounded AI companion prompts.
+
+Current product direction:
+- The site should become a research-learning operating system where concept, equation, paper, visualization, toy experiment, claim, and misconception objects can each carry a discussion thread.
+- We are early-stage, so do not design accounts, auth, full backend, notifications, moderation, billing, or real threaded comments yet.
+- We need a narrow first implementation that preserves object identity and makes future discussion infrastructure easy to attach.
+
+Relevant current state:
+- `/paper-map` already renders equation objects, source boxes, claim checks, toy-lab specs, and disabled discussion prompts.
+- `/graph` renders static curated learning objects and now computed/saved graph routes can persist `sourceObjects` in `cf:last-learning-route`.
+- `/paths/attention-serving` already has discussion prompt cards attached to exact claims.
+- Concept notebooks already have section-level AI actions and practice shells, but no object-attached discussion surface.
+- We need to keep static export safe and local-only for this checkpoint.
+
+Queue item:
+`object-attached-discussion-model`: "Design the discussion object model for concept, equation, paper, visualization, toy experiment, claim, and misconception threads; start with embedded Discourse links or a native placeholder that preserves object identity."
+
+Please answer as an implementation scope review:
+1. What is the smallest durable TypeScript data model for discussion anchors and thread placeholders?
+2. Where should this live (`lib/...`, reusable component, specific surfaces)?
+3. Which object types and stable IDs should be supported in v1?
+4. How should `/paper-map`, `/graph`, `/paths/attention-serving`, and concept notebooks use the same model without overbuilding?
+5. What UI should be built first so learners understand "discussion is attached to this object" even before real threads exist?
+6. What should not be implemented yet?
+7. What tests/build checks should be added?
+
+Constraints:
+- No backend, no accounts, no Discourse integration unless it is just an external URL field.
+- No localStorage write for discussion yet unless you strongly recommend one; preserve identity, not conversation history.
+- Keep object identity stable, bounded, and safe for future URLs.
+- Prefer code-native reusable components over duplicating card markup in each surface.
+- Keep the UI work-focused and clear, not social-media-like.
+
+Return a concrete patch plan with file names, types/components to create, props, validation helpers, and any high-risk copy or UX caveats. Findings and warnings first if there are risks.

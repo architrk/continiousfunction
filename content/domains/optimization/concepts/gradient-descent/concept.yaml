@@ -1,0 +1,66 @@
+id: gradient-descent
+title: "Gradient Descent"
+domain: optimization
+slug: gradient-descent
+difficulty: 2
+status: published
+importance: critical
+prerequisites:
+  - derivatives
+leads_to:
+  - sgd-momentum
+  - adam
+  - learning-rate-schedules
+related:
+  - backpropagation
+  - loss-landscapes
+  - gradient-clipping
+tags:
+  - optimization
+  - gradients
+  - training
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: boyd-2004-convex-optimization
+    kind: book
+    title: "Convex Optimization"
+    authors: "Boyd and Vandenberghe"
+    year: 2004
+    url: "https://web.stanford.edu/~boyd/cvxbook/"
+    note: "Grounds descent methods, gradients, step sizes, and convex-optimization intuition."
+  - id: goodfellow-2016-deep-learning
+    kind: book
+    title: "Deep Learning"
+    authors: "Goodfellow, Bengio, and Courville"
+    year: 2016
+    url: "https://www.deeplearningbook.org/"
+    note: "Grounds gradient-based learning as the optimization language used by neural networks."
+claim_checks:
+  - id: negative-gradient-local-descent
+    status: source-checked
+    claim: "Gradient descent uses the gradient as the direction of steepest local increase and updates parameters in the negative-gradient direction, with the learning rate controlling how far to trust the local approximation."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-06"
+      reviewer: "codex+oracle"
+      summary: "Checked Goodfellow et al. chapters 4.3 and 8.3 plus Boyd/Vandenberghe chapter 9: Goodfellow gives directional derivative u^T grad f, says -grad is downhill, gives x' = x - eps grad f with eps as positive learning rate, and uses Taylor expansion to show curvature can make too-large steps move uphill. Boyd frames descent as direction plus step size and states Euclidean steepest descent coincides with gradient descent."
+    source_ids:
+      - boyd-2004-convex-optimization
+      - goodfellow-2016-deep-learning
+    support: "Boyd and Vandenberghe ground descent methods, gradients, and step-size reasoning in convex optimization; Goodfellow et al. frame neural-network training as optimizing parameters of a cost function with gradient-based methods."
+    caveat: "This checks the local first-order update mechanism, not a guarantee of global convergence for nonconvex neural-network losses."
+    object_refs:
+      - "#source-span-boyd-2004-convex-optimization"
+      - "#source-span-goodfellow-2016-deep-learning"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Gradient descent turns local slope information into an iterative update rule for reducing a loss."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-01"
+estimated_read_time: 12

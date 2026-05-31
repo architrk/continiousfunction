@@ -1,0 +1,34 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for Continuous Function.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- A published concept must be intuitive, precise, visual, executable, and connected.
+- Oracle is advisory; classify issues so Codex can patch and verify.
+
+Concept:
+- ID: `kto`
+- Domain: `alignment`
+- Current status in repo: `published`
+- Current concern: this page looks much weaker than the newly published DPO page. It may need demotion and rebuild.
+
+Canonical source:
+- KTO paper: "KTO: Model Alignment as Prospect Theoretic Optimization", arXiv:2402.01306, v4 revised 2024-11-19, ICML 2024: https://arxiv.org/abs/2402.01306
+
+Context:
+- Continuous Function is building alignment as probability shaping.
+- DPO was just rebuilt around the KL-regularized RLHF optimum and reference-relative log odds. KTO should build from DPO without pretending it is just a generic saturating sigmoid demo.
+- The current KTO component is a dark gamified prospect-theory curve demo. I suspect it is pedagogically noisy, may not match the paper's exact loss, and may overclaim published quality.
+
+Please review the attached `concept.yaml`, `content.mdx`, `viz.tsx`, the current `KTOViz.tsx`, the recently rebuilt DPO page/component for comparison, and the quality bar.
+
+Return:
+1. Verdict: keep published, publish after fixes, demote to review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and missing P0 concepts.
+8. Exact patch-style edits for the highest-impact fixes when possible.
+
+Be strict. Do not say "looks good" unless the concept actually meets the quality bar.

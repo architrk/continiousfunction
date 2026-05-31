@@ -1,0 +1,30 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning concepts. The flagship route in `components/product/AttentionServingModule.tsx` teaches how attention mechanics connect to serving constraints. The repo quality bar says serious interactions should help the learner predict, manipulate, and observe one central claim without bloating the page.
+
+Current state:
+- The KV Memory Lab already has a predict-first checkpoint about `Mem_KV = B * N_layers * T * H_kv * d_head * 2 * bytes`.
+- The checkpoint locks controls until the learner commits to which symbol changes under GQA/MQA.
+- A correct KV answer saves one compact route observation to localStorage; that observation is used by home/graph resume surfaces.
+- The Decoding Lab currently has sliders for temperature, top-k, and top-p plus a token distribution list, but it is more inspect-first than predict-first.
+
+Proposed next move:
+Add a compact second checkpoint inside the Decoding Lab:
+"Temperature is high, but top-k = 1. What happens to diversity?"
+Candidate answers:
+1. Only one token can survive. (correct)
+2. High temperature restores all tokens.
+3. Top-p controls everything.
+4. The logits are unchanged so output is unchanged.
+
+Intended teaching point:
+- Temperature reshapes probabilities before filtering.
+- Top-k=1 truncates the candidate set to one token, so diversity is gone regardless of temperature.
+- Top-p may further truncate but is not the binding constraint when top-k=1.
+- Raw logits can remain the same while the sampling distribution changes.
+- This should not save a durable route observation yet; the existing KV checkpoint should remain the single compact resume checkpoint.
+
+Please review as GPT Pro / Oracle:
+1. Is this the right next predict-before-inspect interaction pedagogically, or is there a better minimal decoding checkpoint for this route?
+2. What exact copy, answer labels, and feedback would make the mechanism rigorous but approachable?
+3. What UI risks should I avoid so the module does not become cluttered?
+4. What implementation details or edge cases should I watch in the existing code?
+5. Return a concise patch plan plus publish/blocking concerns. Do not write a full diff.

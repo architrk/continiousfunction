@@ -12,6 +12,7 @@ leads_to:
   - long-context
 related:
   - batch-normalization
+  - swiglu
 tags:
   - attention-transformers
   - layer-normalization
@@ -21,9 +22,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Normalize activations per token to stabilize training: LayerNorm, RMSNorm, and why pre-norm transformers train deeper."
+sources:
+  - id: ba-2016-layer-normalization
+    kind: paper
+    title: "Layer Normalization"
+    authors: "Ba, Kiros, and Hinton"
+    year: 2016
+    url: "https://arxiv.org/pdf/1607.06450"
+    note: "Direct PDF. Grounds LayerNorm statistics over hidden units in a layer for one training case/current time step, with adaptive gain/bias applied after normalization."
+  - id: zhang-2019-rmsnorm
+    kind: paper
+    title: "Root Mean Square Layer Normalization"
+    authors: "Zhang and Sennrich"
+    year: 2019
+    url: "https://arxiv.org/pdf/1910.07467"
+    note: "Direct PDF. Grounds RMSNorm as RMS-based rescaling that removes the mean statistic; reviews LayerNorm's mean/std form and gives RMSNorm's rescaling-invariance frame."
+claim_checks:
+  - id: per-token-centering-vs-rms-scaling
+    status: source-checked
+    claim: "LayerNorm normalizes one token/example vector across its features by subtracting that vector's mean and dividing by its standard deviation, then applying learned gain/bias. RMSNorm uses the same per-vector rescaling frame but omits mean-centering and divides by the root mean square."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Ba Sec.3/RNN equations and Zhang/Sennrich Secs.3-4. Ba supports per-case/layer statistics over one activation vector with shared mu,sigma and learned gain/bias. Zhang/Sennrich review LN as mean/std scaling, define RMSNorm as a_i/RMS(a)*g_i, and state it removes the mean statistic. Local math/code/demo match finite-vector centering vs RMS-only scaling; transformer usage is not reviewed."
+    source_ids:
+      - ba-2016-layer-normalization
+      - zhang-2019-rmsnorm
+    support: "Ba et al. compute LayerNorm statistics over all hidden units in one layer for a single training case and apply learned gain/bias after normalization. Zhang and Sennrich review LN's mean/std form, define RMSNorm as a_i/RMS(a) with gain, and state it removes the mean statistic. Local math, code, and demo instantiate finite-vector centering vs RMS-only scaling."
+    caveat: "Checks only normalization mechanics and finite-vector witnesses. The token/example wording maps papers' per-case/per-layer statistics to the page's transformer frame; this does not verify norm placement, LLaMA/adoption claims, affine variants, or training-stability guarantees."
+    object_refs:
+      - "#source-span-ba-2016-layer-normalization"
+      - "#source-span-zhang-2019-rmsnorm"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Normalize one token/example vector across features: LayerNorm centers and scales, while RMSNorm keeps RMS-based scaling without mean-centering."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 14
-

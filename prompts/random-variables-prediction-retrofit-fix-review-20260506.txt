@@ -1,0 +1,35 @@
+We are in the Continuous Function repo. Oracle/GPT Pro reviewed the Random Variables prediction-first retrofit and returned no-publish for one blocker:
+
+- The implementation used a 0.01 tolerance both for grading ties and for selecting/displaying top fibers, so near ties could be emitted as co-winners even when one measured value had the exact largest mass.
+- It also recommended changing "Actual dominant outcome" to "Actual dominant measured value" or "fiber".
+
+Fix applied:
+
+- Replaced the tolerance with `MASS_EPSILON = 1e-9` for exact tie/top-fiber semantics.
+- Binary `high`/`parity` now classify `tie` only on exact mass equality within `1e-9`.
+- `topFibers` now selects only exact max-mass fibers.
+- Reveal copy now says "Actual dominant measured value".
+- Demo state now also emits `largest mass value`, `prediction label`, and `actual label`.
+- Added a near-tie parity regression that sets measurement to parity and tilt to -0.01, predicts `X = 1, odd fiber`, reveals, and asserts the winner is exactly `X=1 <- {1, 3, 5}` without an even co-winner.
+
+Verification after fix:
+
+- `npm test -- RandomVariablesViz DemoPredictionCheckpoint --runInBand` passed: 7 tests.
+- `npm test -- --runInBand` passed: 27 suites, 171 tests.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed.
+- Headless Chrome production route checks on `http://localhost:3056/domains/probability/random-variables/` passed for 1280x900 and 390x844:
+  - no horizontal overflow,
+  - no demo-local pre-reveal support/E/Var/largest/winner/57% leak,
+  - correct default high-roll post-reveal readouts,
+  - reset hides the old result,
+  - near-tie parity reveals exactly `X=1 <- {1, 3, 5}` with no even co-winner.
+
+Please review only whether the blocker is fixed and whether any new blocker was introduced.
+
+Return:
+
+- Verdict: publish or no-publish.
+- Blocking issues only.
+- Any small non-blocking follow-up if important.

@@ -1,0 +1,27 @@
+You are reviewing four review-stage Continuous Function concept drafts that form the bridge from calculus to neural-network training:
+
+1. Gradient Descent
+2. Computation Graphs
+3. Reverse-Mode Automatic Differentiation
+4. Backpropagation
+
+Project context:
+- Continuous Function is a slow-growth mathematical atlas for deep learning and mathematical foundations.
+- Serious concepts should move cleanly through Intuition -> Math -> Code -> Interactive Demo.
+- These drafts are intentionally `status: review`, not published, because they still need critique and eventual visual/demo work.
+- The content validator currently passes with 0 warnings / 0 errors, but validation is only structural.
+
+Please audit the attached files as a strict reviewer.
+
+Answer with:
+1. Publish/no-publish judgment for each draft.
+2. Blocking correctness issues, especially notation, dimensions, chain-rule direction, VJP/JVP terminology, and code/math equivalence.
+3. Blocking pedagogy issues: missing bridge, overloaded scope, misleading simplification, or unclear prerequisite.
+4. The smallest concrete edits needed before these can be promoted from review to published.
+5. One best first interactive demo for this four-page bridge. It should be direct, precise, and buildable in repo-native SVG/canvas/React.
+
+Constraints:
+- Do not propose a broad rewrite.
+- Do not ask for survey-style expansion.
+- Prioritize mathematical trust and learner orientation over completeness.
+- Treat generated images as optional UI exploration only; final math artifacts should be code-native and interactive.

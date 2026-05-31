@@ -12,32 +12,38 @@ A good teacher model knows more than that. It might say:
 - 0.12 dog
 - 0.04 fox
 
-Those "almost" probabilities are **dark knowledge**: they encode similarity structure learned from data. Distillation trains a student to match the teacher's distribution, so the student can inherit the teacher's behavior even with fewer parameters or a different architecture.
+Those "almost" probabilities carry what is often called **dark knowledge**: relative non-target probabilities can encode similarity structure learned from data. Distillation trains a student to match the teacher's distribution, so the student can inherit the teacher's behavior even with fewer parameters or a different architecture.
 
-In LLMs, distillation often looks like "train a smaller model to match the next-token distribution of a larger model." This is also the idea behind draft models for speculative decoding: the draft is a distilled approximation of the final model.
+In LLMs, distillation often extends the same intuition to next-token distributions: a smaller model is trained to approximate a larger model's token probabilities. Speculative decoding uses a fast draft model as an approximation to the final model; the draft may be distilled, but speculative decoding's correctness comes from verification rather than distillation itself.
 
 ## Math
 
 Let the teacher and student produce logits $z_T(x)$ and $z_S(x)$ over a discrete output space.
 
-With temperature $\\tau>0$, define softened probabilities:
+With temperature $\tau>0$, define softened probabilities:
 
-$$p_T^{(\\tau)}(y\\mid x)=\\mathrm{softmax}(z_T(x)/\\tau),\\qquad
-p_S^{(\\tau)}(y\\mid x)=\\mathrm{softmax}(z_S(x)/\\tau).$$
+$$
+p_T^{(\tau)}(y\mid x)=\mathrm{softmax}(z_T(x)/\tau),\qquad
+p_S^{(\tau)}(y\mid x)=\mathrm{softmax}(z_S(x)/\tau).
+$$
 
-A standard distillation term matches these distributions with KL divergence:
+A standard modern way to write the soft-target distillation term is teacher-student KL divergence; with a fixed teacher distribution, this is equivalent to soft-target cross-entropy up to a teacher-only constant:
 
-$$\\mathcal L_{\\text{KD}} = \\tau^2\\,\\mathrm{KL}\\!\\left(p_T^{(\\tau)}(\\cdot\\mid x)\\ \\|\\ p_S^{(\\tau)}(\\cdot\\mid x)\\right),$$
+$$
+\mathcal L_{\text{KD}} = \tau^2\,\mathrm{KL}\!\left(p_T^{(\tau)}(\cdot\mid x)\ \|\ p_S^{(\tau)}(\cdot\mid x)\right),
+\qquad
+\mathcal L = (1-\alpha)\,\mathcal L_{\text{hard}} + \alpha\,\mathcal L_{\text{KD}}.
+$$
 
 where:
 
-$$\\mathrm{KL}(p\\|q)=\\sum_y p(y)\\log\\frac{p(y)}{q(y)}.$$
+$$
+\mathrm{KL}(p\|q)=\sum_y p(y)\log\frac{p(y)}{q(y)}.
+$$
 
-Often you mix distillation with a hard-label loss (classification) or a standard next-token loss (LLMs):
+The second term can be a hard-label loss for classification or a standard next-token loss in an LLM setting.
 
-$$\\mathcal L = (1-\\alpha)\\,\\mathcal L_{\\text{hard}} + \\alpha\\,\\mathcal L_{\\text{KD}}.$$
-
-Rule of thumb: increasing $\\tau$ makes the teacher distribution softer (more informative about non-top classes), but if $\\tau$ is too large it becomes nearly uniform and carries little signal.
+Rule of thumb: increasing $\tau$ makes the teacher distribution softer (more informative about non-top classes), but if $\tau$ is too large it becomes nearly uniform and carries little signal.
 
 ## Code
 
@@ -65,5 +71,4 @@ for tau in [1.0, 2.0, 4.0]:
 
 ## Interactive Demo
 
-No demo yet for this concept. A good demo would let you drag teacher/student logits, adjust $\\tau$ and $\\alpha$, and watch how the student distribution is pulled toward the teacher.
-
+The demo below asks you to predict the largest non-label pull before revealing the softened teacher distribution. The key invariant is that distillation transfers structure in the teacher's non-argmax probabilities, not only the hard top label.

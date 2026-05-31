@@ -1,0 +1,47 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning joyful, visual, intuitive, and mathematically serious. We use GPT Pro/Oracle as a review partner before and after implementation.
+
+This is the implementation review for the Edge of Stability demo-shell rollout slice.
+
+Oracle previously selected EdgeOfStabilityViz over LossLandscape3DViz and scoped it as:
+- Add Edge of Stability as a second notebook stage under /domains/optimization/loss-landscapes/.
+- Preserve legacy foundation behavior by default.
+- Notebook interaction should be one action: choose eta and predict safe / edge / diverge relative to lambda_max and the local quadratic GD line 2/eta.
+- Hide legacy challenge/game/countdown/manual-exploration UI in notebook mode.
+- Render the valley and sharpness-vs-threshold charts directly in notebook mode.
+- Do not leak actual regime or diagnostics before reveal through UI or demo state.
+- Use toy/empirical caveats and avoid universal claims.
+
+What I changed:
+- Added chrome and conceptId props to EdgeOfStabilityViz, preserving legacy default behavior.
+- Added notebook-only state for prediction, revealed, and trace playback.
+- Stopped the old always-running animation in notebook mode; trace starts only after reveal.
+- Added safe / edge / diverge prediction buttons.
+- Added reveal-gated valley and sharpness charts. Before reveal, threshold line is visible but the trace is hidden.
+- Added trace-derived diagnostics: max ratio, tail mean ratio, first edge step, first crossing step, first divergence step, loss trend, and actual regime.
+- Added notebook-only demo-state emission. Before reveal it includes eta, threshold, prediction, revealed=false, and caveat only. After reveal it adds actual regime and diagnostics.
+- Added Edge as a second VizShell / VizStageAdapter stage in content/domains/optimization/concepts/loss-landscapes/viz.tsx.
+- Updated content.mdx and concept.yaml to describe the two-stage notebook page.
+
+Local checks already run:
+- npm run validate-content passed with 0 warnings and 0 errors.
+- npm run typecheck passed.
+- Route checks returned 200:
+  - /domains/optimization/loss-landscapes/
+  - /foundations/loss-landscapes/
+- Headless Chrome check on the filesystem route passed:
+  - no document horizontal overflow at mobile width
+  - the route contains both the existing 2D loss stage and the new Edge stage
+  - Edge notebook root is present
+  - no visible notebook text: Mystery eta, Run Simulation, WATCH, Correct!, Not quite, Try Another Challenge, Manual exploration mode, Chaos Mode, where modern deep learning lives, sweet spot, Start Race, optimizer race
+  - no pre-reveal diagnostics leak: actual regime, max ratio, tail mean, first crossing, loss trend, Toy trace result
+  - pre-reveal trace path count is 0
+  - pre-reveal demo state summary is neutral and does not leak actual regime or ratios
+  - after reveal, status appears and trace path count is 1
+
+Please review for blockers only:
+1. Must-fix correctness or pedagogy blockers.
+2. Must-fix UI/accessibility blockers.
+3. Must-fix code architecture/regression blockers.
+4. Exact wording fixes if the current copy still overclaims.
+
+Do not request broad expansion or future-slice ideas unless necessary to ship this slice. Say explicitly whether the slice is acceptable after the listed fixes.

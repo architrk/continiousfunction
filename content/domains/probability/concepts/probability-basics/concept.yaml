@@ -8,18 +8,46 @@ importance: critical
 prerequisites: []
 leads_to:
   - random-variables
+  - bayesian-inference
 related:
-  - maximum-likelihood
+  - distributions
 tags:
   - probability
   - basics
   - conditioning
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: highschool
-short_description: "Events live in a sample space, and probabilities obey a few axioms; from there you get conditional probability, independence, and Bayes' rule."
+sources:
+  - id: deisenroth-2020-mml
+    kind: book
+    title: "Mathematics for Machine Learning"
+    authors: "Deisenroth, Faisal, and Ong"
+    year: 2020
+    url: "https://mml-book.github.io/"
+    note: "Grounds probability basics, conditional probability, Bayes' rule, and expectation for ML readers."
+claim_checks:
+  - id: event-axioms-conditioning-renormalization
+    status: source-checked
+    claim: "In a finite probability model, events are subsets of a sample space whose probabilities are nonnegative, add over disjoint unions, total one on the whole space, and get renormalized when conditioning on observed evidence."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-06"
+      reviewer: "codex+oracle"
+      summary: "Checked MML chapter 6.1-6.3: it defines the sample space as all outcomes, event space as subsets of Omega, assigns each event A a probability P(A) in [0,1], and requires total mass P(Omega)=1. Its finite coin example adds the probabilities of disjoint outcomes in a union, section 6.2 defines conditional probabilities as table fractions, and section 6.3 derives Bayes' rule with evidence normalizing the posterior."
+    source_ids:
+      - deisenroth-2020-mml
+    support: "Mathematics for Machine Learning introduces probability for ML through probability spaces, events, conditional probability, independence, Bayes' theorem, and expectation, matching this page's finite-event and conditioning framing."
+    caveat: "This checks the finite-event probability and conditioning bridge used here, not continuous regular conditional probabilities or philosophical interpretations of probability."
+    object_refs:
+      - "#source-span-deisenroth-2020-mml"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Events are subsets of a sample space, and probabilities obey a few axioms; from there you get conditional probability, independence, and Bayes' rule."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 12

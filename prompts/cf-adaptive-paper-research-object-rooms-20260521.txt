@@ -1,0 +1,35 @@
+You are Oracle/GPT Pro reviewing Continuous Function as a learning product and visual system.
+
+Project standard:
+- Continuous Function should become the most intuitive, rigorous, and worthwhile learning experience for the mathematics behind modern deep learning and frontier AI.
+- The product character is the Living Notebook Lab: a mathematical atlas, notebook, and lab surface where questions, objects, predictions, evidence, invariants, and next moves stay connected.
+- The user has been generating direction images and wants the site to become a cohesive, high-quality learner-centered research-learning environment, not a collection of disconnected pages.
+- Recent implementation translated the strongest generated-image pattern into adaptive Learner, Researcher, Experimenter, and Professor lenses on concept notebooks, the homepage starter route, and domain route heroes.
+
+Surface:
+- Page or flow: Paper Mapper and Research Reading Room as the next object-attached learning rooms.
+- Current learner goal: start from a paper span, equation, claim, source, code witness, demo state, or discussion object and know exactly what to inspect, predict, verify, ask, or learn next.
+- Current concern: Paper Mapper and Research Reading Room risk feeling like separate utilities instead of one continuous object-attached learning loop. The next implementation should avoid generic chat/feed/community patterns and instead make each role lens pedagogically useful.
+- Files attached: PaperConceptMapper, ResearchReadingRoom, ConceptNotebookPage call site, design language, product north star, generated-image study notes, and current TODO.
+
+Review the attached UI/product surface and return a buildable critique.
+
+Please focus on:
+1. How Paper Mapper should expose the current paper object: span, equation, claim, source check, code witness, demo witness, misconception, or next route.
+2. How Research Reading Room should become a source-grounded research commons without turning into a noisy comment feed.
+3. How the four role lenses should differ:
+   - Learner: prerequisite repair and mental model.
+   - Researcher: source, claim, uncertainty, assumption.
+   - Experimenter: prediction, toy witness, measurement, failure case.
+   - Professor: teachable sequence, misconception, transfer.
+4. What the first implementation slice should be, keeping it small enough to ship with desktop/mobile visual QA.
+5. Which parts should be repo-native React/CSS components and which parts would benefit from one more generated image or storyboard first.
+
+Return exactly:
+1. Top 5 product/pedagogy issues.
+2. The smallest high-impact implementation slice.
+3. Specific UI copy for the object lens panel.
+4. Desktop/mobile layout risks.
+5. A publish/no-publish judgment for doing this as the next task.
+
+Do not propose a marketing page. Do not propose generic AI chat. Keep the answer implementation-facing and rigorous.

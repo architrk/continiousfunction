@@ -1,0 +1,11 @@
+{
+  "version": "continuous-function.paper-mapper.v1",
+  "source": {
+    "raw": "https://arxiv.org/pdf/2405.12345 KV cache compression for long-context LLM serving",
+    "kind": "pdf",
+    "pdfUrl": "https://arxiv.org/pdf/2405.12345"
+  },
+  "hints": {
+    "matchedTerms": ["kv", "cache", "serving", "long context"]
+  }
+}

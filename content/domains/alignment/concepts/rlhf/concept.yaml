@@ -1,5 +1,5 @@
 id: rlhf
-title: "Preference-Based Alignment: RLHF, Reward Modeling, Constitutional AI"
+title: "RLHF: Reward Modeling + KL-Regularized Policy Optimization"
 domain: alignment
 slug: rlhf
 difficulty: 4
@@ -7,25 +7,63 @@ status: published
 importance: important
 prerequisites:
   - maximum-likelihood
+  - cross-entropy
   - kl-divergence
 leads_to:
   - dpo
   - reward-hacking
+  - process-reward-models
 related:
-  - dpo
-  - reward-hacking
-  - scaling-laws
+  - kto
 tags:
   - alignment
   - rlhf
   - reward-modeling
-  - dpo
+  - preferences
+  - bradley-terry
+  - kl-regularization
 has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "How we steer models with human preferences: train a reward model, then optimize a policy with KL regularization (and variants like DPO)."
+sources:
+  - id: christiano-2017-human-preferences
+    kind: paper
+    title: "Deep reinforcement learning from human preferences"
+    authors: "Christiano et al."
+    year: 2017
+    url: "https://arxiv.org/abs/1706.03741"
+    note: "Grounds preference-labeled reward models as a way to train behavior from comparative human feedback."
+  - id: ouyang-2022-instructgpt
+    kind: paper
+    title: "Training language models to follow instructions with human feedback"
+    authors: "Ouyang et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2203.02155"
+    note: "Grounds the modern instruction-following RLHF pipeline: demonstrations, preference rankings, reward model, and PPO."
+claim_checks:
+  - id: preference-reward-model-kl-policy-optimization
+    status: source-checked
+    claim: "Preference-based RLHF learns a reward model from human comparisons and optimizes a policy against it; InstructGPT-style RLHF adds SFT and PPO with a KL penalty to the SFT/reference policy."
+    source_ids:
+      - christiano-2017-human-preferences
+      - ouyang-2022-instructgpt
+    support: "Christiano trains a reward predictor from trajectory-segment comparisons and optimizes a policy on predicted reward. Ouyang describes demonstrations -> SFT, rankings -> reward model, and PPO against RM reward with per-token KL to the SFT policy. Local math/code/demo instantiate reward gaps, sigmoid preferences, pi_ref*exp(r/beta), KL, shift invariance, and proxy-gap warnings."
+    caveat: "Reviews only preference-modeling and KL-regularized optimization mechanics. It does not certify reward as true human objective, PPO exact attainment of the finite-action optimum, PPO-ptx/pretraining-gradient details, reward-hacking prevention, or broad alignment guarantees."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Christiano supports learning a reward predictor from pairwise trajectory preferences and optimizing a policy on predicted reward. Ouyang supports InstructGPT demonstrations -> SFT, rankings -> RM, and PPO against RM with per-token KL to SFT. Local math/code/demo are toy witnesses for sigmoid preferences, KL probability shaping, shift invariance, and proxy-gap caveats."
+    object_refs:
+      - "#source-span-christiano-2017-human-preferences"
+      - "#source-span-ouyang-2022-instructgpt"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "RLHF trains a reward model from pairwise preferences, then reweights a reference policy toward high learned reward while a KL penalty limits distribution shift."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 20

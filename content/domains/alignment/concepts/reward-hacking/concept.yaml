@@ -1,5 +1,5 @@
 id: reward-hacking
-title: "Reward Hacking & Overoptimization: Goodhart's Law in Preference Optimization"
+title: "Reward Hacking: Overoptimizing Preference Proxies"
 domain: alignment
 slug: reward-hacking
 difficulty: 4
@@ -7,13 +7,12 @@ status: published
 importance: important
 prerequisites:
   - rlhf
+leads_to:
+  - process-reward-models
+related:
   - dpo
   - kto
-leads_to: []
-related:
   - scaling-laws
-  - efficiency
-  - dpo
 tags:
   - alignment
   - reward-hacking
@@ -23,9 +22,58 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "When a learned reward becomes the target, optimization finds loopholes: distribution shift, proxy errors, and why KL/ensembles/conservative objectives are used in practice."
+sources:
+  - id: amodei-2016-concrete-safety
+    kind: paper
+    title: "Concrete Problems in AI Safety"
+    authors: "Amodei et al."
+    year: 2016
+    url: "https://arxiv.org/abs/1606.06565"
+    note: "Names reward hacking as an accident-risk problem caused by optimizing the wrong objective proxy."
+  - id: gao-2022-reward-overoptimization
+    kind: paper
+    title: "Scaling Laws for Reward Model Overoptimization"
+    authors: "Gao et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2210.10760"
+    note: "Studies RLHF reward-model overoptimization: optimizing an imperfect proxy too much can reduce gold-standard reward-model score; includes KL-penalty effects."
+  - id: manheim-2018-goodhart
+    kind: paper
+    title: "Categorizing Variants of Goodhart's Law"
+    authors: "Manheim and Garrabrant"
+    year: 2018
+    url: "https://arxiv.org/abs/1803.04585"
+    note: "Classifies Goodhart variants and explains metric/proxy overoptimization failure modes; supports the Goodhart table rather than the selected-error mechanism itself."
+  - id: christiano-2017-human-preferences
+    kind: paper
+    title: "Deep reinforcement learning from human preferences"
+    authors: "Christiano et al."
+    year: 2017
+    url: "https://arxiv.org/abs/1706.03741"
+    note: "Provides the preference-learning setup where learned rewards can become overoptimized proxies."
+claim_checks:
+  - id: reward-hacking-selected-proxy-error
+    status: source-checked
+    claim: "Reward hacking can be modeled as selected proxy error: stronger optimization can raise expected learned reward by shifting probability toward outputs where the proxy overestimates true utility; KL anchoring and page-local uncertainty penalties can slow this shift but do not make the proxy the target."
+    source_ids:
+      - amodei-2016-concrete-safety
+      - gao-2022-reward-overoptimization
+    support: "Amodei grounds reward hacking as an objective that can be gamed or pervert designer intent. Gao grounds RLHF overoptimization of an imperfect reward-model proxy: proxy optimization can raise proxy reward while gold/ground-truth reward peaks or falls. Local math/code/demo instantiate finite-action selected proxy error, KL anchoring, and page-local LCB scoring."
+    caveat: "Toy finite-action witness only. Gao's KL result is mixed and hyperparameter-sensitive; the uncertainty/LCB penalty is page-local, not sourced as a sufficient mitigation. No direct human utility access, universal phase law, prevention claim, or broad alignment guarantee."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Amodei supports reward hacking as a wrong-objective/gamed-reward problem. Gao supports RLHF reward-model overoptimization where proxy optimization can improve learned reward while hindering gold reward. The page's finite-action math/code/demo are acceptable toy witnesses for selected proxy error, KL-softmax shift, and local uncertainty braking."
+    object_refs:
+      - "#source-span-amodei-2016-concrete-safety"
+      - "#source-span-gao-2022-reward-overoptimization"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "When an imperfect preference proxy is optimized past its validation regime, policy mass shifts toward reward-model errors; KL, ensembles, LCBs, and monitoring slow this down but do not make the proxy true."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
-estimated_read_time: 18
-
+updated: "2026-05-07"
+estimated_read_time: 22

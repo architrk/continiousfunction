@@ -1,0 +1,48 @@
+Project: Continuous Function, a Next.js/React learning atlas for deep learning and math.
+
+Current product objective:
+Make learning feel joyful, deep, interactive, rigorous, and worth returning to. The site should grow slowly through high-quality concept slices rather than bulk content dumps. The current proven workflow is: choose one bounded mechanism-first concept slice, implement prediction-before-reveal behavior, hide answer-bearing state until the learner commits, emit compact measured demo state after reveal for grounded AI/research handoff, run Oracle/GPT Pro review, fix blockers, then ship.
+
+Current branch/state:
+- Branch: private/research-learning-loop-20260505
+- Latest shipped slice: transformer-architecture-prediction-first-residual-shape-reveal.
+- Recent completed local reveal slices in order include: Derivatives, Computation Graphs, Backpropagation, Attention Geometry top-key, Self-Attention value mixing, Attention Backprop gradient credit, and Transformer Architecture residual-shape preservation.
+- The product audit still says the north-star goal is not complete. Remaining concrete gaps include older demos without deep concept-specific reveal states, claim-level source-quality work, and live account-backed collaboration/memory.
+
+Task:
+Select the next concrete P0 slice after the Transformer Architecture residual-shape reveal. Do not brainstorm broadly. Choose exactly one bounded implementation target that best advances the product goal right now.
+
+Candidate route/component surface:
+Published routes with viz files include:
+- alignment: dpo, kto, process-reward-models, reward-hacking, rlhf
+- attention-transformers: efficient-attention, flash-attention, grouped-query-attention, layer-normalization, long-context, rope, swiglu, tokenization-vocabulary
+- efficiency: efficiency, knowledge-distillation, mixture-of-experts, pruning, quantization
+- generative-models: diffusion, flow-matching, normalizing-flows, score-matching, vaes
+- information-theory: kl-divergence
+- llm-systems: decoding-sampling, llm-serving, moe-serving, speculative-decoding, structured-decoding
+- optimization: adam, gradient-descent, learning-rate-schedules, loss-landscapes
+- probability: bayesian-inference, cross-entropy, distributions, maximum-likelihood, probability-basics, random-variables
+- representation-learning: representations, sparse-autoencoders
+- scaling: double-descent, ntk, scaling-laws, test-time-compute, tree-search-reasoning
+
+Hard constraints:
+- Pick one target and one invariant only.
+- Prefer a target that is high-value for deep learning foundations or frontier AI, still has older/demo-shell-level prediction framing, and can be improved without auth/database/API work.
+- Keep the slice local and shippable in one PR/commit.
+- The implementation should be testable with focused Jest and browser checks.
+- No secrets, no external API calls, no database migrations.
+- Do not choose a slice that duplicates the exact mechanism already completed in recent attention/calculus/probability work.
+
+Desired output:
+1. Exact target route/component files to inspect first.
+2. Slice name.
+3. One-sentence invariant the learner should predict.
+4. Correct prediction option and 2-3 distractor options.
+5. Pre-reveal visible state.
+6. Pre-reveal hidden state.
+7. Post-reveal measured demo-state fields.
+8. Lifecycle/reset requirements.
+9. Focused tests to add.
+10. Why this is the best next step versus 2 plausible alternatives.
+
+Please be strict and pragmatic. The best answer is a small, deep, joyful mechanism that improves the atlas more than another broad route wrapper.

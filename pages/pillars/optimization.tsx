@@ -3,10 +3,10 @@
 import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
-import ExplorableSection from '../../components/ExplorableSection'
-import PhasePortrait2D from '../../components/PhasePortrait2D'
-import TimeSeriesPlot from '../../components/TimeSeriesPlot'
+import ExplorableLayout, { useExplorable } from '@/components/explorable/ExplorableLayout'
+import ExplorableSection from '@/components/explorable/ExplorableSection'
+import PhasePortrait2D from '@/components/charts/PhasePortrait2D'
+import TimeSeriesPlot from '@/components/charts/TimeSeriesPlot'
 import { VectorField2D, Point2D, TimeSeries, numericalGradient } from '../../lib/mathObjects'
 
 // Explore in depth link component
@@ -33,15 +33,15 @@ function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label
 
 // Import visualization components from foundations (canonical source with gamification)
 import dynamic from 'next/dynamic'
-const EdgeOfStability = lazy(() => import('../../components/foundations/EdgeOfStabilityViz'))
-const NewtonSchulz = lazy(() => import('../../components/foundations/NewtonSchulzViz'))
-const GrokkingPhase = lazy(() => import('../../components/foundations/GrokkingViz'))
-const DPOvsRLHF = lazy(() => import('../../components/foundations/DPOViz'))
+const EdgeOfStability = lazy(() => import('@/components/foundations/EdgeOfStabilityViz'))
+const NewtonSchulz = lazy(() => import('@/components/foundations/NewtonSchulzViz'))
+const GrokkingPhase = lazy(() => import('@/components/foundations/GrokkingViz'))
+const DPOvsRLHF = lazy(() => import('@/components/foundations/DPOViz'))
 // LossLandscape3D requires React Three Fiber which needs React 19 - use dynamic import with SSR disabled
-const LossLandscape3D = dynamic(() => import('../../components/foundations/LossLandscape3DViz'), { ssr: false })
-const BackpropAttention = lazy(() => import('../../components/foundations/AttentionBackpropViz'))
-const TaskVectors = lazy(() => import('../../components/foundations/TaskVectorViz'))
-const NeuralScalingLaws = lazy(() => import('../../components/foundations/NeuralScalingViz'))
+const LossLandscape3D = dynamic(() => import('@/components/foundations/LossLandscape3DViz'), { ssr: false })
+const BackpropAttention = lazy(() => import('@/components/foundations/AttentionBackpropViz'))
+const TaskVectors = lazy(() => import('@/components/foundations/TaskVectorViz'))
+const NeuralScalingLaws = lazy(() => import('@/components/foundations/NeuralScalingViz'))
 
 function LoadingFallback() {
   return (

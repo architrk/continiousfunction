@@ -252,18 +252,19 @@ export default function NextMovesPanel({ concept }: Props) {
 
       <style jsx>{`
         .next-moves-panel {
-          background: rgba(8, 12, 20, 0.6);
-          border: 1px solid rgba(245, 158, 11, 0.2);
-          border-radius: 12px;
+          background: rgba(255, 251, 245, 0.86);
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
           padding: 1.5rem;
           margin-top: 2rem;
+          box-shadow: 0 14px 30px rgba(7, 15, 25, 0.04);
         }
 
         .next-moves-panel h2 {
           font-family: var(--font-display);
           font-size: 1.25rem;
           margin-bottom: 0.5rem;
-          color: var(--accent);
+          color: #1f6f78;
         }
 
         .panel-intro {
@@ -285,23 +286,24 @@ export default function NextMovesPanel({ concept }: Props) {
           gap: 0.4rem;
           padding: 0.5rem 0.75rem;
           border-radius: 20px;
-          background: rgba(245, 158, 11, 0.1);
-          border: 1px solid rgba(245, 158, 11, 0.3);
-          color: var(--text-primary);
+          background: rgba(239, 247, 245, 0.86);
+          border: 1px solid rgba(31, 111, 120, 0.18);
+          color: #17202a;
           cursor: pointer;
           font-size: 0.85rem;
           transition: all 0.2s;
         }
 
         .question-chip:hover:not(:disabled) {
-          background: rgba(245, 158, 11, 0.2);
-          border-color: var(--accent);
+          background: rgba(255, 251, 245, 0.96);
+          border-color: rgba(31, 111, 120, 0.38);
+          text-shadow: none;
         }
 
         .question-chip.active {
-          background: var(--accent);
-          color: #0a0a0a;
-          border-color: var(--accent);
+          background: #1f6f78;
+          color: #ffffff;
+          border-color: #1f6f78;
         }
 
         .question-chip.no-content {
@@ -314,7 +316,7 @@ export default function NextMovesPanel({ concept }: Props) {
         }
 
         .expanded-question {
-          background: rgba(0, 0, 0, 0.3);
+          background: rgba(248, 243, 234, 0.86);
           border-radius: 8px;
           padding: 1rem;
           margin-bottom: 1rem;
@@ -323,7 +325,7 @@ export default function NextMovesPanel({ concept }: Props) {
         .expanded-question h3 {
           font-size: 1rem;
           margin-bottom: 1rem;
-          color: var(--accent);
+          color: #1f6f78;
         }
 
         .relation-cards {
@@ -335,8 +337,8 @@ export default function NextMovesPanel({ concept }: Props) {
         .relation-card {
           display: block;
           padding: 1rem;
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.2);
+          background: rgba(255, 251, 245, 0.9);
+          border: 1px solid rgba(27, 36, 48, 0.08);
           border-left-width: 3px;
           border-radius: 8px;
           text-decoration: none;
@@ -344,8 +346,9 @@ export default function NextMovesPanel({ concept }: Props) {
         }
 
         .relation-card:hover {
-          background: rgba(245, 158, 11, 0.1);
+          background: rgba(239, 247, 245, 0.86);
           transform: translateX(4px);
+          text-shadow: none;
         }
 
         .card-header {
@@ -375,8 +378,8 @@ export default function NextMovesPanel({ concept }: Props) {
           font-size: 0.75rem;
           padding: 0.2rem 0.5rem;
           border-radius: 4px;
-          background: rgba(245, 158, 11, 0.15);
-          color: var(--accent);
+          background: rgba(239, 247, 245, 0.9);
+          color: #1f6f78;
         }
 
         .card-description,
@@ -433,8 +436,8 @@ export default function NextMovesPanel({ concept }: Props) {
           align-items: center;
           gap: 0.35rem;
           padding: 0.4rem 0.75rem;
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
+          background: rgba(255, 251, 245, 0.88);
+          border: 1px solid rgba(27, 36, 48, 0.08);
           border-radius: 6px;
           text-decoration: none;
           font-size: 0.8rem;
@@ -442,8 +445,9 @@ export default function NextMovesPanel({ concept }: Props) {
         }
 
         .relation-link:hover {
-          background: rgba(245, 158, 11, 0.15);
-          border-color: rgba(245, 158, 11, 0.3);
+          background: rgba(239, 247, 245, 0.86);
+          border-color: rgba(31, 111, 120, 0.24);
+          text-shadow: none;
         }
 
         .link-icon {

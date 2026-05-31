@@ -4,32 +4,36 @@ title: "Quantization: Compressing Models to Integers"
 
 ## Intuition
 
-Large models are often bottlenecked by **memory bandwidth**, not raw FLOPs. If you can move 4x less data, you often get close to 2-4x speedups in the real world.
+Large models are often bottlenecked by **memory bandwidth**, not raw FLOPs. If memory bandwidth is the bottleneck, moving less data can improve throughput, though the actual speedup depends on kernels, hardware, batch size, and which tensors are quantized.
 
 Quantization is the core trick: store weights (and sometimes activations) in low-bit integers like INT8 or INT4, with a scale factor that maps those integers back to approximate floating-point values.
 
-The main enemy is not "rounding error in the average case." It's **outliers**: a small number of large weights/activations can force a scale that wastes resolution for everything else.
+A major enemy, especially in large LLM quantization, is **outliers**: a small number of large weights/activations can force a scale that wastes resolution for everything else.
 
 ## Math
 
 ### Uniform quantization (per-tensor)
 
-Given a tensor of weights with min/max values, choose a step size:
+Given a tensor of weights with min/max values, choose one step size for the whole tensor and round onto integer levels:
 
-$$\\Delta = \\frac{w_{\\max}-w_{\\min}}{2^b-1},$$
-
-and quantize to integers:
-
-$$w_q = \\mathrm{round}\\left(\\frac{w-w_{\\min}}{\\Delta}\\right),\\qquad
-\\hat w = w_q\\,\\Delta + w_{\\min}.$$
+$$
+\Delta = \frac{w_{\max}-w_{\min}}{2^b-1},\qquad
+w_q=\mathrm{clip}\!\left(\mathrm{round}\!\left(\frac{w-w_{\min}}{\Delta}\right),0,2^b-1\right),\qquad
+\hat w=w_q\Delta+w_{\min}.
+$$
 
 Here $b$ is the number of bits (8 for INT8, 4 for INT4).
 
-### Per-channel scaling (common for LLMs)
+### Finer-grained scaling: per-channel / row-wise
 
-Instead of one scale for the whole matrix, use one per output channel/row:
+Instead of one scale for the whole matrix, use one scale per output channel/row. For signed symmetric quantization:
 
-$$W_q=\\mathrm{round}(W/s),\\qquad s_i=\\max\\big(|W_{i,:}|\\big)/127.$$
+$$
+q_{\max}=2^{b-1}-1,\qquad
+s_i=\frac{\max_j |W_{i,j}|}{q_{\max}},\qquad
+Q_{i,j}=\mathrm{clip}\!\left(\mathrm{round}\!\left(\frac{W_{i,j}}{s_i}\right),-q_{\max},q_{\max}\right),\qquad
+\hat W_{i,j}=s_iQ_{i,j}.
+$$
 
 This usually improves quality because different channels have different dynamic ranges.
 
@@ -59,5 +63,4 @@ print("memory reduction: fp16->int8 ~2x, fp16->int4 ~4x (weight storage)")
 
 ## Interactive Demo
 
-No demo yet for this concept. A good demo would show how different scaling choices change quantization error, and how outliers destroy effective resolution.
-
+The demo below asks you to predict which scaling strategy survives an outlier before revealing the quantization error. The key invariant is that a single shared scale can waste most integer levels on one large value, while per-channel scales recover resolution for ordinary rows.

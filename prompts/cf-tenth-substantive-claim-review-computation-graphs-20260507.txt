@@ -1,0 +1,37 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, calculus/computation-graphs#graph-bookkeeping-local-reverse-accumulation.
+
+Claim under review:
+"For one executed differentiable program, a computation graph uses elementary-operation nodes and dependency edges, stores each reused intermediate node value once in the forward pass, and makes reverse-mode/backprop local: downstream sensitivities from every use accumulate at a node before being sent to its inputs."
+
+Cited source:
+Baydin et al., "Automatic Differentiation in Machine Learning: a Survey", JMLR 18(153):1-43 (2018), https://jmlr.csail.mit.edu/papers/v18/17-468.html
+
+Primary-source evidence I checked before this prompt:
+- JMLR PDF lines 472-494: evaluation traces and computational graphs are used to visualize dependency relations between intermediate variables; AD works from a numeric evaluation trace with input, intermediate, and output values needed for derivatives by chain-rule composition.
+- JMLR PDF lines 487-489: Figure 4 is a computational graph for an example function with intermediate variables.
+- JMLR PDF lines 727-738: reverse mode is a generalized backpropagation algorithm; it runs code forward, populates intermediate variables, records graph dependencies by bookkeeping, then propagates adjoints backward.
+- JMLR PDF lines 745-783: a reused variable's output sensitivity is the sum of downstream contributions, computed incrementally, and the reverse pass starts from output adjoint 1 to obtain input derivatives in one reverse pass.
+- JMLR PDF lines 1061-1068: in neural-network training, backpropagation is a special case of AD applying reverse mode to a network error objective to compute partial derivatives for weight updates.
+- JMLR PDF lines 1082-1097: static and dynamic computational graph terminology distinguishes prebuilt graph execution from define-by-run graphs constructed on the fly from regular program execution.
+
+Attached local files:
+- content/domains/calculus/concepts/computation-graphs/concept.yaml
+- content/domains/calculus/concepts/computation-graphs/content.mdx
+- content/domains/calculus/concepts/computation-graphs/viz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether Baydin et al. substantively supports the claim as written, not merely that the page has a source ID.
+2. Check whether the local math/code/demo witnesses match the claim's scope: one executed differentiable DAG/program trace, elementary operations, dependency edges, stored/reused intermediate value, local reverse accumulation from multiple downstream uses, and propagation to inputs.
+3. Identify any overclaim, missing caveat, misleading wording, or witness mismatch.
+4. If publishable after small edits, provide the exact revised evidence_review.summary and caveat wording you would accept.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require full framework coverage, arbitrary mutation/aliasing support, all control-flow conventions, optimal graph elimination, or full vector-Jacobian theory unless the current wording accidentally claims them.
+- If the source URL should align with the reviewed JMLR page rather than the arXiv page, say so explicitly as a small fix.

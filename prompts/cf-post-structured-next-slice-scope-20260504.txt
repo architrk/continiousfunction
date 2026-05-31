@@ -1,0 +1,50 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning feel joyful, deep, rigorous, visual, and worth returning to: learners should move from intuition to math to code to manipulation, then follow cross-domain links without losing the central invariant.
+
+We have just completed the ninth shared demo-shell rollout slice:
+1. Speculative Decoding
+2. Sparse Autoencoders
+3. Mixture of Experts
+4. Diffusion forward process
+5. Loss Landscapes 2D sharpness/SAM
+6. Score Matching DSM target
+7. Flow Matching conditional velocity target
+8. Edge of Stability learning-rate threshold prediction
+9. Structured Decoding token-mask prediction
+
+I need you to select the next concrete slice to implement now. This should be one bounded implementation slice, not a roadmap.
+
+Current constraints:
+- Keep edits scoped to the repo.
+- Preserve legacy /foundations behavior by default when touching foundation components.
+- Prefer existing content/components that can be improved into the shared VizShell / VizStageAdapter / notebook pattern.
+- Avoid broad rewrite, broad taxonomy work, or vague product polish.
+- Use image generation only if a targeted bitmap/visual brief materially improves orientation; prefer code-native visuals for precise interactive demos.
+- The slice must have clear verification gates: typecheck, validate-content, browser/mobile checks, and Oracle implementation review.
+
+Candidate directions now:
+
+1. SSM Hybrids / Mamba bridge pass under `/domains/attention-transformers/ssm-hybrids/`.
+   - Pros: major modern architecture bridge; connects recurrence, convolution kernels, KV memory, selectivity, and long-context systems.
+   - Existing page is review-status with SSM and Mamba mechanism demos.
+   - Risk: claims must be carefully caveated; toy demos must not imply full Mamba/Jamba/RecurrentGemma implementations.
+
+2. LossLandscape3D as another stage under `/domains/optimization/loss-landscapes/`.
+   - Pros: completes the optimization/loss-landscapes route.
+   - Risk: 3D optimizer race can become visual spectacle unless narrowed to one precise claim.
+
+3. A route-level return/joy loop improvement.
+   - Pros: directly supports learners coming back and resuming meaningful questions.
+   - Risk: could become product-broad unless it is one small UI slice.
+
+4. Another content/demo shell slice from an important high-traffic concept.
+   - Only choose this if it is clearly stronger than the above.
+
+Please choose exactly one next slice and return:
+1. Selected slice and why it is the best next move after Structured Decoding.
+2. One central learner action/prediction/manipulation.
+3. Specific files/components likely to change.
+4. What to avoid, including overclaims and shallow visuals.
+5. Whether image generation should be used, and if yes the exact visual brief.
+6. Implementation acceptance checklist and verification gates.
+
+Do not propose multiple parallel workstreams. I will implement the single chosen slice and send it back for Oracle review.

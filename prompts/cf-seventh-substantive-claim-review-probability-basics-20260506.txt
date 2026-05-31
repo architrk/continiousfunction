@@ -1,0 +1,41 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas for deep learning concepts. The current trust work separates source-linked claim metadata from substantively reviewed source support. A claim should only be marked `evidence_review.state: substantive-reviewed` when the exact cited source, caveat, and local witness refs honestly support the bounded claim.
+
+Current change to review:
+- I marked one Probability Basics claim as `substantive-reviewed` in `content/domains/probability/concepts/probability-basics/concept.yaml`.
+- I regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`, moving the queue from 6 reviewed / 45 pending to 7 reviewed / 44 pending.
+- I updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml` to say attention, Adam, Gradient Descent, Cross-Entropy, Distributions, Maximum Likelihood, and Probability Basics are reviewed, with Random Variables next.
+
+Exact claim:
+"In a finite probability model, events are subsets of a sample space whose probabilities are nonnegative, add over disjoint unions, total one on the whole space, and get renormalized when conditioning on observed evidence."
+
+Primary source checked:
+- Deisenroth, Faisal, and Ong, "Mathematics for Machine Learning", official free PDF from https://mml-book.github.io/
+  - Chapter 6.1-6.3, Construction of a Probability Space / Discrete and Continuous Probabilities / Sum Rule, Product Rule, and Bayes' Theorem.
+
+Source evidence I checked:
+- MML chapter 6.1 says a probability space models random outcomes and introduces sample space, event space, and probability measure.
+- It defines the sample space `Omega` as the set of all possible outcomes.
+- It says a subset `A` of the sample space is in the event space if we can observe whether an outcome is in `A`; for discrete probability distributions, the event space is often the power set of `Omega`.
+- It says each event `A` gets a probability `P(A)`; the probability of a single event lies in `[0,1]`, and the total probability over all outcomes is `P(Omega)=1`.
+- In its finite coin example, it computes `P(($, £) union (£, $)) = P(($, £)) + P((£, $))`, using additivity over distinct/disjoint outcomes.
+- MML section 6.2 defines conditional probabilities in a finite probability table as fractions such as `P(Y=y_j | X=x_i)=n_ij/c_i` and `P(X=x_i | Y=y_j)=n_ij/r_j`, which is exactly row/column renormalization.
+- MML section 6.3 gives the product rule, derives Bayes' theorem, and says the evidence/marginal likelihood normalizes the posterior.
+
+Local witness alignment:
+- The page defines a finite probability space `(Omega, F, P)`, with `Omega` as outcomes and `F` as events, usually all subsets of `Omega` in a finite model.
+- The page lists nonnegativity, `P(Omega)=1`, and additivity over disjoint unions.
+- The page defines conditional probability as `P(E | O)=P(E cap O)/P(O)` for `P(O)>0` and explains that conditioning keeps compatible worlds and renormalizes mass back to `1`.
+- The page derives product rule and Bayes' rule, and the code/demo show a finite two-coin hidden-state table where conditioning on Head or Tail filters a column and divides by the column evidence.
+- The page caveat limits this review to finite-event probability and the conditioning bridge, not continuous regular conditional probabilities or philosophical interpretations of probability.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the Probability Basics claim is honestly marked `substantive-reviewed` given the source evidence, caveat, and local witness refs.
+3. Whether the review summary is too broad, too vague, or misses an important caveat.
+4. Whether the generated queue/audit/TODO wording remains honest and internally consistent.
+5. Any blocker fixes only. Do not propose broad product ideas here.
+
+Constraints:
+- Keep scope limited to finite probability spaces, finite-event additivity, conditional probability as renormalization, product rule, and Bayes' rule.
+- Do not certify continuous regular conditional probability, measure-theoretic probability spaces beyond the page caveat, philosophical interpretations of probability, or all possible independence/expectation uses.
+- Treat attached source IDs and witness refs as review targets unless the evidence summary and caveat make the bounded support clear.

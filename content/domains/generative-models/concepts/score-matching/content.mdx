@@ -4,45 +4,70 @@ title: "Score Matching & Score-Based Generative Models"
 
 ## Intuition
 
-If a probability distribution $p(x)$ is a landscape, then $\\log p(x)$ is a height map, and the **score**
+If a probability distribution $p(x)$ is a landscape, then $\log p(x)$ is a height map, and the **score**
 
-$$s(x)=\\nabla_x \\log p(x)$$
+$$
+s(x)=\nabla_x \log p(x)
+$$
 
 is the vector field that points "uphill" toward higher density.
 
-Score-based generative modeling is the idea: instead of learning $p(x)$ directly (which requires a normalizing constant), learn the **gradient of the log-density**. If you know the score field, you can sample by following dynamics that move points from noise into data.
+Score-based generative modeling is the idea: instead of learning $p(x)$ directly (which requires a normalizing constant), learn the **gradient of the log-density**. With estimated time-dependent scores and a specified reverse-time SDE/ODE or Langevin-style sampler, you can move points from noise toward data-like samples.
 
-This is the hidden backbone of diffusion: predicting noise $\\epsilon$ at each noise level is (up to a known scale) predicting the score.
+In Gaussian-noising diffusion parameterizations, predicting noise $\epsilon$ at each noise level is often equivalent, up to a known scale, to estimating a score.
 
 ## Math
 
-### The score function
+### The score function and score matching
 
-$$s(x)=\\nabla_x\\log p(x).$$
+For a non-normalized model $p_\theta(x)=q_\theta(x)/Z(\theta)$, the
+data-gradient score ignores the constant $Z(\theta)$:
 
-It depends only on the *shape* of the density, not its absolute normalization.
+$$
+\begin{aligned}
+s_\theta(x)
+&=\nabla_x\log p_\theta(x)
+ = \nabla_x\log q_\theta(x),\\
+\mathcal{L}_{SM}
+&=\mathbb{E}_{p_{\text{data}}}\left[
+\frac{1}{2}\|s_\theta(x)\|^2+\mathrm{tr}(\nabla_x s_\theta(x))
+\right].
+\end{aligned}
+$$
 
-### Score matching (classical form)
-
-One objective for learning $s_\\theta(x)\\approx \\nabla_x\\log p_{\\text{data}}(x)$ is:
-
-$$\\mathcal{L}_{SM}=\\mathbb{E}_{p_{\\text{data}}}\\left[\\frac{1}{2}\\|s_\\theta(x)\\|^2+\\mathrm{tr}(\\nabla_x s_\\theta(x))\\right].$$
-
-This avoids evaluating $p(x)$ but is hard to implement directly because of the divergence term.
+This avoids evaluating the normalizing constant, but is hard to implement directly because the derivative-based objective still includes the divergence term.
 
 ### Denoising score matching (diffusion-friendly)
 
-Add Gaussian noise: $\\tilde x = x + \\sigma\\epsilon$, with $\\epsilon\\sim\\mathcal N(0,I)$. Then:
+Add Gaussian noise. The conditional target, noise-prediction scale, and
+reverse-time dynamics share the same learned score field:
 
-$$\\nabla_{\\tilde x}\\log q(\\tilde x\\mid x)= -\\frac{\\tilde x-x}{\\sigma^2} = -\\frac{\\epsilon}{\\sigma}.$$
+$$
+\begin{aligned}
+\tilde x &= x+\sigma\epsilon,\qquad \epsilon\sim\mathcal{N}(0,I),\\
+\nabla_{\tilde x}\log q_\sigma(\tilde x\mid x)
+&=-\frac{\tilde x-x}{\sigma^2}=-\frac{\epsilon}{\sigma},\\
+s_\theta(\tilde x,\sigma)&\approx -\frac{\epsilon_\theta(\tilde x,\sigma)}{\sigma},\\
+dx_{\text{rev}}
+&=\left[f(x,t)-g(t)^2s_\theta(x,t)\right]dt+g(t)d\bar w,\\
+dx_{\text{flow}}
+&=\left[f(x,t)-\tfrac{1}{2}g(t)^2s_\theta(x,t)\right]dt.
+\end{aligned}
+$$
 
 Denoising score matching trains:
 
-$$\\mathcal{L}_{DSM}=\\mathbb E\\,\\big\\|s_\\theta(\\tilde x,\\sigma) + \\epsilon/\\sigma\\big\\|^2.$$
+$$
+\mathcal{L}_{DSM}=\mathbb E\,\big\|s_\theta(\tilde x,\sigma) + \epsilon/\sigma\big\|^2.
+$$
 
-So predicting noise $\\epsilon_\\theta$ is equivalent (up to scaling) to predicting the score:
+So predicting noise $\epsilon_\theta$ is equivalent (up to scaling) to predicting the score:
 
-$$s_\\theta(\\tilde x,\\sigma) \\approx -\\frac{\\epsilon_\\theta(\\tilde x,\\sigma)}{\\sigma}.$$
+$$
+s_\theta(\tilde x,\sigma) \approx -\frac{\epsilon_\theta(\tilde x,\sigma)}{\sigma}.
+$$
+
+The conditional DSM target $\nabla_{\tilde x}\log q(\tilde x\mid x)$ is the label for one known clean source; the marginal score field $\nabla_{\tilde x}\log p_\sigma(\tilde x)$ averages over possible clean sources.
 
 ## Code
 
@@ -68,4 +93,3 @@ print("max|diff|:", float(np.max(np.abs(score_from_eps - score_from_xt))))
 Use the demo to see the score field and how diffusion "noise prediction" corresponds to a scaled score estimate.
 
 {/* viz.tsx component renders here if it exists */}
-

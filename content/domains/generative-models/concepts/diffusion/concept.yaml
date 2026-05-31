@@ -24,8 +24,53 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: graduate
+sources:
+  - id: sohl-dickstein-2015-nonequilibrium
+    kind: paper
+    title: "Deep Unsupervised Learning using Nonequilibrium Thermodynamics"
+    authors: "Sohl-Dickstein et al."
+    year: 2015
+    url: "https://arxiv.org/abs/1503.03585"
+    note: "Early diffusion framing: a gradual noising process paired with learned reverse dynamics."
+  - id: ho-2020-ddpm
+    kind: paper
+    title: "Denoising Diffusion Probabilistic Models"
+    authors: "Ho, Jain, and Abbeel"
+    year: 2020
+    url: "https://arxiv.org/abs/2006.11239"
+    note: "Grounds DDPM forward noising equations and simplified epsilon-prediction training; the page demo uses the forward noising equation."
+  - id: song-2020-score-sde
+    kind: paper
+    title: "Score-Based Generative Modeling through Stochastic Differential Equations"
+    authors: "Song et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2011.13456"
+    note: "Connects score-based modeling, diffusion processes, and reverse-time SDE sampling."
+claim_checks:
+  - id: forward-noising-noise-prediction-score-bridge
+    status: source-checked
+    claim: "Diffusion can be taught as gradual corruption plus learned reverse denoising: Sohl-Dickstein frames forward diffusion/reversal; Ho supplies q(x_t|x_0), reparameterized x_t, and epsilon-prediction MSE; Song Score SDE supplies the score-based reverse-time sampling bridge."
+    source_ids:
+      - sohl-dickstein-2015-nonequilibrium
+      - ho-2020-ddpm
+      - song-2020-score-sde
+    support: "Sohl-Dickstein supports iterative forward corruption plus learned reverse diffusion. Ho supports the DDPM closed-form q(x_t|x_0), reparameterized x_t sample, and simplified L_simple epsilon-prediction MSE. Song supports estimating time-dependent scores and using the reverse-time SDE/numerical solvers as the score-based reverse-sampling bridge. Local math/code/demo witness DDPM forward noising only."
+    caveat: "Exported math refs cover only q(x_t|x_0) and reparameterized x_t. Code/demo isolate forward noising/backward replay, not a trained sampler. Excludes guidance, latent diffusion, sampler variants, flow matching, production image quality, and broad modality claims."
+    object_refs:
+      - "#source-span-sohl-dickstein-2015-nonequilibrium"
+      - "#source-span-ho-2020-ddpm"
+      - "#source-span-song-2020-score-sde"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Sohl-Dickstein supports iterative forward corruption plus learned reversal; Ho supports DDPM q(x_t|x_0), reparameterized x_t, and L_simple epsilon-MSE; Song grounds reverse-time SDE sampling from time-dependent scores. Local math/code/demo witness only forward noising; epsilon-MSE and Score-SDE mechanics are source-supported, not locally simulated."
 short_description: "Denoise noise into data: the diffusion forward process, score matching, and modern sampling via reverse-time dynamics and flow matching."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 22

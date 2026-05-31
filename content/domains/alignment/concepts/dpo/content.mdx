@@ -1,51 +1,202 @@
 ---
-title: "Direct Preference Optimization: RL-Free Alignment from Human Preferences"
+title: "Direct Preference Optimization"
 ---
 
 ## Intuition
 
-RLHF has two moving parts: learn a reward model from comparisons, then run an RL algorithm (often PPO) to push the policy toward high reward while staying close to a reference model.
+Suppose a prompt $x$ has two candidate completions:
 
-DPO keeps the *core idea* (move probability mass toward preferred outputs, stay anchored to a reference), but drops the RL loop. Instead, it becomes a supervised learning problem on preference pairs:
+- $y_w$: the preferred completion
+- $y_\ell$: the rejected completion
 
-- For a prompt $x$, you have a preferred completion $y_w$ (winner) and a dispreferred one $y_\\ell$ (loser).
-- You want your policy $\\pi_\\theta$ to assign **higher relative odds** to $y_w$ than to $y_\\ell$, compared to a reference $\\pi_{\\text{ref}}$.
-- A single scalar $\\beta$ controls how far you're willing to move.
+RLHF usually trains a reward model $r_\phi(x,y)$, then runs an RL algorithm to make the policy choose higher-reward outputs while staying close to a reference model.
 
-If you remember one sentence: **DPO is logistic regression on log-probability ratios.**
+DPO asks a sharper question: can the policy itself act as the reward model?
+
+Under the KL-regularized RLHF objective, the answer is yes, but only up to a prompt-only constant. If a policy has moved away from the reference model, that movement gives a convenient representative of an implicit reward class:
+
+$$
+\hat r_\theta(x,y)
+=
+\beta\log
+\frac{\pi_\theta(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}.
+$$
+
+The exact reward can differ from this representative by a term that depends only on $x$. Only reward differences matter for preference pairs, so that prompt-only term cancels, and DPO compares how much the current policy has changed the winner-vs-loser odds relative to the reference policy.
+
+The core idea is:
+
+> A preferred response should beat a rejected response by more than the reference model already made it beat it.
+
+That "more than the reference" phrase is the whole mechanism. DPO is not just "make the winner more likely." It is binary cross-entropy on reference-relative log odds.
 
 ## Math
 
-### The KL-regularized objective (what we're secretly trying to do)
+The source-level representative is the beta-scaled policy/reference log-ratio:
 
-For a fixed prompt $x$, a common goal is:
+$$
+\hat r_\theta(x,y)
+=
+\beta\log\frac{\pi_\theta(y\mid x)}{\pi_{\mathrm{ref}}(y\mid x)}.
+$$
 
-$$\\max_{\\pi}\\; \\mathbb E_{y\\sim\\pi(\\cdot\\mid x)}[r(x,y)] - \\beta\\,\\mathrm{KL}(\\pi(\\cdot\\mid x)\\,\\|\\,\\pi_{\\text{ref}}(\\cdot\\mid x)).$$
+### Setup and shapes
 
-This says: increase reward, but don't drift too far from the reference distribution.
+For a prompt $x$, $\pi_\theta(y\mid x)$ is the full sequence probability of completion $y$. In an autoregressive language model,
 
-The optimizer has a "reweighting" form:
+$$
+\log \pi_\theta(y\mid x)
+=
+\sum_t \log \pi_\theta(y_t\mid x,y_{<t}).
+$$
 
-$$\\pi^*(y\\mid x) \\propto \\pi_{\\text{ref}}(y\\mid x)\\,\\exp\\!\\left(r(x,y)/\\beta\\right).$$
+A preference datum is $(x,y_w,y_\ell)$. All compared completions must have positive probability under the reference policy for the log ratio to be finite.
 
-### DPO loss (fit the reweighting from comparisons)
+Define the policy and reference log-odds:
 
-Given pair $(x, y_w, y_\\ell)$, DPO uses:
+$$
+a_\theta
+=
+\log\pi_\theta(y_w\mid x)
+-
+\log\pi_\theta(y_\ell\mid x),
+$$
 
-$$\\mathcal{L}_{\\text{DPO}}(\\theta) =
--\\log\\sigma\\!\\left(
-\\beta\\Big[
-\\log\\tfrac{\\pi_\\theta(y_w\\mid x)}{\\pi_{\\text{ref}}(y_w\\mid x)}
--\\log\\tfrac{\\pi_\\theta(y_\\ell\\mid x)}{\\pi_{\\text{ref}}(y_\\ell\\mid x)}
-\\Big]
-\\right).$$
+and
 
-Interpretation:
+$$
+a_{\mathrm{ref}}
+=
+\log\pi_{\mathrm{ref}}(y_w\mid x)
+-
+\log\pi_{\mathrm{ref}}(y_\ell\mid x).
+$$
 
-- If the winner already has higher relative odds than the loser, the margin is positive and the loss is small.
-- If not, the loss pushes $\\pi_\\theta$ to increase $\\log\\pi_\\theta(y_w\\mid x)$ and/or decrease $\\log\\pi_\\theta(y_\\ell\\mid x)$, without forgetting the reference baseline.
+The reference-relative margin is
+
+$$
+m_\theta=a_\theta-a_{\mathrm{ref}}.
+$$
+
+DPO predicts the preference probability as
+
+$$
+P_\theta(y_w\succ y_\ell\mid x)
+=
+\sigma(\beta m_\theta).
+$$
+
+For one hard winner/loser label, the DPO loss is
+
+$$
+\mathcal L_{\mathrm{DPO}}
+=
+-\log\sigma(\beta m_\theta).
+$$
+
+Let $s_\theta=\sigma(\beta m_\theta)$. The browser demo below uses a soft target $p^*$ so the finite target log-odds is visible:
+
+$$
+\mathcal L_{\mathrm{soft}}
+=
+-p^*\log s_\theta
+-(1-p^*)\log(1-s_\theta).
+$$
+
+Ordinary hard-label DPO is the edge case $p^*\to 1$, where an isolated two-response target diverges.
+
+### From KL-regularized RLHF to DPO
+
+For a fixed prompt $x$, write $K_x(\pi)$ for the distribution-level KL from a candidate policy to the reference policy at that prompt. The direction is $\pi(\cdot\mid x)$ to $\pi_{\mathrm{ref}}(\cdot\mid x)$:
+
+$$
+K_x(\pi)
+=
+\mathrm{KL}_x(\pi\|\pi_{\mathrm{ref}}).
+$$
+
+Also write the expected reward as
+
+$$
+R_x(\pi)
+=
+\mathbb E_{y\sim\pi(\cdot\mid x)}[r(x,y)].
+$$
+
+The KL-regularized RLHF objective is to maximize
+
+$$
+J_x(\pi)
+=
+R_x(\pi)-\beta K_x(\pi).
+$$
+
+Its optimizer has the reweighted form
+
+$$
+\pi_r(y\mid x)
+=
+\frac{\pi_{\mathrm{ref}}(y\mid x)\exp(r(x,y)/\beta)}
+{Z(x)}.
+$$
+
+Rearrange it:
+
+$$
+r(x,y)
+=
+\beta\log
+\frac{\pi_r(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}
++
+\beta\log Z(x).
+$$
+
+The partition term $Z(x)$ depends on the prompt, not on which completion won. Bradley-Terry preferences use reward differences, so the prompt-only term cancels between $y_w$ and $y_\ell$.
+
+### Bradley-Terry likelihood
+
+Bradley-Terry models a preference as
+
+$$
+P(y_w\succ y_\ell\mid x)
+=
+\sigma(r(x,y_w)-r(x,y_\ell)).
+$$
+
+Substituting the implicit reward gives the DPO probability. With the margin $m_\theta=a_\theta-a_{\mathrm{ref}}$ from above:
+
+$$
+P_\theta(y_w\succ y_\ell\mid x)
+=\sigma(\beta m_\theta).
+$$
+
+Maximum likelihood on preference labels gives the DPO loss. This is why DPO is a supervised objective even though it comes from a KL-regularized RLHF derivation.
+
+### What beta does
+
+Here $\beta$ follows the DPO paper's convention: it is the coefficient on the KL penalty in the KL-regularized RLHF objective.
+
+- Larger $\beta$ means a stronger reference anchor in the underlying RLHF objective.
+- Smaller $\beta$ means a given preference probability requires a larger policy/reference log-ratio gap.
+- In the DPO loss, $\beta$ also scales the sigmoid margin, so it affects optimization dynamics. Do not read "larger $\beta$" as simply "trust preferences more."
+
+For a soft preference probability $p^*$, matching $p^*$ requires
+
+$$
+m^*=\frac{\operatorname{logit}(p^*)}{\beta}.
+$$
+
+### Limits of the mechanism
+
+DPO removes the explicit reward-model training stage and the RL loop. It does not remove the assumptions behind preference learning.
+
+It still relies on a pairwise preference model such as Bradley-Terry. It only identifies rewards up to prompt-dependent constants. It needs a usable reference policy. And in an isolated two-response hard-label setting, the logistic loss can keep increasing the winner-over-loser log-ratio rather than settling at a finite target.
 
 ## Code
+
+This finite-action witness verifies the derivation directly in a clean realizable toy setting. A synthetic reward defines the KL-regularized target policy. DPO sees full-support, exact soft Bradley-Terry preference probabilities and recovers the same unconstrained categorical policy through reference-relative log-ratio cross-entropy. Sampled hard labels, missing pairs, or a restricted neural parameterization would not make the equality exact in finite data.
 
 ```python
 import numpy as np
@@ -55,27 +206,77 @@ def softmax(z):
     e = np.exp(z)
     return e / e.sum()
 
-beta = 2.0
-pi_ref = np.array([0.2, 0.8])  # [winner, loser]
-log_ref = np.log(pi_ref)
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-x))
 
-logits = np.array([0.0, 0.0])  # learn policy logits for [winner, loser]
-lr = 0.4
+def kl(p, q):
+    return float(np.sum(p * (np.log(p) - np.log(q))))
 
-for _ in range(40):
-    pi = softmax(logits)
-    log_pi = np.log(pi + 1e-12)
-    margin = beta * ((log_pi[0] - log_ref[0]) - (log_pi[1] - log_ref[1]))
-    p = 1.0 / (1.0 + np.exp(-margin))          # sigmoid(margin)
-    grad = (p - 1.0) * beta * np.array([1.0, -1.0])  # d/dlogits of -log(sigmoid(margin))
-    logits -= lr * grad
+# One prompt, three possible completions.
+# Shapes: ref, reward, logits, pi are all (K,).
+ref = np.array([0.15, 0.70, 0.15], dtype=float)
+reward = np.array([1.0, 0.2, -0.5], dtype=float)
+beta = 0.5
+log_ref = np.log(ref)
 
-print("ref probs   [w,l]:", np.round(pi_ref, 3))
-print("learned probs[w,l]:", np.round(softmax(logits), 3))
+# KL-regularized RLHF optimum:
+# pi*(y|x) is proportional to pi_ref(y|x) exp(r(x,y)/beta).
+pi_star = ref * np.exp(reward / beta)
+pi_star = pi_star / pi_star.sum()
+
+# DPO sees pairwise preferences. We use exact Bradley-Terry
+# probabilities instead of sampled hard labels so the equality is visible.
+pairs = [(0, 1), (0, 2), (1, 2)]
+
+# Initialize policy at the reference.
+logits = log_ref.copy()
+lr = 0.2
+
+for _ in range(3000):
+    grad = np.zeros_like(logits)
+
+    for i, j in pairs:
+        rel_log_odds = (logits[i] - logits[j]) - (log_ref[i] - log_ref[j])
+        pred = sigmoid(beta * rel_log_odds)
+
+        target = sigmoid(reward[i] - reward[j])
+
+        # Binary cross-entropy gradient for the soft preference target.
+        g = beta * (pred - target)
+        grad[i] += g
+        grad[j] -= g
+
+    logits -= lr * grad / len(pairs)
+    logits -= logits.mean()  # logits are identifiable only up to a constant
+
+pi = softmax(logits)
+
+print("reference policy:      ", np.round(ref, 3))
+print("KL-reg optimum:        ", np.round(pi_star, 3))
+print("DPO learned policy:    ", np.round(pi, 3))
+print("KL(pi || ref):         ", round(kl(pi, ref), 4))
+
+assert np.allclose(pi, pi_star, atol=1e-6)
+
+for i, j in pairs:
+    implicit_gap = beta * (
+        (np.log(pi[i]) - np.log(ref[i]))
+        - (np.log(pi[j]) - np.log(ref[j]))
+    )
+    reward_gap = reward[i] - reward[j]
+    assert abs(implicit_gap - reward_gap) < 1e-6
+
+for i, j in pairs:
+    dpo_pref = sigmoid(beta * (
+        (np.log(pi[i]) - np.log(ref[i]))
+        - (np.log(pi[j]) - np.log(ref[j]))
+    ))
+    bt_pref = sigmoid(reward[i] - reward[j])
+    assert abs(dpo_pref - bt_pref) < 1e-6
 ```
 
 ## Interactive Demo
 
-Use the demo to see how $\\beta$ and the reference policy shape the update, and why DPO is best thought of as "moving probability mass" under a trust-region constraint.
+Use the demo as a ratio machine. It collapses the world to two completions, $y_w$ and $y_\ell$, so its KL is the binary KL over this toy pair, not the full language-model KL over all completions. Change the reference winner probability, the soft target preference, and $\beta$. Watch how the required policy log-odds moves relative to the reference, how the DPO probability changes, and when the two-action KL from the reference spikes.
 
 {/* viz.tsx component renders here if it exists */}

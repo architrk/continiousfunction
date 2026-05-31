@@ -21,9 +21,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: graduate
+sources:
+  - id: jacot-2018-ntk
+    kind: paper
+    title: "Neural Tangent Kernel: Convergence and Generalization in Neural Networks"
+    authors: "Jacot, Gabriel, and Hongler"
+    year: 2018
+    url: "https://arxiv.org/abs/1806.07572"
+    note: "Introduces the neural tangent kernel as the infinite-width kernel governing gradient-descent dynamics."
+  - id: lee-2019-wide-networks-linear
+    kind: paper
+    title: "Wide Neural Networks of Any Depth Evolve as Linear Models Under Gradient Descent"
+    authors: "Lee et al."
+    year: 2019
+    url: "https://arxiv.org/abs/1902.06720"
+    note: "Grounds the linearized-training view of wide neural networks near initialization."
+claim_checks:
+  - id: ntk-linearized-kernel-dynamics
+    status: source-checked
+    claim: "In infinite-width NTK limits, or when wide-network training is well approximated by linearization near initialization, the parameter-gradient inner-product NTK governs squared-loss gradient-descent function dynamics like a kernel method."
+    source_ids:
+      - jacot-2018-ntk
+      - lee-2019-wide-networks-linear
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-20"
+      reviewer: codex
+      summary: "Reviewed source TeX: Jacot et al. support the NTK as the parameter-gradient kernel whose infinite-width limit becomes deterministic/constant and governs least-squares gradient-flow dynamics as kernel gradient descent; Lee et al. support the first-order Taylor/linearized near-initialization view for sufficiently wide networks. Local math/code/demo instantiate the fixed-gradient kernel ODE only in this scoped regime."
+    support: "Jacot et al. introduce the NTK as the parameter-gradient inner-product kernel governing infinite-width gradient-flow dynamics. Lee et al. support the near-initialization linearized-training view for sufficiently wide networks. Local math shows the kernel definition and function-space ODE; code/demo illustrate fixed-gradient kernel behavior."
+    caveat: "This does not certify finite-width feature learning, all architectures or parameterizations, all losses, all optimizers, or generalization guarantees. The checked claim is scoped to infinite-width or explicitly linearized wide-network NTK dynamics near initialization."
+    object_refs:
+      - "#source-span-jacot-2018-ntk"
+      - "#source-span-lee-2019-wide-networks-linear"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "A limit where wide neural networks behave like kernel methods: the model linearizes around initialization and training becomes kernel regression."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-20"
 estimated_read_time: 18
-

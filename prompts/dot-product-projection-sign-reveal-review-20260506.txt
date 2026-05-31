@@ -1,0 +1,54 @@
+You are reviewing a narrow Continuous Function learning-platform slice for publish/no-publish.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- The current product direction is prediction-first, mechanism-first concept learning: learners should commit to a causal/mathematical prediction before a visualization reveals the measured result.
+- The shared `emitDemoState` event lets a demo carry compact measured values into the concept page's demo checkpoint, saved local route snapshot, research-room prompt, and future account-backed learner memory.
+- This slice must stay repo-only and static-export-safe. It must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+
+Earlier Oracle/GPT Pro scoped the next P0 slice after Tree Search as:
+- Concept: `linear-algebra/dot-product`
+- Required mechanism: predict the sign of the projection of `u` onto `v` before seeing derived dot/cos/angle/projection values.
+- Learner should see grid/axes, draggable `u` and `v`, coordinate readout, neutral presets, prediction buttons, and disabled reveal until a prediction is selected.
+- Learner should not see `u dot v`, `cos theta`, `theta`, alignment badge/styling, projection coefficient/length, `proj_v(u)`, perpendicular residual, angle arc, projection/residual arrows, right-angle marker, leaking preset labels, or full emitted demo state before reveal.
+- Degenerate vectors near the origin should disable reveal and avoid classifying the state as orthogonal.
+- After reveal, show prediction result, dot/cos/angle/projection/residual values, and emit compact measured demo state.
+- Clear stale shared demo state before reveal, on unmount, and whenever vectors/presets reset the local reveal. Toggling projection/angle after reveal may keep the reveal and re-emit visible-layer state.
+
+Implementation summary:
+- Retrofitted `content/domains/linear-algebra/concepts/dot-product/viz.tsx` with:
+  - `prediction: 'positive' | 'orthogonal' | 'negative'`
+  - `revealed` local gate
+  - neutral `Case A` / `Case B` / `Case C` / `Case D` presets
+  - reveal-gated dot/cos/theta/alignment badge, projection readout, angle arc, projection/residual arrows, and right-angle marker
+  - degenerate guard when `|u|` or `|v|` is below `0.2`
+  - `clearDemoState('dot-product')` on mount/unmount and unrevealed/degenerate state
+  - `emitDemoState(...)` only after reveal with prediction/actual/correctness, u/v, dot/cos/theta, norms, projection coefficient/length/vector, residual, residual length, and visible-layer state
+- Updated `content/domains/linear-algebra/concepts/dot-product/content.mdx` Interactive Demo copy to ask for prediction before reveal.
+- Added `components/concepts/DotProductViz.test.tsx` for:
+  - pre-reveal hiding and no measured emission
+  - positive reveal and measured-state emission
+  - stale reveal/state clearing after neutral preset reset
+  - degenerate near-origin guard
+  - MDX spoiler-copy regression
+
+Local verification already run:
+- `npm test -- DotProductViz --runInBand` passed: 1 suite, 5 tests. It still emits the known styled-jsx jsdom warning seen across this repo.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+
+Please review this as a publish/no-publish gate.
+
+Questions:
+1. Does this satisfy the scoped Dot Product P0 mechanism pedagogically: projection sign, dot sign, and cosine sign as one geometric/algebraic signal?
+2. Are there any pre-reveal leaks through text, aria/labels, DOM attributes, CSS classes, SVG geometry, preset labels, emitted state, or MDX copy?
+3. Is the thresholding and degenerate-vector behavior mathematically fair enough for this teaching demo?
+4. Is stale state clearing and reveal-only demo-state emission robust enough for the shared demo checkpoint/AI handoff?
+5. Are the tests strong enough for this P0 slice, or is there a blocker-level missing regression?
+6. Is there any UX/accessibility/responsiveness issue serious enough to block publish?
+
+Return:
+- Start with `publish` or `no-publish`.
+- If no-publish, list blockers with exact file/path references and concrete fixes.
+- If publish, list non-blocking improvements separately.
+- Include any exact copy/math changes you recommend.

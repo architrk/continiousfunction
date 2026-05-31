@@ -20,26 +20,32 @@ The key mindset is: scaling laws are *not a proof about intelligence*. They are 
 
 A common empirical form for test loss $L$ is:
 
-$$L(N, D) \\approx L_\\infty + a\\,N^{-\\alpha} + b\\,D^{-\\beta},$$
+$$
+L(N, D) \approx L_\infty + a\,N^{-\alpha} + b\,D^{-\beta},
+$$
 
 where:
 
 - $N$ is parameter count,
 - $D$ is number of training tokens (or examples),
-- $\\alpha,\\beta>0$ are exponents you fit from data,
-- $L_\\infty$ is the irreducible loss floor for the dataset/model class.
+- $\alpha,\beta>0$ are exponents you fit from data,
+- $L_\infty$ is the irreducible loss floor for the dataset/model class.
 
-On a log-log plot, $N^{-\\alpha}$ and $D^{-\\beta}$ look like straight lines. That's why power laws are useful: they extrapolate smoothly.
+On a log-log plot, $N^{-\alpha}$ and $D^{-\beta}$ look like straight lines. That's why power laws are useful: they extrapolate smoothly.
 
 ### Compute-optimal allocation (Chinchilla-style rule of thumb)
 
 Very roughly, training compute scales like:
 
-$$C \\propto N\\cdot D.$$
+$$
+C \propto N\cdot D.
+$$
 
 Under this constraint, minimizing the loss above typically yields a near-linear rule:
 
-$$D \\propto N.$$
+$$
+D \propto N.
+$$
 
 Interpretation: for a fixed compute budget, don't overscale parameters without scaling data too, or you spend compute learning the same patterns repeatedly.
 

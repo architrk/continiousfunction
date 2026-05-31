@@ -1,0 +1,34 @@
+You are helping scope the next narrow Continuous Function learning-platform slice.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- The north-star direction is joyful, deep, prediction-first, mechanism-first concept learning: learners should commit to a causal/mathematical prediction before a visualization reveals the measured result.
+- The current P0 is "Prediction-First Demo Retrofit": older demos need concept-specific reveal states and compact measured-state handoff, not just the global demo-shell checkpoint.
+- The implementation must stay repo-only and static-export-safe. It must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+- Current branch already shipped two critical-prerequisite P0 slices:
+  - Reverse-Mode Autodiff: cotangent accumulation prediction reveal.
+  - Probability Basics: finite conditioning/posterior movement prediction reveal.
+
+Current evidence:
+- Audit still says the north-star goal is not achieved.
+- Audit says P0 remains open because older demos still need deeper concept-specific pre-reveal framing and compact measured-state handoff.
+- A fresh code scan found these published candidate routes that still look like older/thin demos with no local `emitDemoState` or concept-specific reveal in their filesystem `viz.tsx`:
+  - `content/domains/probability/concepts/random-variables/viz.tsx`
+  - `content/domains/optimization/concepts/adam/viz.tsx`
+  - `content/domains/attention-transformers/concepts/efficient-attention/viz.tsx`
+  - `content/domains/generative-models/concepts/vaes/viz.tsx`
+  - `content/domains/scaling/concepts/tree-search-reasoning/viz.tsx`
+- `content/domains/scaling/concepts/pretraining-data-mixtures/viz.tsx` is also no-emission, but it is not currently a published concept target in the audit table and should be lower priority.
+
+Question:
+Pick the best next bounded slice for this turn and define the exact publish-quality scope.
+
+Please return:
+1. The single route to retrofit next, with a short rationale.
+2. The learner prediction question, prediction choices, and what must stay hidden before reveal.
+3. The compact demo-state payload fields to emit after reveal.
+4. Specific pre-reveal leakage risks to avoid.
+5. Focused tests/browser checks needed before publish.
+6. A short "do not include" list so the slice does not balloon.
+
+Prefer the highest leverage move for the learner journey after Probability Basics unless another candidate is clearly safer or more valuable.

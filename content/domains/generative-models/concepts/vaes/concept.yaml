@@ -1,5 +1,5 @@
 id: vaes
-title: "Variational Autoencoders & Variational Inference"
+title: "Variational Autoencoders"
 domain: generative-models
 slug: vaes
 difficulty: 4
@@ -7,10 +7,13 @@ status: published
 importance: important
 prerequisites:
   - maximum-likelihood
+  - bayesian-inference
+  - kl-divergence
 leads_to:
+  - normalizing-flows
   - diffusion
 related:
-  - gans
+  - score-matching
 tags:
   - generative-models
   - vae
@@ -21,9 +24,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "A latent-variable model trained by maximizing the ELBO: reconstruction plus a KL regularizer, enabled by the reparameterization trick."
+sources:
+  - id: kingma-2013-auto-encoding-variational-bayes
+    kind: paper
+    title: "Auto-Encoding Variational Bayes"
+    authors: "Kingma and Welling"
+    year: 2013
+    url: "https://arxiv.org/abs/1312.6114"
+    note: "Introduces the reparameterized VAE objective and the evidence lower bound training view."
+  - id: rezende-2014-stochastic-backprop
+    kind: paper
+    title: "Stochastic Backpropagation and Approximate Inference in Deep Generative Models"
+    authors: "Rezende, Mohamed, and Wierstra"
+    year: 2014
+    url: "https://arxiv.org/abs/1401.4082"
+    note: "Grounds stochastic backpropagation for latent-variable generative models with learned inference networks."
+claim_checks:
+  - id: vae-elbo-reparameterized-inference
+    status: source-checked
+    claim: "A VAE fits a latent-variable generative model by maximizing the ELBO: q_phi(z|x) approximates the usually intractable posterior, E_q[log p_theta(x|z)] rewards reconstruction likelihood, KL(q_phi(z|x)||p(z)) penalizes deviation from the prior, and reparameterization gives pathwise gradients through z samples."
+    source_ids:
+      - kingma-2013-auto-encoding-variational-bayes
+      - rezende-2014-stochastic-backprop
+    support: "Kingma/Welling and Rezende/Mohamed/Wierstra both ground VAEs/deep latent-variable models in ELBO optimization with learned inference networks and reparameterized or stochastic backpropagation estimators. Local math now exports the ELBO identity, ELBO decomposition, and reparameterized sample, while the code and demo check the finite ELBO-gap geometry."
+    caveat: "The reconstruction term is an expectation under q_phi and often Monte Carlo estimated. Pathwise gradients require a differentiable transform of parameter-independent noise, so this does not cover discrete or non-reparameterizable latents."
+    object_refs:
+      - "#source-span-kingma-2013-auto-encoding-variational-bayes"
+      - "#source-span-rezende-2014-stochastic-backprop"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Kingma/Welling support q_phi(z|x) as a learned recognition model for the intractable posterior, derive log p_theta(x)=ELBO+KL(q||posterior), decompose the ELBO into E_q log p_theta(x|z)-KL(q||p(z)), and give Gaussian reparameterization. Rezende et al. independently support the recognition-model, lower-bound/free-energy, reconstruction/regularization, and stochastic-backprop structure. Local math, code, and demo now witness the ELBO gap, prior KL, reparameterized sample, and prediction-gated posterior diagnostics."
+short_description: "A latent-variable model trained by maximizing an evidence lower bound; the gap is KL(q_phi(z|x) || p_theta(z|x)), so the encoder is learned inference rather than just compression."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 20
-

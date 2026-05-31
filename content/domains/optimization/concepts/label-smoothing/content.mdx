@@ -18,22 +18,28 @@ Label smoothing is the simplest fix: keep the correct class highest, but allocat
 
 ## Math
 
-Let $y\\in\\{0,1\\}^K$ be a one-hot target and $\\alpha\\in[0,1]$ a smoothing strength.
+Let $y\in\{0,1\}^K$ be a one-hot target and $\alpha\in[0,1]$ a smoothing strength.
 Define a smoothed target:
 
-$$y_{\\mathrm{smooth}} = (1-\\alpha)\\,y + \\frac{\\alpha}{K}\\,\\mathbf 1.$$
+$$
+y_{\mathrm{smooth}} = (1-\alpha)\,y + \frac{\alpha}{K}\,\mathbf 1.
+$$
 
-If $p = \\mathrm{softmax}(z)$ are the predicted probabilities, cross-entropy becomes:
+If $p = \mathrm{softmax}(z)$ are the predicted probabilities, cross-entropy becomes:
 
-$$\\mathcal L = -\\sum_{k=1}^K y_{\\mathrm{smooth},k}\\,\\log p_k.$$
+$$
+\mathcal L = -\sum_{k=1}^K y_{\mathrm{smooth},k}\,\log p_k.
+$$
 
 The gradient w.r.t. logits is:
 
-$$\\frac{\\partial \\mathcal L}{\\partial z} = p - y_{\\mathrm{smooth}}.$$
+$$
+\frac{\partial \mathcal L}{\partial z} = p - y_{\mathrm{smooth}}.
+$$
 
 So compared to one-hot training (where the gradient is $p-y$), label smoothing:
 
-- reduces the incentive to push logits to $\\pm\\infty$,
+- reduces the incentive to push logits to $\pm\infty$,
 - acts like a small regularizer against extreme confidence.
 
 ## Code

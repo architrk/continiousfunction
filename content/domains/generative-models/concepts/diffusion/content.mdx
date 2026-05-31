@@ -6,31 +6,39 @@ title: "Diffusion, Score-Based Models & Flow Matching"
 
 Diffusion models generate by *starting from noise* and repeatedly denoising.
 
-The forward process is easy: take data (an image latent, an audio chunk, a video patch) and add a little noise, again and again, until it becomes almost pure Gaussian noise.
+The forward process is easy: take a data vector, such as an image representation, and add a little noise, again and again, until it becomes almost pure Gaussian noise.
 
-The reverse process is the learning problem: train a network that, given a slightly-noised sample, predicts how to move it back toward the data manifold. Sampling is then "run the denoiser many times."
+The reverse process is the learning problem: train a network that, given a slightly-noised sample, parameterizes reverse or noise-removal updates toward cleaner, data-like samples. Sampling repeatedly applies learned reverse updates.
 
 ## Math
 
 A common discrete-time forward process (DDPM-style) is:
 
-$$q(x_t\\mid x_0) = \\mathcal N\\!\\big(\\sqrt{\\bar\\alpha_t}\\,x_0,\\ (1-\\bar\\alpha_t)I\\big),$$
+$$
+q(x_t\mid x_0) = \mathcal N\!\big(\sqrt{\bar\alpha_t}\,x_0,\ (1-\bar\alpha_t)I\big),
+$$
 
-where $\\bar\\alpha_t = \\prod_{s=1}^t \\alpha_s$ and $\\alpha_s = 1-\\beta_s$ for a noise schedule $\\beta_s$.
+where $\bar\alpha_t = \prod_{s=1}^t \alpha_s$ and $\alpha_s = 1-\beta_s$ for a noise schedule $\beta_s$.
 
 Equivalently, you can sample:
 
-$$x_t = \\sqrt{\\bar\\alpha_t}\\,x_0 + \\sqrt{1-\\bar\\alpha_t}\\,\\epsilon,\\quad \\epsilon\\sim\\mathcal N(0,I).$$
+$$
+x_t = \sqrt{\bar\alpha_t}\,x_0 + \sqrt{1-\bar\alpha_t}\,\epsilon,\quad \epsilon\sim\mathcal N(0,I).
+$$
 
 Training often uses the noise-prediction loss:
 
-$$\\mathcal L = \\mathbb E_{x_0,t,\\epsilon}\\,\\big\\|\\epsilon - \\epsilon_\\theta(x_t,t)\\big\\|^2.$$
+$$
+\mathcal L = \mathbb E_{x_0,t,\epsilon}\,\big\|\epsilon - \epsilon_\theta(x_t,t)\big\|^2.
+$$
 
-The "score" view connects denoising to the gradient of log-density $\\nabla_x\\log p_t(x)$. In the DDPM parameterization above, predicting noise also gives (up to a known scale) a score estimate:
+The "score" view connects denoising to the gradient of log-density $\nabla_x\log p_t(x)$. Under the Gaussian DDPM or VP corruption above, a learned noise predictor can be converted into an approximate score estimate:
 
-$$s_\\theta(x_t,t) \\approx \\nabla_{x_t}\\log p_t(x_t) \\;\\propto\\; -\\frac{\\epsilon_\\theta(x_t,t)}{\\sqrt{1-\\bar\\alpha_t}}.$$
+$$
+s_\theta(x_t,t) \approx \nabla_{x_t}\log p_t(x_t) \;\propto\; -\frac{\epsilon_\theta(x_t,t)}{\sqrt{1-\bar\alpha_t}}.
+$$
 
-Flow matching reframes sampling as learning a continuous vector field.
+Flow matching is a separate continuous-vector-field view and is only a forward pointer here.
 
 ## Code
 
@@ -51,4 +59,10 @@ for t in [0, 10, 100, 500, 1000]:
 
 ## Interactive Demo
 
-Use the demo to see the forward noising process and how reverse denoising (or score-based updates) can recover samples step by step.
+This first lab isolates the DDPM forward process. Scrub $t$ to watch
+
+$$
+x_t=\sqrt{\bar\alpha_t}x_0+\sqrt{1-\bar\alpha_t}\epsilon
+$$
+
+push a two-blob toy distribution toward a near-Gaussian noise cloud. Before checking, predict whether a fixed structure-match proxy crosses its threshold early, in the middle, or late. Score matching and flow matching are separate mechanisms and will be handled in their own focused labs.

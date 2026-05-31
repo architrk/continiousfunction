@@ -1,0 +1,31 @@
+You are doing a narrow fix review for the Continuous Function Dot Product P0 prediction-first slice.
+
+Previous Oracle/GPT Pro review returned no-publish for one blocker:
+- The implementation classified the learner's projection-sign answer using a raw dot-product threshold.
+- That could make tiny but non-degenerate aligned vectors reveal as "orthogonal / near zero" even when cos theta = 1 and the projection points with v.
+- The review also flagged that "projection length" was being used for a signed scalar in negative cases.
+
+Fix implemented:
+- `classifyProjection(signedProjectionLength)` now thresholds the signed scalar projection instead of raw dot product.
+- `stats.signedProjectionLength = dot / |v|`.
+- `stats.projectionLength = abs(stats.signedProjectionLength)`.
+- The actual answer uses `classifyProjection(stats.signedProjectionLength)`.
+- Visible and emitted state now include both `signed scalar projection` and nonnegative `projection length`.
+- The near-orthogonal right-angle marker is keyed to `abs(stats.signedProjectionLength) < PROJECTION_EPS`, not raw dot.
+- MDX demo copy now asks for the signed projection of u along v.
+- Added tests:
+  - small aligned, revealable vectors with raw dot < 0.05 still classify as positive by signed projection.
+  - negative Case C reveals negative signed scalar projection and positive projection length.
+  - existing pre-reveal hiding, reveal-only state emission, stale clearing, degenerate guard, and MDX copy tests still pass.
+
+Local verification after the fix:
+- `npm test -- DotProductViz --runInBand` passed: 1 suite, 7 tests.
+- `npm run typecheck` passed.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+
+Please review only whether the previous blocker is resolved and whether the slice can now publish.
+
+Return:
+- Start with publish or no-publish.
+- If no-publish, list only remaining blockers with exact path references and concrete fixes.
+- If publish, list any non-blocking improvements separately.

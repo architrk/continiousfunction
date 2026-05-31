@@ -1,0 +1,48 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas for deep learning foundations.
+
+Task: substantive evidence review for one published structured claim check.
+
+Concept:
+- `content/domains/generative-models/concepts/flow-matching/concept.yaml`
+- `content/domains/generative-models/concepts/flow-matching/content.mdx`
+- `content/domains/generative-models/concepts/flow-matching/viz.tsx`
+- `components/foundations/FlowMatchingViz.tsx`
+
+Claim check under review:
+`generative-models/flow-matching#velocity-regression-straight-path-target`
+
+Question:
+Do the listed source IDs and local witness refs substantively support the exact claim enough to add:
+
+```yaml
+evidence_review:
+  state: substantive-reviewed
+```
+
+The exact claim says:
+"Flow matching uses regression of a neural ODE velocity field against a target vector field; in the rectified-flow straight interpolation x_t=(1-t)x_0+t x_1, the per-example least-squares label is x_1-x_0, not the remaining displacement x_1-x_t."
+
+Primary sources attached as extracted PDF text:
+- Lipman et al. 2022, "Flow Matching for Generative Modeling"
+- Liu, Gong, and Liu 2022, "Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow"
+
+Local witness refs to inspect:
+- `#source-span-lipman-2022-flow-matching`
+- `#source-span-liu-2022-rectified-flow`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Important scope:
+- `#math-object-1` is the ODE plus velocity-regression objective.
+- `#math-object-2` is the straight interpolation, constant label `u_t=x_1-x_0`, and shorter remaining displacement `x_1-x_t=(1-t)(x_1-x_0)`.
+- The code witness is a toy straight-path mapping where the exact velocity label can be recovered from `(x_t,t)`.
+- The interactive demo is a toy conditional pair lesson; it should not be treated as proof of OT optimality, solver error, sampling quality, or broad performance.
+- Do not approve broad claims about diffusion equivalence, one-step generation, high-dimensional sample quality, optimal transport solved by the toy, or production speedups.
+
+Please return:
+1. Verdict: publish / no-publish for adding a substantive evidence_review.
+2. Any blockers, especially overclaiming or local-witness mismatch.
+3. A concise evidence_review summary under 520 characters.
+4. Any support/caveat wording changes you recommend.

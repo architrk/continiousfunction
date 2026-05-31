@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, the first two math objects only, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/generative-models/concepts/normalizing-flows. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what Rezende and Mohamed 2015 actually supports. Also flag any local content wording that should be softened before this claim is added.
+
+Proposed claim_check:
+- id: invertible-change-of-variables-logdet
+- status: source-checked
+- claim: Normalizing flows use a sequence of invertible transformations to map a simple base density to a richer density; exact likelihood follows from the change-of-variables formula by evaluating the base density at the inverse point and adding the log absolute Jacobian determinant.
+- source_ids: rezende-2015-normalizing-flows
+- support: Rezende and Mohamed ground normalizing flows as repeated invertible transformations of a random variable and derive the change-of-variables density/log-density correction using Jacobian determinants. The page math, code, and demo instantiate inverse mapping, base log density, determinant/log-volume correction, and exact likelihood for a toy linear flow.
+- caveat: This checks the change-of-variables and tractable-Jacobian lesson, not expressivity of a particular flow family, training stability, high-dimensional architecture details, sampling quality, or universal exact-likelihood practicality.
+- object_refs: #source-span-rezende-2015-normalizing-flows, #math-object-1, #math-object-2, #code-witness-1, #interactive-demo

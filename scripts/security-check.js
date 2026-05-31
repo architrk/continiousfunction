@@ -129,7 +129,16 @@ for (const rel of [...productionSources, ...walk('pages', new Set(['.mdx'])), ..
   }
 }
 
-const allowedDangerousHtmlFiles = new Set([domainRoute, foundationsRoute])
+const conceptSection = 'components/concepts/ConceptSection.tsx'
+const conceptNotebookPage = 'components/concepts/ConceptNotebookPage.tsx'
+const researchReadingRoom = 'components/discussion/ResearchReadingRoom.tsx'
+const allowedDangerousHtmlFiles = new Set([
+  domainRoute,
+  foundationsRoute,
+  conceptSection,
+  conceptNotebookPage,
+  researchReadingRoom,
+])
 const sourceFiles = ['pages', 'components', 'lib'].flatMap((dir) => walk(dir, new Set(['.ts', '.tsx', '.js', '.jsx'])))
 for (const rel of sourceFiles) {
   const source = read(rel)
@@ -145,6 +154,10 @@ for (const rel of sourceFiles) {
 
   if (rel === foundationsRoute && !source.includes('renderLatex')) {
     fail('Foundations dangerouslySetInnerHTML should stay limited to sanitized KaTeX rendering', rel)
+  }
+
+  if ([conceptSection, conceptNotebookPage, researchReadingRoom].includes(rel) && !source.includes('sanitizeRenderedHtml')) {
+    fail('Additional dangerouslySetInnerHTML call sites must sanitize rendered HTML at the component boundary', rel)
   }
 }
 

@@ -1,0 +1,24 @@
+You are reviewing Continuous Function, a static-exported Next.js Pages Router + TypeScript learning platform for deep learning and mathematics. The project goal is to make serious learning feel joyful, deep, rigorous, visual, and worth returning to. The site teaches through Intuition -> Math -> Code -> Interactive Demo, and the repo uses GPT Pro/Oracle as a standing second mind for pedagogy, math, code equivalence, product direction, and UI/UX.
+
+Current local focus:
+- We have recently improved the paper-map -> graph -> attention-serving continuity, added route snapshot persistence, and added object-attached discussion placeholders.
+- The next queued item is `flagship-demo-shell-rollout`: port the highest-leverage interactive demos (sparse autoencoders, MoE routing, speculative decoding, diffusion, loss landscapes) onto the shared `VizShell` / `PaperPanel` chrome so the site feels like one coherent notebook/lab system.
+- Avoid a broad redesign. Pick one first target or a tiny shared wrapper if that gives better leverage.
+- Do not build accounts, backend discussion, Stripe, or live AI. Keep static export compatibility.
+- Do not replace precise interactive diagrams with raster images. Generated images are useful as visual direction, but final educational state should remain code-native and accessible.
+
+What I need from you:
+1. Choose the best first target for this rollout from the attached candidates, and explain why it has the highest learner-impact-to-risk ratio.
+2. Give a concrete patch plan for that first target only.
+3. Identify any copy or interaction changes needed so the demo feels rigorous and prediction-oriented, not gamified or decorative.
+4. Identify validation checks I should run locally.
+5. If the best patch is to add a small reusable wrapper before touching any demo, specify the wrapper contract and how it should avoid nesting cards inside cards.
+
+Important constraints:
+- Keep the first patch small enough for one coding pass.
+- Preserve existing demo behavior unless a label/copy is misleading.
+- The page should make the learner's next thought easier: prediction -> manipulation -> observation -> explanation.
+- Mobile text must not overflow. Avoid introducing one-note dark/purple/blue palettes; the shared shell should keep the notebook/lab visual language.
+- Treat Oracle output as advisory; I will verify with local tests/build.
+
+Attached files include the quality bar, TODO queue excerpt, shared shell primitives, and representative demo wrappers/components.

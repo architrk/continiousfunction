@@ -1,0 +1,37 @@
+Project: Continuous Function, a Next.js/React learning atlas for deep learning and modern AI.
+
+Current product workflow:
+We are slowly deepening one concept slice at a time. The strict contract for a local notebook slice is:
+- Learner sees enough puzzle state to make a prediction.
+- Answer-bearing state stays absent from visible UI and shared demo state until reveal.
+- Reveal requires a committed prediction.
+- After reveal, the component emits compact measured demo state for research/AI handoff.
+- Any reset or control change clears stale local reveal and shared demo state.
+
+This patch hardens the existing Structured Decoding notebook route. It does not add auth, database, API routes, or broad architecture work.
+
+Target invariant:
+At each step, structured decoding is still next-token decoding, but the schema/DFA masks invalid continuations before renormalization, so an invalid token with the highest raw logit cannot be emitted when the mask is on.
+
+Files changed:
+- components/foundations/StructuredDecodingViz.tsx
+- components/foundations/StructuredDecodingViz.test.tsx
+
+Local checks already run:
+- npm test -- StructuredDecodingViz --runInBand
+- npm run typecheck
+
+Review request:
+Return PUBLISH or NO-PUBLISH.
+
+Please inspect whether this patch satisfies the reveal contract:
+1. Does notebook mode emit no measured demo state before reveal?
+2. Are valid-token/masked-probability/actual/correctness strings absent before reveal, not just visually hidden?
+3. Does reveal require a prediction and then emit a compact, useful, truthful demo-state packet?
+4. Do profile/mask/temperature/top-p/reset/step/run lifecycle paths avoid stale revealed state or stale shared demo state?
+5. Are the tests meaningful, or are there missing regressions that could let the old pre-reveal leak return?
+6. Is the wording pedagogically honest about the guarantee boundary: schema membership, not truth/safety/task correctness?
+7. Any TypeScript/React hook/lifecycle issue, including effects that could loop or over-emit?
+8. Any mobile/accessibility issue visible from the code surface?
+
+If NO-PUBLISH, list only must-fix blockers with exact file/function guidance. If PUBLISH, include any non-blocking polish separately.

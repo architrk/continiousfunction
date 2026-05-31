@@ -1,0 +1,53 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product direction is to make learning joyful, visual, intuitive, and mathematically serious while slowly growing a high-quality graph of concepts. We use GPT Pro/Oracle as a review partner before and after implementation.
+
+Current rollout pattern:
+- Legacy foundation visualizations are being moved onto focused concept-page demo shells.
+- Filesystem concept routes should use VizShell + VizStageAdapter.
+- Foundation components must preserve legacy behavior by default, and add chrome="notebook" for the filesystem route.
+- The notebook version should focus on one mechanism-first learner action, not a broad game.
+- Notebook demos should emit compact state only in notebook mode so the site AI companion can reason about the learner's current view.
+
+Completed shared demo-shell slices:
+1. Speculative Decoding
+2. Sparse Autoencoders
+3. Mixture of Experts
+4. Diffusion forward process
+5. Loss Landscapes 2D sharpness
+6. Score Matching DSM target
+7. Flow Matching conditional velocity target
+
+We need the next concrete slice. The current queue says either revisit Loss Landscapes 3D / Edge of Stability or let Oracle choose the next flagship demo-shell target.
+
+Candidate A: LossLandscape3DViz
+- Legacy 3D Rosenbrock optimizer race with SGD, Momentum, Adam-ish.
+- Uses Three.js / react-three-fiber.
+- Potential value: makes loss surfaces spatial and memorable.
+- Risks: game/race framing, optimizer overclaims, 3D rendering/mobile risks, may duplicate already-completed 2D sharpness slice.
+
+Candidate B: EdgeOfStabilityViz
+- Legacy toy about learning rate eta, lambda_max, threshold 2/eta, and stable/edge/diverge regimes.
+- Potential value: directly follows Loss Landscapes 2D sharpness and learning-rate schedules; could teach the non-monotonic "edge" phenomenon as a focused prediction.
+- Risks: current toy may overclaim "where modern deep learning lives", has emoji/game copy, and simplified dynamics need strong caveats.
+
+Attached files:
+- Current TODO with completed rollout state.
+- Candidate components.
+- Current Loss Landscapes route/content showing the already-completed 2D slice.
+- Visualization mapping / foundation deck enough to understand legacy placement.
+- VizShell and VizStageAdapter.
+
+Please choose the next single slice and scope it only. Do not write code.
+
+Questions to answer:
+1. Which candidate should be implemented next, and why is it the best next high-leverage step after Flow Matching?
+2. What is the one learner action for the notebook version?
+3. What exact route should be changed or added? Should this be folded into /domains/optimization/loss-landscapes/ as a second notebook stage, or should it remain a legacy-only foundation slice for now?
+4. What props/state/computed values/demo-state payload should be added?
+5. Which legacy panels/copy must be hidden or rewritten in notebook mode?
+6. What must-fix correctness blockers should be addressed before shipping?
+7. What validation should I run?
+
+Return:
+- "Implement now" blockers and exact plan.
+- "Leave for later" items.
+- Exact wording for VizShell title/subtitle/metrics/notes/challenge.

@@ -125,12 +125,12 @@ MDX/TSX Pages → Next.js SSG → Static HTML + JS bundles
 
 ```bash
 # 1. Install dependencies
-cd /Users/architkhare/Library/Mobile\ Documents/com~apple~CloudDocs/Repos/continiousfunction
+cd <repo-root>
 npm install
 
 # 2. Run development server
 npm run dev
-# → Opens http://localhost:3000
+# → Starts the local Next.js development server
 
 # 3. Build for production (static export)
 npm run build

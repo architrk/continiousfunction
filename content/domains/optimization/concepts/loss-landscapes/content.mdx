@@ -10,36 +10,39 @@ So when people show a 2D loss landscape, it is not the landscape. It is a **slic
 
 Even so, those slices teach something real:
 
-- **Sharp minima**: a tiny weight perturbation makes loss jump. These often correlate with brittle generalization and sensitivity.
-- **Flat minima**: you can wiggle weights a bit and loss barely changes. These often correlate with better generalization and robustness.
+- **Sharp minima**: a tiny weight perturbation makes loss jump. These are useful local sensitivity diagnostics, but their meaning depends on the chosen perturbation scale and parameterization.
+- **Flat minima**: you can wiggle weights a bit and loss barely changes. Flatter regions are often studied as generalization correlates, not as universal guarantees.
 
-Modern training tricks can be read as "bias the optimizer toward flat basins":
-
-- mini-batch noise and weight decay (implicit smoothing),
-- weight averaging,
-- **SAM** (Sharpness-Aware Minimization), which explicitly optimizes worst-case loss in a neighborhood.
+SAM makes one version of this bias explicit: optimize for low loss in a small
+neighborhood, not just at one point. Other optimizer tricks are often discussed
+through similar flatness intuitions, but they need their own sources before
+becoming checked claims here.
 
 ## Math
 
 Let $L(w)$ be the training loss for parameters $w$. Near a point $w$, a quadratic approximation is:
 
-$$L(w+\\epsilon) \\approx L(w) + \\epsilon^\\top \\nabla L(w) + \\tfrac12\\,\\epsilon^\\top H(w)\\,\\epsilon,$$
+$$
+L(w+\epsilon) \approx L(w) + \epsilon^\top \nabla L(w) + \tfrac12\,\epsilon^\top H(w)\,\epsilon,
+$$
 
-where $H(w) = \\nabla^2 L(w)$ is the Hessian (curvature).
+where $H(w) = \nabla^2 L(w)$ is the Hessian (curvature).
 
-A common proxy for "sharpness" is how much loss can increase under a small perturbation:
+A common proxy for "sharpness" is how much loss can increase under a small perturbation. SAM turns that local-neighborhood idea into an objective:
 
-$$\\Delta_{\\rho}(w) := \\max_{\\|\\epsilon\\|_2 \\le \\rho} \\big(L(w+\\epsilon) - L(w)\\big).$$
+$$
+\begin{aligned}
+\Delta_{\rho}(w)
+  &:= \max_{\|\epsilon\|_2 \le \rho} \big(L(w+\epsilon) - L(w)\big),\\
+L_{\mathrm{SAM}}(w)
+  &:= \max_{\|\epsilon\|_2 \le \rho} L(w+\epsilon),
+  \qquad \min_w L_{\mathrm{SAM}}(w),\\
+\hat{\epsilon}(w)
+  &\approx \rho\,\frac{\nabla L(w)}{\|\nabla L(w)\|_2}.
+\end{aligned}
+$$
 
-SAM makes this explicit by optimizing worst-case loss in a neighborhood:
-
-$$\\min_w \\; \\max_{\\|\\epsilon\\|_2 \\le \\rho} L(w+\\epsilon).$$
-
-In practice, the inner maximizer is approximated with a single step in the gradient direction:
-
-$$\\epsilon(w) \\approx \\rho\\,\\frac{\\nabla L(w)}{\\|\\nabla L(w)\\|_2},$$
-
-and the update uses the gradient at the perturbed weights $\\nabla L(w+\\epsilon(w))$.
+Here $\Delta_\rho$ is the local loss-increase proxy. SAM optimizes the worst-case training loss in the $\rho$-neighborhood, and in practice approximates the inner maximizer with a single step in the gradient direction before updating from the perturbed weights $\nabla L(w+\hat{\epsilon}(w))$.
 
 ## Code
 
@@ -67,9 +70,9 @@ for eta in [0.02, 0.08, 0.12]:
 
 ## Interactive Demo
 
-Use the demos to build an intuition for:
+This notebook page now has two focused stages:
 
-- 2D slices of a landscape and how trajectories move across valleys/ridges,
-- how "sharpness" relates to curvature and local stability,
-- what it means to train near an "edge of stability" (large learning rates flirting with divergence).
+- **Stage 1:** a 2D loss slice with local Hessian curvature through a $\lambda_{\max}$ sharpness proxy, SAM's perturbation ball, and a prediction check comparing SGD and SAM endpoint sharpness in the toy.
+- **Stage 2:** a toy stability-line demo that asks whether a sharpness trace stays safely below the local quadratic GD line $2/\eta$, hovers near this toy threshold, or crosses into divergence.
 
+The 3D surface remains a separate legacy exploration and should receive its own rollout slice later.

@@ -1,0 +1,35 @@
+Project: Continuous Function, a Next.js mathematical atlas for deep learning.
+
+Current visual system:
+- Warm ivory notebook paper, faint grid, tactile print texture.
+- Deep navy ink for structure.
+- Teal for correct paths, alignment, and convergence.
+- Amber for energy, selection, gradients, and active flow.
+- Sparse construction marks instead of decorative clutter.
+- No generated text inside concept cover images.
+
+I just added a review-status concept:
+`SSM Hybrids: Fixed-State Sequence Models for Long Context`.
+
+Central mechanism:
+- Attention keeps an explicit KV cache that grows with context length.
+- SSM/hybrid sequence models carry a fixed recurrent state forward.
+- Selectivity changes when the state writes, copies, or forgets.
+- Hybrids use recurrence for compressed long-range memory and local attention for exact nearby interactions.
+- The page carefully frames the demo as a toy scalar selective-gate mechanism, not a full Mamba/Jamba/Griffin implementation.
+
+Task:
+Give me one refined visual brief for a generated concept-cover image for `ssm-hybrids`. This should fit the existing Continuous Function cover-image family and should teach the mechanism, not decorate the page.
+
+Please return:
+1. A concise visual concept.
+2. The exact final image-generation prompt.
+3. A short avoid list, especially any misleading geometry or overclaims.
+4. Alt text for the final registry entry.
+
+Constraints:
+- No text, letters, numbers, labels, UI screenshots, logos, watermarks, or paper titles inside the image.
+- The image should be suitable as a wide concept-cover/hero asset.
+- It should visually distinguish explicit growing KV-cache memory from compact recurrent state.
+- It should show selectivity without implying exact random access or a full implementation of Mamba.
+- It should leave enough calm negative space for the page hero treatment.

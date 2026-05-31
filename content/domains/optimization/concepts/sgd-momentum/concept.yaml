@@ -1,0 +1,31 @@
+id: sgd-momentum
+title: "SGD & Momentum: The Workhorses of Optimization"
+domain: optimization
+slug: sgd-momentum
+difficulty: 3
+status: review
+importance: critical
+prerequisites:
+  - gradient-descent
+  - backpropagation
+leads_to:
+  - adam
+  - learning-rate-schedules
+related:
+  - loss-landscapes
+  - gradient-clipping
+  - weight-decay-adamw
+tags:
+  - optimization
+  - sgd
+  - momentum
+  - nesterov
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate
+short_description: "Why plain gradient descent is noisy, how momentum smooths and accelerates it, and why the same trick still sits under many modern optimizers."
+author: codex
+created: "2026-04-21"
+updated: "2026-04-21"
+estimated_read_time: 14

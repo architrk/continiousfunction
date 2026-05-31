@@ -1,0 +1,95 @@
+You are Oracle/GPT Pro reviewing Continuous Function as a serious deep-learning education product.
+
+The goal is not a pretty landing page. The goal is a holistic learning environment for:
+- Learners building intuition and prerequisites.
+- Researchers mapping papers, claims, equations, and assumptions.
+- Experimenters making predictions, changing variables, and checking witnesses.
+- Professors turning mechanisms into teachable sequences.
+
+Project standard:
+- The site should feel like a mathematical atlas, notebook, and lab surface.
+- Every surface should move through Intuition -> Math -> Code -> Interactive Demo.
+- The experience should help a user start from a paper, equation, architecture, model behavior, or system tradeoff and find a clear path to understanding.
+- Visual design must serve learning, not decoration.
+- Use generated images only for direction or educational assets; prefer repo-native components, D3, Three, SVG, CSS, and React for final mechanisms.
+
+Attached context:
+- Product north star and concept quality bar.
+- Recent in-app browser screenshots for homepage, Domains, Paper Mapper, Attention Path, Search, Graph, and the Long Context concept notebook.
+- Source files for the app shell, shared notebook layout, homepage command deck, concept notebook, search, graph, paper mapper, and attention-serving path.
+
+Your task:
+Run a holistic product/UX critique. Treat this as Batch 01 of a large Oracle campaign. I want the website to become an amazing, coherent deep-learning experience, not just a visually polished static site.
+
+Answer in this structure:
+
+1. Executive diagnosis
+- What is already working?
+- What is the biggest missing product feeling?
+- What should be the next north-star user loop?
+
+2. Surface-by-surface critique
+For each surface below, give:
+- Current strength.
+- Highest-risk confusion or friction.
+- One concrete implementation change.
+- One measurable visual/interaction acceptance criterion.
+
+Surfaces:
+- Global shell/navigation.
+- Homepage command deck.
+- Domains atlas.
+- Domain detail pages.
+- Concept notebook hero.
+- Concept Object Flow / selected object controls.
+- Concept math/code/demo sections.
+- Research Reading Room / AI discussion handoff.
+- Search.
+- Knowledge Graph.
+- Paper Mapper.
+- Attention Serving path.
+- Pillars/Vision.
+- Mobile experience.
+- Desktop density.
+- Accessibility/readability.
+- Performance and motion.
+- Image/art direction.
+
+3. Learner-role critique
+For each role, name the missing affordance that would make the product feel designed for them:
+- Learner.
+- Researcher.
+- Experimenter.
+- Professor.
+
+4. Learning science critique
+Use learning-science principles, but keep it practical. Where should the app add:
+- prediction before reveal,
+- retrieval practice,
+- worked examples,
+- fading/scaffolding,
+- misconception repair,
+- transfer prompts,
+- spaced return,
+- source-grounded claim checking?
+
+5. The 25 highest-impact improvements
+Give a ranked backlog of 25 changes. For each:
+- Priority P0/P1/P2.
+- Surface.
+- User problem.
+- Implementation sketch with likely files/components.
+- Why it improves learning.
+- What screenshot or metric would prove it worked.
+
+6. Things to remove or simplify
+Name visual or interaction elements that look impressive but may not help learning.
+
+7. Follow-up Oracle campaign
+Propose the next 12 Oracle review prompts I should run after this one. Each prompt should be narrow enough to produce implementable code changes.
+
+Constraints:
+- Do not propose a generic marketing homepage.
+- Do not ask for backend AI features that cannot be prototyped locally.
+- Do not give broad idea soup. Give implementable, prioritized design/product critique.
+- If screenshots show something working, say so; focus critique on what would make it substantially better.

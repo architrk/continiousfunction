@@ -26,9 +26,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Conditional computation: a router picks a few experts per token. You get huge total parameter count with small activated compute, but you pay in communication and scheduling."
+sources:
+  - id: shazeer-2017-sparsely-gated-moe
+    kind: paper
+    title: "Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer"
+    authors: "Shazeer et al."
+    year: 2017
+    url: "https://arxiv.org/abs/1701.06538"
+    note: "Introduces sparsely gated experts and the conditional-computation motivation behind MoE layers."
+  - id: fedus-2021-switch-transformers
+    kind: paper
+    title: "Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity"
+    authors: "Fedus, Zoph, and Shazeer"
+    year: 2021
+    url: "https://arxiv.org/abs/2101.03961"
+    note: "Grounds top-1 expert routing, capacity tradeoffs, and the practical scaling recipe for sparse transformer experts."
+claim_checks:
+  - id: top-k-routing-activated-compute-load-balance
+    status: source-checked
+    claim: "Sparse MoE layers use a learned router to choose top-k experts per token, so total expert parameters can grow while active expert compute stays bounded by k; in the cited MoE/Switch designs, load-balancing losses and expert-capacity mechanisms manage skew, overload, dropped tokens, and dispatch/communication costs."
+    source_ids:
+      - shazeer-2017-sparsely-gated-moe
+      - fedus-2021-switch-transformers
+    support: "Shazeer defines trainable sparse/noisy top-k gating, many expert FFNs with only selected experts evaluated, and importance/load losses for imbalance. Fedus supports Switch top-1 routing, expert capacity/capacity-factor overflow and dropped tokens, f_i/P_i auxiliary load loss, and reduced-but-present dispatch/communication costs. Local witnesses instantiate router/top-k, load signals, and toy capacity overflow."
+    caveat: "Reviewed routing/load/capacity mechanics only. Math/code/demo are toy local witnesses; no exact throughput, quality or specialization, all-to-all/expert-parallel implementation, scheduler optimality, serving latency/cost, or guarantee that MoE improves wall-clock performance."
+    object_refs:
+      - "#source-span-shazeer-2017-sparsely-gated-moe"
+      - "#source-span-fedus-2021-switch-transformers"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Shazeer supports trainable sparse/top-k MoE gating: only selected experts run, enabling large total expert parameters with limited active compute, plus importance/load balancing for skew. Fedus supports Switch top-1 routing, expert capacity/capacity-factor overflow tradeoffs, dropped tokens, the f_i/P_i auxiliary load loss, and reduced-but-present dispatch/all-to-all communication costs."
+short_description: "Conditional computation: a router picks a few experts per token. You can increase total expert parameters while keeping activated expert FFN compute small, but distributed systems may pay in communication and scheduling."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 20
-

@@ -9,7 +9,7 @@ const MATH_COLORS = {
 // Width regime presets
 const WIDTH_PRESETS = [
   { name: '🔬 Narrow', logWidth: 1.3, lr: 0.25, freeze: false, description: 'Strong feature learning - kernel evolves rapidly' },
-  { name: '⚖️ Standard', logWidth: 2.5, lr: 0.18, freeze: false, description: 'Balanced regime - typical transformer scale' },
+  { name: '⚖️ Standard', logWidth: 2.5, lr: 0.18, freeze: false, description: 'Balanced toy regime - intermediate feature evolution' },
   { name: '📐 Wide', logWidth: 3.5, lr: 0.12, freeze: false, description: 'Near-NTK behavior - slow feature evolution' },
   { name: '∞ Infinite', logWidth: 4.0, lr: 0.1, freeze: true, description: 'Pure NTK limit - kernel completely frozen' },
 ]
@@ -87,7 +87,7 @@ function getNTKInsight(width01: number, step: number, freezeFeatures: boolean): 
 
   // Intermediate
   if (step === 0) {
-    return "⚖️ Intermediate width: Some feature learning, but not extreme. This is where most practical transformers live.";
+    return "Intermediate width: Some feature learning, but not extreme. This toy slider is an intermediate regime, not a claim about every practical transformer.";
   }
   return "🔀 Balanced dynamics: Features are moving (right) but not as dramatically as narrow networks. Compare the kernel matrices!";
 }
@@ -536,6 +536,9 @@ export default function NTKDemo() {
     setFeatureEmbeddings(TRAIN_INPUTS.map((x) => baseEmbedding(x)))
     setStep(0)
     setRaceSteps(0)
+    setIsPlaying(false)
+    setFreezeFeatures(false)
+    setLearningRate(0.18)
 
     // Apply challenge-specific settings
     if ('logWidth' in challenge && challenge.logWidth !== undefined) {
@@ -870,7 +873,8 @@ export default function NTKDemo() {
           <div>
             <p style={{ fontSize: '0.9rem', marginBottom: '10px', color: '#e5e7eb' }}>
               📊 Race: <strong>{activeChallenge.steps} steps</strong> |
-              Width: <strong>~{widthApprox.toLocaleString()}</strong>
+              Width: <strong>~{widthApprox.toLocaleString()}</strong> |
+              Learning rate: <strong>{learningRate.toFixed(2)}</strong>
             </p>
             <p style={{ fontSize: '0.95rem', marginBottom: '12px', color: '#e5e7eb' }}>
               🎯 <strong>Who wins the race?</strong>
@@ -1196,9 +1200,10 @@ export default function NTKDemo() {
       <p className="caption">
         In the infinite-width limit, the NTK is fixed at initialization and
         training becomes kernel regression in function space. Narrow, finite
-        networks escape this &quot;lazy&quot; regime by changing their features
-        — effectively learning the kernel itself. Real-world transformers live
-        somewhere between these extremes.
+        networks escape this &quot;lazy&quot; regime by changing their features,
+        effectively learning the kernel itself. Practical networks can sit
+        between these extremes; the exact regime depends on architecture,
+        parameterization, optimizer, data, and scale.
       </p>
     </section>
   )

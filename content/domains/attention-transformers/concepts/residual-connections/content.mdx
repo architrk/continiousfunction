@@ -1,0 +1,90 @@
+---
+title: "Residual Connections & Skip Connections"
+---
+
+## Intuition
+
+Without a skip connection, a deep layer has to reinvent the whole representation it receives.
+
+That is a hard optimization problem. If the best thing a layer could do is "mostly keep what already works, and add a small correction," a plain stack has no easy way to express that.
+
+Residual connections make that easy. Instead of asking a layer to learn a full map $x \mapsto y$, we ask it to learn a **delta**:
+
+$$
+y = x + F(x).
+$$
+
+Now the safe default is clear:
+
+- if the layer has nothing useful to add, it can make $F(x) \approx 0$,
+- if it has a useful feature, it writes that feature on top of the existing state,
+- information always has a direct path forward through depth.
+
+In transformers, this becomes the **residual stream** mental model: attention and MLP blocks both read the current state, write an update, and pass the shared stream onward.
+
+## Math
+
+Let $x \in \mathbb{R}^d$ be the input to a block and let $F: \mathbb{R}^d \to \mathbb{R}^d$ be the learned update. A residual block outputs
+
+$$
+y = x + F(x).
+$$
+
+The Jacobian of this mapping is
+
+$$
+\frac{\partial y}{\partial x} = I + J_F(x),
+$$
+
+where $I$ is the identity matrix and $J_F(x)$ is the Jacobian of $F$.
+
+That identity term matters for optimization. Across many layers,
+
+$$
+h^{(\ell+1)} = h^{(\ell)} + F^{(\ell)}(h^{(\ell)}),
+$$
+
+so backpropagation multiplies matrices of the form $I + J_{F^{(\ell)}}$. Even if the learned part is small or noisy, there is still a direct gradient path through the identity.
+
+For a pre-norm transformer layer, a common pattern is
+
+$$
+h' = h + \operatorname{Attn}(\operatorname{LN}(h)),
+$$
+$$
+h_{next} = h' + \operatorname{MLP}(\operatorname{LN}(h')).
+$$
+
+This says each sublayer writes an update into a shared stream rather than replacing the stream entirely.
+
+## Code
+
+```python
+import numpy as np
+
+rs = np.random.RandomState(0)
+d = 128
+x0 = rs.randn(d)
+
+def run(depth=40, residual=True, alpha=0.2):
+    h = x0.copy()
+    norms = []
+    for _ in range(depth):
+        W = rs.randn(d, d) / np.sqrt(d)
+        update = np.tanh(W @ h)
+        h = h + alpha * update if residual else update
+        norms.append(np.linalg.norm(h))
+    return norms
+
+plain = run(residual=False)
+resid = run(residual=True)
+
+print("plain layer-1/layer-40:", round(plain[0], 3), round(plain[-1], 3))
+print("resid layer-1/layer-40:", round(resid[0], 3), round(resid[-1], 3))
+```
+
+Residual connections do not magically solve every instability, but they give optimization a much safer default: keep the current representation unless there is a good reason to change it.
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A strong next step would be a residual-stream sandbox that toggles skip connections on and off, then shows signal norms and gradient flow across depth.

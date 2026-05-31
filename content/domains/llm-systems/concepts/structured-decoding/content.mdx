@@ -1,0 +1,219 @@
+---
+title: "Structured Decoding: Token Masks From Schema Automata"
+---
+
+## Intuition
+
+Canonical sources: Scholak et al., ["PICARD"](https://aclanthology.org/2021.emnlp-main.779/), Beurer-Kellner et al., ["LMQL"](https://arxiv.org/abs/2212.06094), the [JSON Schema object reference](https://json-schema.org/understanding-json-schema/reference/object), the [Outlines constrained-generation docs](https://dottxt-ai.github.io/outlines/welcome/), OpenAI's [Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs), Louf and Willard et al., ["DOMINO"](https://arxiv.org/abs/2403.06988), Dong et al., ["XGrammar"](https://openreview.net/pdf?id=rjQfX0YgDl), and the [vLLM structured outputs docs](https://docs.vllm.ai/en/latest/features/structured_outputs/).
+
+Decoding and sampling turn next-token logits into text. Structured decoding adds one more object to the loop: a tiny parser or automaton state.
+
+At each step, the model still proposes ordinary logits over tokens. The schema state asks a stricter question: which next tokens can still lead to a valid completion? Invalid tokens are masked to probability zero. The remaining tokens are renormalized, then greedy decoding, sampling, beam search, or tree search can choose among them.
+
+The guarantee is narrow but useful. If the automaton is correct, every emitted token follows its mask, and decoding stops in an accepting state, then the output belongs to the formal language. That does not mean the source is true, the tool should be called, the answer is safe, or the selected enum is semantically right.
+
+This page studies that finite mechanism, not product JSON mode, tool calling, retries, validators after generation, or full JSON Schema.
+
+The demo is deliberately over toy tokens: real tokenizers can split or merge pieces like `"tool"` or `{`, so production masks are built over actual token IDs. The schema here is exact-order and finite-enum; real JSON Schema can admit many equivalent serializations. The naive and cached check counts in the demo illustrate carried decode-time mask work, not a universal latency model.
+
+## Math
+
+Let $\mathcal V$ be a fixed finite token vocabulary, including an end token $\texttt{<eos>}$.
+
+Represent the schema as a deterministic finite automaton
+
+$$
+A=(Q,\mathcal V,\delta,q_0,F),\qquad
+\delta:Q\times\mathcal V\rightharpoonup Q.
+$$
+
+For a prefix $y_{1:t}$, the schema state is $q_t=\delta^\*(q_0,y_{1:t})$ when every transition is defined.
+
+That "can reach" clause matters. A local transition that enters a dead end should not remain allowed.
+
+The allowed-token mask should include only tokens that can still reach acceptance. Given model logits $\ell_t(v)$ and temperature $\tau$, constrained decoding uses
+
+$$
+M(q_t)=
+\{v\in\mathcal V:\delta(q_t,v)\ \mathrm{is\ defined\ and\ can\ reach}\ F\},
+\qquad
+p_A(v\mid y_{1:t})=
+\frac{\exp(\ell_t(v)/\tau)\mathbf 1[v\in M(q_t)]}
+{\sum_{u\in M(q_t)}\exp(\ell_t(u)/\tau)}.
+$$
+
+Then a decoder selects or samples $y_{t+1}$ from $p_A$ and updates
+
+$$
+q_{t+1}=\delta(q_t,y_{t+1}).
+$$
+
+Stopping is accepted only when $q_{t+1}\in F$, usually after an explicit $\texttt{<eos>}$ token.
+
+If top-$p$ is used, the hard schema mask should be applied first, then top-$p$ truncates and renormalizes inside the valid set. Applying top-$p$ first can throw away every valid token when the raw model strongly prefers invalid ones.
+
+The modest theorem is:
+
+If every emitted token is sampled from $M(q_t)$ and the run stops in $F$, then the token sequence is in $L(A)$. Nothing follows about whether the content is true, useful, task-correct, or semantically correct; safety is likewise outside a formal syntax guarantee.
+
+## Code
+
+This witness implements the same finite object as the demo: a token-level automaton for a tiny ordered retrieval-call schema. The unconstrained decoder can choose an invalid token immediately. The constrained decoder is schema-valid. A semantic-mismatch profile stays schema-valid while choosing the wrong source for the hidden task.
+
+```python
+from collections import defaultdict
+from math import exp
+
+V = [
+    "{", "}", ":", ",",
+    '"tool"', '"source"', '"k"',
+    '"retrieve"', '"lookup"', '"docs"', '"tickets"',
+    "1", "2",
+    '"DROP"', '"extra"', "true", "<eos>",
+]
+
+D = {
+    0: {"{": 1},
+    1: {'"tool"': 2},
+    2: {":": 3},
+    3: {'"retrieve"': 4, '"lookup"': 4},
+    4: {",": 5},
+    5: {'"source"': 6},
+    6: {":": 7},
+    7: {'"docs"': 8, '"tickets"': 8},
+    8: {",": 9},
+    9: {'"k"': 10},
+    10: {":": 11},
+    11: {"1": 12, "2": 12},
+    12: {"}": 13},
+    13: {"<eos>": 14},
+}
+
+ACCEPT = {14}
+
+VALID_PROFILES = {"schema-friendly", "format-confused", "semantic-mismatch"}
+
+def good_states():
+    rev = defaultdict(set)
+    for q, arcs in D.items():
+        for tok, r in arcs.items():
+            rev[r].add(q)
+    good = set(ACCEPT)
+    stack = list(ACCEPT)
+    while stack:
+        r = stack.pop()
+        for q in rev[r]:
+            if q not in good:
+                good.add(q)
+                stack.append(q)
+    return good
+
+GOOD = good_states()
+
+def allowed(q):
+    return [tok for tok in V if D.get(q, {}).get(tok) in GOOD]
+
+def step(q, tok):
+    return D.get(q, {}).get(tok)
+
+def base_logits(q, profile):
+    if profile not in VALID_PROFILES:
+        raise ValueError(f"unknown profile: {profile}")
+
+    z = {tok: -2.0 for tok in V}
+    for tok in allowed(q):
+        z[tok] = 1.0
+
+    preferred = {3: '"retrieve"', 7: '"docs"', 11: "2"}
+    if q in preferred:
+        z[preferred[q]] = 2.0
+
+    if profile == "format-confused":
+        z['"DROP"'] = 5.0
+        z['"extra"'] = 4.0
+
+    if profile == "semantic-mismatch" and q == 7:
+        z['"tickets"'] = 5.0
+        z['"docs"'] = 1.0
+
+    return z
+
+def softmax(z, toks):
+    m = max(z[t] for t in toks)
+    weights = {t: exp(z[t] - m) for t in toks}
+    total = sum(weights.values())
+    return {t: weights.get(t, 0.0) / total for t in V}
+
+def masked_probs(z, q):
+    return softmax(z, allowed(q))
+
+def rejection_mass(z, q):
+    raw = softmax(z, V)
+    return 1.0 - sum(raw[t] for t in allowed(q))
+
+def decode(profile="format-confused", constrained=True, max_steps=32):
+    q = 0
+    toks = []
+    states = [q]
+
+    for _ in range(max_steps):
+        z = base_logits(q, profile)
+        p = masked_probs(z, q) if constrained else softmax(z, V)
+        tok = max(V, key=lambda t: (p[t], -V.index(t)))
+        toks.append(tok)
+        q_next = step(q, tok)
+
+        if q_next is None:
+            return {"tokens": toks, "states": states, "accepted": False}
+
+        q = q_next
+        states.append(q)
+
+        if q in ACCEPT:
+            return {"tokens": toks, "states": states, "accepted": True}
+
+    return {"tokens": toks, "states": states, "accepted": False}
+
+def parse_source(tokens):
+    i = tokens.index('"source"')
+    return tokens[i + 2].strip('"')
+
+assert allowed(0) == ["{"]
+assert set(allowed(3)) == {'"retrieve"', '"lookup"'}
+assert allowed(13) == ["<eos>"]
+
+bad = decode("format-confused", constrained=False)
+assert bad["accepted"] is False
+assert bad["tokens"][0] == '"DROP"'
+
+good = decode("format-confused", constrained=True)
+assert good["accepted"] is True
+assert good["tokens"] == [
+    "{", '"tool"', ":", '"retrieve"', ",",
+    '"source"', ":", '"docs"', ",",
+    '"k"', ":", "2", "}", "<eos>",
+]
+
+z = base_logits(3, "format-confused")
+p = masked_probs(z, 3)
+assert p['"DROP"'] == 0.0
+assert rejection_mass(z, 3) > 0.90
+
+sem = decode("semantic-mismatch", constrained=True)
+assert sem["accepted"] is True
+assert parse_source(sem["tokens"]) == "tickets"
+```
+
+## Interactive Demo
+
+Use the Schema Mask Explorer as a prediction check. At the current automaton
+state, inspect the raw logits and predict whether the raw highest-logit token
+survives the schema mask, gets replaced by the highest valid token, or has no
+valid continuation.
+
+After reveal, compare raw probability mass with the masked-and-renormalized
+distribution. Then turn the mask off to see a high-logit invalid token break the
+prefix, or use the semantic-mismatch profile to see the key limitation:
+schema-valid output can still choose the wrong source for the task.
+
+{/* viz.tsx component renders here if it exists */}

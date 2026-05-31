@@ -1,0 +1,30 @@
+We are continuing Continuous Function after the `content-object-manifest-spine` commit.
+
+Project mission:
+- Make the site a joyful, deep, visual learning and research platform where learners come back because concepts, math, demos, sources, notes, and discussions stay connected.
+- Keep public atlas pages fast/static/cacheable.
+- Build durable learner memory and collaboration around object-attached learning/research journeys, not a generic social feed.
+
+Current state:
+- The repo now has a generated content object manifest with canonical typed object keys for concepts, routes, demos, equations, code witnesses, sources, source spans, claims, and misconceptions.
+- `validate-content` now fails on stale, unexpected, missing, unsupported, or dangling manifest/object-ref cases.
+- Reading-room route objects and local route snapshots can carry `objectKey`.
+- No Clerk, Neon, Drizzle, API routes, dynamic atlas reads, auth, or database code exists yet.
+- Deployment readiness points at Vercel + Clerk + Neon/Postgres + Drizzle, but Vercel/Clerk/Neon accounts still require user help.
+
+Open TODO candidates:
+1. `vercel-first-preview-deploy` - requires external Vercel setup/user account help.
+2. `object-memory-schema-migration` - first Drizzle/Postgres schema and migration for users, organizations, memberships, webhook events, content object refs, learning route snapshots, observations, research notes, threads, comments, evidence refs, uploads, document spans, and AI runs.
+3. `paid-accounts-stripe-skeleton` - Clerk provider/middleware/profile route/webhooks, but platform doc says defer billing and start with saved learner memory.
+
+Question:
+Now that object keys exist, what is the next concrete implementation slice that best advances the mission without overbuilding or requiring external account setup?
+
+Please return:
+1. Recommended slice and why.
+2. Exact files/modules to add or modify.
+3. Minimal schema/data contract if Drizzle is the right next slice.
+4. Whether to install Drizzle dependencies now or keep a SQL-only migration contract first.
+5. Tests/validators/scripts to add.
+6. No-go boundaries: auth, dynamic atlas pages, secrets, external DB connection, billing, realtime, AI endpoints, etc.
+7. Publish criteria and Oracle review risks.

@@ -13,8 +13,12 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "types": ["node", "react", "react-dom"]
+    "types": ["node", "react", "react-dom"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.mdx"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".next", "out", "build", "dist", "coverage"]
 }

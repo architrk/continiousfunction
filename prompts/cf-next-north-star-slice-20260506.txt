@@ -1,0 +1,35 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning environment for deep learning/frontier AI.
+
+Current state:
+- Published concepts now have 51/51 live demos, 51/51 source metadata, and 51/51 concept-specific prediction-first route coverage.
+- The broad north-star goal is not complete: source/claim review is still partial, concept-page discussion is object-attached but static/local, and durable cross-device learner/research memory is not wired yet.
+- Platform direction is documented as Vercel + Clerk + Neon Postgres + Drizzle, with a durable object-attached product model. External accounts may not exist yet, so the next repo slice should be useful before production credentials.
+
+User intent:
+Make the site a place learners want to return to: joyful, deep, rigorous, interactive, connected across fields, and gradually AI-assisted without becoming a generic chatbot or shallow demo gallery.
+
+Please choose the next concrete implementation slice after the completed prediction-first pass.
+
+Constraints:
+- Avoid repeating route prediction-first work that is now complete.
+- Prefer a bounded slice that materially advances one of the remaining north-star blockers.
+- Prefer work that makes future account-backed learning/research collaboration safer and more source-aware.
+- Keep the public atlas static/cached; do not require live Clerk/Neon credentials for the first slice.
+- The output should be implementable in one Codex pass with validation and Oracle review.
+
+Candidate directions I am considering:
+1. Add an object-key manifest generator/validator for concepts, equations, source spans, code witnesses, claim checks, demos, and routes. This would make future Postgres `content_object_refs`, notes, research threads, and AI runs attach to stable typed objects instead of URLs.
+2. Add the first Drizzle schema/migration for users, organizations, route snapshots, observations, notes, threads, comments, evidence refs, AI runs, uploaded documents, and document spans.
+3. Deepen claim-level source review workflow on a flagship path.
+4. Improve the research reading-room UX so a learner can more clearly turn a focused object into a saved next action.
+
+Question:
+Which one bounded slice should be implemented next, and why? Please give:
+- one recommended slice,
+- exact files/modules likely to touch,
+- the minimum behavior contract,
+- validation/tests to add,
+- risks or no-go boundaries,
+- what would count as "publish" for this slice.
+
+Be strict. If a direction is premature, say so.

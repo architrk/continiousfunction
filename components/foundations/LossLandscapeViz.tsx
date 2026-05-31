@@ -1,60 +1,62 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
+import { emitDemoState } from '../../lib/demoState'
+
+type LossLandscapeVizProps = {
+  chrome?: 'legacy' | 'notebook'
+  conceptId?: string
+}
 
 // ─────────────────────────────────────────────────────────────
 // Gamification Types
 // ─────────────────────────────────────────────────────────────
 type GamePhase = 'setup' | 'countdown' | 'running' | 'revealed'
-type FlatnessPrediction = 'sam-wins' | 'sgd-wins' | 'tie' | null
+type SharpnessCheckPrediction = 'sam-lower' | 'sgd-lower' | 'similar' | null
+type SharpnessCheckOutcome = Exclude<SharpnessCheckPrediction, null>
+type FlatnessPrediction = SharpnessCheckPrediction
 
 interface FlatnessChallenge {
   name: string
   lr: number
   rho: number
-  answer: Exclude<FlatnessPrediction, null>
   description: string
   steps: number
 }
 
-// Mystery challenges - users predict which optimizer finds flatter minimum
+// Mystery challenges - users predict which optimizer ends with lower local sharpness.
 const FLATNESS_CHALLENGES: FlatnessChallenge[] = [
   {
     name: '🎲 Standard Setup',
     lr: 0.08,
     rho: 0.2,
-    answer: 'sam-wins',
-    description: 'Medium learning rate, standard ρ... who finds the flatter basin?',
+    description: 'Medium learning rate, standard ρ... compare endpoint sensitivity.',
     steps: 20
   },
   {
     name: '🎲 Tiny Steps',
     lr: 0.02,
     rho: 0.1,
-    answer: 'tie',
-    description: 'Very small learning rate... can SGD compete with SAM?',
+    description: 'Very small learning rate... trajectories should differ only modestly.',
     steps: 25
   },
   {
     name: '🎲 Big Jumps',
     lr: 0.15,
     rho: 0.25,
-    answer: 'sam-wins',
-    description: 'High learning rate... will SAM stabilize or oscillate?',
+    description: 'High learning rate... inspect how far the SAM probe redirects the path.',
     steps: 15
   },
   {
     name: '🎲 Wide Search',
     lr: 0.06,
     rho: 0.4,
-    answer: 'sam-wins',
-    description: 'Large ρ means SAM looks further for worst-case directions...',
+    description: 'Large ρ means SAM probes further along a nearby high-loss direction.',
     steps: 20
   },
   {
     name: '🎲 Edge Case',
     lr: 0.03,
     rho: 0.05,
-    answer: 'tie',
-    description: 'Tiny ρ makes SAM almost like SGD... will they converge similarly?',
+    description: 'Tiny ρ makes SAM close to SGD... compare the computed endpoint λₘₐₓ.',
     steps: 25
   },
 ]
@@ -62,34 +64,32 @@ const FLATNESS_CHALLENGES: FlatnessChallenge[] = [
 // Educational feedback
 function getFlatnessFeedback(
   prediction: FlatnessPrediction,
+  actual: SharpnessCheckOutcome,
   challenge: FlatnessChallenge,
   sgdSharp: number,
   samSharp: number
 ): string {
-  const isCorrect = prediction === challenge.answer
-  const sharpDiff = sgdSharp - samSharp
-  const samWon = sharpDiff > 0.5
-  const sgdWon = sharpDiff < -0.5
-  const _wasTie = !samWon && !sgdWon
+  const isCorrect = prediction === actual
+  const actualLabel = SHARPNESS_OUTCOME_LABELS[actual]
 
   if (isCorrect) {
-    if (challenge.answer === 'sam-wins') {
-      return `✅ Correct! SAM sharpness: ${samSharp.toFixed(2)} vs SGD: ${sgdSharp.toFixed(2)}. SAM's adversarial perturbation (ρ=${challenge.rho}) found a flatter region. This predicts better generalization!`
+    if (actual === 'sam-lower') {
+      return `✅ Correct! SAM sharpness: ${samSharp.toFixed(2)} vs SGD: ${sgdSharp.toFixed(2)}. SAM's adversarial perturbation (ρ=${challenge.rho}) found a lower-sensitivity region in this toy slice.`
     }
-    if (challenge.answer === 'sgd-wins') {
+    if (actual === 'sgd-lower') {
       return `✅ Correct! SGD sharpness: ${sgdSharp.toFixed(2)} vs SAM: ${samSharp.toFixed(2)}. Sometimes the direct path works! Low learning rate can help SGD avoid sharp minima.`
     }
     return `✅ Correct! Both converged to similar sharpness (~${((sgdSharp + samSharp) / 2).toFixed(2)}). With lr=${challenge.lr} and ρ=${challenge.rho}, SAM's perturbation wasn't different enough to diverge paths.`
   }
 
   // Wrong answers
-  if (challenge.answer === 'sam-wins') {
-    return `❌ SAM actually won! Sharpness: SAM ${samSharp.toFixed(2)} vs SGD ${sgdSharp.toFixed(2)}. SAM's ascent step (with ρ=${challenge.rho}) biases optimization toward flat regions that generalize better.`
+  if (actual === 'sam-lower') {
+    return `❌ Actual: ${actualLabel}. Sharpness: SAM ${samSharp.toFixed(2)} vs SGD ${sgdSharp.toFixed(2)}. SAM's ascent step (with ρ=${challenge.rho}) biases optimization away from high local sensitivity in this toy.`
   }
-  if (challenge.answer === 'sgd-wins') {
-    return `❌ SGD actually won! Sharpness: SGD ${sgdSharp.toFixed(2)} vs SAM ${samSharp.toFixed(2)}. This can happen when ρ is too aggressive or the learning rate is too high for SAM.`
+  if (actual === 'sgd-lower') {
+    return `❌ Actual: ${actualLabel}. Sharpness: SGD ${sgdSharp.toFixed(2)} vs SAM ${samSharp.toFixed(2)}. This can happen when ρ is too aggressive or the learning rate is too high for SAM.`
   }
-  return `❌ It was actually a tie! Both ended at similar sharpness (~${((sgdSharp + samSharp) / 2).toFixed(2)}). With these settings, SAM's perturbation didn't create enough divergence.`
+  return `❌ Actual: ${actualLabel}. Both ended at similar sharpness (~${((sgdSharp + samSharp) / 2).toFixed(2)}). With these settings, SAM's perturbation did not create enough endpoint λₘₐₓ separation.`
 }
 
 // Optimizer scenario presets for exploration
@@ -107,17 +107,17 @@ interface LandscapePreset {
 const LANDSCAPE_PRESETS: LandscapePreset[] = [
   {
     id: 'samShowcase',
-    name: 'SAM Showcase',
+    name: 'SAM Contrast',
     emoji: '🎯',
-    description: 'SAM finds flat minimum while SGD gets stuck in sharp one',
+    description: 'Default contrast: SAM endpoint usually has lower local λₘₐₓ',
     lr: 0.08,
     rho: 0.2,
   },
   {
     id: 'sgdWins',
-    name: 'SGD Success',
+    name: 'Small Probe',
     emoji: '⚡',
-    description: 'Low lr lets SGD find flat minimum (slowly)',
+    description: 'Low lr and smaller ρ make the trajectories closer',
     lr: 0.03,
     rho: 0.15,
   },
@@ -125,7 +125,7 @@ const LANDSCAPE_PRESETS: LandscapePreset[] = [
     id: 'highLr',
     name: 'High LR',
     emoji: '🚀',
-    description: 'High learning rate: SGD oscillates, SAM stabilizes',
+    description: 'High learning rate: compare endpoint curvature after large steps',
     lr: 0.15,
     rho: 0.25,
   },
@@ -133,7 +133,7 @@ const LANDSCAPE_PRESETS: LandscapePreset[] = [
     id: 'lowLr',
     name: 'Low LR',
     emoji: '🐢',
-    description: 'Low learning rate: Both converge slowly but SGD may overshoot',
+    description: 'Low learning rate: both paths move slowly from the same start',
     lr: 0.02,
     rho: 0.1,
   },
@@ -141,7 +141,7 @@ const LANDSCAPE_PRESETS: LandscapePreset[] = [
     id: 'largeRho',
     name: 'Large ρ',
     emoji: '🔍',
-    description: 'Large perturbation radius: SAM strongly prefers flat regions',
+    description: 'Large perturbation radius: SAM reacts strongly to nearby high-loss directions',
     lr: 0.06,
     rho: 0.4,
   },
@@ -157,14 +157,14 @@ function getLossLandscapeInsight(
     return {
       emoji: '🎮',
       color: '#6366f1',
-      text: 'Click "Step" to watch SGD and SAM diverge! SGD follows raw gradient; SAM first perturbs to find worst-case direction, then descends.',
+      text: 'Click "Step" to watch SGD and SAM diverge. SGD follows the raw gradient; SAM first probes a nearby high-loss direction, then descends.',
     }
   }
 
   const sgdLast = sgdTrajectory[sgdTrajectory.length - 1]
   const samLast = samTrajectory[samTrajectory.length - 1]
 
-  // Check which found flatter minimum
+  // Compare local sharpness at the current endpoints.
   const sgdSharp = sgdLast?.sharp ?? 0
   const samSharp = samLast?.sharp ?? 0
   const sgdLoss = sgdLast?.loss ?? 0
@@ -182,7 +182,7 @@ function getLossLandscapeInsight(
     return {
       emoji: '✨',
       color: '#22c55e',
-      text: `SAM found flatter region! Sharpness ${samSharp.toFixed(2)} vs SGD's ${sgdSharp.toFixed(2)}. Flat minima generalize better—this is SAM's superpower.`,
+      text: `SAM reached a lower-sensitivity region in this toy. Sharpness ${samSharp.toFixed(2)} vs SGD's ${sgdSharp.toFixed(2)}; real generalization claims need a defined perturbation scale and separate validation.`,
     }
   }
 
@@ -205,7 +205,7 @@ function getLossLandscapeInsight(
   return {
     emoji: '🔄',
     color: '#6366f1',
-    text: `After ${steps} steps: SGD loss=${sgdLoss.toFixed(3)}, SAM loss=${samLoss.toFixed(3)}. Keep stepping to see which finds the better basin!`,
+    text: `After ${steps} steps: SGD loss=${sgdLoss.toFixed(3)}, SAM loss=${samLoss.toFixed(3)}. Keep stepping to compare local sharpness and training loss separately.`,
   }
 }
 
@@ -271,7 +271,7 @@ const DOMAIN = {
   yMax: 2.5,
 }
 
-const START_POINT: Vec2 = { x: -0.7, y: 1.3 }
+const START_POINT: Vec2 = { x: 1.25, y: -1.75 }
 
 const FLAT_CENTER: Vec2 = { x: -1.4, y: 0.7 }
 const SHARP_CENTER: Vec2 = { x: 1.3, y: -0.4 }
@@ -298,6 +298,15 @@ const METRIC_CHART_HEIGHT = 90
 const PADDING = 24
 const HESSIAN_EPS = 0.08
 const CROSS_SECTION_Y = 0
+const SHARPNESS_CHECK_STEPS = 20
+const SIMILAR_REL_TOL = 0.12
+const SIMILAR_ABS_TOL = 0.1
+
+const SHARPNESS_OUTCOME_LABELS: Record<SharpnessCheckOutcome, string> = {
+  'sam-lower': 'SAM lower lambda-max',
+  'sgd-lower': 'SGD lower lambda-max',
+  similar: 'similar lambda-max',
+}
 
 // ----- Basic loss geometry -----
 
@@ -617,6 +626,18 @@ function averageSharpness(points: TrajPoint[]): number {
   return total / points.length
 }
 
+function makeTrajectoryPoint(point: Vec2): TrajPoint {
+  const loss = combinedLoss(point.x, point.y)
+  const h = hessianLoss(point.x, point.y)
+  const eig = eigenDecomposition2D(h)
+  return {
+    x: point.x,
+    y: point.y,
+    loss,
+    sharp: Math.max(eig.lambdaMax, 0),
+  }
+}
+
 function sgdStep(w: Vec2, lr: number): Vec2 {
   const [gx, gy] = combinedGrad(w.x, w.y)
   return {
@@ -655,15 +676,61 @@ function gradVecAt(point: Vec2): Vec2 {
   return { x: gx, y: gy }
 }
 
+function simulateTrajectoryPair(
+  lr: number,
+  rho: number,
+  stepCount: number,
+): { sgd: TrajPoint[]; sam: TrajPoint[] } {
+  const sgd: TrajPoint[] = [makeTrajectoryPoint(START_POINT)]
+  const sam: TrajPoint[] = [makeTrajectoryPoint(START_POINT)]
+
+  for (let i = 0; i < stepCount; i += 1) {
+    const sgdLast = sgd[sgd.length - 1]
+    const sgdNext = sgdStep({ x: sgdLast.x, y: sgdLast.y }, lr)
+    sgd.push(makeTrajectoryPoint(sgdNext))
+
+    const samLast = sam[sam.length - 1]
+    const samNext = samStep({ x: samLast.x, y: samLast.y }, lr, rho)
+    sam.push(makeTrajectoryPoint(samNext))
+  }
+
+  return { sgd, sam }
+}
+
+function classifySharpnessOutcome(
+  sgdSharp: number,
+  samSharp: number,
+): SharpnessCheckOutcome {
+  const diff = sgdSharp - samSharp
+  const scale = Math.max(Math.abs(sgdSharp), Math.abs(samSharp), 1)
+  if (Math.abs(diff) <= Math.max(SIMILAR_ABS_TOL, SIMILAR_REL_TOL * scale)) {
+    return 'similar'
+  }
+  return diff > 0 ? 'sam-lower' : 'sgd-lower'
+}
+
 // ----- Main component -----
 
-export default function LossLandscapeSharpnessDemo() {
+export default function LossLandscapeSharpnessDemo({
+  chrome = 'legacy',
+  conceptId = 'loss-landscapes',
+}: LossLandscapeVizProps) {
+  const isNotebook = chrome === 'notebook'
   const [rho, setRho] = useState(0.2)
   const [lr, setLr] = useState(0.08)
   const [mode, setMode] =
     useState<OptimizerMode>('sam')
   const [steps, setSteps] = useState(0)
   const [activePreset, setActivePreset] = useState<ScenarioId | null>('samShowcase')
+  const [sharpnessPrediction, setSharpnessPrediction] =
+    useState<SharpnessCheckPrediction>(null)
+  const [sharpnessPredictionResult, setSharpnessPredictionResult] = useState<{
+    predicted: SharpnessCheckOutcome
+    actual: SharpnessCheckOutcome
+    sgdSharp: number
+    samSharp: number
+    checkSteps: number
+  } | null>(null)
 
   // ─────────────────────────────────────────────────────────────
   // Gamification State
@@ -676,6 +743,11 @@ export default function LossLandscapeSharpnessDemo() {
   const [score, setScore] = useState(0)
   const [completedChallenges, setCompletedChallenges] = useState<string[]>([])
   const [gameStepsRemaining, setGameStepsRemaining] = useState(0)
+
+  const resetSharpnessCheck = useCallback(() => {
+    setSharpnessPrediction(null)
+    setSharpnessPredictionResult(null)
+  }, [])
 
   // Game control functions
   const startChallenge = useCallback((challenge: FlatnessChallenge) => {
@@ -720,12 +792,7 @@ export default function LossLandscapeSharpnessDemo() {
   useEffect(() => {
     if (gamePhase === 'running' && gameStepsRemaining === selectedChallenge?.steps) {
       // Reset trajectories at the start
-      const p0 = {
-        x: START_POINT.x,
-        y: START_POINT.y,
-        loss: combinedLoss(START_POINT.x, START_POINT.y),
-        sharp: Math.max(eigenDecomposition2D(hessianLoss(START_POINT.x, START_POINT.y)).lambdaMax, 0)
-      }
+      const p0 = makeTrajectoryPoint(START_POINT)
       setSgdTrajectory([p0])
       setSamTrajectory([p0])
       setSteps(0)
@@ -733,23 +800,7 @@ export default function LossLandscapeSharpnessDemo() {
   }, [gamePhase, gameStepsRemaining, selectedChallenge?.steps])
 
   const makeInitialPoint = () => {
-    const loss0 = combinedLoss(
-      START_POINT.x,
-      START_POINT.y,
-    )
-    const h0 = hessianLoss(
-      START_POINT.x,
-      START_POINT.y,
-    )
-    const eig0 = eigenDecomposition2D(h0)
-    const sharp0 = Math.max(eig0.lambdaMax, 0)
-    const p0: TrajPoint = {
-      x: START_POINT.x,
-      y: START_POINT.y,
-      loss: loss0,
-      sharp: sharp0,
-    }
-    return p0
+    return makeTrajectoryPoint(START_POINT)
   }
 
   const [sgdTrajectory, setSgdTrajectory] =
@@ -777,44 +828,38 @@ export default function LossLandscapeSharpnessDemo() {
     setLr(preset.lr)
     setRho(preset.rho)
     setActivePreset(preset.id)
+    resetSharpnessCheck()
     // Reset trajectories when changing preset
     const p0 = makeInitialPoint()
     setSgdTrajectory([p0])
     setSamTrajectory([p0])
     setSteps(0)
-  }, [])
+  }, [resetSharpnessCheck])
 
   // Clear preset when manually adjusting sliders
   const handleLrChange = useCallback((newLr: number) => {
     setLr(newLr)
     setActivePreset(null)
+    setSharpnessPredictionResult(null)
   }, [])
 
   const handleRhoChange = useCallback((newRho: number) => {
     setRho(newRho)
     setActivePreset(null)
+    setSharpnessPredictionResult(null)
   }, [])
 
   const stepOnce = () => {
+    setSharpnessPredictionResult(null)
     setSgdTrajectory((prev) => {
       const last = prev[prev.length - 1]
       const next = sgdStep(
         { x: last.x, y: last.y },
         lr,
       )
-      const loss = combinedLoss(
-        next.x,
-        next.y,
-      )
-      const h = hessianLoss(
-        next.x,
-        next.y,
-      )
-      const eig = eigenDecomposition2D(h)
-      const sharp = Math.max(eig.lambdaMax, 0)
       return [
         ...prev,
-        { x: next.x, y: next.y, loss, sharp },
+        makeTrajectoryPoint(next),
       ]
     })
     setSamTrajectory((prev) => {
@@ -824,29 +869,39 @@ export default function LossLandscapeSharpnessDemo() {
         lr,
         rho,
       )
-      const loss = combinedLoss(
-        next.x,
-        next.y,
-      )
-      const h = hessianLoss(
-        next.x,
-        next.y,
-      )
-      const eig = eigenDecomposition2D(h)
-      const sharp = Math.max(eig.lambdaMax, 0)
       return [
         ...prev,
-        { x: next.x, y: next.y, loss, sharp },
+        makeTrajectoryPoint(next),
       ]
     })
     setSteps((s) => s + 1)
   }
 
   const reset = () => {
+    resetSharpnessCheck()
     const p0 = makeInitialPoint()
     setSgdTrajectory([p0])
     setSamTrajectory([p0])
     setSteps(0)
+  }
+
+  const checkSharpnessPrediction = () => {
+    if (!sharpnessPrediction) return
+    const simulated = simulateTrajectoryPair(lr, rho, SHARPNESS_CHECK_STEPS)
+    const sgdEnd = simulated.sgd[simulated.sgd.length - 1]
+    const samEnd = simulated.sam[simulated.sam.length - 1]
+    const actual = classifySharpnessOutcome(sgdEnd.sharp, samEnd.sharp)
+
+    setSgdTrajectory(simulated.sgd)
+    setSamTrajectory(simulated.sam)
+    setSteps(SHARPNESS_CHECK_STEPS)
+    setSharpnessPredictionResult({
+      predicted: sharpnessPrediction,
+      actual,
+      sgdSharp: sgdEnd.sharp,
+      samSharp: samEnd.sharp,
+      checkSteps: SHARPNESS_CHECK_STEPS,
+    })
   }
 
   // Game auto-stepping effect
@@ -858,20 +913,12 @@ export default function LossLandscapeSharpnessDemo() {
       setSgdTrajectory((prev) => {
         const last = prev[prev.length - 1]
         const next = sgdStep({ x: last.x, y: last.y }, lr)
-        const loss = combinedLoss(next.x, next.y)
-        const h = hessianLoss(next.x, next.y)
-        const eig = eigenDecomposition2D(h)
-        const sharp = Math.max(eig.lambdaMax, 0)
-        return [...prev, { x: next.x, y: next.y, loss, sharp }]
+        return [...prev, makeTrajectoryPoint(next)]
       })
       setSamTrajectory((prev) => {
         const last = prev[prev.length - 1]
         const next = samStep({ x: last.x, y: last.y }, lr, rho)
-        const loss = combinedLoss(next.x, next.y)
-        const h = hessianLoss(next.x, next.y)
-        const eig = eigenDecomposition2D(h)
-        const sharp = Math.max(eig.lambdaMax, 0)
-        return [...prev, { x: next.x, y: next.y, loss, sharp }]
+        return [...prev, makeTrajectoryPoint(next)]
       })
       setSteps((s) => s + 1)
       setGameStepsRemaining((r) => r - 1)
@@ -884,15 +931,26 @@ export default function LossLandscapeSharpnessDemo() {
   useEffect(() => {
     if (gamePhase === 'running' && gameStepsRemaining === 0 && selectedChallenge) {
       // Score the prediction
+      const sgdEnd = sgdTrajectory[sgdTrajectory.length - 1]
+      const samEnd = samTrajectory[samTrajectory.length - 1]
+      const actual = classifySharpnessOutcome(sgdEnd.sharp, samEnd.sharp)
       setGamePhase('revealed')
-      if (prediction === selectedChallenge.answer) {
+      if (prediction === actual) {
         setScore((s) => s + 1)
       }
       if (!completedChallenges.includes(selectedChallenge.name)) {
         setCompletedChallenges((c) => [...c, selectedChallenge.name])
       }
     }
-  }, [gamePhase, gameStepsRemaining, selectedChallenge, prediction, completedChallenges])
+  }, [
+    completedChallenges,
+    gamePhase,
+    gameStepsRemaining,
+    prediction,
+    samTrajectory,
+    selectedChallenge,
+    sgdTrajectory,
+  ])
 
   const activeTrajectory =
     mode === 'sgd'
@@ -906,6 +964,10 @@ export default function LossLandscapeSharpnessDemo() {
     sgdTrajectory[sgdTrajectory.length - 1]
   const samCurrent =
     samTrajectory[samTrajectory.length - 1]
+  const currentSharpnessOutcome = classifySharpnessOutcome(
+    sgdCurrent.sharp,
+    samCurrent.sharp,
+  )
 
   const samGrad = gradVecAt(samCurrent)
   const samGradNorm =
@@ -914,13 +976,13 @@ export default function LossLandscapeSharpnessDemo() {
     x: (rho * samGrad.x) / samGradNorm,
     y: (rho * samGrad.y) / samGradNorm,
   }
-  const worstPoint: Vec2 = {
+  const probePoint: Vec2 = {
     x: samCurrent.x + epsVec.x,
     y: samCurrent.y + epsVec.y,
   }
-  const worstLoss = combinedLoss(
-    worstPoint.x,
-    worstPoint.y,
+  const probeLoss = combinedLoss(
+    probePoint.x,
+    probePoint.y,
   )
 
   const hSamCurrent = hessianLoss(
@@ -937,9 +999,9 @@ export default function LossLandscapeSharpnessDemo() {
     samTrajectory,
   )
 
-  const sgdGenProxy =
+  const sgdFlatnessScore =
     1 / (1 + sgdCurrent.sharp)
-  const samGenProxy =
+  const samFlatnessScore =
     1 / (1 + samCurrent.sharp)
 
   const sgdPathMain = buildTrajectoryPath(
@@ -999,24 +1061,68 @@ export default function LossLandscapeSharpnessDemo() {
   const flatMinX = FLAT_CENTER.x
   const sharpMinX = SHARP_CENTER.x
 
-  const worstLossDelta =
-    worstLoss - samCurrent.loss
+  const probeLossDelta =
+    probeLoss - samCurrent.loss
+
+  useEffect(() => {
+    emitDemoState({
+      conceptId,
+      label: 'Loss landscape sharpness demo',
+      summary: `2D toy slice after ${steps} steps: SGD and SAM are compared by local Hessian lambda-max.`,
+      values: [
+        `learning rate eta: ${lr.toFixed(3)}`,
+        `SAM radius rho: ${rho.toFixed(2)}`,
+        `SGD loss/lambda-max: ${sgdCurrent.loss.toFixed(3)} / ${sgdCurrent.sharp.toFixed(3)}`,
+        `SAM loss/lambda-max: ${samCurrent.loss.toFixed(3)} / ${samCurrent.sharp.toFixed(3)}`,
+        `SAM neighborhood-probe delta-rho: ${probeLossDelta.toFixed(3)}`,
+        sharpnessPredictionResult
+          ? `prediction check: ${SHARPNESS_OUTCOME_LABELS[sharpnessPredictionResult.predicted]}, actual ${SHARPNESS_OUTCOME_LABELS[sharpnessPredictionResult.actual]}`
+          : 'prediction check: not run',
+      ],
+    })
+  }, [
+    conceptId,
+    lr,
+    rho,
+    samCurrent.loss,
+    samCurrent.sharp,
+    sgdCurrent.loss,
+    sgdCurrent.sharp,
+    sharpnessPredictionResult,
+    steps,
+    probeLossDelta,
+  ])
 
   return (
-    <section className="card interactive-card">
-      <h2>Loss Landscape, Sharpness & SAM</h2>
-      <p className="muted">
-        Explore a 2D loss surface with a sharp and a flat
-        minimum. Compare SGD vs SAM: SAM looks at the
-        worst-case loss inside a small ball around the
-        current weights and prefers flatter valleys.
-      </p>
+    <>
+    <section
+      className={isNotebook ? 'loss-landscape-card notebook' : 'card interactive-card loss-landscape-card'}
+      style={isNotebook ? {
+        background: 'transparent',
+        border: 0,
+        boxShadow: 'none',
+        padding: 0,
+        color: '#e5e7eb',
+      } : undefined}
+    >
+      {!isNotebook ? (
+        <>
+          <h2>Loss Landscape, Sharpness & SAM</h2>
+          <p className="muted">
+            Explore a 2D loss surface with a sharp and a flat
+            minimum. Compare SGD vs SAM: SAM looks at the
+            loss at a nearby high-loss probe point inside a small ball around
+            the current weights and can avoid locally sensitive valleys in this toy.
+          </p>
+        </>
+      ) : null}
 
       {/* Scenario Presets */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', marginTop: '0.5rem' }}>
         {LANDSCAPE_PRESETS.map((preset) => (
           <button
             key={preset.id}
+            type="button"
             onClick={() => handlePreset(preset)}
             style={{
               padding: '0.35rem 0.7rem',
@@ -1039,34 +1145,140 @@ export default function LossLandscapeSharpnessDemo() {
             <span>{preset.name}</span>
           </button>
         ))}
-        <button
-          onClick={() => setGameMode(!gameMode)}
-          style={{
-            padding: '0.35rem 0.7rem',
-            borderRadius: '999px',
-            border: gameMode ? '2px solid #f59e0b' : '1px solid rgba(148,163,184,0.4)',
-            background: gameMode
-              ? 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(249,115,22,0.15))'
-              : 'rgba(15,23,42,0.8)',
-            color: gameMode ? '#fcd34d' : '#9ca3af',
-            fontSize: '0.78rem',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          {gameMode ? '🎮 Exit Challenge' : '🎯 Try Prediction Challenge'}
-        </button>
-        {score > 0 && (
+        {!isNotebook ? (
+          <button
+            type="button"
+            onClick={() => setGameMode(!gameMode)}
+            style={{
+              padding: '0.35rem 0.7rem',
+              borderRadius: '999px',
+              border: gameMode ? '2px solid #f59e0b' : '1px solid rgba(148,163,184,0.4)',
+              background: gameMode
+                ? 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(249,115,22,0.15))'
+                : 'rgba(15,23,42,0.8)',
+              color: gameMode ? '#fcd34d' : '#9ca3af',
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {gameMode ? 'Exit Challenge' : 'Try Prediction Challenge'}
+          </button>
+        ) : null}
+        {!isNotebook && score > 0 && (
           <span style={{ fontSize: '0.75rem', color: '#fcd34d', alignSelf: 'center', marginLeft: '0.5rem' }}>
             Score: {score}/{completedChallenges.length}
           </span>
         )}
       </div>
 
+      {isNotebook ? (
+        <div
+          style={{
+            marginBottom: '0.75rem',
+            padding: '0.85rem',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.86))',
+            border: '1px solid rgba(20, 184, 166, 0.38)',
+          }}
+        >
+          <h3 style={{ margin: '0 0 0.35rem', fontSize: '0.96rem', color: '#f8fafc' }}>
+            Prediction check: which path ends less locally sharp?
+          </h3>
+          <p style={{ margin: '0 0 0.7rem', fontSize: '0.82rem', lineHeight: 1.5, color: '#cbd5e1' }}>
+            Choose an outcome, then run a fixed {SHARPNESS_CHECK_STEPS}-step rollout
+            from the same start. The check compares only local Hessian lambda-max
+            in this 2D toy slice.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.7rem' }}>
+            {([
+              ['sam-lower', 'SAM lower lambda-max'],
+              ['sgd-lower', 'SGD lower lambda-max'],
+              ['similar', 'similar lambda-max'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={sharpnessPrediction === value}
+                onClick={() => {
+                  setSharpnessPrediction(value)
+                  setSharpnessPredictionResult(null)
+                }}
+                style={{
+                  padding: '0.55rem 0.75rem',
+                  borderRadius: '9px',
+                  border: sharpnessPrediction === value
+                    ? '2px solid #14b8a6'
+                    : '1px solid rgba(148, 163, 184, 0.28)',
+                  background: sharpnessPrediction === value
+                    ? 'rgba(20, 184, 166, 0.2)'
+                    : 'rgba(15, 23, 42, 0.64)',
+                  color: sharpnessPrediction === value ? '#ccfbf1' : '#d9e2ef',
+                  fontSize: '0.84rem',
+                  fontWeight: sharpnessPrediction === value ? 650 : 500,
+                  cursor: 'pointer',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              type="button"
+              disabled={!sharpnessPrediction}
+              onClick={checkSharpnessPrediction}
+              style={{
+                padding: '0.58rem 0.85rem',
+                borderRadius: '9px',
+                border: '0',
+                background: sharpnessPrediction
+                  ? 'linear-gradient(135deg, #14b8a6, #2563eb)'
+                  : 'rgba(51, 65, 85, 0.65)',
+                color: sharpnessPrediction ? '#fff' : '#94a3b8',
+                fontWeight: 700,
+                cursor: sharpnessPrediction ? 'pointer' : 'not-allowed',
+              }}
+            >
+              Run check
+            </button>
+            <button type="button" className="ghost" onClick={resetSharpnessCheck}>
+              Clear prediction
+            </button>
+          </div>
+          {sharpnessPredictionResult ? (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{
+                margin: '0.75rem 0 0',
+                padding: '0.65rem 0.75rem',
+                borderRadius: '10px',
+                border: sharpnessPredictionResult.predicted === sharpnessPredictionResult.actual
+                  ? '1px solid rgba(34, 197, 94, 0.35)'
+                  : '1px solid rgba(245, 158, 11, 0.35)',
+                background: sharpnessPredictionResult.predicted === sharpnessPredictionResult.actual
+                  ? 'rgba(34, 197, 94, 0.12)'
+                  : 'rgba(245, 158, 11, 0.1)',
+                color: '#f8fafc',
+                fontSize: '0.82rem',
+                lineHeight: 1.55,
+              }}
+            >
+              After {sharpnessPredictionResult.checkSteps} toy steps, SGD ended at
+              lambda-max {sharpnessPredictionResult.sgdSharp.toFixed(3)} and SAM
+              ended at lambda-max {sharpnessPredictionResult.samSharp.toFixed(3)}.
+              Actual: {SHARPNESS_OUTCOME_LABELS[sharpnessPredictionResult.actual]}.
+              This is a local perturbation-sensitivity diagnostic, not a test-loss guarantee.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* ───────────────────────────────────────────────────────────────
           Gamification Panel
          ─────────────────────────────────────────────────────────────── */}
-      {gameMode && (
+      {!isNotebook && gameMode && (
         <div style={{
           marginBottom: '0.75rem',
           padding: '0.75rem 1rem',
@@ -1080,6 +1292,7 @@ export default function LossLandscapeSharpnessDemo() {
             </h3>
             {gamePhase !== 'setup' && (
               <button
+                type="button"
                 onClick={resetGame}
                 style={{
                   fontSize: '0.7rem',
@@ -1099,7 +1312,7 @@ export default function LossLandscapeSharpnessDemo() {
           {gamePhase === 'setup' && (
             <>
               <p style={{ fontSize: '0.78rem', color: '#d1d5db', marginBottom: '0.6rem' }}>
-                Can you predict which optimizer will find the flatter minimum? SAM uses adversarial perturbations, SGD follows raw gradients!
+                Can you predict which optimizer will end with lower local λₘₐₓ? SAM uses an approximate high-loss neighborhood probe, while SGD follows raw gradients.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                 {FLATNESS_CHALLENGES.map((challenge) => {
@@ -1107,6 +1320,7 @@ export default function LossLandscapeSharpnessDemo() {
                   return (
                     <button
                       key={challenge.name}
+                      type="button"
                       onClick={() => startChallenge(challenge)}
                       style={{
                         fontSize: '0.75rem',
@@ -1135,16 +1349,17 @@ export default function LossLandscapeSharpnessDemo() {
                 &ldquo;{selectedChallenge.description}&rdquo;
               </p>
               <p style={{ fontSize: '0.8rem', color: '#e5e7eb', marginBottom: '0.5rem' }}>
-                lr={selectedChallenge.lr}, ρ={selectedChallenge.rho} — Who will find the flatter minimum?
+                lr={selectedChallenge.lr}, ρ={selectedChallenge.rho} — Which endpoint has lower local λₘₐₓ?
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 {[
-                  { value: 'sam-wins' as const, label: '🎯 SAM Wins', desc: 'Flatter basin' },
-                  { value: 'sgd-wins' as const, label: '⚡ SGD Wins', desc: 'Direct path works' },
-                  { value: 'tie' as const, label: '🤝 Tie', desc: 'Similar sharpness' },
+                  { value: 'sam-lower' as const, label: 'SAM lower λₘₐₓ', desc: 'Lower local sensitivity' },
+                  { value: 'sgd-lower' as const, label: 'SGD lower λₘₐₓ', desc: 'Direct path is less sharp' },
+                  { value: 'similar' as const, label: 'Similar λₘₐₓ', desc: 'Similar sharpness' },
                 ].map((option) => (
                   <button
                     key={option.value}
+                    type="button"
                     onClick={() => submitPrediction(option.value)}
                     style={{
                       fontSize: '0.75rem',
@@ -1187,26 +1402,26 @@ export default function LossLandscapeSharpnessDemo() {
                 padding: '0.6rem 0.8rem',
                 borderRadius: '10px',
                 marginBottom: '0.5rem',
-                background: prediction === selectedChallenge.answer
+                background: prediction === currentSharpnessOutcome
                   ? 'rgba(34,197,94,0.15)'
                   : 'rgba(239,68,68,0.15)',
-                border: prediction === selectedChallenge.answer
+                border: prediction === currentSharpnessOutcome
                   ? '1px solid rgba(34,197,94,0.4)'
                   : '1px solid rgba(239,68,68,0.4)',
               }}>
                 <p style={{ margin: 0, fontSize: '0.78rem', color: '#e5e7eb', lineHeight: 1.5 }}>
-                  {getFlatnessFeedback(prediction, selectedChallenge, sgdCurrent.sharp, samCurrent.sharp)}
+                  {getFlatnessFeedback(prediction, currentSharpnessOutcome, selectedChallenge, sgdCurrent.sharp, samCurrent.sharp)}
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '0.8rem', fontSize: '0.7rem', color: '#9ca3af' }}>
                 <span>
-                  Your guess: <span style={{ color: prediction === selectedChallenge.answer ? '#86efac' : '#fca5a5' }}>
-                    {prediction === 'sam-wins' ? '🎯 SAM' : prediction === 'sgd-wins' ? '⚡ SGD' : '🤝 Tie'}
+                  Your guess: <span style={{ color: prediction === currentSharpnessOutcome ? '#86efac' : '#fca5a5' }}>
+                    {prediction ? SHARPNESS_OUTCOME_LABELS[prediction] : 'none'}
                   </span>
                 </span>
                 <span>
                   Actual: <span style={{ color: '#fcd34d' }}>
-                    {selectedChallenge.answer === 'sam-wins' ? '🎯 SAM' : selectedChallenge.answer === 'sgd-wins' ? '⚡ SGD' : '🤝 Tie'}
+                    {SHARPNESS_OUTCOME_LABELS[currentSharpnessOutcome]}
                   </span>
                 </span>
               </div>
@@ -1220,8 +1435,12 @@ export default function LossLandscapeSharpnessDemo() {
         style={{
           padding: '0.6rem 0.9rem',
           borderRadius: '0.5rem',
-          background: `linear-gradient(135deg, ${currentInsight.color}22, ${currentInsight.color}08)`,
-          border: `1px solid ${currentInsight.color}55`,
+          background: isNotebook
+            ? `linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.82))`
+            : `linear-gradient(135deg, ${currentInsight.color}22, ${currentInsight.color}08)`,
+          border: isNotebook
+            ? `1px solid ${currentInsight.color}77`
+            : `1px solid ${currentInsight.color}55`,
           marginBottom: '0.75rem',
           display: 'flex',
           alignItems: 'flex-start',
@@ -1229,7 +1448,7 @@ export default function LossLandscapeSharpnessDemo() {
         }}
       >
         <span style={{ fontSize: '1.1rem' }}>{currentInsight.emoji}</span>
-        <p style={{ margin: 0, fontSize: '0.8rem', color: '#e5e7eb', lineHeight: 1.4 }}>
+        <p style={{ margin: 0, fontSize: '0.8rem', color: '#f8fafc', lineHeight: 1.4 }}>
           {currentInsight.text}
         </p>
       </div>
@@ -1271,6 +1490,7 @@ export default function LossLandscapeSharpnessDemo() {
             <span className="label">Optimizer view:</span>
             <button
               type="button"
+              aria-pressed={mode === 'sgd'}
               onClick={() => setMode('sgd')}
               className={
                 mode === 'sgd'
@@ -1282,6 +1502,7 @@ export default function LossLandscapeSharpnessDemo() {
             </button>
             <button
               type="button"
+              aria-pressed={mode === 'sam'}
               onClick={() => setMode('sam')}
               className={
                 mode === 'sam'
@@ -1293,10 +1514,11 @@ export default function LossLandscapeSharpnessDemo() {
             </button>
           </div>
           <div className="gd-buttons">
-            <button onClick={stepOnce}>
+            <button type="button" onClick={stepOnce}>
               Step both optimizers
             </button>
             <button
+              type="button"
               onClick={reset}
               className="ghost"
             >
@@ -1309,8 +1531,8 @@ export default function LossLandscapeSharpnessDemo() {
               max&#123;∥ε∥≤ρ&#125; L(w + ε)
             </code>{' '}
             by stepping using the gradient at a
-            worst-case nearby point. This explicitly
-            pushes the iterate toward flatter regions.
+            nearby high-loss probe point. This explicitly
+            penalizes nearby high-loss directions in this toy slice.
           </p>
         </div>
 
@@ -1475,7 +1697,7 @@ export default function LossLandscapeSharpnessDemo() {
                 )
               })()}
 
-              {/* Worst-case perturbation from SAM point */}
+              {/* SAM neighborhood probe from the current point */}
               {(() => {
                 const cx = xToSvg(
                   samCurrent.x,
@@ -1486,11 +1708,11 @@ export default function LossLandscapeSharpnessDemo() {
                   MAIN_HEIGHT,
                 )
                 const wx = xToSvg(
-                  worstPoint.x,
+                  probePoint.x,
                   MAIN_WIDTH,
                 )
                 const wy = yToSvg(
-                  worstPoint.y,
+                  probePoint.y,
                   MAIN_HEIGHT,
                 )
                 return (
@@ -1506,7 +1728,7 @@ export default function LossLandscapeSharpnessDemo() {
                       cx={wx}
                       cy={wy}
                       r={3}
-                      className="sam-worst-point"
+                      className="sam-probe-point"
                     />
                   </>
                 )
@@ -1559,10 +1781,10 @@ export default function LossLandscapeSharpnessDemo() {
             <p className="caption">
               Both optimizers see the same training
               loss surface, but SAM&apos;s update
-              direction is influenced by the worst-case
-              point in its ρ-ball (arrow). It gets
-              discouraged from entering extremely sharp
-              minima.
+              direction is influenced by the high-loss
+              probe point in its ρ-ball (arrow). It gets
+              discouraged from entering regions where small
+              perturbations sharply raise this toy loss.
             </p>
           </div>
 
@@ -1676,9 +1898,9 @@ export default function LossLandscapeSharpnessDemo() {
             <p className="caption">
               Color encodes the maximum eigenvalue
               λₘₐₓ of the Hessian: red = very sharp,
-              teal = flatter. Notice how SAM tends to
-              settle in flatter (teal-ish) regions,
-              even if the loss value is slightly higher.
+              teal = less locally sharp. In this toy, SAM can
+              settle in a lower-sensitivity region even if the
+              training loss is slightly higher.
             </p>
           </div>
 
@@ -1782,17 +2004,16 @@ export default function LossLandscapeSharpnessDemo() {
             <p className="caption">
               The sharp minimum is deeper but very
               narrow; the flat minimum is shallower but
-              wide. Flat minima correspond to many
-              nearby parameter settings with similar
-              loss, which generally leads to better
-              generalization and robustness to
-              perturbations.
+              wide. A flatter region has more nearby
+              parameter settings with similar toy loss, but
+              real generalization claims depend on the
+              perturbation definition and validation data.
             </p>
           </div>
 
           {/* Panel 4: Metrics & sharpness along trajectory */}
           <div className="loss-panel metrics-panel">
-            <h3>4. Local metrics & generalization proxy</h3>
+            <h3>4. Local metrics & toy flatness score</h3>
             <div className="metrics-grid">
               <div className="metric-column">
                 <h4>Current point</h4>
@@ -1854,17 +2075,17 @@ export default function LossLandscapeSharpnessDemo() {
                 </div>
                 <div className="metric-row">
                   <span className="label">
-                    Worst-case loss in ρ-ball
+                    SAM perturbation loss in ρ-ball
                     (SAM)
                   </span>
                   <span>
-                    {worstLoss.toFixed(3)}{' '}
+                    {probeLoss.toFixed(3)}{' '}
                     <span className="muted">
                       (
-                      {worstLossDelta >= 0
+                      {probeLossDelta >= 0
                         ? '+'
                         : ''}
-                      {worstLossDelta.toFixed(
+                      {probeLossDelta.toFixed(
                         3,
                       )}
                       )
@@ -1874,7 +2095,7 @@ export default function LossLandscapeSharpnessDemo() {
               </div>
 
               <div className="metric-column">
-                <h4>Flatness & generalization proxy</h4>
+                <h4>Flatness score in this slice</h4>
                 <div className="metric-row">
                   <span className="label">
                     Avg λₘₐₓ (SGD path)
@@ -1893,30 +2114,29 @@ export default function LossLandscapeSharpnessDemo() {
                 </div>
                 <div className="metric-row">
                   <span className="label">
-                    Generalization proxy
+                    Toy flatness score
                     (SGD)
                   </span>
                   <span>
-                    {sgdGenProxy.toFixed(3)}
+                    {sgdFlatnessScore.toFixed(3)}
                   </span>
                 </div>
                 <div className="metric-row">
                   <span className="label">
-                    Generalization proxy
+                    Toy flatness score
                     (SAM)
                   </span>
                   <span>
-                    {samGenProxy.toFixed(3)}
+                    {samFlatnessScore.toFixed(3)}
                   </span>
                 </div>
                 <p className="caption">
-                  Here the proxy is{' '}
+                  Here the toy score is{' '}
                   <code>1 / (1 + λₘₐₓ)</code>:
                   lower sharpness =&gt; higher
-                  score. SAM often trades a tiny
-                  increase in training loss for a
-                  much flatter basin, which tends
-                  to improve test performance.
+                  score. It is a local sensitivity
+                  diagnostic, not a substitute for
+                  held-out test performance.
                 </p>
               </div>
             </div>
@@ -1973,13 +2193,280 @@ export default function LossLandscapeSharpnessDemo() {
                 away from extremely sharp minima
                 (where small moves cause large
                 loss jumps). SAM makes this idea
-                explicit by optimizing for the
-                worst-case nearby loss.
+                explicit by approximating the
+                high-loss nearby probe.
               </p>
             </div>
           </div>
         </div>
       </div>
     </section>
+      <style jsx>{`
+        .loss-landscape-card {
+          overflow: hidden;
+        }
+
+        .loss-layout {
+          display: grid;
+          grid-template-columns: minmax(220px, 0.75fr) minmax(0, 2fr);
+          gap: 1rem;
+          align-items: start;
+        }
+
+        .loss-controls,
+        .loss-panel {
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          background: rgba(15, 23, 42, 0.72);
+          border-radius: 14px;
+          padding: 0.85rem;
+          min-width: 0;
+        }
+
+        .notebook .loss-controls,
+        .notebook .loss-panel {
+          background: rgba(15, 23, 42, 0.58);
+          border-color: rgba(148, 163, 184, 0.2);
+        }
+
+        .loss-controls {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .loss-panels {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 0.85rem;
+          min-width: 0;
+        }
+
+        .loss-panel h3,
+        .loss-panel h4 {
+          margin: 0 0 0.55rem;
+          color: #e5e7eb;
+          line-height: 1.25;
+        }
+
+        .loss-panel h3 {
+          font-size: 0.94rem;
+        }
+
+        .loss-panel h4 {
+          font-size: 0.84rem;
+        }
+
+        .loss-landscape-card button:focus-visible {
+          outline: 2px solid #f8fafc;
+          outline-offset: 2px;
+          box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.35);
+        }
+
+        .loss-chart {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          border-radius: 12px;
+          background: #0f172a;
+          border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+
+        .caption {
+          margin: 0.55rem 0 0;
+          color: #9ca3af;
+          font-size: 0.78rem;
+          line-height: 1.5;
+        }
+
+        .caption code {
+          color: #dbeafe;
+          white-space: normal;
+        }
+
+        .toggle-row,
+        .gd-buttons {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.45rem;
+        }
+
+        .toggle-row .label {
+          color: #aab8ca;
+          font-size: 0.8rem;
+        }
+
+        .toggle-btn,
+        .gd-buttons button,
+        .ghost {
+          appearance: none;
+          border: 1px solid rgba(148, 163, 184, 0.28);
+          border-radius: 9px;
+          background: rgba(15, 23, 42, 0.7);
+          color: #d9e2ef;
+          cursor: pointer;
+          font-size: 0.82rem;
+          font-weight: 600;
+          padding: 0.5rem 0.68rem;
+        }
+
+        .toggle-btn.active,
+        .gd-buttons button:not(.ghost):hover,
+        .ghost:hover {
+          border-color: rgba(20, 184, 166, 0.72);
+          color: #ccfbf1;
+        }
+
+        .toggle-btn.active {
+          background: rgba(20, 184, 166, 0.18);
+        }
+
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          gap: 0.85rem;
+        }
+
+        .metric-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 0.75rem;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+          padding: 0.34rem 0;
+          color: #e5e7eb;
+          font-size: 0.78rem;
+        }
+
+        .metric-row .label {
+          color: #9ca3af;
+        }
+
+        .metric-chart-wrapper {
+          margin-top: 0.9rem;
+        }
+
+        .axis-line {
+          stroke: rgba(226, 232, 240, 0.34);
+          stroke-width: 1;
+        }
+
+        .minimum-point.flat,
+        .cross-min-line.flat {
+          stroke: #14b8a6;
+          fill: #14b8a6;
+        }
+
+        .minimum-point.sharp,
+        .cross-min-line.sharp {
+          stroke: #ef4444;
+          fill: #ef4444;
+        }
+
+        .cross-min-line {
+          stroke-width: 1.5;
+          stroke-dasharray: 4 4;
+          opacity: 0.8;
+        }
+
+        .loss-path,
+        .cross-curve,
+        .sharpness-path {
+          fill: none;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+
+        .loss-path {
+          stroke-width: 3;
+          opacity: 0.9;
+        }
+
+        .loss-path.ghost {
+          opacity: 0.45;
+        }
+
+        .loss-path.sgd,
+        .cross-current.sgd {
+          stroke: #60a5fa;
+        }
+
+        .optimizer-point.sgd,
+        .cross-current.sgd {
+          fill: #60a5fa;
+        }
+
+        .loss-path.sam,
+        .cross-current.sam {
+          stroke: #f59e0b;
+        }
+
+        .optimizer-point.sam,
+        .cross-current.sam {
+          fill: #f59e0b;
+        }
+
+        .optimizer-point {
+          stroke: #020617;
+          stroke-width: 1.5;
+        }
+
+        .rho-ball {
+          fill: rgba(245, 158, 11, 0.12);
+          stroke: rgba(245, 158, 11, 0.72);
+          stroke-width: 1.5;
+          stroke-dasharray: 4 4;
+        }
+
+        .sam-eps-arrow {
+          stroke: #fbbf24;
+          stroke-width: 2;
+          stroke-linecap: round;
+        }
+
+        .sam-probe-point {
+          fill: #fbbf24;
+          stroke: #020617;
+          stroke-width: 1;
+        }
+
+        .hessian-max-eig {
+          stroke: rgba(255, 255, 255, 0.82);
+          stroke-width: 1.5;
+          stroke-dasharray: 3 3;
+        }
+
+        .cross-curve {
+          stroke-width: 2.5;
+        }
+
+        .cross-curve.flat {
+          stroke: #14b8a6;
+        }
+
+        .cross-curve.sharp {
+          stroke: #ef4444;
+        }
+
+        .cross-curve.combined {
+          stroke: #dbeafe;
+        }
+
+        .sharpness-path {
+          stroke: #f59e0b;
+          stroke-width: 2.5;
+        }
+
+        @media (max-width: 820px) {
+          .loss-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .loss-controls,
+          .loss-panel {
+            padding: 0.72rem;
+          }
+        }
+      `}</style>
+    </>
   )
 }

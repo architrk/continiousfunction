@@ -6,37 +6,40 @@ title: "Flow Matching & Rectified Flows"
 
 Diffusion models teach a model to "undo noise" step by step. Flow matching teaches a model something more direct: **which direction to move**.
 
-Imagine starting with a cloud of noise points and wanting to morph it into a cloud shaped like your data. If you knew a time-dependent "wind field" $v(x,t)$ that pushes particles, you could just integrate an ODE and watch noise turn into samples.
+Imagine starting with a cloud of noise points and wanting to morph it into a cloud shaped like your data. If you knew a time-dependent "wind field" $v(x,t)$ that pushes particles, you could integrate an ODE and watch noise turn into samples.
 
-Rectified flows are an especially simple version: they choose *straight-line paths* between noise and data. Straight paths are easy to approximate with a small number of steps, which is why flow matching is a route to fast sampling.
+The first idea to get right is the supervised label. For one chosen noise/data pair, a straight conditional path uses the current point $x_t=(1-t)x_0+t x_1$ but trains on the constant velocity $u_t=x_1-x_0$. The arrow from $x_t$ to $x_1$ is only the remaining displacement, not the training target.
 
 ## Math
 
-### A generative flow as an ODE
+### Generative flow and regression target
 
-We model a trajectory $x_t$ via:
+We model a trajectory $x_t$ with a neural velocity field $v_\theta$, then train that field to match a target velocity $u_t$:
 
-$$\\frac{dx_t}{dt} = v_\\theta(x_t, t), \\qquad t\\in[0,1],$$
-
-where $v_\\theta$ is a neural network predicting a velocity vector at position $x_t$ and time $t$.
-
-### Conditional flow matching objective
-
-Flow matching trains $v_\\theta$ to match a target velocity field $u_t$:
-
-$$\\mathcal{L} = \\mathbb E_{t, x_0, x_1}\\,\\big\\|v_\\theta(x_t, t) - u_t\\big\\|^2.$$
+$$
+\frac{dx_t}{dt}=v_\theta(x_t,t),\qquad
+\mathcal L=\mathbb E_{t,x_0,x_1}\,\big\|v_\theta(x_t,t)-u_t\big\|^2.
+$$
 
 ### Rectified flow (straight paths)
 
-Choose a straight interpolation between noise $x_0$ and data $x_1$:
+Choose a straight interpolation between noise $x_0$ and data $x_1$. Differentiating the path gives the supervised velocity label:
 
-$$x_t = (1-t)x_0 + t x_1.$$
+$$
+x_t=(1-t)x_0+t x_1,\qquad
+u_t=\frac{d}{dt}x_t=x_1-x_0,\qquad
+x_1-x_t=(1-t)(x_1-x_0).
+$$
 
-Then the target velocity is constant along the path:
+The remaining displacement $x_1-x_t$ is shorter than the training label except at $t=0$.
 
-$$u_t = \\frac{d}{dt}x_t = x_1 - x_0.$$
+So the useful identity is:
 
-This simplicity is the main appeal: the model learns velocities directly instead of learning to denoise under a noise schedule.
+$$
+x_t + (1-t)u_t = x_1.
+$$
+
+For a single straight conditional pair, the velocity label stays fixed as $t$ changes; the remaining integration time shrinks.
 
 ## Code
 
@@ -52,16 +55,20 @@ x1 = 2.0 * x0 + 1.0
 for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
     xt = (1 - t) * x0 + t * x1
     u = x1 - x0
+    remaining = x1 - xt
 
     # For this toy mapping, the exact velocity field can be written as v(xt,t):
     # xt = (1+t)x0 + t  =>  x0 = (xt - t)/(1+t)  =>  u = x0 + 1 = (xt + 1)/(1+t)
     v = (xt + 1.0) / (1.0 + t)
-    print("t=", t, "max|u-v|=", float(np.max(np.abs(u - v))))
+    print(
+        "t=", t,
+        "max|u-v|=", float(np.max(np.abs(u - v))),
+        "remaining/full=", round(float(np.linalg.norm(remaining) / np.linalg.norm(u)), 2),
+    )
 ```
 
 ## Interactive Demo
 
-Use the demo to see trajectories and velocities, and how "learn the wind field" differs from "learn to denoise."
+Use the demo to predict the hidden conditional velocity target for one paired example. The page keeps the pairings synthetic on purpose: it is teaching the regression label, not claiming to solve an optimal-transport assignment.
 
 {/* viz.tsx component renders here if it exists */}
-

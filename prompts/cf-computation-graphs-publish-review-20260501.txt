@@ -1,0 +1,41 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for Continuous Function.
+
+Project briefing:
+- Continuous Function is a slow-growth mathematical atlas for deep learning and its mathematical foundations.
+- The quality bar is intuitive, precise, visual, executable, and connected.
+- A concept page is structured as Intuition -> Math -> Code -> Interactive Demo.
+- `status: published` should mean the page can survive a serious reader; otherwise keep it in `review`.
+- The site is a static-exported Next.js Pages Router + TypeScript app. Filesystem concepts live under `content/domains/{domain}/concepts/{concept-id}/`.
+
+Concept under review:
+- ID: computation-graphs
+- Domain: calculus
+- Current status: review
+- Intended decision: decide whether it can be promoted to published after fixes, or should stay in review.
+- Role in learning arc: bridge Chain Rule -> Computation Graphs -> Reverse-Mode Autodiff -> Backpropagation -> Gradient Descent.
+
+Current implementation:
+- The page explains scalar computation graph bookkeeping using `a=xy`, `b=sin(a)`, `c=a+b`.
+- The live `viz.tsx` adds sliders for `x` and `y`, Forward/Backward phase buttons, presets, summary metrics, an SVG graph on desktop, and a mobile four-step flow.
+- The demo's central claim is that the forward pass stores node values and the backward pass sums all downstream sensitivity contributions into reused node `a`, giving `bar a = 1 + cos(a)` before sending sensitivity to `x` and `y`.
+- Local verification passed:
+  - `npm run generate-content` wrote 34 viz entries.
+  - `npm run validate-content` passed with 0 warnings and 0 errors.
+  - `npm run typecheck` passed.
+  - CDP desktop check at 1440px: route loads, status is review, SVG displays, no horizontal overflow, Backward click updates selected state and claim.
+  - CDP mobile check at 390px: route loads, SVG is hidden, `.mobile-flow` displays as grid with four steps, no horizontal overflow, Backward click updates selected state and claim.
+  - `npm run build` passed, with known non-blocking KaTeX warnings about `\\` or `\newline` in display mode elsewhere in the site.
+
+Please review the attached files against `content/_agent/CONCEPT_QUALITY_BAR.md`.
+
+Return:
+1. Verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and whether this bridge position is right.
+8. Exact patch-style edits for the highest-impact fixes when possible.
+
+Be strict. Do not say "publish" unless this page actually meets the quality bar after considering the MDX, code, demo, route shell, and neighboring concepts.

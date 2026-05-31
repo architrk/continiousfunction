@@ -1,0 +1,38 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for the RLHF concept in Continuous Function.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- A published concept must be intuitive, precise, visual, executable, and connected.
+- Oracle is advisory; classify issues so Codex can patch and verify.
+
+Concept:
+- ID: `rlhf`
+- Domain: `alignment`
+- Current status in repo: `published`
+- Current concern: DPO and KTO were just rebuilt to a much higher standard. RLHF may now be the weak upstream alignment page and may need demotion or structural rebuild.
+
+Primary sources:
+- Ouyang et al., "Training language models to follow instructions with human feedback", arXiv:2203.02155: https://arxiv.org/abs/2203.02155
+- Christiano et al., "Deep reinforcement learning from human preferences", arXiv:1706.03741: https://arxiv.org/abs/1706.03741
+
+Context:
+- Continuous Function is building alignment as probability shaping.
+- DPO is now published as the reference-relative log-odds / Bradley-Terry bridge.
+- KTO is now published as pointwise binary utility relative to a KL-derived baseline.
+- RLHF should probably be the upstream page that cleanly teaches: preference collection, reward-model likelihood, reward identifiability, KL-regularized policy optimization, PPO/online optimization as implementation detail, and reward hacking / proxy mismatch.
+- The current RLHF page is short and may over-bundle "Constitutional AI" in the title without teaching it.
+- The current demo may be visually and pedagogically noisy; inspect whether it teaches the same mechanism as the math/code.
+
+Please review the attached `concept.yaml`, `content.mdx`, `viz.tsx`, `RLHFViz.tsx`, recently published DPO/KTO pages for comparison, and the quality bar.
+
+Return:
+1. Verdict: keep published, publish after fixes, demote to review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and missing P0 concepts.
+8. Exact patch-style edits or rebuild plan for the highest-impact fixes.
+
+Be strict. Do not say "looks good" unless the concept actually meets the quality bar.

@@ -1,0 +1,33 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning concepts. The current north-star goal is to make learning feel joyful, deep, interactive, and research-grade. We just finished a source-check sweep, and the next audit gap is older demos that still need concept-specific prediction-first reveal states plus compact demo-state emission.
+
+Current slice: NTK interaction-quality retrofit.
+
+What changed:
+- `content/domains/scaling/concepts/ntk/viz.tsx` no longer directly exports the old foundation `NTKViz`.
+- It now wraps the old lab in `VizShell` and `VizStageAdapter`.
+- Learners must predict the NTK invariant before the lab mounts.
+- The expected invariant is "Kernel stays fixed."
+- The route emits compact demo state through `emitDemoState` with prediction, reveal, correctness, expected invariant, NTK invariant, and lab mount state.
+- The old `components/foundations/NTKViz.tsx` is unchanged and mounts only after reveal.
+- Audit/TODO files were updated to record this as an interaction-quality slice.
+
+Local verification already done:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+- `npx jest lib/contentLoader.test.ts --selectProjects unit --runInBand`
+- `CF_STATIC_EXPORT=0 npm run build`
+- localhost route fetch for `/domains/scaling/ntk/`
+- headless Chrome desktop and mobile hydrated DOM checks with a temporary Chrome profile: shell visible, lab hidden before reveal, no KaTeX error.
+
+Review request:
+1. Give a verdict: Ship, Modify, or Block.
+2. Look for pedagogical blockers: answer leakage before reveal, wrong invariant, misleading NTK wording, weak distractors, bad handoff to the existing NTKViz lab, or state emission that would not help the AI/research-room resume loop.
+3. Look for UI/UX blockers: text overflow, poor mobile behavior, bad focus/accessibility, controls that look like content, or unnecessary decoration.
+4. Look for code blockers: SSR/hydration risk, dynamic import issue, unnecessary state complexity, unhandled reset, or mismatch with existing wrapper patterns.
+5. If changes are needed, give a small patch plan. Do not request broad redesign.
+
+Attached files:
+- New NTK route wrapper
+- Existing NTK foundation lab
+- NTK concept metadata and MDX for source-claim / learner context

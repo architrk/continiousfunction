@@ -6,9 +6,12 @@ module.exports = {
       displayName: 'unit',
       preset: 'ts-jest',
       testEnvironment: 'node',
-      roots: ['<rootDir>/lib'],
+      roots: ['<rootDir>/lib', '<rootDir>/db'],
       testMatch: ['**/*.test.ts'],
       moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+      moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/$1',
+      },
     },
     // Component and accessibility tests (jsdom environment)
     {
@@ -27,6 +30,7 @@ module.exports = {
         }],
       },
       moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/$1',
         // Handle CSS imports
         '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
       },

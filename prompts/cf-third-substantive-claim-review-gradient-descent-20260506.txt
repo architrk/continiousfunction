@@ -1,0 +1,33 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas for deep learning concepts. The current trust work separates source-linked claim metadata from substantively reviewed source support. A claim should only be marked `evidence_review.state: substantive-reviewed` when the exact cited source, caveat, and local witness refs honestly support the bounded claim.
+
+Current change to review:
+- I marked one Gradient Descent claim as `substantive-reviewed` in `content/domains/optimization/concepts/gradient-descent/concept.yaml`.
+- I regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`, moving the queue from 2 reviewed / 49 pending to 3 reviewed / 48 pending.
+- I updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml` to say the attention, Adam, and Gradient Descent claims are now reviewed, with Cross-Entropy next.
+
+Exact claim:
+"Gradient descent uses the gradient as the direction of steepest local increase and updates parameters in the negative-gradient direction, with the learning rate controlling how far to trust the local approximation."
+
+Primary sources checked:
+- Boyd and Vandenberghe, "Convex Optimization", official book page/PDF: https://web.stanford.edu/~boyd/cvxbook/
+- Goodfellow, Bengio, and Courville, "Deep Learning", official HTML book:
+  - Chapter 4 Numerical Computation: https://www.deeplearningbook.org/contents/numerical.html
+  - Chapter 8 Optimization for Training Deep Models: https://www.deeplearningbook.org/contents/optimization.html
+
+Source evidence I checked:
+- Goodfellow chapter 4.3 introduces optimization as minimizing a cost/loss/objective, then explains derivative/gradient-based descent. It says the directional derivative in direction `u` is `u^T grad_x f(x)`, that the direction minimizing that is the negative gradient, that the gradient points directly uphill, and that gradient descent proposes `x' = x - eps grad_x f(x)` where `eps` is a positive scalar learning rate.
+- Goodfellow chapter 4.3 also uses a second-order Taylor approximation around the current point to show the gradient step has an expected slope-improvement term plus a curvature correction, so a too-large step can move uphill.
+- Goodfellow chapter 8.3 frames gradient descent/SGD as following training-set or minibatch gradients downhill and says learning-rate choice matters: too large can cause oscillation/cost increase, too low makes learning slow or stuck.
+- Boyd and Vandenberghe chapter 9 describes descent methods as choosing a search direction and step size, gives the gradient descent method with `delta_x = -grad f(x)` and line search for the step size, and states that for the Euclidean norm the steepest descent direction is the negative gradient and coincides with gradient descent.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the Gradient Descent claim is honestly marked `substantive-reviewed` given the source evidence, caveat, and local witness refs.
+3. Whether the review summary is too broad, too vague, or misses an important caveat.
+4. Whether the generated queue/audit/TODO wording remains honest and internally consistent.
+5. Any blocker fixes only. Do not propose broad product ideas here.
+
+Constraints:
+- Keep scope limited to local first-order gradient-descent mechanics and the learning-rate/step-size role.
+- Do not certify global convergence for nonconvex neural-network losses, stochastic convergence rates, momentum/Adam variants, line-search guarantees, or all possible norms beyond the Euclidean wording used on the page.
+- Treat attached source IDs and witness refs as review targets unless the evidence summary and caveat make the bounded support clear.

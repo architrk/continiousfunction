@@ -6,25 +6,39 @@ title: "Representation Learning & Embedding Geometry"
 
 A model can only "think" in the space it uses internally. In deep learning, that internal space is usually a vector space: an **embedding**.
 
-The point of representation learning is to make geometry meaningful. We want vectors where:
+A common goal of representation learning is to make learned features expose useful factors of variation. We want vectors where:
 
 - things that "mean the same" are close,
 - things that are different point in different directions,
 - and simple operations (dot products, distances, averages) line up with useful questions (retrieval, clustering, analogy, control).
 
-When this works, embeddings become an interface. You can do nearest-neighbor search, build a classifier with a linear layer, or steer behavior by moving along a direction. When it fails, vectors collapse into weird shapes (anisotropy, degenerate norms) and similarity becomes noisy.
+When this works, embeddings become an interface. Depending on the model and training objective, they are often used for similarity search, lightweight classifiers, or analyses of directions in representation space. When it fails, vectors collapse into weird shapes (anisotropy, degenerate norms) and similarity becomes noisy.
+
+Context matters too. A static word vector gives one vector to a word type, but a contextual representation lets the token "bank" move depending on whether the surrounding sentence is about rivers or money. That is the ELMo lesson: the useful feature is not only the token identity, but the token identity as interpreted through its context.
 
 ## Math
 
-Let an encoder map inputs to vectors:
+Let an encoder map inputs to vectors. If a simple downstream predictor can recover a useful factor from the vector, the representation has made that factor easier to extract. For contextual word representations, the token vector can depend on the whole sentence:
 
-$$f_\\theta : \\mathcal X \\to \\mathbb R^d, \\qquad z = f_\\theta(x).$$
+$$
+\begin{aligned}
+z &= f_\theta(x)\in\mathbb R^d,\qquad \hat a = g_\psi(z),\\
+\operatorname{ELMo}^{\mathrm{task}}_k
+&=
+\gamma^{\mathrm{task}}\sum_{j=0}^{L}s^{\mathrm{task}}_j\,
+h^{\mathrm{LM}}_{k,j}(t_1,\ldots,t_N).
+\end{aligned}
+$$
+
+Here $a$ is a useful factor or label we hope is easy to read from $z$, $g_\psi$ is a simple extractor such as a classifier or probe, and $h^{\mathrm{LM}}_{k,j}$ is the bidirectional language-model state for token position $k$ at layer $j$. Peters et al. use task-specific softmax weights $s_j^{\mathrm{task}}$ and scale $\gamma^{\mathrm{task}}$ to combine the biLM layers, so the same token position can receive a different vector in a different sentence.
 
 ### Similarity as a dot product (often cosine)
 
 A common choice is cosine similarity, which is just a dot product of normalized vectors:
 
-$$\\mathrm{sim}(z, z') = \\frac{z^\\top z'}{\\lVert z\\rVert_2\\,\\lVert z'\\rVert_2} = \\hat z^\\top \\hat z'.$$
+$$
+\mathrm{sim}(z, z') = \frac{z^\top z'}{\lVert z\rVert_2\,\lVert z'\rVert_2} = \hat z^\top \hat z'.
+$$
 
 Normalization matters because it makes similarity depend on **direction** instead of length.
 
@@ -32,46 +46,64 @@ Normalization matters because it makes similarity depend on **direction** instea
 
 Suppose we have "positive pairs" $(x_i, y_i)$ (two views of the same thing: two crops of an image, two versions of a sentence, etc.). Encode them:
 
-$$z_i = f_\\theta(x_i), \\qquad u_i = g_\\theta(y_i).$$
+$$
+z_i = f_\theta(x_i), \qquad u_i = g_\theta(y_i).
+$$
 
 InfoNCE treats $(z_i, u_i)$ as the correct match among a batch of candidates:
 
-$$\\mathcal L = -\\frac{1}{N} \\sum_{i=1}^N \\log \\frac{\\exp\\big(\\mathrm{sim}(z_i, u_i)/\\tau\\big)}{\\sum_{j=1}^N \\exp\\big(\\mathrm{sim}(z_i, u_j)/\\tau\\big)}.$$
+$$
+\mathcal L = -\frac{1}{N} \sum_{i=1}^N \log \frac{\exp\big(\mathrm{sim}(z_i, u_i)/\tau\big)}{\sum_{j=1}^N \exp\big(\mathrm{sim}(z_i, u_j)/\tau\big)}.
+$$
 
-- $\\tau > 0$ is the **temperature**: smaller $\\tau$ makes the softmax sharper (harder negatives, bigger gradients).
-- This loss pushes positives to have higher similarity than negatives.
+- $\tau > 0$ is the **temperature**: smaller $\tau$ makes the softmax sharper (harder negatives, bigger gradients).
+- In contrastive-learning setups, this kind of objective scores the intended pair above other candidates.
 
 ### A useful geometry sanity check: anisotropy
 
 Embeddings often become **anisotropic** (many points bunch along a few dominant directions). A practical check is the covariance of normalized embeddings:
 
-$$C = \\frac{1}{N}\\sum_{i=1}^N (\\hat z_i - \\bar z)(\\hat z_i - \\bar z)^\\top.$$
+$$
+C = \frac{1}{N}\sum_{i=1}^N (\hat z_i - \bar z)(\hat z_i - \bar z)^\top.
+$$
 
-If a few eigenvalues dominate, your space has "dead directions" and cosine similarity can get biased. Normalization (LayerNorm/RMSNorm) and whitening-like tricks often change this geometry dramatically.
+If a few eigenvalues dominate, the embedding cloud is highly directional, which can affect cosine-based comparisons. Normalization or whitening-style preprocessing can change this geometry.
 
 ## Code
 
 ```python
 import numpy as np
 
-def normalize(x):
-    return x / (np.linalg.norm(x, axis=1, keepdims=True) + 1e-9)
+def unit(v):
+    return v / (np.linalg.norm(v) + 1e-9)
 
-def info_nce(z1, z2, tau):
-    logits = (z1 @ z2.T) / tau
-    logits = logits - logits.max(axis=1, keepdims=True)
-    p = np.exp(logits); p = p / p.sum(axis=1, keepdims=True)
-    return (-np.log(np.diag(p))).mean(), p
+# Toy handcrafted features: axis 0 = water-vs-finance context,
+# axis 1 = the token identity "bank", axis 2 = filler.
+feat = {
+    "river": np.array([1.0, 0.0, 0.0]),
+    "shore": np.array([1.0, 0.0, 0.0]),
+    "money": np.array([-1.0, 0.0, 0.0]),
+    "loan": np.array([-1.0, 0.0, 0.0]),
+    "bank": np.array([0.0, 1.0, 0.0]),
+}
 
-rs = np.random.RandomState(0)
-N, d = 8, 16
-base = rs.randn(N, d)
-z1 = normalize(base + 0.1 * rs.randn(N, d))
-z2 = normalize(base + 0.1 * rs.randn(N, d))
+def contextual(left, token, right):
+    return unit(0.55 * feat[token] + 0.35 * (feat[left] + feat[right]))
 
-for tau in [0.1, 0.5, 1.0]:
-    loss, p = info_nce(z1, z2, tau)
-    print("tau=", tau, "loss=", round(loss, 3), "avg P(match)=", round(np.diag(p).mean(), 3))
+static_bank = unit(feat["bank"])
+river_bank = contextual("river", "bank", "shore")
+money_bank = contextual("money", "bank", "loan")
+
+water_probe = unit(np.array([1.0, 0.0, 0.0]))
+def water_score(z):
+    return float(z @ water_probe)
+
+print("static bank:", round(water_score(static_bank), 3))
+print("river bank: ", round(water_score(river_bank), 3))
+print("money bank: ", round(water_score(money_bank), 3))
+
+assert water_score(river_bank) > water_score(static_bank) > water_score(money_bank)
+assert np.linalg.norm(river_bank - money_bank) > 1.4
 ```
 
 ## Interactive Demo
@@ -83,4 +115,3 @@ Use the demos to build geometric intuition:
 - and how geometric constraints like equivariance preserve structure.
 
 {/* viz.tsx component renders here if it exists */}
-

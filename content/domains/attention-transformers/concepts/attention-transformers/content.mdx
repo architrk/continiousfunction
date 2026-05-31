@@ -18,37 +18,47 @@ Multi-head attention runs several such lookups in parallel so the model can lear
 
 ## Math
 
-Given a sequence represented as a matrix $X \\in \\mathbb{R}^{T\\times d_{\\text{model}}}$ (where $T$ is sequence length), form:
+Given a sequence represented as a matrix $X \in \mathbb{R}^{T\times d_{\text{model}}}$ (where $T$ is sequence length), form:
 
-$$Q = XW_Q,\\quad K = XW_K,\\quad V = XW_V.$$
+$$
+Q = XW_Q,\quad K = XW_K,\quad V = XW_V.
+$$
 
-For a single head, $W_Q,W_K,W_V \\in \\mathbb{R}^{d_{\\text{model}}\\times d_k}$ and $Q,K,V \\in \\mathbb{R}^{T\\times d_k}$. The $\\mathrm{softmax}$ is applied **row-wise** over keys.
+For a single head, $W_Q,W_K,W_V \in \mathbb{R}^{d_{\text{model}}\times d_k}$ and $Q,K,V \in \mathbb{R}^{T\times d_k}$. The $\mathrm{softmax}$ is applied **row-wise** over keys.
 
 Single-head attention is:
 
-$$\\mathrm{Attn}(Q,K,V) = \\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}}\\right)V.$$
+$$
+\mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V.
+$$
 
-For causal (autoregressive) language modeling, apply a mask $M$ where $M_{ij}=-\\infty$ for $j>i$:
+For causal (autoregressive) language modeling, apply a mask $M$ where $M_{ij}=-\infty$ for $j>i$:
 
-$$\\mathrm{Attn}(Q,K,V) = \\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}} + M\\right)V,$$
+$$
+\mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right)V,
+$$
 
-where $M_{ij}=0$ for $j\\le i$ and $M_{ij}=-\\infty$ for $j>i$.
+where $M_{ij}=0$ for $j\le i$ and $M_{ij}=-\infty$ for $j>i$.
 
 Multi-head attention computes several heads and mixes them:
 
-$$\\mathrm{MHA}(X) = \\mathrm{Concat}(h_1,\\dots,h_H)W_O,\\quad h_i = \\mathrm{Attn}(XW_Q^{(i)}, XW_K^{(i)}, XW_V^{(i)}).$$
+$$
+\mathrm{MHA}(X) = \mathrm{Concat}(h_1,\dots,h_H)W_O,\quad h_i = \mathrm{Attn}(XW_Q^{(i)}, XW_K^{(i)}, XW_V^{(i)}).
+$$
 
 A standard transformer block (pre-norm) is:
 
-$$\\begin{aligned}
-\\text{Let } H := X \\text{ be the hidden states entering a block.}\\\\
-H' &= H + \\mathrm{MHA}(\\mathrm{LN}(H)) \\\\
-H^{\\text{out}} &= H' + \\mathrm{MLP}(\\mathrm{LN}(H'))
-\\end{aligned}$$
+$$
+\begin{aligned}
+\text{Let } H := X \text{ be the hidden states entering a block.}\\\\
+H' &= H + \mathrm{MHA}(\mathrm{LN}(H)) \\\\
+H^{\text{out}} &= H' + \mathrm{MLP}(\mathrm{LN}(H'))
+\end{aligned}
+$$
 
-The $1/\\sqrt{d_k}$ factor keeps dot products from growing with dimension, which helps prevent softmax from saturating too early.
+The $1/\sqrt{d_k}$ factor keeps dot products from growing with dimension, which helps prevent softmax from saturating too early.
 
-The core cost driver is the $T\\times T$ attention matrix: compute and memory scale roughly as $O(T^2)$.
+The core cost driver is the $T\times T$ attention matrix: compute and memory scale roughly as $O(T^2)$.
 
 ## Code
 

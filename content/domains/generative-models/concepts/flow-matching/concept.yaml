@@ -22,9 +22,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: graduate
-short_description: "Learn a time-dependent velocity field that transports noise into data. Rectified flows use straight paths, enabling fast few-step sampling."
+sources:
+  - id: lipman-2022-flow-matching
+    kind: paper
+    title: "Flow Matching for Generative Modeling"
+    authors: "Lipman et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2210.02747"
+    note: "Grounds flow matching as direct regression of a vector field for continuous normalizing flows."
+  - id: liu-2022-rectified-flow
+    kind: paper
+    title: "Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow"
+    authors: "Liu, Gong, and Liu"
+    year: 2022
+    url: "https://arxiv.org/abs/2209.03003"
+    note: "Grounds the straight-path rectified-flow intuition used by the velocity-label demo."
+claim_checks:
+  - id: velocity-regression-straight-path-target
+    status: source-checked
+    claim: "Flow matching uses regression of a neural ODE velocity field against a target vector field; in the rectified-flow straight interpolation x_t=(1-t)x_0+t x_1, the per-example least-squares label is x_1-x_0, not the remaining displacement x_1-x_t."
+    source_ids:
+      - lipman-2022-flow-matching
+      - liu-2022-rectified-flow
+    support: "Lipman et al. ground Flow Matching as CNF/neural-ODE vector-field regression, including squared-error FM/CFM objectives against target or conditional vector fields. Liu et al. define rectified flow with X_t=tX_1+(1-t)X_0 and least-squares target X_1-X_0. Local equations/code/demo show the label-vs-remaining-displacement distinction."
+    caveat: "Reviews only conditional straight-path velocity labels. After training, v_theta(x,t) aggregates over examples, not pair identity. Toy witnesses do not review OT optimality, diffusion equivalence, solver error, one-step generation, sampling quality, or production speedups."
+    object_refs:
+      - "#source-span-lipman-2022-flow-matching"
+      - "#source-span-liu-2022-rectified-flow"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Lipman supports CNF/ODE vector fields and FM/CFM squared-error regression to target or conditional vector fields. Liu supports rectified-flow straight interpolation X_t=tX_1+(1-t)X_0 and least-squares target X_1-X_0. Local equations/code/demo contrast that constant label with remaining displacement X_1-X_t=(1-t)(X_1-X_0); no OT/performance claim is reviewed."
+short_description: "Learn flow matching as velocity-label regression: straight conditional paths use x_t=(1-t)x0+t x1 but supervise the full target u_t=x1-x0."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 16
-

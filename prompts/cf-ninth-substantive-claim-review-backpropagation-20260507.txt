@@ -1,0 +1,41 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, calculus/backpropagation#backpropagation-reverse-pass-gradients.
+
+Claim under review:
+"Backpropagation computes neural-network gradients by storing needed forward-pass values, then applying the chain rule backward from a scalar loss: each layer receives a downstream sensitivity, combines it with local derivatives/VJPs, and reuses that signal to form parameter gradients in one reverse pass."
+
+Cited sources:
+1. Rumelhart, Hinton, and Williams, "Learning representations by back-propagating errors", Nature 323, 533-536 (1986), https://www.nature.com/articles/323533a0
+2. Baydin et al., "Automatic Differentiation in Machine Learning: a Survey", JMLR 18(153):1-43 (2018), https://jmlr.csail.mit.edu/papers/v18/17-468.html
+
+Primary-source evidence I checked before this prompt:
+- Nature page lines 42-44: the official abstract describes back-propagation for networks of neurone-like units and repeated weight adjustments to minimize the difference between actual and desired outputs.
+- Nature page lines 153-165: official citation metadata for the Rumelhart/Hinton/Williams Nature paper.
+- JMLR PDF lines 85-93: backpropagation is described as gradient descent in neural-network weight space, using backward propagation of objective sensitivity and the chain rule to compute partial derivatives of the objective with respect to each weight; Baydin et al. also state it is essentially reverse-mode AD on the network evaluation composed with the objective.
+- JMLR PDF lines 138-151: Figure 1 says training inputs are fed forward, error is computed, then the error adjoint is propagated backward to give weight gradients used by gradient descent; input gradients can be computed in the same backward pass.
+- JMLR PDF lines 727-738: reverse mode propagates derivatives backward from an output; for backpropagation the output is scalar error; the first phase runs code forward and records graph dependencies, the second propagates adjoints backward.
+- JMLR PDF lines 740-783: the reverse pass accumulates local chain-rule contributions and starts from output adjoint 1.
+- JMLR PDF lines 788-804: for f: R^n -> R one reverse-mode application computes the full gradient, which is why reverse mode is the mainstay in the form of backpropagation for scalar objectives with many parameters.
+- JMLR PDF lines 870-912: reverse mode computes transposed Jacobian-vector products by initializing the reverse phase with an output vector.
+- JMLR PDF lines 913-917: reverse mode has increased storage requirements, supporting the "saved forward values / bookkeeping" caveat.
+
+Attached local files:
+- content/domains/calculus/concepts/backpropagation/concept.yaml
+- content/domains/calculus/concepts/backpropagation/content.mdx
+- content/domains/calculus/concepts/backpropagation/viz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether the cited sources substantively support the claim as written, not merely that the page has source IDs.
+2. Check whether the local math/code/demo witnesses match the claim's scope: standard feed-forward neural network, scalar loss, backward sensitivities, local derivatives/VJPs, parameter gradients, and one reverse pass.
+3. Identify any overclaim, missing caveat, misleading wording, or witness mismatch.
+4. If publishable after small edits, provide the exact revised evidence_review.summary and caveat wording you would accept.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require full biological plausibility, optimizer analysis, recurrent nets, checkpointing, batching generality, or every modern autodiff system behavior unless the current wording accidentally claims them.
+- Treat Rumelhart as support for backpropagation as a neural-network learning procedure and Baydin as the primary support for the reverse-mode/autodiff mechanism.

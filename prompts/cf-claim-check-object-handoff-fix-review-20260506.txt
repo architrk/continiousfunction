@@ -1,0 +1,31 @@
+Project: Continuous Function.
+
+Fix review for `claim-check-object-handoff-v1`.
+
+Prior Oracle verdict: NO-PUBLISH because:
+1. Claim-check prompts could truncate and omit exact source IDs/object refs/support/caveat.
+2. Invalid claim-check IDs could fall back to a different discussion/DOM segment while object keys still used the original ID.
+
+Fixes made:
+- `lib/discussionAnchors.ts` now has `maxDiscussionSeedPromptLength = 3200`; `isDiscussionThreadPlaceholder` uses it instead of 360 so exact structured claim-check prompts can fit.
+- `claimCheckReviewPrompt` in `lib/conceptNotebookDiscussion.ts` now builds a multi-line prompt preserving the exact concept title, claim text, status, full source IDs, full support note, full caveat, and full object refs. It no longer truncates identifiers to 40 chars.
+- `claimCheckSourceIds` and claim-check object refs are no longer sliced in the discussion prompt path.
+- `claimCheckSegmentForConceptClaimCheck` now returns `null` for invalid discussion segments instead of inventing a fallback alias.
+- `claimCheckReviewSeeds` skips invalid IDs; `scripts/validate-content.ts` now makes invalid claim-check IDs an error; `scripts/generate-content-object-manifest.ts` throws on invalid IDs.
+- `ConceptClaimReviewPanel` no longer slices object refs to 6 and handles null claim-check DOM ids defensively.
+- Tests now assert full prompt source IDs and refs, invalid-ID non-alias behavior, longer seed prompt validation, safe object-key rendering, and manifest exact anchors.
+
+Validation after fixes:
+- `npm test -- discussionAnchors conceptNotebookDiscussion ConceptNotebookPage contentObjectManifest researchDiscussionRoom --runInBand` passed: 6 suites, 39 tests.
+- `npm run generate-object-manifest && npm run validate-content` passed: 851 objects, 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+- `npm run validate:object-memory` passed: 0 warnings.
+- `git diff --check` passed.
+- Exact-field all-concepts probe passed: `claimChecks=51`, `claimObjects=51`, `badCount=0`; it checked every claim-check prompt contains every claim, status, source ID, support note, caveat, and object ref, and no prompt exceeds 3200.
+
+Please review the attached files plus the prior NO-PUBLISH response and answer:
+1. PUBLISH or NO-PUBLISH.
+2. Any remaining must-fix blockers.
+3. Whether both prior blockers are resolved.
+
+Be strict, but do not reopen broader product scope beyond this claim-check handoff slice.

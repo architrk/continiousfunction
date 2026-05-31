@@ -1,0 +1,54 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning joyful, visual, intuitive, and mathematically serious. We use GPT Pro/Oracle extensively as a review partner before and after implementation.
+
+This is the implementation review for the SSM Hybrids / Mamba bridge demo-shell slice selected by GPT Pro/Oracle after Structured Decoding.
+
+Oracle selected this slice with the central learner action:
+- Predict which recurrence preserves a marked token through distractors: fixed-update LTI, selective-gate recurrence, or tie.
+- Reveal should show tokens -> per-token delta gate -> fixed recurrence trace vs selective-gate trace -> final retained signal and false positives.
+- The invariant must stay narrow: selectivity is a token-dependent write/copy/forget mechanism in a fixed compressed state, not magic long-context memory or exact lookup.
+
+What I changed:
+- `content/domains/attention-transformers/concepts/ssm-hybrids/viz.tsx`
+  - Replaced the legacy `FoundationsVizDeck` route wrapper with `VizShell` + `VizStageAdapter`.
+  - The shell challenge asks the learner to inspect the token sequence and gate preset, then predict the recurrence regime before revealing traces.
+  - The shell caveat says this is a scalar gate mechanism isolate, not full Mamba, Mamba-2, Jamba, RecurrentGemma, local attention, MoE, or production latency behavior.
+- `components/foundations/MambaViz.tsx`
+  - Added `chrome?: 'legacy' | 'notebook'` and `conceptId` props, preserving legacy default behavior.
+  - Added notebook-only prediction and reveal state.
+  - Notebook mode hides legacy game/countdown/score/challenge framing and strips emoji preset labels from the notebook UI.
+  - Pre-reveal notebook state shows the sequence, gate preset, token delta values, and prediction buttons only. It does not show trace charts, winner, final states, or clean/false-positive readouts.
+  - Reveal shows fixed and selective traces, step inspection, input/LTI/selective copy readouts, final LTI/selective states, winner, and clean/false-positive counts.
+  - Deterministic regimes:
+    - Balanced and Highly Selective: selective-gate toy wins.
+    - Leaky: tie/no meaningful selective advantage.
+    - LTI-like/uniform gates: tie/no meaningful selective advantage.
+  - Added notebook-only compact demo-state emission with pattern, gate preset, prediction, revealed, marked-token count, winner/final states after reveal, mechanism summary, and caveat.
+  - Kept all legacy game/challenge behavior inside the default legacy branch only.
+- `content/domains/attention-transformers/concepts/ssm-hybrids/content.mdx`
+  - Updated the Interactive Demo section to match the prediction/reveal task and reiterate compressed memory / not exact lookup.
+
+Local checks already run:
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- `npm run typecheck` passed.
+- Route checks:
+  - `/domains/attention-transformers/ssm-hybrids/` returns 200.
+  - `/foundations/ssm-hybrids/` returns 200.
+- Headless Chrome DevTools checks against the running local dev server passed:
+  - exactly one `.mamba-notebook-demo` root.
+  - no nested `.interactive-card` or legacy deck inside notebook mode.
+  - no visible notebook game language: Challenge Mode, Try Challenge, countdown, Score, Marked-Token Copying Challenge, or legacy emoji preset labels.
+  - no pre-reveal answer leakage inside notebook mode: winner, clean/false positives, final LTI state, final selective state, Hidden-state traces, LTI output, or Selective gate output.
+  - Reveal button is disabled before prediction.
+  - Balanced + Selective gate prediction reveals winner `mamba`.
+  - Changing preset after reveal resets reveal and disables the Reveal button again.
+  - LTI-like + Tie prediction reveals winner `tie`.
+  - Leaky + Tie prediction reveals winner `tie`.
+  - Mobile 390px: document scroll width equals viewport width; token strip uses local horizontal scroll.
+
+Please review for blockers only:
+1. Must-fix correctness or pedagogy blockers, especially whether the Leaky/LTI-like tie handling is honest and whether the toy labels stay clear that this is not full Mamba.
+2. Must-fix UI/accessibility blockers, especially pre-reveal leakage, keyboard/focus behavior, live-region feedback, and mobile containment.
+3. Must-fix architecture/regression blockers, especially legacy default behavior and route composition.
+4. Exact wording fixes if current copy overclaims.
+
+Do not request broad expansion, image generation, new architecture surveys, or future-slice ideas unless necessary to ship this slice. Say explicitly whether the slice is acceptable after the listed fixes.

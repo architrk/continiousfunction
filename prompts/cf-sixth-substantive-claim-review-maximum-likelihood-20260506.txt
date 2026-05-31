@@ -1,0 +1,41 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas for deep learning concepts. The current trust work separates source-linked claim metadata from substantively reviewed source support. A claim should only be marked `evidence_review.state: substantive-reviewed` when the exact cited source, caveat, and local witness refs honestly support the bounded claim.
+
+Current change to review:
+- I marked one Maximum Likelihood claim as `substantive-reviewed` in `content/domains/probability/concepts/maximum-likelihood/concept.yaml`.
+- I regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`, moving the queue from 5 reviewed / 46 pending to 6 reviewed / 45 pending.
+- I updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml` to say attention, Adam, Gradient Descent, Cross-Entropy, Distributions, and Maximum Likelihood are reviewed, with Probability Basics next.
+
+Exact claim:
+"Maximum likelihood treats observed data as fixed and fits parameters by maximizing the product of model probabilities, usually by maximizing summed log likelihood or minimizing negative log likelihood."
+
+Primary source checked:
+- Goodfellow, Bengio, and Courville, "Deep Learning", official HTML book, https://www.deeplearningbook.org/
+  - Chapter 5 Machine Learning Basics, especially sections 5.5 and 5.6: https://www.deeplearningbook.org/contents/ml.html
+
+Source evidence I checked:
+- Goodfellow chapter 5.5 considers a dataset `X = {x^(1), ..., x^(m)}` drawn independently from `p_data`.
+- It defines a parametric model family `p_model(x; theta)` and defines the maximum likelihood estimator as `theta_ML = arg max_theta p_model(X; theta)`.
+- It then decomposes the i.i.d. likelihood into a product over examples: `arg max_theta prod_i p_model(x^(i); theta)`.
+- It says the product is inconvenient, and taking logs gives an equivalent optimization problem that turns the product into a sum: `arg max_theta sum_i log p_model(x^(i); theta)`.
+- It divides by `m` to express the criterion as an empirical expectation, then connects minimizing KL to minimizing `-E_data log p_model(x)`.
+- It says software often phrases this as minimizing a cost function, so maximum likelihood becomes minimization of negative log-likelihood, equivalently cross-entropy.
+- Chapter 5.5.1 generalizes MLE to conditional probabilities `P(y | x; theta)` and, for i.i.d. examples, decomposes conditional log-likelihood into `sum_i log P(y^(i) | x^(i); theta)`.
+- Chapter 5.6 contrasts maximum likelihood as a point estimate of `theta` with Bayesian statistics, which uses a posterior distribution over parameter values.
+
+Local witness alignment:
+- The page states the data values are fixed inside the likelihood expression and the optimized variable is `theta`.
+- The page states `L(theta)=prod_i p_theta(x_i)`, `ell(theta)=sum_i log p_theta(x_i)`, and average NLL `-1/n sum_i log p_theta(x_i)`.
+- The Bernoulli math, code witness, and interactive demo show likelihood/NLL as functions of `theta`, with the empirical count fixed.
+- The page caveat limits this review to the likelihood objective, not Bayesian posterior interpretation or a guarantee that the model family can represent the data-generating distribution.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the Maximum Likelihood claim is honestly marked `substantive-reviewed` given the source evidence, caveat, and local witness refs.
+3. Whether the review summary is too broad, too vague, or misses an important caveat.
+4. Whether the generated queue/audit/TODO wording remains honest and internally consistent.
+5. Any blocker fixes only. Do not propose broad product ideas here.
+
+Constraints:
+- Keep scope limited to the likelihood/log-likelihood/NLL objective and point-estimate framing.
+- Do not certify Bayesian posterior inference, consistency/efficiency guarantees, model identifiability, every likelihood edge case, or real-valued density caveats beyond what the page explicitly states.
+- Treat attached source IDs and witness refs as review targets unless the evidence summary and caveat make the bounded support clear.

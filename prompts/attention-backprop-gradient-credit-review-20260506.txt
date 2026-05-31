@@ -1,0 +1,21 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas. Current P0 work retrofits older demos so learners predict a concept-specific mechanism before answer-bearing values and measured demo state are revealed.
+
+Prior Oracle scope answer chose:
+- file: `components/foundations/AttentionBackpropViz.tsx`
+- slice: `attention-backprop-prediction-first-gradient-credit-reveal`
+- invariant: key-scale stress makes backward credit cross over into W_Q because dL/dQ = (dL/dS)K / sqrt(d_k)
+- expected prediction: W_Q
+- pre-reveal must hide gradient magnitudes, dominant parameter update/path, softmax gate %, answer-colored edge strength, correctness copy, and measured demo-state emission
+- reveal should emit compact measured state only after prediction/reveal
+- stale state should clear on mode/prediction/reset/unmount/conceptId changes
+
+I implemented that slice and added `AttentionBackpropViz.test.tsx`.
+
+Please review the implementation as a strict publish/no-publish gate.
+
+Return:
+1. `publish` or `no-publish`.
+2. Blocking issues only if any. Focus on answer leakage before reveal, stale demo-state leakage, misleading math/pedagogy, accessibility/mobile risk, or test gaps that could hide a real bug.
+3. If publish, list only small non-blocking hardening suggestions.
+
+Do not propose broad redesigns. Do not ask for TransformerArchitecture work in this review.

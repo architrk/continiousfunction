@@ -17,13 +17,48 @@ tags:
   - quantization
   - int8
   - int4
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: dettmers-2022-llm-int8
+    kind: paper
+    title: "LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale"
+    authors: "Dettmers et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2208.07339"
+    note: "Grounds transformer-scale INT8 inference, vector-wise normalization, and mixed-precision handling of emergent outlier feature dimensions."
+  - id: frantar-2022-gptq
+    kind: paper
+    title: "GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers"
+    authors: "Frantar et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2210.17323"
+    note: "Grounds GPT-style post-training weight quantization using approximate second-order information and error-compensating updates."
+claim_checks:
+  - id: low-bit-scale-outlier-resolution
+    status: source-checked
+    claim: "Quantization maps floating tensors to low-bit integer levels with scales/dequantization rules, reducing storage/bandwidth but adding reconstruction error; if an outlier sets one shared scale, ordinary values lose resolution, so finer-grained scales or outlier-aware handling can preserve accuracy."
+    source_ids:
+      - dettmers-2022-llm-int8
+      - frantar-2022-gptq
+    support: "Dettmers et al. show transformer-scale 8-bit inference needs separate normalization constants and mixed-precision handling for emergent outlier features. Frantar et al. ground GPT-style post-training weight quantization with approximate second-order/error compensation. The page math, code, and demo instantiate scale quantize/dequantize, memory savings, and outlier-driven per-tensor vs per-channel RMSE."
+    caveat: "Checks the page's finite uniform-quantization and scale/outlier lesson only; it does not claim a full GPTQ solver, exact LLM.int8 routing, calibrated model accuracy, hardware speedups, activation quantization coverage, or all low-bit methods."
+    object_refs:
+      - "#source-span-dettmers-2022-llm-int8"
+      - "#source-span-frantar-2022-gptq"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Oracle PASS: Dettmers supports Int8 scaling/dequantization, single-scale outlier precision loss, vector-wise constants, and mixed-precision outlier handling; Frantar supports low-bit GPT weight quantization as compression with reconstruction-error control and reduced memory movement. Scope excludes full GPTQ, exact LLM.int8 routing, calibrated accuracy, speedup, activation coverage, and all low-bit methods."
 short_description: "Reduce memory and bandwidth by storing weights/activations in low-bit integers (INT8/INT4) with careful scaling to limit accuracy loss."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 16
-

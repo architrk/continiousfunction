@@ -1,0 +1,19 @@
+Project: Continuous Function, a Next.js/React learning atlas.
+
+You previously reviewed the Structured Decoding token-mask hardening patch and returned NO-PUBLISH with two blockers:
+1. Changing prediction after reveal hid local result but did not clear shared demo state.
+2. Dead parser states could still derive/report a selected token and leave reveal action buttons enabled.
+
+Fixes applied:
+- Prediction button clicks now clear shared demo state when they hide a previous reveal.
+- `nextToken` is null unless the parser state is live, non-accepted, and non-invalid.
+- "Emit revealed token" and "Run to EOS" are disabled for dead/accepted/non-live parser states.
+- Added regressions:
+  - reveal once, change prediction, assert local reveal disappears and `getLatestDemoState('structured-decoding')` is null.
+  - mask off, reveal raw top, emit invalid token to dead state, predict/reveal "No valid token", assert packet has `selected token: none`, buttons disabled, invalid prefix true.
+
+Local check:
+- npm test -- StructuredDecodingViz --runInBand
+
+Review request:
+Return PUBLISH or NO-PUBLISH. Only block for remaining correctness/reveal-contract issues in the changed Structured Decoding files. If PUBLISH, include non-blocking polish separately.

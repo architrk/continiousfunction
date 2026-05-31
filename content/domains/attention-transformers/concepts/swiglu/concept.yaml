@@ -1,0 +1,31 @@
+id: swiglu
+title: "SwiGLU: Gated MLP Blocks in Transformers"
+domain: attention-transformers
+slug: swiglu
+difficulty: 4
+status: review
+importance: important
+prerequisites:
+  - attention-transformers
+  - linear-transformations
+leads_to:
+  - mixture-of-experts
+related:
+  - residual-connections
+  - layer-normalization
+  - efficient-attention
+tags:
+  - transformers
+  - mlp
+  - activation-functions
+  - gating
+  - swiglu
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: graduate
+short_description: "Why modern transformer MLPs often use a learned multiplicative gate: one projection proposes a token-local write while another projection controls how much of each channel reaches the residual stream."
+author: codex
+created: "2026-05-04"
+updated: "2026-05-04"
+estimated_read_time: 16

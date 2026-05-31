@@ -1,0 +1,43 @@
+We are in the Continuous Function repo, continuing a P0 prediction-first demo retrofit pass.
+
+Earlier Oracle/GPT Pro selected Random Variables as the next critical-prerequisite slice after Probability Basics. The requested mechanism was:
+
+- Learner sees raw tilted-die probabilities and the measurement rule X(omega).
+- Learner predicts which measured value/fiber collects the most probability mass.
+- PMF bars, support, E[X], Var(X], largest mass, per-outcome X labels, flow targets, and winning fiber must stay hidden until reveal.
+- After reveal, emit compact demo state for measurement, tilt, prediction/correctness, raw probabilities, fibers, PMF, support, largest mass/value, E[X], and Var(X].
+- Clear stale shared demo state whenever the scenario becomes unrevealed.
+- Do not add auth, DB, API routes, protected pages, dynamic reads, or a broader redesign.
+
+Implementation summary:
+
+- Retrofitted `content/domains/probability/concepts/random-variables/viz.tsx` with a prediction/reveal gate for the pushforward/fiber question.
+- Neutralized `content/domains/probability/concepts/random-variables/content.mdx` demo copy so it no longer pre-announces collapse patterns or squared-loss support.
+- Added `components/concepts/RandomVariablesViz.test.tsx` for pre-reveal hiding, post-reveal demo-state emission, reset hiding, and stale checkpoint clearing.
+- Updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml`.
+
+Local verification already run:
+
+- `npm test -- --runInBand` passed: 27 suites, 170 tests.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed.
+- `npm run verify:deployment-readiness` passed with existing warnings only: public origin exists and working tree has local changes.
+- Headless Chrome production route checks on `http://localhost:3056/domains/probability/random-variables/` passed for 1280x900 and 390x844: no horizontal overflow, no demo-local pre-reveal support/E/Var/largest/winner/57% leak, correct post-reveal readouts, and reset hides the old result again.
+
+Please review the bundle as a publish/no-publish gate.
+
+Questions:
+
+1. Does the implementation satisfy the Random Variables scope pedagogically, especially the distinction between raw outcomes, random-variable fibers, PMF pushforward, support, expectation, and variance?
+2. Are there any pre-reveal leaks inside the demo that would let the learner infer the exact PMF/support/winner before committing?
+3. Is stale measured state cleared correctly for the shared demo checkpoint and AI handoff?
+4. Are the tests strong enough for this P0 slice, or is there a blocker-level missing regression?
+5. Should this be published as-is, published with small non-blocking follow-ups, or held?
+
+Return:
+
+- Verdict: publish or no-publish.
+- Blocking issues only if they must be fixed before commit.
+- Non-blocking improvements, ranked.
+- Any exact copy/math changes you recommend.

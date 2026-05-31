@@ -1,0 +1,64 @@
+id: distributions
+title: "Distributions"
+domain: probability
+slug: distributions
+difficulty: 2
+status: published
+importance: critical
+prerequisites:
+  - random-variables
+leads_to:
+  - maximum-likelihood
+related:
+  - probability-basics
+  - cross-entropy
+tags:
+  - probability
+  - distributions
+  - pmf
+  - density
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: deisenroth-2020-mml
+    kind: book
+    title: "Mathematics for Machine Learning"
+    authors: "Deisenroth, Faisal, and Ong"
+    year: 2020
+    url: "https://mml-book.github.io/"
+    note: "Grounds probability distributions, densities, expectations, and the notation used in ML models."
+  - id: goodfellow-2016-deep-learning
+    kind: book
+    title: "Deep Learning"
+    authors: "Goodfellow, Bengio, and Courville"
+    year: 2016
+    url: "https://www.deeplearningbook.org/"
+    note: "Grounds the probability and information-theory vocabulary reused by generative modeling pages."
+claim_checks:
+  - id: random-variable-induced-law
+    status: source-checked
+    claim: "A distribution is the probability law induced by a random variable: it pushes probability from raw outcomes onto measurable value sets, with PMFs and densities as common representations."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-06"
+      reviewer: "codex+oracle"
+      summary: "Checked MML chapter 6.1-6.2 and Goodfellow chapter 3.3: MML defines a random variable as a map from outcomes to a target space, gives PX(S)=P(X in S)=P(X^-1(S)), and calls PX, or P composed with X^-1, the law/distribution of X. MML and Goodfellow both distinguish discrete PMFs from continuous densities/PDFs, with density probabilities obtained by integration over value sets."
+    source_ids:
+      - deisenroth-2020-mml
+      - goodfellow-2016-deep-learning
+    support: "Mathematics for Machine Learning grounds random variables, distributions, densities, and expectations; Goodfellow et al. use the same probability vocabulary as the base language for probabilistic models and information-theoretic losses."
+    caveat: "This checks the probability-law framing and common PMF/density vocabulary, not measure-theoretic edge cases or every distribution family used in ML."
+    object_refs:
+      - "#source-span-deisenroth-2020-mml"
+      - "#source-span-goodfellow-2016-deep-learning"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "A distribution is the law of a random variable: it says how probability mass or density lands on the values the variable can take."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-01"
+estimated_read_time: 15

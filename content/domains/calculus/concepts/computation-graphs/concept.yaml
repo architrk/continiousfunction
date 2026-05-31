@@ -1,0 +1,53 @@
+id: computation-graphs
+title: "Computation Graphs"
+domain: calculus
+slug: computation-graphs
+difficulty: 2
+status: published
+importance: critical
+prerequisites:
+  - chain-rule
+leads_to:
+  - reverse-mode-autodiff
+related:
+  - backpropagation
+tags:
+  - calculus
+  - autodiff
+  - backpropagation
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: baydin-2018-ad-survey
+    kind: paper
+    title: "Automatic differentiation in machine learning: a survey"
+    authors: "Baydin et al."
+    year: 2018
+    url: "https://jmlr.org/papers/v18/17-468.html"
+    note: "Grounds computation graphs as the program structure used by automatic differentiation systems."
+claim_checks:
+  - id: graph-bookkeeping-local-reverse-accumulation
+    status: source-checked
+    claim: "For one executed differentiable program, a computation graph uses elementary-operation nodes and dependency edges, stores each reused intermediate node value once in the forward pass, and makes reverse-mode/backprop local: downstream sensitivities from every use accumulate at a node before being sent to its inputs."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Baydin et al. for one executed AD trace: programs become elementary-operation traces and graphs of intermediate-variable dependencies; reverse mode runs code forward, populates intermediates, records dependencies, then propagates adjoints backward; a reused variable's adjoint sums downstream contributions before input derivatives are obtained. Local math/code/demo instantiate a=xy,b=sin(a),c=a+b with one stored a, direct + sine-path cotangent accumulation, and propagation to x,y."
+    source_ids:
+      - baydin-2018-ad-survey
+    support: "Baydin et al. describe AD over evaluation traces of elementary operations, computational graphs for dependency relations, and reverse mode as a forward pass that populates intermediate variables/records graph dependencies followed by reverse adjoint propagation; the page example a=xy instantiates reuse and additive accumulation."
+    caveat: "Covers differentiable primitives in one executed DAG/program trace and local scalar/vector-VJP teaching model, not symbolic simplification, mutation/aliasing, checkpointing policy, nonsmooth primitives, or every static/dynamic control-flow convention."
+    object_refs:
+      - "#source-span-baydin-2018-ad-survey"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "A computation graph breaks a calculation into nodes so values flow forward and sensitivities flow backward."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-01"
+estimated_read_time: 13

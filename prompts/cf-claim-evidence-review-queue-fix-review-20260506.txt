@@ -1,0 +1,42 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning platform for modern deep learning and frontier AI.
+
+Context:
+- This branch is `private/research-learning-loop-20260505` in the private repo.
+- Public/source-support trust is a central product constraint: attached source IDs, source notes, and local witness refs are review targets, not proof.
+- The slice under review is `claim-evidence-review-queue-v1`: a static/export-safe queue and UI/prompt contract for claim checks that still need substantive source-support review.
+- Previous Oracle review returned NO-PUBLISH. It blocked on:
+  1. `substantive-reviewed` validation only required a nonempty `source_ids` array; it needed to reject blank/non-string/too-long/unlisted source IDs and require at least one valid source ID listed in the concept's `sources`.
+  2. `ConceptClaimReviewPanel` used learner-facing `aria-label="Reviewed claim checks"` for all structured claim checks, including default source-linked/non-substantive checks.
+
+Fixes made after that review:
+- Added `validateSubstantiveEvidenceReviewSourceIds(...)` in `lib/claimEvidenceReview.ts`.
+- Wired it into `scripts/validate-content.ts` so `substantive-reviewed` claim checks error on blank, invalid, or unlisted source IDs.
+- Added `lib/claimEvidenceReview.test.ts` with blank `" "` and unlisted `"missing-source"` regressions.
+- Renamed the panel's internal list to `structuredClaimChecks` and changed the accessible label to `Structured claim checks`.
+- Updated `ConceptNotebookPage.test.tsx` to assert `Structured claim checks` exists and `Reviewed claim checks` is absent.
+- Also implemented prior non-blocking suggestions: queue items include `support` and `caveat`; riskier pending claims sort earlier within a priority band; generated markdown queue is validated for staleness; substantive review metadata renders when present.
+
+Local checks already run after fixes:
+- `npm run generate-claim-evidence-review-queue`: passed, 51 pending claim reviews.
+- `npm run validate-content`: passed, 0 warnings, 0 errors.
+- `npm run typecheck`: passed.
+- `npm test -- claimEvidenceReview claimEvidenceReviewQueue claimCheckHandoffIntegrity conceptNotebookDiscussion ConceptNotebookPage researchDiscussionRoom --runInBand`: passed, 6 suites / 39 tests.
+- `npm run validate:object-memory`: passed, 0 warnings.
+- `npm test -- --runInBand`: passed, 44 suites / 302 tests. Existing React `jsx` console warnings only.
+- `CF_NEXT_BUILD_CPUS=1 NEXT_TELEMETRY_DISABLED=1 npm run build`: passed, 202 static pages. Existing `<img>` lint warnings and KaTeX strict-mode warnings only.
+- `git diff --check`: passed.
+
+Important local hygiene note:
+- iCloud duplicate files such as `pages/pillars/index 2.tsx` were untracked clutter and accidentally appeared as a route during one build. They were moved outside the repo to an archive, not committed. The final clean build generated 202 pages and no `/pillars/index 2` route.
+
+Ask:
+Review only whether the previous NO-PUBLISH blockers are now fixed and whether the slice is commit-safe.
+
+Please return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether blocker 1 is fully fixed, including the exact source-id trust boundary.
+3. Whether blocker 2 is fully fixed, including learner-facing/a11y copy.
+4. Any new blocking issue introduced by the fixes.
+5. Any non-blocking follow-ups that should go into TODO, but do not expand into a broad roadmap.
+
+Do not re-litigate product direction. Focus on correctness, trust/anti-overclaiming, static-export safety, test adequacy, and whether this can be committed.

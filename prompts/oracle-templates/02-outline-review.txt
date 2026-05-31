@@ -1,0 +1,25 @@
+You are Oracle/GPT Pro reviewing a Continuous Function concept outline before implementation.
+
+Project standard:
+- Intuition -> Math -> Code -> Interactive Demo
+- The page must help the reader move between a mental model, formal object, executable code, and manipulable system.
+- Cross-domain links are claims, not decoration.
+
+Concept:
+- ID: [CONCEPT_ID]
+- Domain: [DOMAIN]
+- Intended reader: [READER]
+- Prerequisites: [PREREQUISITES]
+- Proposed demo claim: [DEMO_CLAIM]
+
+Review the attached outline or draft.
+
+Return:
+1. Publishability risk: what would make this outline fail the quality bar?
+2. Missing prerequisite warnings.
+3. Weak or misleading intuition.
+4. Section order fixes.
+5. The one central claim the demo should test.
+6. The 3 highest-impact changes only.
+
+Do not expand the scope unless the current outline cannot teach the concept honestly without that expansion.

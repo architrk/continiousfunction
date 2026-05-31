@@ -1,0 +1,41 @@
+You are acting as a long-term thought partner for the Continuous Function repository.
+
+Project briefing:
+- Continuous Function is a static-exported Next.js + TypeScript site for interactive explanations of deep learning, mathematics, and adjacent fields.
+- The current pedagogy is "Intuition -> Math -> Code -> Interactive Demo".
+- The repo already has a filesystem-driven content model under content/domains/{domain}/concepts/{concept}/ with concept.yaml, content.mdx, optional viz.tsx, and graph edges.
+- It also has legacy foundations pages and several visualization components, but the long-term direction is an expanding mathematical atlas for learning.
+- Current domains include linear algebra, calculus, probability, optimization, information theory, attention/transformers, generative models, alignment, representation learning, scaling, efficiency, and LLM systems.
+- The intended audience is broad but serious: researchers, students, practitioners, learning enthusiasts, and curious dabblers who want intuitive access to deep ideas without losing mathematical soundness.
+
+User vision to respond to:
+- Many mature fields become mathematical as they become more nuanced: economics, physics, chemistry, computer science, machine learning, and more.
+- Start with deep learning and mathematics, but grow slowly into a cross-domain learning platform where ideas are connected naturally.
+- The site should feel fun, approachable, elegant, intuitive, and deep.
+- Explanations should use animations, visuals, mathematics, code, interaction, and cross-domain links.
+- Do not create a bulk list of ideas. Prefer a small number of refined principles and a careful operating model.
+- Each concept should be worked on for a long time until it is well explained, well connected, pedagogically strong, and satisfying to use.
+- Oracle/GPT Pro should be a recurring brainstorming and review partner, not just a one-off generator.
+
+Ask:
+Design the philosophy and operating doctrine for building this site over months/years.
+
+Please produce a high-signal response with these sections:
+1. Mission: a concise mission statement and the few things this project should refuse to become.
+2. Pedagogical spine: the core learning theory/principles that should govern every concept page. Explain why they matter and how they translate into this repo's Intuition/Math/Code/Demo pattern.
+3. The "mathematical atlas" model: how to grow from deep learning into computer science, physics, economics, chemistry, and other fields without becoming shallow or scattered.
+4. Concept quality bar: a concrete rubric for deciding whether one concept is ready to publish. Include intuition, math, visual, code, exercises/checkpoints, links, and citations.
+5. Cross-domain linking doctrine: how to decide when two ideas should be connected, and how to prevent bad analogy or false elegance.
+6. Oracle review loop: how Codex and Oracle should collaborate repeatedly on each concept. Include the sequence of prompts/reviews, what Oracle is best at, what Codex/human judgment must verify, and when to stop iterating.
+7. Slow-growth roadmap: not a giant topic dump. Give 3-5 arcs for the next few months, each with a small number of concepts and the reason that arc compounds.
+8. First concrete move in this repo: recommend one durable artifact or small implementation change we should create after reading your response.
+
+Constraints:
+- Keep the tone serious, precise, and practical. Avoid marketing language.
+- Do not suggest switching frameworks.
+- Do not propose a large social/community product yet. Focus first on learning quality, concept graph quality, and durable editorial process.
+- Prefer sources/classes/books/papers/open-source explainers as reference directions, but do not turn the answer into a bibliography.
+- Assume AI can help draft and review, but human judgment must own correctness, pedagogy, and taste.
+- Be ruthless about quality. If an idea would make the site noisier, say so.
+
+Attached files show the current repo state, content model, homepage surface, and existing strategy. Ground the answer in those files.

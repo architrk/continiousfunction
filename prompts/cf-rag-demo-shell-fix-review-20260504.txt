@@ -1,0 +1,42 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. This is the GPT Pro/Oracle fix-review for the RAG notebook-shell rollout slice.
+
+The prior Oracle implementation review found five must-fix blockers:
+1. Pre-reveal demo-state leaked the regime through outcome-bearing scenario ids like `covered-wrong` and `fresh-wins`.
+2. Control changes reset reveal too late because they relied on an effect after the new computed outcome rendered.
+3. Pre-reveal candidate order leaked retrieval ranking because the rendered rows used score-sorted `data.rows`.
+4. Focus rings could be clipped because notebook content had no local padding inside an overflow-hidden shell.
+5. Reveal feedback said `Correct:` for correct learner prediction even when the selected RAG answer was wrong.
+
+Fixes applied:
+- Renamed scenario ids to neutral setting ids:
+  - `similarity-k1`
+  - `similarity-k2`
+  - `freshness-k2`
+- Pre-reveal demo-state now emits neutral scenario labels/settings only; the classified regime is emitted only after reveal.
+- Added `markCustomChange()` and call it synchronously in every control handler for `topK`, `tau`, `freshBonus`, `noiseSigma`, and `seed`; the defensive reset effect remains, but the primary reset happens in the same event batch as the setting change.
+- Added `displayRows`: post-reveal uses score-sorted `data.rows`, but pre-reveal maps rows back into fixed corpus order from `DOCS`, so candidate order does not reveal rank or top-k membership.
+- Added `.demo.notebook { padding: 0.75rem; }` so focus rings have local space inside the shell.
+- Changed reveal prefix to `Prediction correct:` / `Prediction not quite:`.
+- Added explicit `answer correctness` metric.
+- Changed coverage false text to `right chunk not in top-k`.
+- Added `cited freshness` metric so citation support and freshness stay separate.
+- Changed the absent prediction label to `Current evidence absent from top-k`.
+
+Local checks after fixes:
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- `npm run typecheck` passed.
+- Headless Chrome DevTools checks against `/domains/llm-systems/retrieval-augmented-generation/` passed:
+  - pre-reveal `.rag-demo` has no `data-answer`, `data-coverage`, or `data-cited-source`.
+  - pre-reveal `.rag-demo` does not show selected answer, evidence mass, P(correct), cited source, citation support, answer mixture, retrieved-chunk verdicts, or result feedback.
+  - pre-reveal candidate order is fixed corpus order: old policy, current policy, forum exception, shipping, warranty.
+  - reveal is disabled before prediction.
+  - Similarity only k=2 + Covered but still wrong reveals coverage true, selected answer 14 days, answer correctness wrong, evidence mass 0.441, cited source old_policy, cited freshness stale, and `Prediction correct:` feedback.
+  - Freshness rerank k=2 + Fresh evidence wins reveals selected answer 30 days, answer correctness correct, current_policy, and fresh citation.
+  - Similarity only k=1 + Current evidence absent from top-k reveals coverage false and evidence mass 0.000.
+  - Changing top-k after reveal synchronously hides selected answer and answer mixture, disables Reveal, and updates top-k to 3.
+  - Mobile 390px has no document-level horizontal overflow.
+
+Please review whether the five blockers are closed. Return only:
+- remaining must-fix blockers, if any;
+- optional polish, if useful;
+- explicit ship verdict for this RAG notebook-shell slice.

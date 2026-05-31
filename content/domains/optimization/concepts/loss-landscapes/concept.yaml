@@ -24,9 +24,52 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Why some minima generalize better: sharpness, curvature, and training near the edge of stability."
+sources:
+  - id: li-2017-loss-landscape-visualization
+    kind: paper
+    title: "Visualizing the Loss Landscape of Neural Nets"
+    authors: "Li et al."
+    year: 2017
+    url: "https://arxiv.org/abs/1712.09913"
+    note: "Grounds 2D loss-slice visualization and filter-normalized landscape comparisons."
+  - id: keskar-2016-sharp-minima
+    kind: paper
+    title: "On Large-Batch Training for Deep Learning: Generalization Gap and Sharp Minima"
+    authors: "Keskar et al."
+    year: 2016
+    url: "https://arxiv.org/abs/1609.04836"
+    note: "Grounds the sharp-vs-flat minima discussion and its connection to generalization."
+  - id: foret-2020-sam
+    kind: paper
+    title: "Sharpness-Aware Minimization for Efficiently Improving Generalization"
+    authors: "Foret et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2010.01412"
+    note: "Grounds SAM-style neighborhood loss as an optimization objective that penalizes local sharpness."
+claim_checks:
+  - id: sliced-landscape-sharpness-sam-neighborhood
+    status: source-checked
+    claim: "Loss-landscape visualizations are 1D/2D diagnostic slices through high-dimensional parameter space, not the full neural-network surface; sharpness/flatness depend on perturbation scale and network symmetries, and SAM minimizes worst-case training loss in a perturbation neighborhood."
+    source_ids:
+      - li-2017-loss-landscape-visualization
+      - keskar-2016-sharp-minima
+      - foret-2020-sam
+    support: "Li supports 1D/2D slices and filter-wise normalization caveats. Keskar supports sharp/flat minima as perturbation-sensitivity diagnostics tied to generalization, while using an imperfect epsilon-scale-dependent metric. Foret supports SAM's neighborhood min-max objective and first-order perturbation approximation; local math anchors combine the quadratic, Delta_rho, SAM objective, and epsilon approximation."
+    caveat: "Does not source edge-of-stability theory, 2/eta stability code, Stage 2 EdgeOfStabilityViz wording, real-network Hessian spectra beyond cited context, universal flat-minima guarantees, parameterization-invariant sharpness, or 3D surface; #interactive-demo means Stage 1 only."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Li supports low-dimensional 1D/2D slices and filter-normalized comparisons. Keskar supports sharp/flat minima as perturbation-sensitivity diagnostics tied to generalization but with an imperfect epsilon-dependent metric. Foret supports SAM's worst-case neighborhood objective and first-order perturbation approximation. Reviewed scope excludes edge-of-stability, the 2/eta code, Stage 2, real-network Hessian spectra beyond cited context, universal flat-minima guarantees, and parameterization-invariant sharpness."
+    object_refs:
+      - "#source-span-li-2017-loss-landscape-visualization"
+      - "#source-span-keskar-2016-sharp-minima"
+      - "#source-span-foret-2020-sam"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#interactive-demo"
+short_description: "How 2D loss slices, Hessian curvature, SAM-style neighborhood loss, and a toy 2/eta stability line expose local sensitivity during optimization."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 16
-

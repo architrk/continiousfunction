@@ -1,0 +1,54 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning feel joyful, deep, rigorous, visual, and worth returning to: learners should be able to move from intuition to math to code to manipulation, then follow cross-domain links without losing the central invariant.
+
+We have just completed the eighth shared demo-shell rollout slice:
+1. Speculative Decoding
+2. Sparse Autoencoders
+3. Mixture of Experts
+4. Diffusion forward process
+5. Loss Landscapes 2D sharpness/SAM
+6. Score Matching DSM target
+7. Flow Matching conditional velocity target
+8. Edge of Stability learning-rate threshold prediction
+
+I need you to select the next concrete slice to implement now. This should not be a broad roadmap. Pick one bounded slice that most improves the site as a joyful, deep, non-trivial learning system while also expanding coverage toward important AI/math topics.
+
+Important current constraints:
+- Keep edits scoped to the real repo: /Users/architkhare/Library/Mobile Documents/com~apple~CloudDocs/Repos/continiousfunction.
+- Do not ask for a site-wide rewrite.
+- Prefer a slice that can be implemented with existing components/content in one session.
+- Preserve legacy /foundations behavior unless explicitly scoped otherwise.
+- Use the established VizShell / VizStageAdapter / notebook chrome pattern when improving filesystem concept demos.
+- Use image generation only when a targeted bitmap or visual brief materially improves orientation, memory, or UI direction. Prefer code-native visuals for precise interactive diagrams.
+- The next slice should include clear verification gates: typecheck, validate-content, browser/mobile checks, and if relevant Oracle implementation review after changes.
+
+Candidate directions I see:
+
+1. LossLandscape3D as a third notebook stage under /domains/optimization/loss-landscapes/.
+   - Pros: completes the optimization/loss-landscapes route after 2D sharpness and Edge of Stability.
+   - Risk: 3D demos can become visual spectacle without a single manipulable claim.
+
+2. Structured Decoding demo-shell rollout under /domains/llm-systems/structured-decoding/.
+   - Pros: extremely important production concept, connects decoding/sampling, schema automata, tool use, JSON reliability, and constrained generation; likely useful for learners and builders.
+   - Risk: must avoid broad parser theory and focus on one concrete token-mask claim.
+
+3. SSM Hybrids / Mamba bridge pass under /domains/attention-transformers/ssm-hybrids/.
+   - Pros: major modern architecture bridge, connects recurrence, convolution kernels, KV memory, selectivity, and long-context systems.
+   - Risk: existing page is review-status and demos are mechanism isolates; claims must be carefully caveated against the Mamba/Jamba/RecurrentGemma sources.
+
+4. Pretraining Data Mixtures polish and demo-shell pass.
+   - Pros: important scaling/data coverage and already has a visual asset.
+   - Risk: it was recently created/reviewed, so this may repeat work unless there is a clear missing interactive claim.
+
+5. A route-level “come back tomorrow” learning loop improvement.
+   - Pros: directly supports joy/returning/resume behavior.
+   - Risk: could become too product-broad; only choose if there is a very small concrete UI slice.
+
+Please choose exactly one next slice and return:
+1. The selected slice and why it is the best next move after Edge of Stability.
+2. The one central learner action/prediction/manipulation the slice should support.
+3. The specific files/components likely to change.
+4. What to avoid, especially overclaims and seductive-but-shallow visuals.
+5. Whether to use image generation in this slice, and if yes, the exact visual brief.
+6. The implementation acceptance checklist and verification gates.
+
+Do not propose multiple parallel workstreams. I will implement the single chosen slice and then send it back for Oracle review.

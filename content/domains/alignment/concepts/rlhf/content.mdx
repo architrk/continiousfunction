@@ -1,65 +1,249 @@
 ---
-title: "Preference-Based Alignment: RLHF, Reward Modeling, Constitutional AI"
+title: "RLHF: Reward Modeling + KL-Regularized Policy Optimization"
 ---
 
 ## Intuition
 
-Pretraining teaches a model to predict the next token. It does not directly teach it to be helpful, honest, or harmless.
+Canonical sources: Christiano et al., ["Deep Reinforcement Learning from Human Preferences"](https://arxiv.org/abs/1706.03741), and Ouyang et al., ["Training language models to follow instructions with human feedback"](https://arxiv.org/abs/2203.02155).
 
-RLHF-style alignment adds a second training signal: *preferences*. Humans (or another model following a rubric) compare two candidate outputs and choose which is better. From those comparisons, we train a **reward model** that scores outputs. Then we optimize the policy to produce higher-reward outputs, while penalizing large departures from a reference model so the policy does not drift into weird, reward-hacking behavior.
+A pretrained or supervised-finetuned language model gives a distribution over completions. In InstructGPT-style RLHF, the reference policy is often the supervised-finetuned model trained from demonstrations. RLHF asks:
 
-You can think of it as: "keep the model mostly the same, but nudge probability mass toward responses people prefer."
+> When humans prefer one completion over another, how should that preference move probability mass?
+
+The mechanism has two stages.
+
+First, train a reward model from comparisons. It does not learn an absolute moral score; it learns differences that make preferred completions more likely under a pairwise preference model.
+
+Second, optimize a policy against that learned reward while penalizing movement away from a reference model. In the finite-action picture:
+
+> RLHF multiplies the reference probability of each completion by an exponential reward bonus, then renormalizes.
+
+High reward pulls probability upward. The KL penalty controls how far the new policy may drift. If the reward model is a proxy with exploitable errors, optimizing too aggressively can move probability mass toward outputs that score well under the proxy but are worse under the real target.
 
 ## Math
 
-### Reward modeling from comparisons (Bradley-Terry)
+The two moving pieces are the preference-trained reward gap and the KL-shaped policy update:
 
-Given two candidate outputs $y_a, y_b$ for a prompt $x$, a common likelihood model is:
+$$
+\Delta_\phi(x,y_w,y_\ell)
+=
+r_\phi(x,y_w)-r_\phi(x,y_\ell),
+\qquad
+P_\phi(y_w\succ y_\ell\mid x)=\sigma(\Delta_\phi).
+$$
 
-$$P(y_a \\succ y_b\\mid x) = \\frac{\\exp(r_\\phi(x,y_a))}{\\exp(r_\\phi(x,y_a)) + \\exp(r_\\phi(x,y_b))}.$$
+$$
+J_x(\pi)=
+\sum_y \pi(y\mid x)r_\phi(x,y)
+-
+\beta\mathrm{KL}(\pi(\cdot\mid x)\|\pi_{\mathrm{ref}}(\cdot\mid x)),
+\qquad
+\pi^*(y\mid x)=
+\frac{\pi_{\mathrm{ref}}(y\mid x)\exp(r_\phi(x,y)/\beta)}
+{\sum_{y'}\pi_{\mathrm{ref}}(y'\mid x)\exp(r_\phi(x,y')/\beta)}.
+$$
 
-Here $r_\\phi(x,y)$ is a scalar “reward” score. Only **differences** in reward matter (adding a constant to all rewards doesn’t change the probabilities).
+The rest of this section unpacks those two witnesses.
+
+### Preference data and reward-model likelihood
+
+Let a preference datum be $(x,y_w,y_\ell)$, where $y_w$ is preferred to $y_\ell$ for prompt $x$. Define the reward gap
+
+$$
+\Delta
+=
+r_\phi(x,y_w)-r_\phi(x,y_\ell).
+$$
+
+A reward model $r_\phi(x,y)\in\mathbb R$ predicts
+
+$$
+P_\phi(y_w\succ y_\ell\mid x)=\sigma(\Delta).
+$$
+
+The negative log-likelihood is
+
+$$
+\mathcal L_{\mathrm{RM}}(\phi)
+=
+-\frac{1}{N}
+\sum_{i=1}^N
+\log\sigma(\Delta_i),
+$$
+
+where
+
+$$
+\Delta_i
+=
+r_\phi(x_i,y_{w,i})
+-
+r_\phi(x_i,y_{\ell,i}).
+$$
+
+Only reward differences inside the same prompt are observed. Therefore $r_\phi(x,y)+c(x)$ gives the same pairwise probabilities as $r_\phi(x,y)$.
+
+Reward scale also needs a convention. With a fixed logistic noise model, reward gaps are measured in that model's log-odds units. With perfectly separable hard preferences, an unregularized reward model can drive gaps toward infinity. Practical systems therefore normalize, regularize, or otherwise choose a usable reward scale before policy optimization.
 
 ### KL-regularized policy optimization
 
-Let $\\pi_\\theta$ be the policy and $\\pi_0$ a reference model. A standard objective is:
+For a fixed prompt $x$, reference policy $\pi_{\mathrm{ref}}$, and candidate policy $\pi$, define expected reward
 
-$$\\max_\\theta\\; \\mathbb E_{x,y\\sim\\pi_\\theta}[r_\\phi(x,y)] - \\beta\\,\\mathrm{KL}(\\pi_\\theta(\\cdot\\mid x)\\,\\|\\,\\pi_0(\\cdot\\mid x)).$$
+$$
+R_x(\pi)
+=
+\sum_y \pi(y\mid x)r_\phi(x,y)
+$$
 
-The KL term is not decoration: it is the main knob that trades off "follow preferences" against "stay in-distribution."
+and the KL term
 
-For a fixed prompt $x$ and a finite set of candidate outputs, the KL-regularized optimum has a simple “reweighting” form:
-$$\\pi^*(y\\mid x) \\propto \\pi_0(y\\mid x)\\,\\exp\\!\\big(r_\\phi(x,y)/\\beta\\big).$$
+$$
+K_x(\pi)=\mathrm{KL}(\pi(\cdot\mid x)\|\pi_{\mathrm{ref}}(\cdot\mid x)).
+$$
+
+The RLHF objective is
+
+$$
+J_x(\pi)=R_x(\pi)-\beta K_x(\pi).
+$$
+
+Equivalently, if
+
+$$
+q_y
+=
+\log
+\frac{\pi(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)},
+$$
+
+then
+
+$$
+J_x(\pi)
+=
+\sum_y \pi(y\mid x)\{r_\phi(x,y)-\beta q_y\}.
+$$
+
+Assume $\pi_{\mathrm{ref}}(y\mid x)>0$ on the candidate support. Optimize $J_x$ over the finite distribution $\pi(\cdot\mid x)$ subject to $\sum_y \pi(y\mid x)=1$. The Lagrange stationarity condition is
+
+$$
+r_\phi(x,y)-\beta(q_y+1)+\lambda=0.
+$$
+
+Solving for $\pi(y\mid x)$ and normalizing gives
+
+$$
+\pi^*(y\mid x)
+=
+\frac{
+\pi_{\mathrm{ref}}(y\mid x)\exp(r_\phi(x,y)/\beta)
+}{
+Z(x)
+}.
+$$
+
+Here
+
+$$
+Z(x)
+=
+\sum_{y'}
+\pi_{\mathrm{ref}}(y'\mid x)
+\exp(r_\phi(x,y')/\beta).
+$$
+
+Larger $\beta$ keeps the policy closer to the reference. Smaller $\beta$ lets learned reward dominate.
+
+Rearranging gives the bridge to DPO:
+
+$$
+r_\phi(x,y)
+=
+\beta\log
+\frac{\pi^*(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)}
++
+\beta\log Z(x).
+$$
+
+The final term depends only on the prompt, so it cancels in preference differences.
+
+### PPO is the optimizer, not the definition
+
+In language-model RLHF, the candidate space is enormous. InstructGPT-style RLHF uses PPO to optimize the learned reward with a KL penalty to the supervised-finetuned or reference model. The clean finite-action formula above is the exact optimum of a finite-action regularized objective. PPO is a stochastic optimizer for the language-model version; it is not this closed-form update, and a parametric policy with per-token KL details need not trace the toy optimum exactly.
+
+### Reward hacking
+
+If $r_\phi(x,y)$ differs from the real target $u(x,y)$, then low $\beta$ can concentrate the policy on outputs with high proxy reward and low true utility. KL regularization reduces this pressure but does not make the proxy correct.
 
 ## Code
+
+This witness keeps the pieces visible: pairwise reward-model fitting, reward-shift invariance, and the KL-regularized policy that reweights a reference distribution.
 
 ```python
 import numpy as np
 
-pairs = np.array([[0, 1], [0, 2], [3, 1], [0, 3], [2, 1]])  # a preferred over b
-r = np.zeros(4)
-lr = 0.2
+def sigmoid(z):
+    return 1.0 / (1.0 + np.exp(-z))
 
-for _ in range(400):
-    a, b = pairs[:, 0], pairs[:, 1]
-    diff = r[a] - r[b]
-    p = 1.0 / (1.0 + np.exp(-diff))  # P(a ≻ b) = sigmoid(diff)
-    g = p - 1.0                      # d/d(diff) of -log(sigmoid(diff))
-    grad = np.zeros_like(r)
-    np.add.at(grad, a, g)
-    np.add.at(grad, b, -g)
+def softmax(logits):
+    logits = logits - logits.max()
+    e = np.exp(logits)
+    return e / e.sum()
+
+# One prompt, four candidate completions.
+# Shape: rewards, pi_ref, pi_star are all (K,).
+pairs = np.array([
+    [0, 1],
+    [0, 2],
+    [2, 1],
+    [3, 1],
+    [0, 3],
+])
+
+K = 4
+r = np.zeros(K)
+lr = 0.3
+l2 = 0.05
+
+for _ in range(800):
+    grad = l2 * r
+
+    for winner, loser in pairs:
+        margin = r[winner] - r[loser]
+        p = sigmoid(margin)
+        g = p - 1.0
+        grad[winner] += g
+        grad[loser] -= g
+
     r -= lr * grad / len(pairs)
+    r -= r.mean()  # choose one representative of the shift-equivalence class
 
-r -= r.mean()  # rewards only identifiable up to a constant
-beta = 1.0
-pi0 = np.ones_like(r) / len(r)
-pi_star = pi0 * np.exp(r / beta)
-pi_star /= pi_star.sum()
+pi_ref = np.array([0.35, 0.30, 0.20, 0.15])
+beta = 0.7
 
-print("reward scores:", np.round(r, 3))
-print("KL-regularized target policy:", np.round(pi_star, 3))
+def kl_regularized_policy(reward):
+    logits = np.log(pi_ref) + reward / beta
+    return softmax(logits)
+
+pi_star = kl_regularized_policy(r)
+pi_shifted = kl_regularized_policy(r + 10.0)
+
+kl = np.sum(pi_star * (np.log(pi_star) - np.log(pi_ref)))
+
+print("learned reward representative:", np.round(r, 3))
+print("reference policy:             ", np.round(pi_ref, 3))
+print("KL-regularized policy:        ", np.round(pi_star, 3))
+print("KL(pi* || pi_ref):            ", round(float(kl), 4))
+
+assert np.allclose(pi_star, pi_shifted)
 ```
+
+Adding a constant to every reward changes neither pairwise preference probabilities nor the KL-regularized policy. The policy depends on reward differences and on how strongly $\beta$ anchors it to the reference.
 
 ## Interactive Demo
 
-Use the demo to explore reward modeling, KL regularization, and why direct preference optimization (DPO) can behave similarly to RLHF while being simpler to train.
+Use the demo as a probability-shaping machine. Change $\beta$, toggle a proxy reward gap, and add a reward shift. Watch the reference policy get reweighted, and notice that shifting every reward leaves the policy unchanged.
+
+{/* viz.tsx component renders here if it exists */}

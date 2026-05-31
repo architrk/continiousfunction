@@ -10,7 +10,8 @@ prerequisites:
   - efficient-attention
   - llm-serving
   - mixture-of-experts
-leads_to: []
+leads_to:
+  - speculative-decoding
 related:
   - efficiency
   - long-context
@@ -20,13 +21,56 @@ tags:
   - serving
   - scheduling
   - all-to-all
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: graduate
-short_description: "Serving MoE turns sparse compute into a scheduling problem: routing skew creates stragglers and all-to-all communication dominates, motivating disaggregated expert parallelism."
+sources:
+  - id: shazeer-2017-sparsely-gated-moe
+    kind: paper
+    title: "Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer"
+    authors: "Shazeer et al."
+    year: 2017
+    url: "https://arxiv.org/pdf/1701.06538"
+    note: "Grounds sparse expert routing and why gating turns capacity into dispatch and load-balance constraints."
+  - id: fedus-2021-switch-transformer
+    kind: paper
+    title: "Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity"
+    authors: "Fedus, Zoph, and Shazeer"
+    year: 2021
+    url: "https://arxiv.org/pdf/2101.03961"
+    note: "Grounds top-1 routing, capacity factors, and communication/training-stability caveats relevant to serving."
+  - id: zhu-2025-megascale-infer
+    kind: paper
+    title: "MegaScale-Infer: Serving Mixture-of-Experts at Scale with Disaggregated Expert Parallelism"
+    authors: "Zhu et al."
+    year: 2025
+    url: "https://arxiv.org/pdf/2504.02263"
+    note: "Serving-specific evidence for MoE decoding sparsity, attention/FFN disaggregation, M2N token-routing communication, and production expert-load imbalance."
+claim_checks:
+  - id: sparse-routing-load-balance
+    status: source-checked
+    claim: "MoE inference and serving use sparse routing: a gate sends each token to a small subset of experts, so per-expert token counts can become uneven and require load-balancing, capacity buffers, or scheduling/parallelism choices."
+    source_ids:
+      - shazeer-2017-sparsely-gated-moe
+      - fedus-2021-switch-transformer
+      - zhu-2025-megascale-infer
+    support: "Shazeer supports sparse top-k MoE routing plus importance/load-balancing losses for uneven expert use. Fedus supports top-1 routing, expert-capacity overflow, auxiliary load balancing, and communication-cost tradeoffs. MegaScale-Infer supplies serving-specific support for MoE decoding, token dispatch, attention/FFN disaggregation, M2N/N2M communication, and production expert-load imbalance."
+    caveat: "Checks sparse routing, uneven expert load, and load-balancing/scheduling only. Shazeer/Fedus ground model/distributed mechanics; MegaScale-Infer supplies serving scope. Local byte-count, straggler formula, code, and demo are toy witnesses, not universal latency/cost claims."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Shazeer 2017 supports sparse top-k MoE routing and load/importance-balancing losses for uneven expert use. Fedus 2021 supports top-1 routing, capacity overflow, auxiliary load balancing, and communication-cost tradeoffs. MegaScale-Infer 2025 supplies serving evidence for MoE decoding, token dispatch, FFN underutilization from sparsity, attention/FFN disaggregation, M2N/N2M communication in that setup, and production expert-load imbalance. Local math/code/demo remain toy witnesses."
+    object_refs:
+      - "#source-span-shazeer-2017-sparsely-gated-moe"
+      - "#source-span-fedus-2021-switch-transformer"
+      - "#source-span-zhu-2025-megascale-infer"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Serving MoE turns sparse compute into a scheduling problem: routing skew can create stragglers and token-dispatch communication can bottleneck, motivating scheduling and, in systems such as MegaScale-Infer, disaggregated expert-parallel serving."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 20
-

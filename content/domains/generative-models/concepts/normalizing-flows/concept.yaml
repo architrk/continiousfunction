@@ -1,5 +1,5 @@
 id: normalizing-flows
-title: "Normalizing Flows: Exact Likelihood via Invertible Transforms"
+title: "Normalizing Flows: Tractable Density via Invertible Transforms"
 domain: generative-models
 slug: normalizing-flows
 difficulty: 4
@@ -19,13 +19,39 @@ tags:
   - normalizing-flows
   - change-of-variables
   - jacobian
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Invertible neural networks trained with change-of-variables: exact likelihood and exact sampling, with architectural constraints to make Jacobian determinants tractable."
+sources:
+  - id: rezende-2015-normalizing-flows
+    kind: paper
+    title: "Variational Inference with Normalizing Flows"
+    authors: "Rezende and Mohamed"
+    year: 2015
+    url: "https://arxiv.org/abs/1505.05770"
+    note: "Grounds the change-of-variables density transformation and the term normalizing flow."
+claim_checks:
+  - id: invertible-change-of-variables-logdet
+    status: source-checked
+    claim: "Normalizing flows compose invertible maps to turn a simple initial density into a richer one; for a tractable finite flow, the log density at a point is computed exactly by evaluating the base log density at the corresponding preimage and adding the inverse-Jacobian log determinant."
+    source_ids:
+      - rezende-2015-normalizing-flows
+    support: "Rezende and Mohamed define a normalizing flow as transforming a probability density through a sequence of invertible mappings, state that repeated change-of-variables moves an initial density through that sequence, and derive finite-flow density updates using Jacobian determinants. The page equations, code, and demo instantiate inverse-form base-density lookup plus log-volume correction."
+    caveat: "Rezende and Mohamed frame flows for variational approximate posteriors and density transformation; they do not by themselves justify broad claims about modern data modeling, sampling quality, stability, or universal exact-likelihood practicality."
+    object_refs:
+      - "#source-span-rezende-2015-normalizing-flows"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Rezende and Mohamed support normalizing flows as invertible-map sequences that transform a simple initial density into a richer one, derive finite change-of-variables density updates using inverse/forward Jacobian determinants, and give the composed log-density formula as base log density minus summed forward logdet terms. Local math, affine code, and demo instantiate preimage lookup plus inverse-Jacobian log-volume correction."
+short_description: "Invertible transforms trained with change-of-variables: tractable transformed densities and sampling, with architectural constraints to make the needed Jacobian determinants tractable."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 18
-

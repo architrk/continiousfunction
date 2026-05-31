@@ -4,19 +4,17 @@ domain: information-theory
 slug: kl-divergence
 difficulty: 3
 status: published
-importance: important
+importance: critical
 prerequisites:
-  - probability-basics
-  - random-variables
+  - distributions
+  - cross-entropy
 leads_to:
-  - maximum-likelihood
   - vaes
   - rlhf
   - dpo
 related:
   - maximum-likelihood
-  - vaes
-  - rlhf
+  - bayesian-inference
 tags:
   - information-theory
   - kl-divergence
@@ -27,9 +25,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "A measure of mismatch between two distributions, used in MLE, VAEs, and KL-regularized alignment."
+sources:
+  - id: goodfellow-2016-deep-learning
+    kind: book
+    title: "Deep Learning"
+    authors: "Goodfellow, Bengio, and Courville"
+    year: 2016
+    url: "https://www.deeplearningbook.org/contents/prob.html"
+    note: "Chapter 3 grounds KL divergence, cross-entropy, and information-theoretic notation used in deep learning."
+claim_checks:
+  - id: directional-log-ratio-expected-regret
+    status: source-checked
+    claim: "KL divergence is a directional expectation under the first distribution of a log probability ratio; it is nonnegative, generally asymmetric, and differs from cross-entropy by the fixed entropy of the target distribution."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Goodfellow Ch.3: KL is E_{x~P}[log(P/Q)], nonnegative, generally asymmetric, and cross-entropy is H(P,Q)=H(P)+D_KL(P||Q)=-E_P log Q. With P fixed, H(P) is constant, so cross-entropy differs from forward KL by fixed target entropy. Local math/code/demo match finite/countable p-weighted log-ratio, support rules, directional terms, nonnegative totals, and H(p,q)=H(p)+KL(p||q)."
+    source_ids:
+      - goodfellow-2016-deep-learning
+    support: "Goodfellow et al. define KL divergence as relative entropy with an expected log-ratio form, relate it to cross-entropy, and use the same probability-information notation for deep learning objectives."
+    caveat: "Reviewed finite/countable same-space distributions and Ch3 cross-entropy identity with first distribution fixed. Demo keeps q positive, showing near-misses, not infinite-KL failures. Not measure theory, continuous edge cases, optimization guarantees, VI, or KL alignment uses."
+    object_refs:
+      - "#source-span-goodfellow-2016-deep-learning"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "KL divergence is a directional expected log-probability mismatch between distributions; it explains cross-entropy training, variational inference, and KL-regularized alignment."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-05"
 estimated_read_time: 14
-

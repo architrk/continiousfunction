@@ -19,23 +19,31 @@ RoPE is one modern relative-position method, but it is easier to appreciate once
 
 The classic sinusoidal encoding (Vaswani et al.) defines, for model dimension $d$ and position $p$:
 
-$$\\mathrm{PE}(p,2i) = \\sin\\left(p\\,\\omega_i\\right),\\qquad \\mathrm{PE}(p,2i+1) = \\cos\\left(p\\,\\omega_i\\right),$$
+$$
+\mathrm{PE}(p,2i) = \sin\left(p\,\omega_i\right),\qquad \mathrm{PE}(p,2i+1) = \cos\left(p\,\omega_i\right),
+$$
 
 with frequencies
 
-$$\\omega_i = \\mathrm{base}^{-2i/d},\\qquad i\\in\\{0,\\dots,\\tfrac d2-1\\}.$$
+$$
+\omega_i = \mathrm{base}^{-2i/d},\qquad i\in\{0,\dots,\tfrac d2-1\}.
+$$
 
 Two useful facts:
 
 1. **Shift structure:** the dot product between two positions depends only on their offset:
 
-$$\\mathrm{PE}(p)\\cdot \\mathrm{PE}(q) = \\sum_i \\cos\\left(\\omega_i\\,(p-q)\\right).$$
+$$
+\mathrm{PE}(p)\cdot \mathrm{PE}(q) = \sum_i \cos\left(\omega_i\,(p-q)\right).
+$$
 
 2. **Additive absolute encoding:** the simplest way to use PE is to add it to token embeddings:
 
-$$h_p = e_p + \\mathrm{PE}(p).$$
+$$
+h_p = e_p + \mathrm{PE}(p).
+$$
 
-Relative-position methods (like RoPE) instead modify the attention computation so that $q_p^\\top k_q$ depends on $(p-q)$ directly.
+Relative-position methods (like RoPE) instead modify the attention computation so that $q_p^\top k_q$ depends on $(p-q)$ directly.
 
 ## Code
 
@@ -67,6 +75,6 @@ for delta in [0, 1, 5, 10]:
 No interactive demo yet for this concept. A good next step is a small 2D plot that lets you:
 
 - choose a dimension pair $(2i,2i+1)$,
-- slide position $p$ and watch $(\\sin(p\\omega_i), \\cos(p\\omega_i))$ trace a circle,
+- slide position $p$ and watch $(\sin(p\omega_i), \cos(p\omega_i))$ trace a circle,
 - compare sinusoidal PE vs RoPE rotations side-by-side.
 

@@ -1,0 +1,26 @@
+Project: Continuous Function, a Next.js learning atlas. We are doing a narrow source-support review for `llm-systems/decoding-sampling`.
+
+Original claim:
+"Decoding settings reshape the next-token distribution at inference time: temperature rescales probabilities, while nucleus sampling truncates the unreliable tail and renormalizes the remaining dynamic token set."
+
+You already returned `Not approved as-is` only because `#interactive-demo` contained over-broad or production-style copy (`GPT-4 Style`, `GPT-4 default-ish`, production "sweet spot", and broad repetition/quality strings). You said the source, `#math-object-1`, `#math-object-2`, and `#code-witness-1` were otherwise sufficient.
+
+Fix applied:
+- `components/foundations/DecodingSamplingViz.tsx` now uses toy/local wording instead of GPT-4/production/default claims.
+- The "sweet spot used by most production LLMs" sentence was removed.
+- Repetition penalty and quality language now says "toy", "local", or "in this lab" rather than source-backed production advice.
+- The top-p/top-k comparison now says top-p adapts the kept set to cumulative probability mass, matching the paper's dynamic-set framing.
+- A second cleanup pass removed broad "creativity", "boring", "precision", "great for math/bad for stories", "random gibberish", and "varied but coherent" wording; the route wrapper now says concentrated/multi-path/tail-heavy toy distribution behavior instead of focused/diverse/chaotic quality language.
+
+Please review only whether the blocker is fixed and whether the claim can now be marked `evidence_review.state: substantive-reviewed` while keeping `#interactive-demo` as a bounded toy witness.
+
+Use the attached files:
+- updated concept metadata/content
+- updated demo component
+- source text from Holtzman et al.
+- `lib/conceptObjectSpans.ts` for the first-two-equations/first-code-block extraction rule
+
+Desired output:
+- Start with `Approved` or `Not approved as-is`.
+- If not approved, list the smallest remaining blocker.
+- If approved, provide the exact recommended `evidence_review.summary` and any final support/caveat tweak.

@@ -1,0 +1,31 @@
+Project: Continuous Function, Backpropagation P0 prediction-first retrofit.
+
+Previous Oracle implementation review returned `no-publish` with exactly two blockers:
+
+1. Replace the pre-reveal mobile copy that said "loss-after-update" with a neutral placeholder and add a regression for spaced/hyphenated variants before reveal.
+2. Make the actual input vector `x` visible in the non-SVG/mobile forward state before reveal, because the SVG is hidden on mobile. Add 390px coverage.
+
+Fixes applied:
+
+- `viz.tsx`
+  - Added an always-visible `input x` metric outside the SVG, so mobile pre-reveal has `x` visible.
+  - Replaced the pre-reveal mobile optimizer copy with `Update result hidden until reveal.`
+  - Changed the metrics grid to responsive `auto-fit` so the extra input metric remains mobile-safe.
+- `BackpropagationViz.test.tsx`
+  - Pre-reveal test now asserts `input x` and `[1.00, 2.00]` are visible.
+  - Pre-reveal test now guards against both `loss after update` and `loss-after-update`, plus the spaced `loss after` substring.
+
+Checks rerun after the fix:
+
+- `npm test -- BackpropagationViz --runInBand` passed.
+- `npm run validate-content` passed with 0 warnings/errors.
+- `npm run typecheck` passed.
+
+Please review only whether the two blockers are resolved and whether any new blocking leak or correctness issue was introduced.
+
+Return exactly one of:
+
+- `publish`
+- `no-publish`
+
+If `no-publish`, list only blocking fixes required before publish.

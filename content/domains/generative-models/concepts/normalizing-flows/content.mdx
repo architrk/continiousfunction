@@ -1,39 +1,47 @@
 ---
-title: "Normalizing Flows: Exact Likelihood via Invertible Transforms"
+title: "Normalizing Flows: Tractable Density via Invertible Transforms"
 ---
 
 ## Intuition
 
 Normalizing flows are "reversible warps."
 
-Start from a simple base distribution (like a standard Gaussian). Then apply an invertible transformation that bends and stretches space until samples match the data distribution.
+Start from a simple base distribution (like a standard Gaussian). Then apply an invertible transformation that bends and stretches space into a richer model distribution.
 
 Because the transform is invertible, you get:
 
 - **Exact sampling**: sample $z$ from the base, push forward to $x=f(z)$.
-- **Exact likelihood**: map $x$ back to $z=f^{-1}(x)$ and account for how volumes change.
+- **Tractable log-likelihood under the flow model**: map $x$ back to $z=f^{-1}(x)$ and account for how volumes change.
 
-The price is architectural: you must design $f$ so it is invertible and its Jacobian determinant is cheap to compute.
+The price is architectural: you must design $f$ so it is invertible and the needed map direction plus Jacobian determinant are cheap to compute.
 
 ## Math
 
 ### Change of variables
 
-Let $x=f(z)$ where $f$ is invertible and $z\\sim p_z$. Then:
+Let $x=f(z)$ where $f$ is invertible and $z\sim p_z$. Then:
 
-$$p_x(x)=p_z\\big(f^{-1}(x)\\big)\\left|\\det\\frac{\\partial f^{-1}}{\\partial x}\\right|,$$
+$$
+p_x(x)=p_z\big(f^{-1}(x)\big)\left|\det\frac{\partial f^{-1}}{\partial x}\right|,
+$$
 
 so:
 
-$$\\log p_x(x)=\\log p_z\\big(f^{-1}(x)\\big)+\\log\\left|\\det\\frac{\\partial f^{-1}}{\\partial x}\\right|.$$
+$$
+\log p_x(x)=\log p_z\big(f^{-1}(x)\big)+\log\left|\det\frac{\partial f^{-1}}{\partial x}\right|.
+$$
+
+The determinant term is the volume correction. If the inverse map squeezes a region of data space into a smaller region of latent space, density must increase; if it expands the region, density must decrease. This is the tractable-density advantage of flows, but also the constraint: a flexible transform is useful for likelihood work only when the needed map direction and log-determinant stay tractable.
 
 ### Composition of flows
 
-If $f=f_K\\circ\\cdots\\circ f_1$, then log-determinants add:
+If $f=f_K\circ\cdots\circ f_1$ maps latent variables forward, with $z_k=f_k(z_{k-1})$ and $z_K=x$, then the inverse-Jacobian log-determinants add as a negative sum of forward log-determinants:
 
-$$\\log p_x(x)=\\log p_z(z_0)+\\sum_{k=1}^K\\log\\left|\\det\\frac{\\partial f_k}{\\partial z_{k-1}}\\right|.$$
+$$
+\log p_x(x)=\log p_z(z_0)-\sum_{k=1}^K\log\left|\det\frac{\partial f_k}{\partial z_{k-1}}\right|.
+$$
 
-This is why coupling layers and autoregressive flows are engineered around "easy log-det Jacobians."
+This follows from the determinant of a product of Jacobians. Later flow architectures often engineer triangular or otherwise cheap Jacobians, which can turn a high-dimensional determinant into a sum of simpler per-dimension terms.
 
 ## Code
 
@@ -60,5 +68,4 @@ print("log p_x(x):", round(float(log_px), 3))
 
 ## Interactive Demo
 
-No demo yet for this concept. A good one would let you compose simple invertible transforms and watch how density changes under the Jacobian term.
-
+The demo below asks you to predict the density effect before revealing the Jacobian correction. The key invariant is that exact likelihood comes from two terms: the base density at the inverse point and the log-volume correction from the inverse Jacobian.

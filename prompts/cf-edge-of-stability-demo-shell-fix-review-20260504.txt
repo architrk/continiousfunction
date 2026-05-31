@@ -1,0 +1,42 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning joyful, visual, intuitive, and mathematically serious. We use GPT Pro/Oracle as a review partner before and after implementation.
+
+This is a narrow follow-up review for the Edge of Stability demo-shell rollout slice after applying the blockers from your previous review.
+
+Previous Oracle verdict:
+- Not acceptable as-is.
+- Acceptable after fixing:
+  1. Pre-reveal chart y-scale leaked hidden trace behavior.
+  2. Changing eta after reveal could briefly leak a new answer through UI/demo-state.
+  3. Result panel copy/style implied green success by default and rendered "diverge" awkwardly.
+
+Fixes applied:
+- Notebook mode now computes a notebook-specific sharpness chart y-scale.
+  - Before reveal, it depends only on visible eta-derived threshold: domain 0 to max(1, threshold * 2.4).
+  - After reveal, it switches to the full trace scale.
+  - Notebook threshold line, trace path, and current point use this reveal-gated notebook scale.
+- Added revealedEta and traceIsRevealed = notebookRevealed && revealedEta === learningRate.
+  - Trace rendering, diagnostic rendering, result panel, Play button, and demo-state emission use traceIsRevealed.
+  - Reveal sets revealedEta to the current learning rate.
+  - Eta slider, prediction choices, reset, and learning-rate reset clear revealedEta synchronously.
+  - Notebook playback also requires revealedEta === learningRate.
+- Result panel now uses neutral base styling plus correctness/divergence/neutral classes.
+  - Copy now says "the revealed regime is ..."
+  - Divergent actual label renders as "divergent".
+
+Fresh local checks after the fixes:
+- npm run typecheck passed.
+- npm run validate-content passed with 0 warnings and 0 errors.
+- Headless Chrome DevTools check against the running local dev server on /domains/optimization/loss-landscapes/ passed on desktop 1366x900 and mobile 390x844:
+  - pre-reveal trace path count is 0.
+  - pre-reveal readout shows eta and 2/eta only; no lambda ratio, max ratio, or loss trend.
+  - pre-reveal demo-state includes revealed: no and does not include actual regime.
+  - after reveal, trace path count is 1 and post-reveal diagnostics/demo-state appear.
+  - after reveal, changing eta to 0.500 resets the UI immediately: trace path count returns to 0, result panel disappears, readout shows eta 0.500 and 2/eta 4.00 only, demo-state returns to revealed: no, and no actual regime is emitted.
+  - no horizontal overflow on desktop or mobile.
+
+Please review only whether these fixes close the prior blockers and whether there are any remaining must-fix blockers in this slice.
+
+Do not request broad expansion, future-slice ideas, or unrelated cleanup. Return:
+1. Ship verdict: acceptable or not acceptable.
+2. Any remaining must-fix blockers, with exact file/line-level reasoning.
+3. Any optional polish, clearly separated from blockers.

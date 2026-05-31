@@ -13,10 +13,12 @@ leads_to:
   - llm-serving
   - speculative-decoding
   - long-context
+  - grouped-query-attention
 related:
   - llm-serving
   - long-context
   - speculative-decoding
+  - grouped-query-attention
 tags:
   - attention-transformers
   - efficient-attention
@@ -27,8 +29,51 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: graduate
+sources:
+  - id: shazeer-2019-mqa
+    kind: paper
+    title: "Fast Transformer Decoding: One Write-Head is All You Need"
+    authors: "Shazeer"
+    year: 2019
+    url: "https://arxiv.org/pdf/1911.02150"
+    note: "Grounds the KV-cache bandwidth motivation for sharing keys and values across query heads during decoding."
+  - id: ainslie-2023-gqa
+    kind: paper
+    title: "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints"
+    authors: "Ainslie et al."
+    year: 2023
+    url: "https://aclanthology.org/2023.emnlp-main.298.pdf"
+    note: "Introduces grouped-query attention as the practical middle point between multi-head quality and MQA memory savings."
+  - id: dao-2022-flashattention
+    kind: paper
+    title: "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+    authors: "Dao et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2205.14135"
+    note: "Grounds the IO-aware attention kernel: tiling plus online softmax avoids materializing the full attention matrix."
+claim_checks:
+  - id: kv-cache-sharing-memory-bandwidth
+    status: source-checked
+    claim: "At incremental decoding time, KV cache reads can become a memory-bandwidth bottleneck; sharing key/value heads with MQA or GQA reduces KV tensor size while preserving multiple query heads."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Shazeer supports the bottleneck/mechanism: incremental decoding reloads large K/V tensors, so memory bandwidth can dominate, and MQA removes the K/V heads dimension while keeping query heads. Ainslie et al. support GQA/MQA: MQA uses one KV head; GQA shares KV heads per query-head group, reducing KV-cache size and loads roughly in proportion to Hkv/Hq."
+    source_ids:
+      - shazeer-2019-mqa
+      - ainslie-2023-gqa
+    support: "Shazeer identifies repeated loading of large key/value tensors as an incremental-decoding bottleneck and proposes sharing keys and values across heads; Ainslie et al. present GQA as an intermediate between MHA quality and MQA speed/memory savings."
+    caveat: "This checks KV-sharing memory/bandwidth and cache-size scaling for autoregressive decoding only; it is not a universal latency, quality, hardware, checkpoint-conversion, or model-adoption guarantee."
+    object_refs:
+      - "#source-span-shazeer-2019-mqa"
+      - "#source-span-ainslie-2023-gqa"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "How attention becomes practical at long context: KV caching for decoding, grouped-query attention, and IO-aware kernels like FlashAttention."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-20"
 estimated_read_time: 20

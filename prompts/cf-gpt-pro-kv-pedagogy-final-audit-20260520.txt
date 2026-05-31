@@ -1,0 +1,17 @@
+You are GPT-Pro acting as a ruthless pedagogy and product reviewer for Continuous Function.
+
+Goal: make the Efficient Attention / KV Cache demo world-class: rigorous, intuitive, non-gimmicky, prediction-first, and useful for learners/researchers/experimenters/professors.
+
+Context:
+- Continuous Function teaches deep learning math through Intuition -> Math -> Code -> Interactive Demo.
+- Oracle previously identified the KV Cache demo as the most urgent pedagogical risk: gamified challenge language, hard-coded bucket answers, and wording that can conflate KV projection recomputation, attention over cached keys, and retained KV memory.
+- We want one calm scientific prediction loop: learner commits a savings bucket, reveals no-cache KV projection work vs cached KV projection work, carries the invariant that K,V are computed once per token while the new query still attends over the cached prefix.
+
+Please inspect the attached files and return a compact implementation review:
+1. Exact blocking changes required in KVCacheViz before it can be a flagship demo.
+2. Copy changes that prevent misconceptions about KV cache, attention cost, and memory.
+3. Whether PretrainingDataMixtures still has any reveal/prediction leakage or stale-state issue.
+4. Acceptance criteria for desktop and 390px mobile visual QA.
+5. Any changes that are NOT worth doing now.
+
+Be concrete and file-level. Prefer a short checklist over broad theory.

@@ -1,31 +1,57 @@
 id: dpo
-title: "Direct Preference Optimization: RL-Free Alignment from Human Preferences"
+title: "Direct Preference Optimization"
 domain: alignment
 slug: dpo
 difficulty: 4
 status: published
 importance: important
 prerequisites:
-  - maximum-likelihood
+  - cross-entropy
+  - kl-divergence
   - rlhf
 leads_to:
   - kto
-  - reward-hacking
 related:
-  - rlhf
   - reward-hacking
 tags:
   - alignment
   - dpo
   - preferences
+  - bradley-terry
+  - log-odds
   - kl-regularization
 has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "A supervised alternative to PPO-style RLHF: shift probability mass toward preferred responses (relative to a reference model) using a simple logistic loss on preference pairs."
+sources:
+  - id: rafailov-2023-dpo
+    kind: paper
+    title: "Direct Preference Optimization: Your Language Model is Secretly a Reward Model"
+    authors: "Rafailov et al."
+    year: 2023
+    url: "https://arxiv.org/abs/2305.18290"
+    note: "Grounds DPO as a closed-form preference objective derived from KL-regularized RLHF."
+claim_checks:
+  - id: dpo-reference-relative-log-odds
+    status: source-checked
+    claim: "DPO reparameterizes the KL-regularized RLHF reward as beta times the policy/reference log-ratio, up to a prompt-only constant, then fits preference pairs with binary cross-entropy on the beta-scaled winner-loser reference-relative log-odds margin."
+    source_ids:
+      - rafailov-2023-dpo
+    support: "Rafailov et al. derive the KL-regularized optimum pi_r proportional to pi_ref exp(r/beta), rearrange it as r=beta log(pi_r/pi_ref)+beta log Z(x), then substitute into Bradley-Terry pairwise preferences so Z(x) cancels, yielding the DPO hard-label logistic/BCE loss on beta times the policy/reference winner-loser log-ratio difference. The page's math, code, and demo instantiate this margin as teaching witnesses."
+    caveat: "Checks pairwise Bradley-Terry DPO derivation plus finite-action/two-completion intuition only; not finite-sample convergence, noisy hard labels, neural realizability, ranking variants, empirical superiority to PPO/RLHF, reward-hacking prevention, or broader alignment guarantees."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Rafailov et al. derive pi_r proportional to pi_ref exp(r/beta), rearrange r=beta log(pi_r/pi_ref)+beta log Z(x), then cancel Z(x) in Bradley-Terry reward differences to obtain DPO BCE/logistic loss on beta-scaled policy-vs-reference winner-loser log-odds."
+    object_refs:
+      - "#source-span-rafailov-2023-dpo"
+      - "#math-object-1"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "DPO turns pairwise preferences into binary cross-entropy on reference-relative log odds, using the KL-regularized RLHF optimum to make the policy itself an implicit reward model."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 18
-

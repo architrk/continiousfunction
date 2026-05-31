@@ -1,0 +1,36 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. The user goal is not just coverage: learning should feel joyful enough to return to voluntarily, visually rich, interactive, deep, mathematically serious, and non-trivial. The site should grow slowly with refined concepts rather than bulk content.
+
+We are executing a "flagship demo shell rollout": port the highest-leverage interactive demos onto a coherent shared `VizShell` / `VizStageAdapter` system, with mechanism-first prediction checks, accessible controls, calibrated toy claims, and compact AI companion demo-state emission.
+
+You just scoped the next Loss Landscapes slice. Your guidance was:
+
+- Target only the filesystem route plus `LossLandscapeViz` 2D slice/SAM/sharpness demo.
+- Do not touch `LossLandscape3DViz` or `EdgeOfStabilityViz`.
+- Replace the route tabs with one `VizShell` + `VizStageAdapter`.
+- Add optional `chrome="legacy" | "notebook"` to `LossLandscapeViz`, defaulting to legacy so `/foundations` still works.
+- Hide duplicate route-level copy in notebook mode.
+- Add a mechanism-first prediction check about endpoint local `lambda-max`, not optimizer "winning".
+- Emit compact demo state.
+- Calibrate flat-minima/SAM/generalization claims and fix touched MDX math escapes.
+
+I implemented that slice. Current local checks already run:
+
+- `npm run validate-content`: passed with 0 warnings / 0 errors.
+- `npm run typecheck`: passed.
+- `curl http://localhost:3001/domains/optimization/loss-landscapes/`: 200.
+- `curl http://localhost:3001/foundations/loss-landscapes/`: 200.
+
+I have not yet run the production build after this specific implementation review prompt because the dev server is currently running on port 3001; I will stop/move build output and run `CF_NEXT_BUILD_CPUS=1 npm run build` after applying your blockers.
+
+Please review the attached implementation for correctness, pedagogy, accessibility, route behavior, static-export risk, and visual coherence.
+
+Return:
+
+1. "PUBLISH BLOCKERS" - exact issues that must be fixed before this slice counts as done.
+2. "PEDAGOGY BLOCKERS" - unsupported claims, misleading math, or bad learner framing.
+3. "ACCESSIBILITY / UX BLOCKERS" - keyboard, aria, mobile, overflow, contrast, or nested-card issues.
+4. "STATIC EXPORT / BUILD RISK" - anything likely to fail `next build` or static export.
+5. "NICE-TO-HAVE" - improvements I should defer unless tiny.
+6. "VERDICT" - whether to accept after blockers, and the exact validation commands/routes to run.
+
+Please be strict and concise. If there are no blockers in a category, say "none".

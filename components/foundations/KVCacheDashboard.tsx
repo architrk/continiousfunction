@@ -2,10 +2,15 @@
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MATH_COLORS } from '../../lib/mathObjects';
+import { emitDemoState } from '../../lib/demoState';
 
 type GamePhase = 'setup' | 'countdown' | 'reveal'
 type AttentionType = 'mha' | 'gqa-4' | 'gqa-8' | 'mqa'
 const ATTENTION_TYPES: AttentionType[] = ['mha', 'gqa-4', 'gqa-8', 'mqa']
+
+type KVCacheDashboardProps = {
+  conceptId?: string
+}
 
 /** Type guard for AttentionType */
 function isAttentionType(value: string): value is AttentionType {
@@ -43,7 +48,7 @@ function getPredictionFeedback(
   return `Not quite! ${archExplanation[targetArch]} The key is understanding the KV head ratio: with ${targetArch.toUpperCase()}, you get ${actualReduction.toFixed(0)}% memory savings.`
 }
 
-export default function KVCacheDashboard() {
+export default function KVCacheDashboard({ conceptId = 'efficient-attention' }: KVCacheDashboardProps) {
   const [contextLength, setContextLength] = useState(2048);
   const [numLayers, setNumLayers] = useState(32);
   const [numHeadsQ, setNumHeadsQ] = useState(32);
@@ -165,6 +170,59 @@ export default function KVCacheDashboard() {
     return lockedPrediction === actualBucket
   }, [lockedPrediction, actualReduction])
 
+  useEffect(() => {
+    const values = [
+      `context length T: ${contextLength.toLocaleString()} tokens`,
+      `layers L: ${numLayers}`,
+      `query heads Hq: ${numHeadsQ}`,
+      `KV heads Hkv: ${numHeadsKV}`,
+      `head dimension d_head: ${headDim}`,
+      `batch: ${batchSize}`,
+      `bytes per element: ${bytesPerElement}`,
+      `attention architecture: ${attentionType.toUpperCase()}`,
+      `KV cache: ${kvCacheGB.toFixed(2)} GB`,
+      `MHA baseline: ${mhaKVCacheGB.toFixed(2)} GB`,
+      `memory reduction: ${memoryReduction}%`,
+      `sharing factor: ${(numHeadsQ / numHeadsKV).toFixed(1)}x`,
+    ]
+
+    if (activeChallenge) {
+      values.push(
+        `challenge: ${activeChallenge.name}`,
+        `target architecture: ${targetArchitecture.toUpperCase()}`,
+        `prediction: ${lockedPrediction ?? prediction ?? 'none'}`,
+        `challenge phase: ${gamePhase}`
+      )
+    }
+
+    emitDemoState({
+      conceptId,
+      label: 'KV cache memory budget',
+      summary:
+        `${attentionType.toUpperCase()} uses ${numHeadsKV} KV heads for ${numHeadsQ} query heads; ` +
+        `KV cache is ${kvCacheGB.toFixed(2)} GB vs ${mhaKVCacheGB.toFixed(2)} GB for MHA.`,
+      values,
+    })
+  }, [
+    activeChallenge,
+    attentionType,
+    batchSize,
+    bytesPerElement,
+    conceptId,
+    contextLength,
+    gamePhase,
+    headDim,
+    kvCacheGB,
+    lockedPrediction,
+    memoryReduction,
+    mhaKVCacheGB,
+    numHeadsKV,
+    numHeadsQ,
+    numLayers,
+    prediction,
+    targetArchitecture,
+  ])
+
   return (
     <section className="card interactive-card">
       <h2>KV Cache Memory Budget Calculator</h2>
@@ -182,7 +240,7 @@ export default function KVCacheDashboard() {
         marginBottom: '16px',
       }}>
         <div style={{ marginBottom: '12px' }}>
-          <span style={{ fontSize: '0.85rem', color: '#9ca3af', marginRight: '8px' }}>
+          <span style={{ fontSize: '0.85rem', color: '#455361', marginRight: '8px' }}>
             🧠 <strong>Memory Challenge:</strong> Pick a model config:
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
@@ -198,7 +256,7 @@ export default function KVCacheDashboard() {
                     : 'rgba(245, 158, 11, 0.1)',
                   border: `1px solid ${activeChallenge?.name === scenario.name ? '#f59e0b' : 'rgba(245, 158, 11, 0.3)'}`,
                   borderRadius: '6px',
-                  color: '#e5e7eb',
+                  color: '#17202a',
                   fontSize: '0.8rem',
                   cursor: gamePhase === 'countdown' ? 'not-allowed' : 'pointer',
                   opacity: gamePhase === 'countdown' ? 0.5 : 1,
@@ -214,10 +272,10 @@ export default function KVCacheDashboard() {
         {/* Setup phase */}
         {gamePhase === 'setup' && activeChallenge && (
           <div>
-            <p style={{ fontSize: '0.9rem', marginBottom: '10px', color: '#e5e7eb' }}>
+            <p style={{ fontSize: '0.9rem', marginBottom: '10px', color: '#17202a' }}>
               📊 Config: {contextLength.toLocaleString()} tokens, {numLayers} layers, {numHeadsQ} heads → switching to <strong style={{ color: MATH_COLORS.primary }}>{targetArchitecture.toUpperCase()}</strong>
             </p>
-            <p style={{ fontSize: '0.95rem', marginBottom: '12px', color: '#e5e7eb' }}>
+            <p style={{ fontSize: '0.95rem', marginBottom: '12px', color: '#17202a' }}>
               🎯 <strong>How much memory will {targetArchitecture.toUpperCase()} save vs MHA?</strong>
             </p>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
@@ -232,10 +290,10 @@ export default function KVCacheDashboard() {
                   onClick={() => setPrediction(opt.id)}
                   style={{
                     padding: '8px 16px',
-                    background: prediction === opt.id ? `${opt.color}30` : 'rgba(255, 255, 255, 0.05)',
-                    border: `2px solid ${prediction === opt.id ? opt.color : 'rgba(255, 255, 255, 0.1)'}`,
+                    background: prediction === opt.id ? `${opt.color}24` : 'rgba(255, 251, 245, 0.7)',
+                    border: `2px solid ${prediction === opt.id ? opt.color : 'rgba(27, 36, 48, 0.12)'}`,
                     borderRadius: '8px',
-                    color: '#e5e7eb',
+                    color: '#17202a',
                     fontSize: '0.85rem',
                     fontWeight: prediction === opt.id ? 600 : 400,
                     cursor: 'pointer',
@@ -269,7 +327,7 @@ export default function KVCacheDashboard() {
 
         {/* No challenge selected */}
         {gamePhase === 'setup' && !activeChallenge && (
-          <p style={{ fontSize: '0.9rem', color: '#9ca3af', textAlign: 'center', padding: '12px' }}>
+          <p style={{ fontSize: '0.9rem', color: '#6b7280', textAlign: 'center', padding: '12px' }}>
             👆 Select a model configuration to test your GQA intuition!
           </p>
         )}
@@ -314,7 +372,7 @@ export default function KVCacheDashboard() {
               }}>
                 {predictionCorrect ? 'Correct!' : 'Not quite!'}
               </div>
-              <div style={{ fontSize: '0.9rem', color: '#e5e7eb' }}>
+              <div style={{ fontSize: '0.9rem', color: '#17202a' }}>
                 Memory savings with {targetArchitecture.toUpperCase()}: <strong style={{ color: MATH_COLORS.primary }}>
                   {actualReduction.toFixed(0)}%
                 </strong>
@@ -335,10 +393,10 @@ export default function KVCacheDashboard() {
               style={{
                 marginTop: '12px',
                 padding: '10px 20px',
-                background: 'rgba(245, 158, 11, 0.2)',
+                background: 'rgba(245, 158, 11, 0.18)',
                 border: '1px solid rgba(245, 158, 11, 0.4)',
                 borderRadius: '8px',
-                color: '#e5e7eb',
+                color: '#17202a',
                 cursor: 'pointer',
                 fontSize: '0.9rem',
               }}
@@ -475,7 +533,7 @@ export default function KVCacheDashboard() {
                   {memoryReduction}% savings
                 </div>
                 <div className="result-detail">
-                  GQA uses {numHeadsKV} KV heads instead of {numHeadsQ} → {(numHeadsQ/numHeadsKV).toFixed(1)}× less KV cache
+                  {attentionType.toUpperCase()} uses {numHeadsKV} KV heads instead of {numHeadsQ} → {(numHeadsQ/numHeadsKV).toFixed(1)}× less KV cache
                 </div>
               </div>
             </>
@@ -492,7 +550,7 @@ export default function KVCacheDashboard() {
         <div className="insight-box">
           <strong>💡 Key Insight:</strong> At long context ({contextLength.toLocaleString()} tokens),
           KV cache grows linearly with T. {attentionType !== 'mha' ? `${attentionType.toUpperCase()} reduces this by ${memoryReduction}% compared to MHA, ` : ''}
-          This is why Llama 3 and other frontier models use GQA—it's essential for serving efficiency at scale.
+          This is why GQA is a practical serving-efficiency tradeoff: it reduces KV-cache size and KV-cache reads while keeping multiple query heads.
         </div>
       </div>
 
@@ -501,12 +559,14 @@ export default function KVCacheDashboard() {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+          min-width: 0;
         }
 
         .controls-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
           gap: 1rem;
+          min-width: 0;
         }
 
         .slider-label {
@@ -514,12 +574,22 @@ export default function KVCacheDashboard() {
           flex-direction: column;
           gap: 0.5rem;
           font-size: 0.9rem;
+          min-width: 0;
+          max-width: 100%;
         }
 
         .slider-value {
           font-size: 0.85rem;
           color: var(--text-secondary);
           font-family: var(--font-mono);
+          overflow-wrap: anywhere;
+        }
+
+        .slider-label input,
+        .slider-label select {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
         }
 
         .dtype-select,
@@ -589,11 +659,11 @@ export default function KVCacheDashboard() {
 
         @media (max-width: 768px) {
           .controls-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr);
           }
 
           .results-panel {
-            grid-template-columns: 1fr;
+            grid-template-columns: minmax(0, 1fr);
           }
         }
       `}</style>

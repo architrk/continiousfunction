@@ -1,0 +1,25 @@
+You are reviewing Continuous Function, a static-exported Next.js + TypeScript learning atlas for mathematics, deep learning, and adjacent domains.
+
+Mission: concepts should grow slowly, be mathematically sound, visual/intuitive, code-aligned, and navigable as a graph. Each published concept should support Intuition -> Math -> Code -> Interactive Demo, with honest links to prerequisites, downstream concepts, and related ideas.
+
+Current state:
+- The repo added a concept quality bar and reusable Oracle prompt templates.
+- The UI now has homepage entry paths, path-aware domain pages, and Before / Now / Try / Next concept pages.
+- `scripts/validate-content.ts` now warns on missing links, thin published sections, placeholder text, and mismatched demo/code flags.
+- I just cleaned the current content tree to `npm run validate-content` = 0 warnings / 0 errors.
+- Missing but important future concepts are now represented as `planned:<id>` links, rendered as readable inactive chips in concept pages, and queued in `content/_agent/TODO.yaml`.
+
+Review question:
+Audit this validator/content-graph strategy. Be critical and practical.
+
+Please answer:
+1. Is using `planned:<id>` the right contract for important future concepts, or should planned edges live somewhere else?
+2. Are the current validator warnings strong enough to preserve the site's quality bar without creating busywork?
+3. What should become blocking errors next, if anything?
+4. Which of the queued bridge concepts should be created first: calculus-to-backprop or probability-to-loss, and why?
+5. Point out any specific issue in the attached code/content that would reduce learner trust.
+
+Constraints:
+- Do not propose a big rewrite.
+- Prefer changes that keep the public concept graph honest and learner-facing.
+- The answer should be a prioritized critique with concrete next actions, not a brainstorm.

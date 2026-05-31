@@ -1,0 +1,45 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. This is a narrow follow-up review for the Structured Decoding demo-shell rollout slice after applying the blockers from your previous implementation review.
+
+Previous Oracle verdict:
+- Not acceptable as-is.
+- Acceptable after fixing five blockers:
+  1. Reveal copy was wrong when the raw top token survives the mask.
+  2. Reveal did not visibly show next DFA state.
+  3. Wrong predictions were not clearly marked wrong.
+  4. Mask-off mode blurred the prediction question.
+  5. `Run to EOS` could bypass the reveal gate.
+
+Fixes applied:
+- Reveal copy now branches on `notebookOutcome`:
+  - impossible: no schema-valid next token.
+  - mask off: explicitly called the unconstrained baseline; the schema mask shown in the table is counterfactual.
+  - raw survives: says the raw top token is schema-valid and the mask leaves the winner unchanged.
+  - mask changes winner: says the mask zeros out the raw top token and emits the highest valid token.
+- Reveal text now includes next-state consequence:
+  - invalid/dead state for mask-off invalid raw emissions.
+  - `Next state: q...` for valid transitions.
+- Wrong predictions now use `Not quite:` and bad tone. Correct predictions use `Correct:`.
+- The guarantee sentence now says: "The guarantee is only formal schema membership, not truth, safety, or task success."
+- `Run to EOS` is disabled until the learner reveals the current prediction.
+
+Fresh local checks after fixes:
+- `npm run typecheck` passed.
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- Headless Chrome DevTools checks against `/domains/llm-systems/structured-decoding/` passed on desktop 1366x900 and mobile 390x844:
+  - no pre-reveal result panel.
+  - no pre-reveal masked-winner wording leak.
+  - masked probabilities hidden before reveal.
+  - `Run to EOS` disabled before reveal.
+  - wrong prediction shows `Not quite:`.
+  - reveal includes next state and full guarantee-boundary wording.
+  - correct mask-change prediction shows `Correct:` and `mask zeros out...`.
+  - mask-off reveal says unconstrained baseline/counterfactual mask, then emitting the revealed token shows invalid prefix.
+  - semantic-mismatch with mask on can reveal, run to EOS, accept, and show wrong source.
+  - no horizontal document overflow on desktop or mobile.
+
+Please review only whether these fixes close the prior blockers and whether any remaining must-fix blocker exists in this slice.
+
+Do not request broad expansion, future-slice ideas, or unrelated cleanup. Return:
+1. Ship verdict: acceptable or not acceptable.
+2. Any remaining must-fix blockers, with exact reasoning.
+3. Optional polish separated from blockers.

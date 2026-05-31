@@ -1,0 +1,21 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas. This is a follow-up Oracle review for one Adam claim evidence change.
+
+Context:
+- The first Oracle review for `cf-second-substantive-claim-review-adam` returned NO-PUBLISH only because I did not attach the regenerated JSON, audit, and TODO files I asked it to certify.
+- That review said the Adam claim metadata itself is publishable: Kingma and Ba Algorithm 1 and sections 2-3 support the exact mechanics, the caveat is appropriately narrow, and the local math/code witnesses instantiate the same Adam update.
+
+Please now review the missing bookkeeping artifacts attached with the Adam concept and Markdown queue:
+- `content/_generated/claim-evidence-review-queue.json`
+- `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md`
+- `content/_agent/TODO.yaml`
+- plus the Adam concept YAML and readable queue for context.
+
+Question:
+Given the Adam concept is now honestly `substantive-reviewed`, are the generated queue counts and the audit/TODO wording honest and internally consistent?
+
+Return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the JSON queue, Markdown queue, audit wording, and TODO wording are consistent with 51 structured claim checks, 2 substantively reviewed, and 49 review pending.
+3. Any blocker fixes only.
+
+Do not reopen the full Adam source-support question unless you see a direct contradiction in the attached files.

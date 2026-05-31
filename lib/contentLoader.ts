@@ -1,10 +1,37 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import YAML from 'yaml'
+import {
+  normalizeClaimEvidenceReview,
+  type ClaimEvidenceReview,
+} from './claimEvidenceReview'
 
 export type ConceptStatus = 'draft' | 'review' | 'published'
 export type ConceptImportance = 'critical' | 'important' | 'supplementary' | 'advanced'
 export type MathLevel = 'intuitive' | 'highschool' | 'undergraduate' | 'graduate' | 'research'
+export type ConceptSourceKind = 'paper' | 'book' | 'article' | 'documentation' | 'course-notes' | 'reference'
+export type ConceptClaimCheckStatus = 'source-checked' | 'needs-review' | 'weakened'
+
+export type ConceptSource = {
+  id: string
+  title: string
+  authors?: string
+  year?: number
+  kind?: ConceptSourceKind
+  url?: string
+  note?: string
+}
+
+export type ConceptClaimCheck = {
+  id: string
+  claim: string
+  status: ConceptClaimCheckStatus
+  source_ids?: string[]
+  support?: string
+  caveat?: string
+  object_refs?: string[]
+  evidence_review?: ClaimEvidenceReview
+}
 
 export type DomainMeta = {
   id: string
@@ -35,6 +62,8 @@ export type ConceptMeta = {
   has_interactive_demo: boolean
   has_code_example: boolean
   math_level: MathLevel
+  sources: ConceptSource[]
+  claim_checks: ConceptClaimCheck[]
 
   short_description: string
   author: string
@@ -73,6 +102,41 @@ const listDirs = (p: string): string[] => {
 const readYamlFile = <T>(filePath: string): T => {
   const raw = fs.readFileSync(filePath, 'utf8')
   return YAML.parse(raw) as T
+}
+
+const parseConceptSources = (value: unknown): ConceptSource[] => {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((source): source is Record<string, unknown> => Boolean(source) && typeof source === 'object')
+    .map((source) => ({
+      id: String(source.id ?? ''),
+      title: String(source.title ?? ''),
+      authors: typeof source.authors === 'string' ? source.authors : undefined,
+      year: typeof source.year === 'number' && Number.isFinite(source.year) ? source.year : undefined,
+      kind: typeof source.kind === 'string' ? (source.kind as ConceptSourceKind) : undefined,
+      url: typeof source.url === 'string' ? source.url : undefined,
+      note: typeof source.note === 'string' ? source.note : undefined,
+    }))
+    .filter((source) => source.id && source.title)
+}
+
+const parseConceptClaimChecks = (value: unknown): ConceptClaimCheck[] => {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .filter((claimCheck): claimCheck is Record<string, unknown> => Boolean(claimCheck) && typeof claimCheck === 'object')
+    .map((claimCheck) => ({
+      id: String(claimCheck.id ?? ''),
+      claim: String(claimCheck.claim ?? ''),
+      status: (typeof claimCheck.status === 'string' ? claimCheck.status : 'needs-review') as ConceptClaimCheckStatus,
+      source_ids: Array.isArray(claimCheck.source_ids) ? claimCheck.source_ids.map(String).filter(Boolean) : undefined,
+      support: typeof claimCheck.support === 'string' ? claimCheck.support : undefined,
+      caveat: typeof claimCheck.caveat === 'string' ? claimCheck.caveat : undefined,
+      object_refs: Array.isArray(claimCheck.object_refs) ? claimCheck.object_refs.map(String).filter(Boolean) : undefined,
+      evidence_review: normalizeClaimEvidenceReview(claimCheck.evidence_review),
+    }))
+    .filter((claimCheck) => claimCheck.id && claimCheck.claim)
 }
 
 export const defaultContentRoot = (): string => path.join(process.cwd(), 'content')
@@ -139,6 +203,8 @@ export const loadConceptMetas = (contentRoot: string = defaultContentRoot()): Co
         has_interactive_demo: Boolean(doc.has_interactive_demo ?? false),
         has_code_example: Boolean(doc.has_code_example ?? false),
         math_level: doc.math_level as MathLevel,
+        sources: parseConceptSources(doc.sources),
+        claim_checks: parseConceptClaimChecks(doc.claim_checks),
 
         short_description: String(doc.short_description ?? ''),
         author: String(doc.author ?? ''),

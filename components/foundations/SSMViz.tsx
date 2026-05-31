@@ -112,9 +112,9 @@ const getSSMInsight = (rho: number, thetaDeg: number, _bGain: number): string =>
   }
   if (rho > 0.98) {
     if (thetaDeg > 20) {
-      return `💫 Near the unit circle with θ = ${thetaDeg.toFixed(0)}°! Long memory but risk of instability. Mamba uses selective gating to control this dynamically.`;
+      return `💫 Near the unit circle with θ = ${thetaDeg.toFixed(0)}°! Long memory but risk of instability. Selective SSMs can vary update strength dynamically.`;
     }
-    return `📏 Very long memory (ρ ≈ 1). The system remembers far into the past. This is what S4 achieves with HiPPO initialization!`;
+    return `📏 Very long memory (ρ ≈ 1). The system remembers far into the past. Related S4-style models use structured parameterizations and initializations to support long memory.`;
   }
   if (rho < 0.5) {
     return `⚡ Very short memory (ρ = ${rho.toFixed(2)}). State decays quickly - only recent inputs matter. Good for local patterns, bad for long dependencies.`;

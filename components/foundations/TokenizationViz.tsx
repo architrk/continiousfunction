@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { emitDemoState } from '../../lib/demoState'
 
 // Gamification types
 type GamePhase = 'setup' | 'predicting' | 'revealed'
 type TokenCountPrediction = 'low' | 'medium' | 'high' | null
+
+type TokenizationVizProps = {
+  conceptId?: string
+}
 
 // Mystery challenges for the prediction game
 const TOKEN_CHALLENGES = [
@@ -612,7 +617,7 @@ function BpeTradeoffChart(props: {
   )
 }
 
-export default function TokenizationViz() {
+export default function TokenizationViz({ conceptId = 'tokenization-vocabulary' }: TokenizationVizProps) {
   const [exampleId, setExampleId] = useState<string>(EXAMPLES[0]?.id ?? 'json')
   const [rawText, setRawText] = useState<string>(DEFAULT_TEXT)
 
@@ -837,6 +842,65 @@ export default function TokenizationViz() {
     if (!step) return []
     return topPairs(step.tokens, 8)
   }, [mode, bpeSteps, bpeStep])
+
+  const tokensPerChar = charCount > 0 ? tokenCount / charCount : 0
+  const bytesPerChar = charCount > 0 ? utf8ByteCount / charCount : 0
+
+  useEffect(() => {
+    const modeDetail =
+      mode === 'bpe'
+        ? `BPE step ${bpeStep}/${Math.max(0, bpeViz.stepCount - 1)}${bpeViz.merge ? `, merge ${bpeViz.merge.a}+${bpeViz.merge.b}->${bpeViz.merge.merged}` : ', base symbols'}`
+        : mode === 'unigram'
+          ? `unigram max token length ${uniMaxLen}, vocab cap ${uniVocab}, length bias ${uniLengthBias.toFixed(2)}`
+          : `byte-level UTF-8 expansion ${bytesPerChar.toFixed(2)} bytes/char`
+
+    emitDemoState({
+      conceptId,
+      label: 'Tokenization cost and segmentation state',
+      summary: `${mode.toUpperCase()} encodes ${charCount} chars/${utf8ByteCount} UTF-8 bytes as ${tokenCount} tokens (vocab ${vocabSize}, ${tokensPerChar.toFixed(2)} tokens/char). Comparison counts: BPE ${compareCounts.bpeCount}, unigram ${compareCounts.uniCount}, byte ${compareCounts.byteCount}.`,
+      values: [
+        `example: ${currentExample?.label ?? 'custom text'}`,
+        `mode: ${mode}, normalization: ${normalization}${normalizationChanged ? ' (changed text)' : ''}`,
+        `characters: ${charCount}, UTF-8 bytes: ${utf8ByteCount}, bytes/char: ${bytesPerChar.toFixed(2)}`,
+        `active tokens: ${tokenCount}, vocab size: ${vocabSize}, tokens/char: ${tokensPerChar.toFixed(2)}`,
+        `estimated cost: $${estimatedCost.toFixed(5)}`,
+        modeDetail,
+        suspicious.length > 0
+          ? `unicode warnings: ${suspicious.map((item) => item.hex).slice(0, 4).join(', ')}`
+          : 'unicode warnings: none',
+        gameMode
+          ? `challenge phase: ${gamePhase}${selectedChallenge ? `, ${selectedChallenge.name}` : ''}${prediction ? `, prediction ${prediction}` : ''}`
+          : 'challenge phase: setup',
+      ],
+    })
+  }, [
+    bpeStep,
+    bpeViz.merge,
+    bpeViz.stepCount,
+    bytesPerChar,
+    charCount,
+    compareCounts.bpeCount,
+    compareCounts.byteCount,
+    compareCounts.uniCount,
+    conceptId,
+    currentExample?.label,
+    estimatedCost,
+    gameMode,
+    gamePhase,
+    mode,
+    normalization,
+    normalizationChanged,
+    prediction,
+    selectedChallenge,
+    suspicious,
+    tokenCount,
+    tokensPerChar,
+    uniLengthBias,
+    uniMaxLen,
+    uniVocab,
+    utf8ByteCount,
+    vocabSize,
+  ])
 
   return (
     <section className="card interactive-card tokenization-viz">
@@ -1740,4 +1804,3 @@ export default function TokenizationViz() {
     </section>
   )
 }
-

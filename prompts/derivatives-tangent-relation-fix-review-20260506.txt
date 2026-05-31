@@ -1,0 +1,60 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current goal:
+
+- Continue the P0 prediction-first demo retrofit pass.
+- Use a mechanism-first, static-export-safe slice.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, or broad platform work.
+
+Slice under review:
+
+`calculus/derivatives`: prediction-first secant-to-hidden-tangent relation reveal inside `DerivativesViz`.
+
+Original requested mechanism:
+
+- Keep visible interval/secant geometry available: function, x, h, x+h, f(x), f(x+h), curve, two points, secant line, delta triangle, and secant slope.
+- Hide tangent line, f'(x), tangent slope, signed/absolute slope gap, convergence status, correctness, and measured demo state until reveal.
+- Ask the learner to predict whether the hidden local tangent slope at x is lower than, nearly equal to, or higher than the visible secant slope.
+- Use scale-aware relation tolerance:
+  `max(0.02, 0.02 * max(1, |tangentSlope|, |secantSlope|))`.
+- Clear stale demo state on function/x/h/reset changes.
+- Emit compact measured demo state only after reveal.
+
+Prior Oracle review returned `no-publish`.
+
+Blocker from prior review:
+
+- Pre-reveal endpoint values were not visible. The learner could see the secant slope, but not the endpoint quantities `x+h`, `f(x)`, and `f(x+h)` behind that measured slope.
+
+Fixes made:
+
+- Added a pre-reveal-safe interval readout showing `x+h`, `f(x)`, and `f(x+h)` before reveal.
+- Added test coverage that those endpoint values are visible before reveal while tangent/gap/status remain hidden.
+- Added programmatic label association for the function selector.
+- Memoized the relation classifier object.
+- Aligned `convergenceStatus` with the same scale-aware relation tolerance used by the classifier.
+
+Validation after the fix:
+
+- `npm test -- DerivativesViz --runInBand` passed 6 tests. It showed the repo's known styled-jsx jsdom warning.
+
+Review request:
+
+Please review the attached implementation plus the prior no-publish response as GPT Pro / Oracle in a rigorous product, pedagogy, math, and frontend quality role.
+
+Return one of:
+
+- `publish` if there are no blocking correctness/pedagogy/static-export issues.
+- `no-publish` if any blocker must be fixed first.
+
+Specifically check:
+
+1. Did the fix satisfy the prior endpoint-readout blocker without leaking the hidden tangent answer?
+2. Are tangent line, f'(x), tangent slope, signed/absolute gap, convergence status, correctness, and measured demo state still hidden before reveal?
+3. Is the classifier/tolerance/status alignment mathematically coherent across x^2, sin, and exp?
+4. Are stale reveal/demo-state resets still correct after the fix?
+5. Is the function selector label/accessibility fix acceptable?
+6. Is the UI likely to overflow or become awkward on mobile?
+7. Are there any exact code/copy/test changes still required before publish?
+
+Keep the review narrow. Do not propose broad calculus curriculum, computation graph work, platform work, or unrelated refactors.

@@ -9,7 +9,7 @@ import {
 } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { gsap } from 'gsap'
-import TimeSeriesPlot from '../../TimeSeriesPlot'
+import TimeSeriesPlot from '@/components/charts/TimeSeriesPlot'
 import {
   MATH_COLORS,
   matmul,

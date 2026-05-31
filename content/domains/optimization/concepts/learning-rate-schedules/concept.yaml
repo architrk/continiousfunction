@@ -22,9 +22,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Warmup, decay, and cycling schedules that stabilize early training and improve late convergence."
+sources:
+  - id: smith-2015-cyclical-learning-rates
+    kind: paper
+    title: "Cyclical Learning Rates for Training Neural Networks"
+    authors: "Smith"
+    year: 2015
+    url: "https://arxiv.org/abs/1506.01186"
+    note: "Grounds LR range tests and cyclical policies that vary the global learning rate between lower and upper bounds."
+  - id: loshchilov-2016-sgdr
+    kind: paper
+    title: "SGDR: Stochastic Gradient Descent with Warm Restarts"
+    authors: "Loshchilov and Hutter"
+    year: 2016
+    url: "https://arxiv.org/abs/1608.03983"
+    note: "Grounds cosine annealing within SGD warm-restart runs, where restarts are emulated by increasing the learning rate while keeping the current parameters."
+claim_checks:
+  - id: schedule-shape-controls-update-scale
+    status: source-checked
+    claim: "Learning-rate schedules change the scalar learning rate over training. Smith supports LR range tests and cyclical policies that vary LR between bounds; SGDR supports cosine annealing with warm restarts. Warmup, inverse-sqrt decay, and LLM-oriented framing here are teaching extensions, not sourced by these papers."
+    source_ids:
+      - smith-2015-cyclical-learning-rates
+      - loshchilov-2016-sgdr
+    support: "Smith treats LR as a key hyperparameter, describes CLR varying between boundary values, and gives an LR range test for bounds. SGDR defines warm restarts by increasing LR after each run and decaying LR inside a run by cosine annealing. Page equations/code/demo render schedule curves but do not source warmup or LLM practice."
+    caveat: "Does not check large-model warmup practice, Adam bias-correction warmup rationale, edge-of-stability claims, inverse-sqrt schedules, convergence guarantees, or universal schedule superiority; support is limited to LR range tests/CLR and SGDR cosine warm restarts."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Smith supports scalar LR as a key hyperparameter, CLR between min/max bounds, and an LR range test that linearly increases LR to choose bounds. Loshchilov and Hutter support SGDR restarts as LR increases while reusing parameters, plus cosine annealing from eta_max to eta_min within a run. Warmup, inverse-sqrt, LLM practice, Adam warmup, edge-of-stability, convergence, and universal-superiority material remains caveated teaching context."
+    object_refs:
+      - "#source-span-smith-2015-cyclical-learning-rates"
+      - "#source-span-loshchilov-2016-sgdr"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Schedule shapes that change the scalar learning-rate scale over training, with sourced CLR/range-test and SGDR cosine-restart examples plus caveated warmup/decay teaching patterns."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 14
-

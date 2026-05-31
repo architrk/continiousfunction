@@ -1,0 +1,32 @@
+Project: Continuous Function, Next.js/React learning atlas.
+
+This is a fix review for the Transformer Architecture residual-shape reveal slice.
+
+Prior Oracle review returned NO-PUBLISH with two blockers:
+1. Architecture quiz changed activeVariant through submitPrediction/countdown paths, bypassing post-reveal variant lifecycle cleanup. It could also remain visible after a preset change cleared reveal, even though the quiz toggle was locked.
+2. The parent attention-transformers router could overwrite the child TransformerArchitectureViz measured demo state because both used conceptId "attention-transformers" and the parent had a delayed 350 ms re-emit.
+
+Fixes made:
+- Quiz results no longer mutate activeVariant. The quiz identifies the correct architecture in copy, and the user can use preset buttons separately to inspect a variant.
+- Variant preset changes after reveal now call the shared resetReveal(false) path, clearing stale reveal, tooltip, quiz mode, selected challenge, prediction, and shared demo state.
+- The gamification panel now renders only when revealVisible && gameMode.
+- The pre-reveal shape checkbox reports checked={revealVisible && showShapes}.
+- Parent router state uses ROUTER_DEMO_STATE_CONCEPT_ID and ROUTER_DEMO_STATE_LABEL constants.
+- Parent router checks getLatestDemoState("attention-transformers") before emitting while revealed; if the latest state belongs to a mounted child (label differs from router label), the parent does not emit. The delayed 350 ms re-emit repeats the same guard.
+- Added regression tests:
+  - quiz results do not add extra child measured events, preset changes close quiz/reveal and relock quiz.
+  - parent delayed re-emit does not overwrite the child residual-shape packet after timers advance.
+
+Validation after fixes:
+- npm test -- TransformerArchitectureViz --runInBand: 8 passed
+- npm run typecheck: passed
+- npm run validate-content: 0 warnings, 0 errors
+- npm test -- --runInBand: 37 suites, 248 tests passed
+- CF_NEXT_BUILD_CPUS=1 npm run build: passed, 203 static pages
+
+Please review only whether the prior blockers are actually fixed and whether any new publish-blocking issue was introduced by the fixes.
+
+Return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Any remaining blocking issues with exact references.
+3. Any non-blocking follow-up.

@@ -1,0 +1,34 @@
+Project: Continuous Function, a Next.js mathematical learning atlas for deep learning and modern AI. We use generated concept-cover images sparingly as orientation/memory aids on concept hero surfaces. They must support the mechanism, not replace precise interactive demos.
+
+Current goal:
+Generate and wire concept-cover image batch 7 for four high-traffic bridge pages:
+- FlashAttention (`flash-attention`)
+- Long Context Engineering (`long-context`)
+- Scaling Laws (`scaling-laws`)
+- Tree Search Reasoning (`tree-search-reasoning`)
+
+Existing visual language:
+- warm ivory notebook paper, faint grid, tactile print texture
+- deep navy ink for structure
+- teal for correct paths, alignment, and convergence
+- amber for energy, selection, gradients, and active flow
+- sparse construction marks instead of decorative clutter
+- no generated text inside images
+- concept covers should reveal the actual conceptual mechanism at a glance
+
+Existing image families include covers for attention, LLM serving, speculative decoding, MoE serving, structured decoding, test-time compute, DPO/RLHF/KTO/reward hacking, diffusion/flows, and core probability/optimization pages. These four new covers should feel like the same family but not repeat the exact same composition.
+
+Please review and refine the image briefs before generation.
+
+For each target concept, return:
+1. One-sentence pedagogical job of the cover.
+2. Specific visual composition.
+3. Mechanism details that must be visible.
+4. Things to avoid because they would mislead learners.
+5. Final image-generation prompt, with no text-in-image, using the shared visual language.
+
+Constraints:
+- Covers are static raster assets used in concept heroes.
+- They should be accurate enough to support intuition, but final math/interaction remains code-native.
+- Avoid fake UI screenshots, decorative orbs, generic AI brains, generic network hairballs, illegible pseudo-text, or vague glowing technology backgrounds.
+- Keep each prompt concise enough to use directly with an image model.

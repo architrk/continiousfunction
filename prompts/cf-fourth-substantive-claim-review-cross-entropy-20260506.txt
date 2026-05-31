@@ -1,0 +1,40 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas for deep learning concepts. The current trust work separates source-linked claim metadata from substantively reviewed source support. A claim should only be marked `evidence_review.state: substantive-reviewed` when the exact cited source, caveat, and local witness refs honestly support the bounded claim.
+
+Current change to review:
+- I marked one Cross-Entropy claim as `substantive-reviewed` in `content/domains/probability/concepts/cross-entropy/concept.yaml`.
+- I regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`, moving the queue from 3 reviewed / 48 pending to 4 reviewed / 47 pending.
+- I updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml` to say the attention, Adam, Gradient Descent, and Cross-Entropy claims are now reviewed, with Distributions next.
+
+Exact claim:
+"Cross-entropy measures target-weighted surprise: the target distribution supplies averaging weights, the model distribution supplies scored probabilities, and for one-hot labels it becomes the negative log probability of the correct class."
+
+Primary source checked:
+- Goodfellow, Bengio, and Courville, "Deep Learning", official HTML book, https://www.deeplearningbook.org/
+  - Chapter 3 Probability and Information Theory: https://www.deeplearningbook.org/contents/prob.html
+  - Chapter 5 Machine Learning Basics: https://www.deeplearningbook.org/contents/ml.html
+
+Source evidence I checked:
+- Chapter 3.13 defines self-information/surprise as `I(x) = -log P(x)` and Shannon entropy as the expected information under `x ~ P`.
+- Chapter 3.13 defines `D_KL(P||Q) = E_{x~P}[log P(x) - log Q(x)]`, so the direction and averaging distribution are explicitly `P`.
+- Chapter 3.13 relates KL to cross-entropy through `H(P,Q)=H(P)+D_KL(P||Q)`.
+- Chapter 5.5 derives maximum likelihood as maximizing the empirical expectation of `log p_model(x; theta)`, equivalently minimizing `-E_{x~p_data} log p_model(x)`.
+- Chapter 5.5 says minimizing KL from the empirical/data distribution to the model is exactly minimizing cross-entropy between those distributions.
+- Chapter 5.5 says any negative log-likelihood consisting of a cross-entropy between an empirical distribution and a model distribution is commonly called cross-entropy, and specifically mentions negative log-likelihood of Bernoulli or softmax distributions.
+
+Local witness alignment:
+- The page states `H(p,q) = -sum_k p_k log q_k` and `H(p,q) = E_{X~p}[-log q_X]`.
+- The page states the direction: `p` supplies averaging weights and `q` supplies the probabilities being scored.
+- The page states the one-hot case: if `p_y = 1` and all other `p_k = 0`, then `H(p,q) = -log q_y`.
+- The page's caveat limits this review to categorical cross-entropy as a probabilistic loss, not multi-label sigmoid BCE, calibration, or classifier correctness.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the Cross-Entropy claim is honestly marked `substantive-reviewed` given the source evidence, caveat, and local witness refs.
+3. Whether the review summary is too broad, too vague, or misses an important caveat.
+4. Whether the generated queue/audit/TODO wording remains honest and internally consistent.
+5. Any blocker fixes only. Do not propose broad product ideas here.
+
+Constraints:
+- Keep scope limited to categorical cross-entropy as target-weighted negative log probability / probabilistic NLL.
+- Do not certify multi-label sigmoid BCE, calibration, semantic correctness, generalization, or every continuous/distributional edge case.
+- Treat attached source IDs and witness refs as review targets unless the evidence summary and caveat make the bounded support clear.

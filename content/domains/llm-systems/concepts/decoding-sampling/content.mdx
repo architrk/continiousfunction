@@ -17,26 +17,28 @@ So decoding is not a cosmetic detail. It's an inference-time control surface tha
 
 ## Math
 
-Let $z_i$ be the logits for token $i \\in \\mathcal V$ at some step.
+Let $z_i$ be the logits for token $i \in \mathcal V$ at some step.
 
 ### Temperature rescales logits
 
-Temperature $\\tau > 0$ produces:
+Temperature $\tau > 0$ produces:
 
-$$p_\\tau(i) = \\frac{e^{z_i/\\tau}}{\\sum_j e^{z_j/\\tau}}.$$
+$$
+p_\tau(i) = \frac{e^{z_i/\tau}}{\sum_j e^{z_j/\tau}}.
+$$
 
-- Smaller $\\tau$ sharpens (more deterministic).
-- Larger $\\tau$ flattens (more exploratory).
+- Smaller $\tau$ sharpens (more deterministic).
+- Larger $\tau$ flattens (more exploratory).
 
 ### Nucleus (top-p) truncation deletes the tail, then renormalizes
 
 Let $S_p$ be the smallest set of tokens whose probability mass is at least $p$ (after sorting by probability):
 
-$$S_p = \\min\\left\\{S: \\sum_{i\\in S} p(i) \\ge p\\right\\}.$$
+$$
+S_p = \min\left\{S: \sum_{i\in S} p(i) \ge p\right\}, \qquad p'(i) = \frac{p(i)\,\mathbf 1[i\in S_p]}{\sum_{j\in S_p} p(j)}.
+$$
 
-Then you sample from the truncated distribution:
-
-$$p'(i) = \\frac{p(i)\\,\\mathbf 1[i\\in S_p]}{\\sum_{j\\in S_p} p(j)}.$$
+Then you sample from $p'$, the truncated and renormalized distribution.
 
 This is why top-p changes behavior: it literally changes the distribution you sample from.
 
@@ -75,7 +77,6 @@ for tau, p in [(1.0, 1.0), (0.7, 0.9), (1.4, 0.9)]:
 
 ## Interactive Demo
 
-Use the demo to see how temperature/top-p reshape the distribution step by step, and how small changes can flip a model from diverse to repetitive.
+Use the demo to see how temperature/top-p reshape the distribution step by step, and how small changes alter which toy tokens survive.
 
 {/* viz.tsx component renders here if it exists */}
-

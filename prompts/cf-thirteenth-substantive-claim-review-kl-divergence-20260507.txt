@@ -1,0 +1,38 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, information-theory/kl-divergence#directional-log-ratio-expected-regret.
+
+Claim under review:
+"KL divergence is a directional expectation under the first distribution of a log probability ratio; it is nonnegative, generally asymmetric, and differs from cross-entropy by the fixed entropy of the target distribution."
+
+Cited source:
+Goodfellow, Bengio, and Courville, "Deep Learning", MIT Press (2016), Chapter 3 Probability and Information Theory, https://www.deeplearningbook.org/contents/prob.html
+
+Primary-source evidence I checked before this prompt from the official Deep Learning Book Chapter 3 HTML:
+- Chapter 3, around book page 71: Goodfellow et al. define Shannon entropy as an expectation under P.
+- Chapter 3, around book page 71: They define KL divergence for two distributions P(x) and Q(x) over the same random variable x as D_KL(P || Q) = E_{x~P}[log(P(x)/Q(x))] = E_{x~P}[log P(x) - log Q(x)].
+- Chapter 3, around book page 71: For discrete variables, they describe KL as the extra information needed when symbols are drawn from P but encoded using a code designed for Q.
+- Chapter 3, around book pages 71-72: They state KL has useful properties, most notably being non-negative, and is 0 iff P and Q are the same distribution in the discrete case, or equal almost everywhere in the continuous case.
+- Chapter 3, around book pages 71-72: They state KL is not a true distance because it is not symmetric, and that the direction D_KL(P || Q) versus D_KL(Q || P) has important consequences.
+- Chapter 3, around book page 72: They define cross-entropy as H(P,Q)=H(P)+D_KL(P||Q), equivalently H(P,Q)=-E_{x~P} log Q(x), and say minimizing cross-entropy with respect to Q is equivalent to minimizing KL because Q does not participate in the omitted term.
+- Chapter 3, around book page 72: They state the information-theory convention for terms like 0 log 0.
+
+Attached local files:
+- content/domains/information-theory/concepts/kl-divergence/concept.yaml
+- content/domains/information-theory/concepts/kl-divergence/content.mdx
+- content/domains/information-theory/concepts/kl-divergence/viz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether Goodfellow et al. substantively supports the claim as written, not merely that the page has a source ID.
+2. Check whether the local math/code/demo witnesses match the claim's scope: finite/countable KL, expectation under the first distribution, log probability ratio, support conventions, nonnegativity, asymmetry, cross-entropy identity, and fixed H(p) term when p is fixed.
+3. Identify any overclaim, missing caveat, misleading wording, source URL/provenance mismatch, or witness mismatch.
+4. If publishable after small edits, provide the exact revised evidence_review.summary and caveat wording you would accept.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require measure-theoretic KL theory, all continuous-density subtleties, universal optimization guarantees, all variational-inference behavior, or every KL-regularized alignment objective unless the current wording accidentally claims them.
+- If the source URL should point directly to the reviewed Chapter 3 HTML rather than the book landing page, say so explicitly as a small fix.

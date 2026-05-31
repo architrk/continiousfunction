@@ -1,0 +1,50 @@
+Project: Continuous Function, a Next.js/TypeScript learning atlas for deep learning math. We are running a review-gated claim-evidence workflow. A claim should only be marked `evidence_review.state: substantive-reviewed` after checking that the listed sources and local witnesses substantively support the exact wording, and after adding a bounded review summary/caveat.
+
+Current task: review the next pending claim check.
+
+Concept:
+- Domain: attention-transformers
+- Concept ID: flash-attention
+- Title: FlashAttention: IO-Aware Attention
+
+Exact claim:
+"FlashAttention computes exact attention while using tiling and online softmax to reduce high-bandwidth-memory traffic instead of materializing the full T x T attention matrix."
+
+Current source:
+- dao-2022-flashattention: Dao et al. 2022, "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+- Current URL in concept.yaml is https://arxiv.org/abs/2205.14135
+
+Primary-source evidence I extracted from the Dao et al. paper:
+- Page 1 title/abstract frames FlashAttention as exact attention with IO-awareness. The abstract says it is an IO-aware exact attention algorithm using tiling to reduce reads/writes between GPU HBM and GPU on-chip SRAM, and analyzes fewer HBM accesses than standard attention.
+- Figure 1 caption says FlashAttention uses tiling to prevent materialization of the large N x N attention matrix on slow GPU HBM. It describes blocks of K and V loaded to SRAM, blocks of Q loaded to SRAM, and output written back to HBM.
+- Page 2 text says FlashAttention computes exact attention with far fewer memory accesses, with the main goal of avoiding reads/writes of the attention matrix to/from HBM. It also says it does not read/write the large N x N attention matrix to HBM.
+- Page 4 standard attention algorithm explicitly writes S=QK^T and P=softmax(S) to HBM. The paper then says it computes exact attention with fewer HBM reads/writes and without storing large intermediate matrices.
+- Page 4/5 section 3.1 describes tiling: split Q,K,V into blocks, load them from slow HBM to fast SRAM, and use a modified softmax reduction/tiling approach. Algorithm 1 maintains O, l, and m and updates block statistics.
+- Page 6 Theorem 2 states standard attention requires Theta(Nd + N^2) HBM accesses while FlashAttention requires Theta(N^2 d^2 M^-1) HBM accesses under stated SRAM-size conditions; the paper says this is many times fewer HBM accesses.
+
+Local witness refs in the claim:
+- #source-span-dao-2022-flashattention
+- #math-object-1
+- #math-object-2
+- #code-witness-1
+- #interactive-demo
+
+Attached files:
+- content/domains/attention-transformers/concepts/flash-attention/concept.yaml
+- content/domains/attention-transformers/concepts/flash-attention/content.mdx
+- content/domains/attention-transformers/concepts/flash-attention/viz.tsx
+- content/_generated/claim-evidence-review-queue.json
+
+Please answer as a strict reviewer, not a brainstormer:
+1. Does the listed source plus local witnesses substantively support the exact claim?
+2. Are any parts too broad or under-caveated? Pay special attention to "exact attention", "online softmax", "reduce HBM traffic", and "instead of materializing the full T x T attention matrix."
+3. Should the source URL be switched from the arXiv abstract page to the direct PDF URL for this source-backed claim?
+4. If approved, provide the exact YAML patch shape for `claim_checks[0].evidence_review`, and any revised support/caveat/source note wording. Keep `evidence_review.summary` under 520 characters and `caveat` under 280 characters.
+5. If not approved, give the smallest local fixes needed before approval.
+
+Constraints:
+- Do not propose broad page redesigns.
+- Do not add unsupported performance guarantees.
+- Keep the claim bounded to the algorithmic IO-aware exact-attention mechanism.
+- Treat the demo as a toy witness, not as a CUDA kernel correctness proof.
+- Use reviewer value `codex+oracle` and date `2026-05-07` if approved.

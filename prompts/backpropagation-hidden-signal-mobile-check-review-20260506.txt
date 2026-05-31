@@ -1,0 +1,49 @@
+Project: Continuous Function, Backpropagation P0 prediction-first retrofit.
+
+The latest Oracle fix review still returned `no-publish` with one remaining blocker:
+
+- Add the required 390px/mobile coverage check for the non-SVG pre-reveal state.
+
+I ran the actual production-browser check after a fresh production build:
+
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed.
+- Started `next start` on `http://localhost:3064`.
+- Ran headless Chrome CDP against `/domains/calculus/backpropagation/`.
+
+CDP coverage result:
+
+```json
+{
+  "ok": true,
+  "route": "http://localhost:3064/domains/calculus/backpropagation/",
+  "mobile390": "passed",
+  "desktop1440": "passed"
+}
+```
+
+The CDP script specifically verified:
+
+- 390px mobile pre-reveal non-SVG state includes `input x` and `[1.00, 2.00]`.
+- 390px mobile pre-reveal state includes the expected forward values and readout weights.
+- 390px mobile pre-reveal reveal/backward/update controls are locked.
+- 390px mobile pre-reveal text does not include `loss after update`, `loss-after-update`, `loss after`, `delta2=`, `delta1=`, `bar yhat=`, `bar z1=`, `row norms=`, `loss decreases`, `loss increases`, `dominant gradient`, `saturated hidden gates`, or `large learning-rate step`.
+- 390px mobile pre-reveal emitted no measured demo state.
+- 390px mobile Case C -> No clear usable signal -> reveal showed the correct no-clear result and emitted the measured demo state.
+- 390px mobile had no horizontal overflow before or after reveal.
+- 1440px desktop pre-reveal/reveal checks also passed with no horizontal overflow.
+
+Prior checks also passed:
+
+- `npm test -- BackpropagationViz --runInBand`
+- `npm run validate-content`
+- `npm run typecheck`
+- `npm test -- --runInBand`
+
+Please review only whether the final blocker is satisfied and whether any new blocking issue remains.
+
+Return exactly one of:
+
+- `publish`
+- `no-publish`
+
+If `no-publish`, list only blocking fixes required before publish.

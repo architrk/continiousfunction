@@ -1,0 +1,29 @@
+Project: Continuous Function, a slow-growth mathematical atlas for deep learning concepts.
+
+Current state:
+- Process Reward Models is published as a step-level verifier page.
+- Test-Time Compute is published as complete-trace best-of-N with a verifier.
+- Test-Time Compute explicitly defers prefix expansion and tree search.
+- Current TODO focus says to continue into Tree Search Reasoning with finite prefix expansion, not a broad reasoning-model survey.
+
+Goal:
+Design one narrow, publishable concept page:
+
+`tree-search-reasoning` — "Tree Search Reasoning: Allocating Inference Budget Across Prefixes"
+
+Constraints:
+- This page should be the next bridge after Test-Time Compute.
+- It should teach finite prefix expansion and value backup, not full agent planning.
+- It should connect to PRMs as local/prefix verifiers and to Test-Time Compute as complete-trace best-of-N.
+- It should not become an o1/o3 product-history page or broad reasoning-model survey.
+- It should be demoable with a deterministic finite tree and a compact React visualization.
+
+Please return:
+1. Scope: what the page should teach and what it should explicitly avoid.
+2. The simplest finite mathematical model for the page.
+3. A concrete interactive demo design that is truthful and compact.
+4. Recommended graph metadata: prerequisites, leads_to, related.
+5. Primary-source anchors.
+6. Publish-quality blockers to watch for in review.
+
+Keep this rigorous and focused. Do not give a roadmap.

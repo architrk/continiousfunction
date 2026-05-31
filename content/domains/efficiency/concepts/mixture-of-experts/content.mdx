@@ -4,40 +4,61 @@ title: "Sparse Mixture of Experts: Routing, Load Balancing & Expert Parallelism"
 
 ## Intuition
 
-Mixture of Experts (MoE) is the "specialist team" version of a neural network.
+Sparse Mixture of Experts (MoE) is a conditional-computation layer pattern that routes tokens to a small subset of experts.
 
 Instead of running the same dense MLP for every token, you keep a large set of expert MLPs and a small router that decides which experts each token should use. That buys you:
 
 - **Capacity**: lots of total parameters (many experts).
 - **Efficiency**: only run $k$ experts per token (small activated compute).
 
-But it also sells you new problems: tokens get unevenly routed (skew), which creates stragglers and all-to-all communication. In MoE, "sparsity" is as much a **systems** story as a modeling story.
+But it also sells you new problems: routing skew can overload experts, create stragglers, or drop tokens, and distributed expert-parallel implementations can introduce all-to-all communication. In MoE, "sparsity" is as much a **systems** story as a modeling story.
 
 ## Math
 
 ### Router probabilities
 
-Let a token hidden state be $h\\in\\mathbb R^d$. A linear router produces logits and probabilities:
+Let a token hidden state be $h\in\mathbb R^d$. A linear router produces logits and probabilities:
 
-$$z = W_r h,\\qquad p(e\\mid h)=\\mathrm{softmax}(z)_e.$$
+$$
+z = W_r h,\qquad p(e\mid h)=\mathrm{softmax}(z)_e.
+$$
 
 ### Top-k gating (sparse activation)
 
-Let $S=\\mathrm{TopK}(p(\\cdot\\mid h), k)$. Only experts in $S$ run:
+Let $S=\mathrm{TopK}(p(\cdot\mid h), k)$. Only experts in $S$ run:
 
-$$\\mathrm{MoE}(h)=\\sum_{e\\in S}\\tilde p_e\\,f_e(h),\\qquad
-\\tilde p_e = \\frac{p(e\\mid h)}{\\sum_{j\\in S} p(j\\mid h)}.$$
+$$
+\mathrm{MoE}(h)=\sum_{e\in S}\tilde p_e\,f_e(h),\qquad \tilde p_e = \frac{p(e\mid h)}{\sum_{j\in S} p(j\mid h)}.
+$$
 
 ### Load balancing (avoid expert collapse)
 
-Routers tend to collapse onto a small subset of experts unless you regularize. A classic form uses:
+In the cited MoE setups, routing can become imbalanced, so auxiliary losses and routing noise encourage balanced expert usage. A classic form uses:
 
 - $f_i$: fraction of tokens assigned to expert $i$
 - $P_i$: average gating probability for expert $i$
 
 and:
 
-$$\\mathcal L_{\\text{LB}} = N_E\\sum_{i=1}^{N_E} f_i\\,P_i.$$
+$$
+\mathcal L_{\text{LB}} = N_E\sum_{i=1}^{N_E} f_i\,P_i.
+$$
+
+### Expert capacity (selected is not always served)
+
+Top-k routing only proposes token-expert assignments. A serving or training system may also cap each expert at a finite number of token slots for the batch. If expert $e$ can accept $C_e$ assignments, then an assignment $(t,e)$ is served only while:
+
+$$
+\mathrm{load}(e) < C_e.
+$$
+
+Once the expert is full, later assignments to that same expert overflow unless the implementation has an explicit rerouting or fallback rule. The important distinction is:
+
+$$
+\mathrm{TopK}(p(\cdot\mid h_t), k)\quad\text{chooses candidates; capacity chooses which candidates run.}
+$$
+
+The interactive demo uses a deliberately simple dispatch rule: process tokens in batch order, fill each expert's slots, and mark later assignments to full experts as overflowed. Real implementations can add different overflow, padding, or rerouting policies, but they still have to account for finite expert capacity.
 
 ## Code
 
@@ -66,7 +87,6 @@ print("load-balancing loss:", round(L_lb, 3))
 
 ## Interactive Demo
 
-Use the demo to watch routing decisions, expert load, and how load balancing changes behavior.
+Use the demo to predict whether a small batch's top-k token-expert assignments fit inside finite expert slots. The top-k candidates are visible before reveal; final loads and overflowed assignments are hidden until you commit to the capacity outcome. It is a teaching model, not a trained router or production load-balancing simulator.
 
 {/* viz.tsx component renders here if it exists */}
-

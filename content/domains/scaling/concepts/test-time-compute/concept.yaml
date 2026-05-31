@@ -1,0 +1,79 @@
+id: test-time-compute
+title: "Test-Time Compute: Spending Inference Budget on Search"
+domain: scaling
+slug: test-time-compute
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - scaling-laws
+  - process-reward-models
+  - reward-hacking
+  - decoding-sampling
+leads_to:
+  - tree-search-reasoning
+related:
+  - rlhf
+  - llm-serving
+  - speculative-decoding
+  - double-descent
+tags:
+  - scaling
+  - inference
+  - test-time-compute
+  - verifiers
+  - reasoning
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: wang-2022-self-consistency
+    kind: paper
+    title: "Self-Consistency Improves Chain of Thought Reasoning in Language Models"
+    authors: "Wang et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2203.11171"
+    note: "Grounds repeated sampling and answer aggregation as a simple way to spend more inference compute."
+  - id: lightman-2023-verify-step-by-step
+    kind: paper
+    title: "Let's Verify Step by Step"
+    authors: "Lightman et al."
+    year: 2023
+    url: "https://arxiv.org/abs/2305.20050"
+    note: "Grounds process-supervised reward models as learned verifiers evaluated by best-of-N selection over sampled reasoning solutions."
+  - id: snell-2024-test-time-compute
+    kind: paper
+    title: "Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters"
+    authors: "Snell et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2408.03314"
+    note: "Grounds the scaling question of when extra inference budget beats larger base models."
+claim_checks:
+  - id: best-of-n-verifier-selection
+    status: source-checked
+    claim: "In the page's finite best-of-N model, extra test-time compute can improve selected correctness when more samples cover good traces and the verifier ranks them highly; as N grows, clean ranking can help, while a rare high-scoring verifier error can be selected more often."
+    source_ids:
+      - wang-2022-self-consistency
+      - lightman-2023-verify-step-by-step
+      - snell-2024-test-time-compute
+    support: "Wang et al. ground drawing multiple reasoning paths and aggregating answers. Lightman et al. evaluate reward models by best-of-N search: select the sampled solution ranked highest by the reward model. Snell et al. analyze test-time compute via best-of-N and verifier/PRM search. The local math/code/demo show coverage vs verifier selection and noisy-verifier failure."
+    caveat: "This checks a finite, fixed-distribution best-of-N verifier model, not tree search, adaptive reasoning policies, universal scaling laws, exact serving costs, calibrated verifier probabilities, or guaranteed gains from more inference compute."
+    object_refs:
+      - "#source-span-wang-2022-self-consistency"
+      - "#source-span-lightman-2023-verify-step-by-step"
+      - "#source-span-snell-2024-test-time-compute"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-20"
+      reviewer: codex
+      summary: "Reviewed arXiv/source TeX: Wang et al. support repeated diverse reasoning-path sampling and answer aggregation; Lightman et al. support reward-model best-of-N selection and high-scoring wrong-answer failure cases; Snell et al. support verifier-search test-time compute, best-of-N baselines, and PRM exploitation/degradation. Local math/code/demo support the finite coverage-vs-selection model."
+short_description: "Test-time compute spends extra inference budget on sampling, verification, and selection; it helps when the generator can produce good candidates and the verifier ranks them reliably."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-20"
+estimated_read_time: 22

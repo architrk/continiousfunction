@@ -1,0 +1,34 @@
+id: pretraining-data-mixtures
+title: "Pretraining Data Mixtures: Designing the Token Distribution"
+domain: scaling
+slug: pretraining-data-mixtures
+difficulty: 4
+status: review
+importance: important
+prerequisites:
+  - scaling-laws
+  - cross-entropy
+  - tokenization-vocabulary
+leads_to:
+  - retrieval-augmented-generation
+  - test-time-compute
+related:
+  - llm-serving
+  - mixture-of-experts
+  - structured-decoding
+tags:
+  - scaling
+  - pretraining
+  - data-mixtures
+  - filtering
+  - deduplication
+  - curriculum
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+short_description: "How filtering, deduplication, source weights, and curriculum turn a token budget into an effective pretraining distribution."
+author: codex
+created: "2026-05-04"
+updated: "2026-05-20"
+estimated_read_time: 24

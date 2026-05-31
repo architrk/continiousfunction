@@ -1,0 +1,126 @@
+---
+title: "Process Reward Models: Step-Level Verifiers for Reasoning"
+---
+
+## Intuition
+
+Canonical sources: Lightman et al., ["Let's Verify Step by Step"](https://arxiv.org/abs/2305.20050), the OpenAI [`prm800k`](https://github.com/openai/prm800k) dataset release, Uesato et al., ["Solving math word problems with process- and outcome-based feedback"](https://arxiv.org/abs/2211.14275), Cobbe et al., ["Training Verifiers to Solve Math Word Problems"](https://arxiv.org/abs/2110.14168), and Snell et al., ["Scaling LLM Test-Time Compute Optimally"](https://arxiv.org/abs/2408.03314).
+
+An outcome reward model asks one terminal question: did the final answer look correct?
+
+A process reward model asks a local question at every step: given the prompt and the reasoning prefix so far, is this next step valid?
+
+That changes the shape of feedback. Instead of treating a whole solution as one indivisible completion, the verifier sees a path through intermediate states. A lucky final answer with broken reasoning can receive high outcome reward and low process reward. A trace with one early algebra mistake can be rejected before the mistake compounds.
+
+The important caveat is that a process reward model is still a learned proxy. It can localize errors better than terminal-only feedback, but its step labels can be ambiguous, expensive, domain-limited, or wrong. PRMs do not solve reward hacking; they move the proxy from the leaf of the reasoning tree onto the edges.
+
+## Math
+
+Fix one prompt $x$. In this page's binary teaching notation, a process reward model sees a reasoning prefix and a candidate next step, then predicts whether that step is locally correct. Lightman et al.'s PRM800K labels include positive, negative, and neutral ratings; here we collapse the idea into correct vs. not-correct to expose the verifier mechanics.
+
+$$
+h=(a_1,\dots,a_t),\qquad c(h,a)\in\{0,1\},\qquad P_\phi(c=1\mid h,a)=\sigma(r_\phi(h,a)).
+$$
+
+For labeled steps $(h_i,a_i,c_i)$, the binary verifier can be trained with cross-entropy:
+
+$$
+p_i=P_\phi(c=1\mid h_i,a_i),\qquad
+\mathcal L_{\mathrm{PRM}}(\phi)
+=
+-
+\sum_i
+\left[
+c_i\log p_i
++
+(1-c_i)\log(1-p_i)
+\right].
+$$
+
+A complete solution is a terminal trace
+
+$$
+\tau=(a_1,\dots,a_T).
+$$
+
+Outcome supervision observes only a terminal label
+
+$$
+z(\tau)\in\{0,1\}.
+$$
+
+For a terminal trace, one simple additive score is the sum of step logits:
+
+$$
+S_\phi(\tau)
+=
+\sum_{t=1}^{T}
+r_\phi(h_{t-1},a_t).
+$$
+
+Other aggregations, such as mean step probability, product of step probabilities, or minimum step score, are design choices rather than a universal PRM definition. The key definition is local verification of steps.
+
+Separate from Lightman et al.'s best-of-N evaluation, this page also shows a finite KL-style RLHF bridge. A KL-regularized trajectory update is
+
+$$
+\pi_\beta(\tau\mid x)
+=
+\frac{
+\pi_{\mathrm{ref}}(\tau\mid x)\exp(S_\phi(\tau)/\beta)
+}{
+\sum_{\tau'}
+\pi_{\mathrm{ref}}(\tau'\mid x)\exp(S_\phi(\tau')/\beta)
+}.
+$$
+
+This is the same finite-action probability-shaping pattern as RLHF, but the learned reward decomposes over reasoning steps. Smaller $\beta$ pushes harder on the verifier score. If the step verifier is wrong, optimization can still select verifier error.
+
+## Code
+
+This witness uses four fixed traces for the equation $2(x+3)=14$. The outcome verifier prefers a trace with the correct final answer but invalid reasoning. The accurate process verifier prefers the clean trace. If we inject a false-positive process error, the process verifier can be fooled too.
+
+```python
+import math
+import numpy as np
+
+def logit(p):
+    p = min(max(p, 1e-6), 1 - 1e-6)
+    return math.log(p / (1 - p))
+
+def policy(scores, ref, beta=0.7):
+    logits = np.log(ref) + np.asarray(scores) / beta
+    logits = logits - logits.max()
+    weights = np.exp(logits)
+    return weights / weights.sum()
+
+traces = ["clean", "lucky_final", "slip", "wrong"]
+ref = np.array([0.30, 0.22, 0.28, 0.20])
+outcome_p = np.array([0.86, 0.92, 0.16, 0.12])
+step_p = [
+    [0.93, 0.91],
+    [0.16, 0.24],
+    [0.93, 0.22],
+    [0.20, 0.35],
+]
+
+def process_scores(step_probs):
+    return [sum(logit(p) for p in probs) for probs in step_probs]
+
+outcome_winner = traces[int(policy([logit(p) for p in outcome_p], ref).argmax())]
+process_winner = traces[int(policy(process_scores(step_p), ref).argmax())]
+
+hacked_steps = [list(probs) for probs in step_p]
+hacked_steps[1] = [0.98, 0.97]
+hacked_winner = traces[int(policy(process_scores(hacked_steps), ref).argmax())]
+
+print(outcome_winner, process_winner, hacked_winner)
+assert outcome_winner == "lucky_final"
+assert process_winner == "clean"
+assert hacked_winner == "lucky_final"
+```
+
+## Interactive Demo
+
+Use the demo as a diagnostic instrument. Switch between outcome-only scoring and process scoring, change the process aggregation, inject verifier errors, and lower $\beta$ to increase optimization pressure. Watch how probability mass moves across complete traces, and whether the selected trace has a correct final answer, valid local steps, or merely a high verifier score.
+
+{/* viz.tsx component renders here if it exists */}

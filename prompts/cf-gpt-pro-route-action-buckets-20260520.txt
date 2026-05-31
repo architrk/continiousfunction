@@ -1,0 +1,46 @@
+You are reviewing Continuous Function, a static-exported Next.js + TypeScript learning product for the mathematics behind modern deep learning and frontier AI.
+
+North star:
+- The site should become an interactive atlas-lab-tutor where serious learners understand frontier AI through intuition, math, code, and prediction-first demos.
+- Every learner-facing route should preserve the learner's current question, current object, saved observation, and next best action.
+- The site must work as a useful non-AI static product before live AI help is added.
+
+Current implemented state:
+- A browser-local LearningRouteSnapshot can preserve route labels, current object, next repair, route progress, and lastObservation.
+- ObservationLedgerCard now renders lastObservation across concept, Search, Graph, and Home surfaces.
+- Long Context has a WitnessTriad that lets the learner predict what happens to KV memory when T doubles, then saves a formula-comparison observation.
+- Search currently has:
+  - a Route Search Lens with chips derived from snapshot.currentObject, snapshot.nextRepair, equation labels, route concepts, and route labels.
+  - regular result cards with badge, snippet, tags, and a generic "Recommended next action" box.
+
+Goal for this next implementation slice:
+Upgrade Search and route-building surfaces so results are not a pile of links. They should appear as learner-action buckets that use the saved observation as evidence.
+
+Desired buckets:
+- Repair first: prerequisite/foundation repair before the target concept.
+- Inspect mechanism: open the concept object or key mechanism.
+- Run witness: prefer interactive demo/code witness when available.
+- Source or claim: attach result to a paper/claim/question when possible.
+- Continue route: carry the saved observation and route toward the next repair.
+
+Constraints:
+- Static export only; no backend; browser-local state is okay.
+- Avoid adding a generic chatbot surface.
+- Keep the UI dense enough for researchers but obvious enough for learners.
+- Mobile must remain compact and avoid horizontal overflow.
+- Do not duplicate route state; derive from LearningRouteSnapshot and search result metadata.
+- Keep V1 small and shippable.
+
+Likely files:
+- pages/search.tsx
+- components/product/SearchRouteBridge.tsx
+- possibly a small shared component under components/product/
+- lib/learningRouteSnapshot.ts only if the existing shape is inadequate
+
+Please produce:
+1. The strongest pedagogical framing for this slice.
+2. A V1 UX spec with exact result-card behavior and copy.
+3. What should be derived from LearningRouteSnapshot.lastObservation versus result metadata.
+4. What not to build yet.
+5. Acceptance checks for desktop and 390px mobile.
+6. Any subtle pitfalls that could make the experience feel impressive but less learnable.

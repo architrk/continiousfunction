@@ -1,0 +1,243 @@
+---
+title: "Retrieval-Augmented Generation: External Memory for Generation"
+---
+
+## Intuition
+
+Canonical sources: Lewis et al., ["Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks"](https://arxiv.org/abs/2005.11401), Guu et al., ["REALM"](https://arxiv.org/abs/2002.08909), Karpukhin et al., ["Dense Passage Retrieval for Open-Domain Question Answering"](https://arxiv.org/abs/2004.04906), Izacard and Grave, ["Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering"](https://arxiv.org/abs/2007.01282), Borgeaud et al., ["RETRO"](https://arxiv.org/abs/2112.04426), Gao et al., ["Enabling Large Language Models to Generate Text with Citations"](https://arxiv.org/abs/2305.14627), Liu et al., ["Evaluating Verifiability in Generative Search Engines"](https://arxiv.org/abs/2304.09848), Vu et al., ["FreshLLMs"](https://arxiv.org/abs/2310.03214), and Asai et al., ["Self-RAG"](https://arxiv.org/abs/2310.11511).
+
+Long context is what the model can read. Retrieval is the decision about what gets placed into that context.
+
+Retrieval-Augmented Generation turns a finite external corpus into inference-time memory. A retriever embeds the query and chunks, ranks chunks by similarity plus optional reranking features, chooses a small top-$k$ set, and the generator answers while conditioned on that evidence set.
+
+The important mistake is to treat "RAG" as "paste docs into a prompt, therefore grounded." That skips the hard part. The right chunk can be absent, present but low weight, present but ignored, or present next to a stronger stale distractor. A cited source can support the selected answer while the selected answer is still stale relative to the hidden current truth.
+
+This page teaches only the finite evidence-selection object. It is not a vector database survey, agent architecture page, web-search tutorial, retriever-training page, or a claim that RAG solves hallucinations.
+
+## Math
+
+Let a finite corpus contain chunks
+
+$$
+\mathcal C=\{d_1,\ldots,d_m\}.
+$$
+
+Each query and chunk has a normalized embedding:
+
+$$
+q=e(x)\in\mathbb R^r,
+\qquad
+v_i=e(d_i)\in\mathbb R^r,
+\qquad
+\lVert q\rVert=\lVert v_i\rVert=1.
+$$
+
+The retriever assigns a score
+
+$$
+s_i=q^\top v_i+\lambda\rho_i+\epsilon_i.
+$$
+
+Here $q^\top v_i$ is embedding similarity, $\rho_i$ is a rerank or freshness feature, $\lambda$ controls its strength, and $\epsilon_i$ is retrieval noise.
+
+Choose the top-$k$ set
+
+$$
+R_k(x)=\operatorname{TopK}_i(s_i).
+$$
+
+Within that set, turn scores into retrieval weights:
+
+$$
+\tilde p(d_i\mid x)=
+\frac{\exp(s_i/\tau)\mathbf 1[i\in R_k(x)]}
+{\sum_{j\in R_k(x)}\exp(s_j/\tau)}.
+$$
+
+For each retrieved chunk, let the generator define a finite answer distribution
+
+$$
+g_i(y)=p_\theta(y\mid x,d_i).
+$$
+
+The RAG answer distribution is the mixture
+
+$$
+p_{\mathrm{RAG}}(y\mid x)=
+\sum_{i\in R_k(x)}
+\tilde p(d_i\mid x)g_i(y).
+$$
+
+Now separate the quantities people often blur. Let $y^\star$ be the hidden correct current answer, and let
+
+$$
+G(x)=\{i:d_i\text{ supports }y^\star\text{ and is admissible or fresh}\}.
+$$
+
+Retrieval coverage is
+
+$$
+\mathrm{coverage}_k(x)=
+\mathbf 1[G(x)\cap R_k(x)\ne\varnothing].
+$$
+
+Good-evidence mass is
+
+$$
+\mathrm{evidenceMass}_k(x)=
+\sum_{i\in G(x)\cap R_k(x)}
+\tilde p(d_i\mid x).
+$$
+
+Generation correctness probability is
+
+$$
+\mathrm{correctProb}_k(x)=
+p_{\mathrm{RAG}}(y^\star\mid x).
+$$
+
+The selected answer is
+
+$$
+\hat y=\arg\max_y p_{\mathrm{RAG}}(y\mid x).
+$$
+
+If the output cites a source $\hat d$, source support is only
+
+$$
+\mathrm{sourceSupports}(\hat y,\hat d)=
+\mathbf 1[\hat d\text{ supports }\hat y].
+$$
+
+That is not the same as correctness. A stale policy chunk can support "14 days" while the hidden current answer is "30 days."
+
+## Code
+
+This witness uses the same finite corpus as the demo. The middle assertion is the core lesson: with $k=2$, the correct current chunk is retrieved, so coverage is true, but the selected answer remains wrong because the stale chunk has more retrieval weight.
+
+```python
+import numpy as np
+
+ANSWERS = ["30", "14", "45", "unknown"]
+TRUE_ANSWER = "30"
+
+def norm(v):
+    v = np.asarray(v, dtype=float)
+    return v / np.linalg.norm(v)
+
+query = norm([1.0, 0.0])
+
+docs = [
+    {
+        "id": "old_policy",
+        "text": "2024 handbook: standard returns are accepted within 14 days.",
+        "embedding": norm([0.98, 0.20]),
+        "fresh": 0,
+        "supports_answer": "14",
+        "gen": {"30": 0.05, "14": 0.86, "45": 0.02, "unknown": 0.07},
+    },
+    {
+        "id": "current_policy",
+        "text": "April 2026 policy: standard returns are accepted within 30 days.",
+        "embedding": norm([0.92, 0.39]),
+        "fresh": 1,
+        "supports_answer": "30",
+        "gen": {"30": 0.82, "14": 0.05, "45": 0.03, "unknown": 0.10},
+    },
+    {
+        "id": "forum_exception",
+        "text": "A customer once returned a jacket after 45 days during a promotion.",
+        "embedding": norm([0.86, -0.51]),
+        "fresh": 0,
+        "supports_answer": "45",
+        "gen": {"30": 0.10, "14": 0.05, "45": 0.75, "unknown": 0.10},
+    },
+    {
+        "id": "shipping",
+        "text": "Express shipping arrives in 2 business days.",
+        "embedding": norm([0.30, 0.95]),
+        "fresh": 1,
+        "supports_answer": "unknown",
+        "gen": {"30": 0.15, "14": 0.10, "45": 0.05, "unknown": 0.70},
+    },
+    {
+        "id": "warranty",
+        "text": "Electronics warranty coverage lasts one year.",
+        "embedding": norm([0.10, -0.99]),
+        "fresh": 1,
+        "supports_answer": "unknown",
+        "gen": {"30": 0.12, "14": 0.08, "45": 0.05, "unknown": 0.75},
+    },
+]
+
+def softmax(xs, tau=1.0):
+    xs = np.asarray(xs, dtype=float) / tau
+    xs = xs - xs.max()
+    ps = np.exp(xs)
+    return ps / ps.sum()
+
+def rag(k=2, tau=0.25, fresh_bonus=0.0, noise_sigma=0.0, seed=0):
+    rng = np.random.default_rng(seed)
+    rows = []
+    for d in docs:
+        cosine = float(query @ d["embedding"])
+        noise = float(rng.normal(0.0, noise_sigma)) if noise_sigma else 0.0
+        score = cosine + fresh_bonus * d["fresh"] + noise
+        rows.append({**d, "cosine": cosine, "noise": noise, "score": score})
+
+    rows.sort(key=lambda r: (-r["score"], r["id"]))
+    top = rows[:k]
+    weights = softmax([r["score"] for r in top], tau=tau)
+
+    rag_probs = {a: 0.0 for a in ANSWERS}
+    for w, r in zip(weights, top):
+        for a in ANSWERS:
+            rag_probs[a] += float(w) * r["gen"][a]
+
+    answer = max(ANSWERS, key=lambda a: (rag_probs[a], -ANSWERS.index(a)))
+    cited = max(top, key=lambda r: r["gen"][answer] * float(weights[top.index(r)]))
+
+    return {
+        "retrieved_ids": [r["id"] for r in top],
+        "weights": {r["id"]: float(w) for r, w in zip(top, weights)},
+        "coverage": any(r["supports_answer"] == TRUE_ANSWER for r in top),
+        "evidence_mass": sum(float(w) for r, w in zip(top, weights) if r["supports_answer"] == TRUE_ANSWER),
+        "rag_probs": rag_probs,
+        "answer": answer,
+        "p_correct": rag_probs[TRUE_ANSWER],
+        "correct": answer == TRUE_ANSWER,
+        "cited_source": cited["id"],
+        "citation_supports_answer": cited["supports_answer"] == answer,
+    }
+
+baseline = rag(k=1, tau=0.25)
+covered_but_wrong = rag(k=2, tau=0.25)
+fresh_rerank = rag(k=2, tau=0.25, fresh_bonus=0.12)
+
+assert baseline["retrieved_ids"] == ["old_policy"]
+assert baseline["coverage"] is False
+assert baseline["answer"] == "14"
+assert baseline["citation_supports_answer"] is True
+assert baseline["correct"] is False
+
+assert covered_but_wrong["retrieved_ids"] == ["old_policy", "current_policy"]
+assert covered_but_wrong["coverage"] is True
+assert covered_but_wrong["answer"] == "14"
+assert covered_but_wrong["p_correct"] < 0.50
+assert 0.0 < covered_but_wrong["evidence_mass"] < 1.0
+
+assert fresh_rerank["retrieved_ids"][0] == "current_policy"
+assert fresh_rerank["coverage"] is True
+assert fresh_rerank["answer"] == "30"
+assert fresh_rerank["p_correct"] > covered_but_wrong["p_correct"]
+assert fresh_rerank["cited_source"] == "current_policy"
+```
+
+## Interactive Demo
+
+Use the External Memory Mixer to test one distinction: retrieving the right
+chunk is not the same as assigning it enough weight to make the answer correct.
+Predict the regime first, then reveal the top-$k$ evidence set, evidence mass,
+answer mixture, selected citation, and correctness.
+
+{/* viz.tsx component renders here if it exists */}

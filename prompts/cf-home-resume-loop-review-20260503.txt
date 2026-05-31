@@ -1,0 +1,19 @@
+Project: Continuous Function, a static-export Next.js learning atlas for deep learning, mathematics, and eventually cross-domain research learning.
+
+Current product philosophy:
+- Learners should move from a paper or question into concepts, equations, routes, labs, and discussion prompts without losing the current question.
+- The site should grow slowly and rigorously: one refined route at a time, not a bulk idea dump.
+- The first complete product loop is paper map -> graph route -> attention-serving KV-cache lab.
+- It must be honest about what is live versus planned. Browser localStorage is acceptable for this early static-export stage.
+
+Recent change to review:
+I added a homepage resume panel that reads `cf:last-learning-route` after mount and, if present, lets a learner continue the same paper/question from home. It shows paper title, route labels, current question, carried equation, first repair, live/planned lab status, and actions to continue in graph, open the KV memory lab when live, or clear the browser-saved route.
+
+Question:
+Review this as GPT Pro / Oracle in the role of a rigorous product, pedagogy, and UI critic. Does the home resume loop make the site more likely to feel continuous, joyful, and worth returning to without becoming noisy or misleading? Identify only high-leverage fixes. Separate issues into:
+1. Blocking correctness/trust.
+2. Important pedagogy/product improvements.
+3. UI polish or copy refinements.
+4. Things that should explicitly stay out of scope for now.
+
+Please be concrete. If you recommend a change, name the file/component and the exact learner-facing problem it solves.

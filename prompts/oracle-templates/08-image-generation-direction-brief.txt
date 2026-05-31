@@ -1,0 +1,42 @@
+Use this brief before generating a Continuous Function UI/UX direction image.
+
+Objective:
+Create an implementation-facing visual direction for Continuous Function as a cohesive, high-quality learning platform. The image should help the team reason about the whole user experience, not just decorate one page.
+
+Think about the user:
+- Learner: needs orientation, intuition, and a next step.
+- Researcher: needs source-grounded objects, equations, claims, and paper context.
+- Experimenter: needs manipulable variables, prediction, measurement, and visible invariants.
+- Teacher: needs a clear sequence that can be explained without hidden assumptions.
+
+Platform feeling:
+- One connected atlas/notebook/lab system.
+- Serious and rigorous, but approachable.
+- Dense enough for real study, never cluttered.
+- Consistent interaction rhythm across home, concepts, Search, Graph, Paper Mapper, paths, and demos.
+
+The image should clarify:
+- current question
+- current object or mechanism
+- prediction before reveal
+- measurement or evidence after interaction
+- source or code witness when relevant
+- next best action
+- how route memory carries forward
+
+Visual constraints:
+- Warm ivory notebook surface plus deep navy structure.
+- Teal for correctness, alignment, and stable paths.
+- Amber for active selection, flow, or experiment energy.
+- Avoid decorative-only flourishes.
+- Avoid generated body text unless absolutely necessary; use spatial layout, symbolic marks, and clear affordance shapes instead.
+- Treat the image as a direction board. Final precise mechanisms should become repo-native React, CSS, SVG, D3, Three, or canvas components.
+
+Surface:
+- Page or flow: [PAGE_OR_FLOW]
+- Current learner goal: [LEARNER_GOAL]
+- Current product concern: [CONCERN]
+- Existing platform patterns to preserve: [PATTERNS]
+- New interaction idea to explore: [IDEA]
+
+Generate a visual direction that makes the user's next thought easier.

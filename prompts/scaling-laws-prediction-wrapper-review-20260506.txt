@@ -1,0 +1,33 @@
+Project: Continuous Function, a Next.js/TypeScript concept atlas for deep-learning mathematics. We are finishing the published-concept prediction-first retrofit pass. The product standard is that a learner should commit to a mechanism before a live lab exposes the answer, and the route should emit compact demo state for future AI tutoring handoff.
+
+Current slice: `/domains/scaling/scaling-laws/`.
+
+What changed:
+- Replaced the old thin tabbed route wrapper with a `VizShell` + `VizStageAdapter` prediction-first wrapper.
+- The route now has two active views: Loss Scaling and Emergence.
+- Before reveal, the child lab is hidden. The learner chooses among four mechanisms:
+  - Scale parameters and data.
+  - Scale parameters first.
+  - Scale data first.
+  - Thresholds make jumps.
+- Expected answer for Loss Scaling: scale parameters and data together under a fixed training budget.
+- Expected answer for Emergence: thresholded metrics can make smooth capability curves look abrupt.
+- The route emits compact state under `conceptId: "scaling-laws"` with active view, prediction, reveal state, correctness, hidden/revealed expected mechanism, hidden/revealed invariant, and lab mount state.
+
+Constraints:
+- Do not overclaim that scaling proves intelligence, universal exponents, or literal discontinuous abilities.
+- Keep pre-reveal copy neutral. It may show the answer choices, but it should not otherwise leak the expected answer for the active tab.
+- The older heavy child components are intentionally mounted only after reveal in this slice.
+
+Local checks already passed before this Oracle run:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+
+Please review for publish readiness. Specifically:
+1. Is the active-tab expected answer correct and source-aligned with Kaplan/Hoffmann plus the page's emergence caveat?
+2. Does pre-reveal visible copy leak the expected answer beyond the choice labels?
+3. Is route-level demo-state emission sufficient for this bounded retrofit, or is a child-component emission blocker?
+4. Are there accessibility, mobile, reduced-motion, hydration, or implementation blockers?
+
+Return `publish` if acceptable. If not, give exact must-fix edits only.

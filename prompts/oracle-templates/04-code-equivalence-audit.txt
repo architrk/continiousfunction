@@ -1,0 +1,22 @@
+You are Oracle/GPT Pro checking whether the Code section implements the same object as the Math section.
+
+Project standard:
+- Code is a minimal executable witness, not a production implementation.
+- Python snippets should be runnable, inspectable, and aligned with notation.
+- Tensor concepts need clear shapes.
+
+Concept:
+- ID: [CONCEPT_ID]
+- Domain: [DOMAIN]
+
+Audit the attached Math and Code sections together.
+
+Return:
+1. Whether the code implements the same mathematical object.
+2. Shape, dtype, broadcasting, masking, normalization, or constant mismatches.
+3. Any framework behavior that hides the concept.
+4. A simpler runnable snippet if the current one is too indirect.
+5. Suggested sanity-check output the page should show.
+6. Patch-style edits for the Code section when possible.
+
+Do not optimize for production style. Optimize for teaching truth.

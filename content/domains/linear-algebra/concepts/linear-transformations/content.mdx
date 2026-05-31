@@ -13,26 +13,42 @@ That sounds restrictive, but it’s exactly what makes linear maps easy: once yo
 
 This is the bridge from geometry to matrices: a matrix is just a linear transformation written in coordinates.
 
+In deep learning, learned matrices are everywhere: embedding projections, MLP layers, attention query/key/value maps, and feature-space rotations all use the same idea. The nonlinear parts of a network are important, but the linear maps are the pieces that move information between coordinate systems.
+
 ## Math
 
 **Definition.** A function $T: V \to W$ is linear if for all $u,v \in V$ and scalars $\alpha$:
 
-$$T(u+v) = T(u) + T(v), \qquad T(\alpha v) = \alpha T(v).$$
+$$
+T(u+v) = T(u) + T(v), \qquad T(\alpha v) = \alpha T(v).
+$$
 
 In $\mathbb{R}^n$ with the standard basis, every linear map has the form
 
-$$T(x) = Ax$$
+$$
+T(x) = Ax
+$$
 
 for some matrix $A$.
 
 A key concrete fact: the columns of $A$ are where the basis vectors go. If $e_i$ is the $i$th standard basis vector, then
 
-$$A e_i = \text{column}_i(A).$$
+$$
+A e_i = \text{column}_i(A).
+$$
 
 Two structural ideas show up everywhere:
 
 - **Composition** corresponds to matrix multiplication: $(S\circ T)(x) = S(T(x))$ becomes $(BA)x$.
 - **Kernel** and **image**: $\ker(T)=\{x:Ax=0\}$ and $\operatorname{im}(T)=\{Ax:x\in V\}$.
+
+In attention layers, for example, token representations $x$ are multiplied by learned matrices:
+
+$$
+q = W_Qx,\qquad k = W_Kx,\qquad v = W_Vx.
+$$
+
+Those are linear transformations into query, key, and value spaces. The dot products happen after the representations have been moved into those learned coordinate systems.
 
 ## Code
 

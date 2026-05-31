@@ -11,8 +11,8 @@ leads_to:
   - chain-rule
   - gradient-descent
 related:
-  - optimization
-  - backpropagation
+  - loss-landscapes
+  - sgd-momentum
 tags:
   - calculus
   - derivatives
@@ -21,8 +21,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: deisenroth-2020-mml
+    kind: book
+    title: "Mathematics for Machine Learning"
+    authors: "Deisenroth, Faisal, and Ong"
+    year: 2020
+    url: "https://mml-book.github.io/book/mml-book.pdf"
+    note: "Grounds derivatives and vector calculus as part of the mathematical toolkit needed for machine learning."
+claim_checks:
+  - id: derivative-limit-secant-tangent
+    status: source-checked
+    claim: "For a differentiable one-variable real function, the derivative at x is the limit of the difference quotient as h approaches 0: secant slopes over [x,x+h] converge to the tangent slope, a local one-variable rate-of-change signal used by gradient-based optimization."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked MML 5.1 and 7.1: MML defines the difference quotient for a univariate real function, identifies it as the secant/average slope between x and x+delta x, and says its limit becomes the tangent/derivative when f is differentiable. MML then uses gradients of differentiable scalar objectives as steepest-ascent signals for gradient descent. Local math/code/demo match the one-variable specialization: f'(x)=lim (f(x+h)-f(x))/h, positive-h secants for sin vs cos, and secant-vs-hidden-tangent reveal."
+    source_ids:
+      - deisenroth-2020-mml
+    support: "MML's vector calculus chapter defines the derivative as the limit of a difference quotient, explains the secant-to-tangent picture for differentiable functions, and notes derivatives/gradients give steepest-change information later used in gradient descent and continuous optimization."
+    caveat: "Checks differentiable one-variable real functions and positive/right-hand h values in the toy demo. Optimization is only the one-dimensional instance of gradient direction; not corners/cusps, subgradients, partial derivatives/Jacobians, finite-difference error, or convergence."
+    object_refs:
+      - "#source-span-deisenroth-2020-mml"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "The derivative is an instantaneous rate of change: the slope you get when a secant line becomes a tangent line."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 14

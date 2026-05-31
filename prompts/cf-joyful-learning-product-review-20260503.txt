@@ -1,0 +1,34 @@
+You are reviewing Continuous Function, a Next.js static-export learning platform that is becoming a research-learning operating system for modern AI and mathematical foundations.
+
+Current product direction:
+- Make learning deep, rich, joyous, interactive, and rigorous enough that students, researchers, professionals, professors, and enthusiasts want to return out of curiosity.
+- The site should not become a generic article archive, paper-summary site, demo gallery, or AI chat wrapper.
+- The core loop is: paper or curiosity -> concept map -> prerequisite repair -> equation/code/demo -> toy lab -> discussion or saved insight.
+- The current first product slice includes the homepage, /paper-map, /graph, and /paths/attention-serving.
+
+What has recently changed:
+- A large product checkpoint added paper mapping, graph routes, AI companion contracts, equation objects, PDF parser layers, and the attention-to-serving flagship path.
+- A user-first review pass is in progress. The current uncommitted patch makes /paper-map use the editorial surface, changes mobile nav to a compact six-link grid, adds a Start Mapping anchor to the mapper input, tightens mobile notebook hero layout, and adds a User-First Clarity section to the quality bar.
+
+Review task:
+Act like a first-time serious learner, then like a returning learner who wants to spend time here for joy and depth. Review the attached files and answer with the highest-impact concrete refinements, not broad ideation.
+
+Focus questions:
+1. What is the single biggest remaining friction in the current homepage -> paper mapper -> graph -> attention path learning loop?
+2. Where does the product currently feel most like internal builder language instead of a learner's natural next thought?
+3. What should the next small implementation pass be if the goal is joy plus rigor, not feature count?
+4. Which parts of the current loop risk overpromising before accounts/backend/community features exist?
+5. What should be encoded into TODO/quality rules so future work keeps improving learning depth and return value?
+
+Constraints:
+- Do not ask for a full redesign.
+- Do not propose large backend/account systems unless they can be staged as static-export-safe affordances first.
+- Prioritize changes a single coding agent can implement in one pass.
+- Prefer improvements that make the next action obvious, reduce cognitive load, deepen interaction, or make the site feel worth returning to.
+- Keep rigor: do not hide uncertainty, do not market unfinished features as real.
+
+Desired output:
+- A ranked list of 3-5 findings with severity and file/route references.
+- For the top finding, give a concrete patch plan with copy/layout/state changes.
+- A short list of "do not do next" traps.
+- A short durable principle to add to the product/quality notes if missing.

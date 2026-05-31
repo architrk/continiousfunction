@@ -21,8 +21,53 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: graduate
+sources:
+  - id: hyvarinen-2005-score-matching
+    kind: paper
+    title: "Estimation of Non-Normalized Statistical Models by Score Matching"
+    authors: "Hyvarinen"
+    year: 2005
+    url: "https://jmlr.csail.mit.edu/beta/papers/v6/hyvarinen05a.html"
+    note: "Introduces score matching for models where the normalizing constant is intractable."
+  - id: vincent-2011-denoising-score
+    kind: paper
+    title: "A Connection Between Score Matching and Denoising Autoencoders"
+    authors: "Vincent"
+    year: 2011
+    url: "https://www-labs.iro.umontreal.ca/~vincentp/Publications/DenoisingScoreMatching_NeuralComp2011.pdf"
+    note: "Grounds denoising score matching as learning to recover clean structure from noisy samples; publisher DOI is 10.1162/NECO_a_00142."
+  - id: song-2020-score-sde
+    kind: paper
+    title: "Score-Based Generative Modeling through Stochastic Differential Equations"
+    authors: "Song et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2011.13456"
+    note: "Connects learned score fields to reverse-time stochastic dynamics for generation."
+claim_checks:
+  - id: score-field-denoising-reverse-dynamics
+    status: source-checked
+    claim: "Score matching fits a model score grad_x log p_theta(x) while avoiding the normalizing constant; under Gaussian corruption x_tilde=x+sigma epsilon, the conditional denoising target is -(x_tilde-x)/sigma^2=-epsilon/sigma; estimated time-dependent scores can drive reverse-time SDE/ODE sampling dynamics."
+    source_ids:
+      - hyvarinen-2005-score-matching
+      - vincent-2011-denoising-score
+      - song-2020-score-sde
+    support: "Hyvarinen supports score matching for continuous non-normalized models because the data score removes Z(theta). Vincent supports the Gaussian DSM target (x-x_tilde)/sigma^2 and DSM/SM equivalence. Song supports reverse SDE sampling and probability-flow ODE dynamics from estimated time-dependent scores. Local math/code/demo cover the score, DSM scaling, conditional-vs-marginal distinction, and reverse bridge."
+    caveat: "Checks the score, Gaussian conditional DSM label under x_tilde=x+sigma epsilon, and estimated-score reverse SDE/probability-flow ODE bridge. Does not claim exact solvers, conditional labels equal marginal scores, high-dimensional quality, or full DDPM/ELBO training."
+    object_refs:
+      - "#source-span-hyvarinen-2005-score-matching"
+      - "#source-span-vincent-2011-denoising-score"
+      - "#source-span-song-2020-score-sde"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Hyvarinen supports non-normalized score matching: the data-gradient score removes Z(theta) and the implicit objective uses squared score plus divergence terms. Vincent supports the Gaussian conditional DSM target (x-x_tilde)/sigma^2 = -epsilon/sigma and DSM/SM equivalence. Song supports estimated time-dependent scores in reverse SDE sampling and probability-flow ODEs. Local math, code, and demo align with this bounded mechanism without pre-reveal target leakage."
 short_description: "Learn the score field grad_x log p(x) without normalizing constants. Denoising score matching turns diffusion training into simple regression on noise."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 18

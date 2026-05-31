@@ -3,10 +3,10 @@
 import { useMemo, Suspense, lazy } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
-import ExplorableSection from '../../components/ExplorableSection'
-import StateTimeline from '../../components/StateTimeline'
-import KernelHeatmap from '../../components/KernelHeatmap'
+import ExplorableLayout, { useExplorable } from '@/components/explorable/ExplorableLayout'
+import ExplorableSection from '@/components/explorable/ExplorableSection'
+import StateTimeline from '@/components/charts/StateTimeline'
+import KernelHeatmap from '@/components/charts/KernelHeatmap'
 import { NeuralState, Matrix2D } from '../../lib/mathObjects'
 
 // Explore in depth link component
@@ -32,9 +32,9 @@ function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label
 }
 
 // Import visualization components from foundations (canonical source with gamification)
-const SuperpositionPolysemanticity = lazy(() => import('../../components/foundations/SuperpositionViz'))
-const InductionHeads = lazy(() => import('../../components/foundations/InductionHeadsViz'))
-const LinearProbes = lazy(() => import('../../components/foundations/LinearProbeViz'))
+const SuperpositionPolysemanticity = lazy(() => import('@/components/foundations/SuperpositionViz'))
+const InductionHeads = lazy(() => import('@/components/foundations/InductionHeadsViz'))
+const LinearProbes = lazy(() => import('@/components/foundations/LinearProbeViz'))
 
 function LoadingFallback() {
   return (

@@ -1,0 +1,141 @@
+You are GPT Pro acting as a senior product designer, learning scientist, mathematical visualization designer, and ruthless UX critic for Continuous Function.
+
+Context:
+- Continuous Function is an AI-first learning platform for the mathematics behind modern deep learning and frontier AI.
+- The desired product feeling is "Living Notebook Lab": part atlas, part notebook, part lab, part paper-reading room, part careful AI tutor.
+- Pedagogical loop: Question -> Object -> Prediction -> Manipulation -> Evidence -> Invariant -> Next Move.
+- The user feels the generated image direction boards are much richer than the current live app, and that the app experience is considerably inferior.
+- Your job is to explain that gap and convert it into buildable guidance.
+
+Important repo principles:
+- Images are implementation-facing direction boards, not decoration.
+- Repo-native UI and demos should carry precise learning mechanisms.
+- The app must remain high-signal, rigorous, source-grounded, and not become a marketing site or generic dashboard.
+- Current app has some strong pieces: route strip, concept notebook, Paper Mapper, graph, search, /me study memory, adaptive loop contract, object rooms.
+- The issue is that the experience still often feels like assembled panels and dense text, not a cohesive immersive learning instrument.
+
+Live app tour observations from 2026-05-24:
+1. Homepage command deck works, but the first viewport still reads more like an explanatory product panel than an irresistible learning instrument.
+2. Domains page gives route-aware entry points and role lenses; useful, but visually still too card-grid / admin-like.
+3. Efficient Attention concept notebook has selected objects, role lenses, Predict/Code/Ask, object room, and source cards. It is functionally rich but visually dense; the object room is powerful but not yet spatially memorable.
+4. Paper Mapper converts a pasted paper clue into source check, equations, source spans, claims, role lenses, and saved route. It is one of the best product ideas, but it still feels like a form plus panels rather than a magical research-to-learning cockpit.
+5. Graph carries the current investigation and route state. It is useful but does not yet feel like a living map that teaches the next move.
+6. Search is route-aware and buckets results into repair/inspect/witness/carry actions. Good functionally; visual hierarchy still does not make it feel as special as the idea.
+7. /me Study Memory shows durable memory, adaptive next move, and server contract checks. Honest, but it feels like developer-contract preview rather than a learner’s personal study space.
+8. Attention Path is the strongest end-to-end module. It carries paper clue, equation, serving variables, prediction lab, and route. It should become the visual model for other surfaces.
+9. Legacy Foundations is broad and useful, but visually/migrationally inconsistent with the newer notebook language.
+10. Vision/Pillars state the philosophy, but the actual first-use experience still does not fully embody it.
+
+Generated image study already extracted these recurring patterns:
+- Persistent learning shell: stable spine, current route/progress, one clear workspace.
+- Adaptive cockpit: learner/researcher/experimenter/professor lenses change immediate question and next move.
+- Object-attached learning: questions, source checks, code witnesses, demos, misconceptions, and comments orbit exact objects.
+- Evidence memory: compact portable observations: what changed, what stayed invariant, what to test next.
+- Paper-to-atlas workflow: paper spans become objects, equations, demos, caveats, and routes.
+- Research commons: source-grounded discussion with AI focused on evidence, assumptions, summaries, experiments.
+- Device continuity: mobile preserves current object and next move.
+
+Your task:
+Answer the following question campaign. Be concrete. Do not give generic design platitudes. Tie every recommendation to a user action and a buildable surface.
+
+## A. Why The App Feels Inferior To The Images
+
+1. What are the top 10 reasons the current app experience likely feels weaker than the image direction boards?
+2. Which of those are visual/aesthetic, which are information architecture, and which are interaction/pedagogy?
+3. Where is the app functionally strong but emotionally weak?
+4. Where does the app have the right components but the wrong composition?
+5. What is the biggest mismatch between "Living Notebook Lab" and the current live pages?
+6. What current UI pattern should be reduced, simplified, or removed?
+7. What current UI pattern should be elevated into a signature experience?
+8. What do the generated images probably understand about spatial continuity that the current app misses?
+9. What is the single strongest product metaphor we should commit to visually?
+10. What would make the app feel less like a documentation site and more like an instrument?
+
+## B. First-Viewport Experience
+
+11. For the homepage, what should the first viewport make the learner feel/do within 5 seconds?
+12. Should the homepage become a live learning cockpit instead of a command deck? If yes, what exact elements?
+13. How should the current investigation strip be visually integrated into the first viewport?
+14. What is the minimum first-screen action that proves the app is not a static course catalog?
+15. What should the hero avoid?
+
+## C. Concept Notebook
+
+16. In the Efficient Attention concept page, what should visually dominate: title, selected object, route state, demo, or object room?
+17. How should the selected object be made spatially memorable?
+18. How should equation/code/demo/source be arranged so they feel like one object, not separate cards?
+19. How should the object room become a "room" rather than a panel?
+20. How can role lenses feel adaptive without feeling like tabs?
+21. What should the learner see immediately after a prediction reveal?
+22. How can the page show "what changed / what stayed invariant / what next" more beautifully?
+23. What concept-page element is currently likely too wordy?
+24. What concept-page element should be turned into an instrument or visual state?
+25. What is the first concept-notebook redesign slice to build?
+
+## D. Paper Mapper
+
+26. How do we make Paper Mapper feel like a magical research-to-understanding cockpit rather than a form?
+27. What should happen visually when a paper clue maps to an equation?
+28. How should source trust, missing live lookup, and local preview status be shown without making the surface feel broken?
+29. How should the current paper object lens be redesigned?
+30. What is the most important paper-mapper animation or transition, if any?
+31. How should "Save object lens" feel more meaningful?
+32. How should Paper Mapper hand off to the concept notebook?
+33. What should be visible in the first viewport after mapping?
+34. Which paper-mapper controls should become icons/instruments rather than text buttons?
+35. What is the first Paper Mapper redesign slice to build?
+
+## E. Graph and Search
+
+36. How can the graph become a living map that teaches, instead of a complex graph visualization?
+37. What should happen when the user asks "What do I need to learn next?"
+38. How should edge explanations be represented visually?
+39. How can Search feel like a route finder rather than a result list?
+40. What visual grammar should route-aware search results share with Paper Mapper and concept notebooks?
+41. What is the smallest shared component that would make Graph/Search/Paper Mapper feel cohesive?
+
+## F. Personalization and AI Tutor
+
+42. How should the AI tutor "live in the background" without becoming a generic chatbot?
+43. What should the tutor know about the current object?
+44. What should the tutor show proactively, and what should it never interrupt with?
+45. How should adaptive next move be visualized in /me and across route surfaces?
+46. How do we make personalization feel helpful but not creepy?
+47. What should the personal study space look like when it is mature?
+48. What should the app remember after every meaningful interaction?
+49. What should be anonymized and aggregated for recursive improvement?
+50. How should a Codex-style builder agent fit without making users fear silent mutation?
+
+## G. Visual System and Images
+
+51. Which image-board motifs should become code-native UI primitives?
+52. Where should raster images remain as mood/cover assets?
+53. Where should generated imagery be removed or minimized?
+54. What color/typography/layout changes would most improve seriousness and delight?
+55. Is the current ivory/navy/teal/amber direction enough? What is missing?
+56. How can the app become more tactile without becoming decorative?
+57. What are three visual signatures users should recognize after one session?
+58. What should mobile preserve from desktop at all costs?
+59. What should mobile simplify aggressively?
+60. What should the next generated images ask for if we generate more?
+
+## H. Prioritized Build Plan
+
+61. Give a ranked list of the top 15 improvements, from highest learner impact to lower polish.
+62. Mark each as P0/P1/P2.
+63. For each P0, give: target file/component, user-visible change, why it matters, risk, and verification method.
+64. Identify the first 3 implementation slices that can be built in under one day each.
+65. Identify one bold redesign that is worth exploring but not building immediately.
+66. Identify any misleading or dangerous UX direction we should avoid.
+67. What would make serious students use this daily?
+68. What would make professors trust it?
+69. What would make ML practitioners feel it is not toy-like?
+70. What would make the founder proud to show it publicly?
+
+Output format:
+1. "Diagnosis": 10 concise bullets.
+2. "Design Thesis": one paragraph.
+3. "P0 Build Plan": table with 5-8 items.
+4. "P1/P2 Later": concise list.
+5. "First Slice Spec": one exact implementation slice with component names, layout behavior, and verification checklist.
+6. "Questions To Ask Next": 10 sharper follow-up prompts for another GPT Pro pass.

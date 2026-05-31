@@ -1,0 +1,49 @@
+You are Oracle/GPT Pro reviewing Continuous Function as a learning product and visual system.
+
+Project briefing:
+- Continuous Function is a static-exported Next.js Pages Router + TypeScript site.
+- It is meant to become a slow-growth mathematical atlas where deep ideas become intuitive, precise, visual, executable, and connected.
+- The current center is deep learning and mathematical foundations. The project should expand outward only through load-bearing mathematical bridges.
+- The site should feel like a mathematical atlas, notebook, and lab surface: approachable for enthusiasts, serious enough for students/researchers/practitioners.
+- Current repo direction is an editorial notebook shell for homepage, domain indexes, and concept pages.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- The learning contract is Intuition -> Math -> Code -> Interactive Demo.
+- Visual design must serve learning: intuition, precision, exploration, and connection.
+- Do not suggest a marketing landing page. The first screen should be the usable learning experience.
+- Generated image exploration is allowed only when it clarifies a concrete UI/visual direction worth translating into components.
+- Prefer repo-native components, D3, Three, SVG, canvas, CSS, and React for final interactive mechanisms.
+
+Surface:
+- Page or flow: homepage -> domain index -> domain detail -> concept page.
+- Current learner goal: understand what Continuous Function is, choose a meaningful path, enter a concept, and know what to do/read/manipulate next.
+- Current concern: the site must become elegant, deep, intuitive, and connected without becoming a decorative demo gallery, a topic dump, or a marketing page.
+
+Files attached:
+- `content/_agent/CONCEPT_QUALITY_BAR.md`
+- `AGENTS.md`
+- `README.md`
+- `pages/index.tsx`
+- `pages/domains/index.tsx`
+- `pages/domains/[domain]/index.tsx`
+- `pages/domains/[domain]/[slug].tsx`
+- `components/home`
+- `components/site`
+- `components/editorial`
+- `components/viz`
+- `styles/globals.css`
+- representative concept content for dot product, attention, diffusion, DPO, and sparse autoencoders
+
+Review the attached UI/product surface.
+
+Return:
+1. Whether the page flow helps the learner know where they are, what to do, and what to learn next.
+2. Information architecture risks.
+3. Visual hierarchy and density issues.
+4. Where generated image exploration could clarify direction before implementation.
+5. Where repo-native components, D3, Three, SVG, canvas, CSS, or React are the better final artifact.
+6. Mobile and desktop risks.
+7. The 3 highest-impact UI changes, with implementation notes and target files.
+
+Be strict and product-minded. Give a focused implementation plan, not a broad idea dump.

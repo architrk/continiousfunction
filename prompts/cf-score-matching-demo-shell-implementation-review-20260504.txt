@@ -1,0 +1,36 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. The user goal is not just coverage: learning should feel joyful enough to return to voluntarily, visually rich, interactive, deep, mathematically serious, and non-trivial. The site should grow slowly with refined concepts rather than bulk content.
+
+We are executing a "flagship demo shell rollout": port the highest-leverage interactive demos onto a coherent shared `VizShell` / `VizStageAdapter` system, with mechanism-first prediction checks, accessible controls, calibrated toy claims, and compact AI companion demo-state emission.
+
+You just scoped the next generative-models slice as:
+
+- Target Score Matching / score-based models, not Flow Matching yet.
+- Replace the direct filesystem route re-export with `VizShell` + `VizStageAdapter`.
+- Add optional `chrome="legacy" | "notebook"` and `conceptId` to `DiffusionScoreViz`, defaulting to legacy.
+- In notebook mode, hide the legacy schedule quiz and add a DSM target prediction check for one highlighted noisy point.
+- Distinguish the conditional DSM target from the marginal score field.
+- Emit compact demo state.
+- Preserve legacy `/foundations/score-matching/`.
+
+I implemented that slice. Current local checks already run:
+
+- `npm run validate-content`: passed with 0 warnings / 0 errors.
+- `npm run typecheck`: passed.
+- `curl http://localhost:3001/domains/generative-models/score-matching/`: 200.
+- `curl http://localhost:3001/foundations/score-matching/`: 200.
+- `curl http://localhost:3001/domains/generative-models/flow-matching/`: 200.
+
+I have not yet run the production build after this implementation review prompt; I will stop the dev server, run `CF_NEXT_BUILD_CPUS=1 npm run build`, move generated output into the hidden parent stash, and restart port 3001 after applying your blockers.
+
+Please review the attached implementation for correctness, pedagogy, accessibility, route behavior, static-export risk, and visual coherence.
+
+Return:
+
+1. "PUBLISH BLOCKERS" - exact issues that must be fixed before this slice counts as done.
+2. "PEDAGOGY BLOCKERS" - unsupported claims, misleading math, or bad learner framing.
+3. "ACCESSIBILITY / UX BLOCKERS" - keyboard, aria, mobile, overflow, contrast, or nested-card issues.
+4. "STATIC EXPORT / BUILD RISK" - anything likely to fail `next build` or static export.
+5. "NICE-TO-HAVE" - improvements I should defer unless tiny.
+6. "VERDICT" - whether to accept after blockers, and the exact validation commands/routes to run.
+
+Please be strict and concise. If there are no blockers in a category, say "none".

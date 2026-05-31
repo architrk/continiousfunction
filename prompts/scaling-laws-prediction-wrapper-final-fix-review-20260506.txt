@@ -1,0 +1,28 @@
+Project: Continuous Function.
+
+Current slice: `/domains/scaling/scaling-laws/` prediction-first wrapper.
+
+Oracle fix review #1 said wrapper blockers were resolved, but child `ScalingLawsViz` still had user-facing literal-emergence wording after reveal: "has emerged", "DID emerge", "EMERGES", "EMERGED", "emergent capabilities", "emergence thresholds", and "Emergence threshold".
+
+Final fix applied only in `components/foundations/ScalingLawsViz.tsx`:
+- Remaining challenge hints now say "reasoning cutoff" / "metric cross the cutoff".
+- Prediction feedback now says the toy metric crosses or stays below the >=50% cutoff.
+- "DID emerge", "has emerged", and "hasn't emerged yet" were removed.
+- Small-scale insight now says toy thresholded metrics remain below cutoffs.
+- Main heading now says "Scaling Laws & Thresholded Metrics".
+- Challenge heading now says "Metric-cutoff challenge".
+- Buttons/result labels now say "CROSSES CUTOFF", "BELOW CUTOFF", and "CROSSED CUTOFF".
+- Panel heading and aria label now say thresholded metrics, not emergent abilities.
+- Chart marker now says "Metric cutoff".
+
+Local verification after this final fix:
+- `rg` found no remaining user-facing blocker strings matching: `has emerged|DID emerge|EMERGES|EMERGED|emergent capabilities|emergent abilities|Emergent abilities|emergence thresholds|Emergence threshold|phase transition|turn on`.
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+- `npx jest lib/contentLoader.test.ts --selectProjects unit --runInBand`
+- `CF_STATIC_EXPORT=0 npm run build`
+- Fresh `next start -p 3030` route fetch for `/domains/scaling/scaling-laws/`: status 200, source claim/math/demo anchors present, no KaTeX error.
+- Fresh headless Chrome checks for Loss Scaling and Emergence on desktop 1280 and mobile 390: child labs hidden before reveal, neutral metrics visible, no expected explanation leak, no literal-emergence leak, reveal enabled only after a choice, correct child lab mounted after reveal, no literal-emergence overclaim after reveal, no KaTeX error, and no body horizontal overflow.
+
+Please review only whether the remaining child wording blocker is resolved and whether this final fix introduced a new publish blocker. Return `publish` if acceptable; otherwise give the exact smallest edit.

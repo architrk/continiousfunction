@@ -1,0 +1,30 @@
+id: residual-connections
+title: "Residual Connections & Skip Connections"
+domain: attention-transformers
+slug: residual-connections
+difficulty: 3
+status: review
+importance: important
+prerequisites:
+  - attention-transformers
+leads_to:
+  - layer-normalization
+  - induction-heads
+related:
+  - batch-normalization
+  - swiglu
+  - weight-initialization
+tags:
+  - attention-transformers
+  - residuals
+  - skip-connections
+  - training-stability
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate
+short_description: "Why deep networks can keep useful features alive: each layer learns a correction to the identity instead of rewriting the whole representation from scratch."
+author: codex
+created: "2026-04-21"
+updated: "2026-04-21"
+estimated_read_time: 14

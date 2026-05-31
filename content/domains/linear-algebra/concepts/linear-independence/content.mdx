@@ -14,15 +14,21 @@ This matters because redundancy breaks uniqueness. If vectors are dependent, the
 
 **Definition (linear independence).** Vectors $v_1,\dots,v_k$ are *linearly independent* if
 
-$$a_1 v_1 + \cdots + a_k v_k = 0 \quad \Rightarrow \quad a_1 = \cdots = a_k = 0.$$
+$$
+a_1 v_1 + \cdots + a_k v_k = 0 \quad \Rightarrow \quad a_1 = \cdots = a_k = 0.
+$$
 
 Equivalently, they are *dependent* if there exists a non-zero coefficient vector $a \neq 0$ such that
 
-$$a_1 v_1 + \cdots + a_k v_k = 0.$$
+$$
+a_1 v_1 + \cdots + a_k v_k = 0.
+$$
 
 A matrix view is often the cleanest: let $V = [v_1\; v_2\;\cdots\; v_k]$ (columns are the vectors). Then
 
-$$V a = 0.$$
+$$
+V a = 0.
+$$
 
 The vectors are independent exactly when the only solution is $a=0$ (the nullspace is trivial). Two fast consequences:
 

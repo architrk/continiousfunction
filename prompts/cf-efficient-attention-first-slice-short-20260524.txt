@@ -1,0 +1,33 @@
+Answer now. Do not say what you will do. Minimum 700 words.
+
+We are building the first P0 design slice from your prior critique:
+"Build the shared Living Notebook Lab shell on the Efficient Attention concept notebook. The KV-cache memory equation should become the dominant object. The first viewport should show route spine, selected object, prediction/manipulation instrument, evidence ledger, invariant, and next move."
+
+Give a concrete implementation spec:
+
+1. Anchor object: exact object and why.
+2. First prediction question: exact learner-facing wording.
+3. Visible controls: exactly which sliders/toggles should appear first.
+4. Measurement: exactly what changes visually after manipulation.
+5. Invariant: exact sentence to preserve.
+6. Source/evidence: what gets pinned beside the object.
+7. Desktop layout: describe regions and order.
+8. Mobile layout at 390px: describe order and what is collapsed.
+9. Existing components to modify first.
+10. What to demote/remove from the first viewport.
+11. Acceptance checks.
+
+Be practical. Assume we can touch:
+- ConceptNotebookPage
+- SelectedObjectBar
+- ObjectRoomPanel
+- DemoPredictionCheckpoint
+- ObservationLedgerCard
+- the Efficient Attention visualization
+
+Output headings:
+## Decision
+## Layout
+## Interaction
+## Component Changes
+## Acceptance Checks

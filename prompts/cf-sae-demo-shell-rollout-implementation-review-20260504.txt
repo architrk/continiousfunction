@@ -1,0 +1,56 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. The current product direction is slow, high-quality concept growth: mechanism-first explanations, intuitive visuals, math/code witnesses, prediction checks, AI companion context, and later object-attached discussion.
+
+I just implemented the second slice of the shared "flagship demo shell rollout", targeting the Sparse Autoencoders concept. A prior GPT Pro Oracle scope review selected Sparse Autoencoders as the next best target and asked for a narrow patch:
+
+- keep legacy `/foundations` behavior intact by preserving the default dark self-contained visualization;
+- add a concept-route notebook shell wrapper around the filesystem concept `viz.tsx`;
+- add a `chrome="notebook"` mode to the foundation component so the concept route does not get a dark card nested inside the notebook shell;
+- replace game/challenge/winner language with mechanism-first prediction checks;
+- remove overclaims such as "Gated dominates", "best of both worlds", "OpenAI GPT-4 operating point", and toy `k` claims that sound empirical;
+- emit compact demo state for the AI companion;
+- fix the MDX toy code so TopK selects nonnegative scores consistently with the ReLU/TopK math.
+
+Files changed in this implementation:
+
+- `content/domains/representation-learning/concepts/sparse-autoencoders/viz.tsx`
+  - Now wraps the demo in `VizShell` + `VizStageAdapter`.
+  - Dynamically imports `SparseAutoencoderViz` with `ssr: false`.
+  - Passes `chrome="notebook"`.
+
+- `components/foundations/SparseAutoencoderViz.tsx`
+  - Adds `chrome?: 'legacy' | 'notebook'` with `legacy` default.
+  - Adds notebook override CSS for light readable embedding.
+  - Replaces the old game/countdown/score vocabulary with prediction checks.
+  - Changes challenges to mechanism-oriented checks: L1 shrinkage, TopK fixed budget, gated detection/magnitude split, and OpenAI-style TopK analogue caveat.
+  - Adds `emitDemoState` when selected SAE type or active-feature budget changes.
+  - Renames labels/axes to "Active features per token, L0", "Target average L0", and "Toy reconstruction MSE".
+  - Adds stronger caveat copy that the chart is an illustrative toy frontier, not trained SAE data or a benchmark.
+
+- `content/domains/representation-learning/concepts/sparse-autoencoders/content.mdx`
+  - Changes the toy code from `scores = W.T @ x` plus `np.abs(scores)` to nonnegative scores:
+    `scores = np.maximum(W.T @ x, 0.0)` and `np.argpartition(scores, -k)[-k:]`.
+
+Local validation after the implementation:
+
+- `npm run validate-content`: passed with 0 warnings / 0 errors.
+- `npm run typecheck`: passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build`: passed. Existing unrelated warnings remain for raw `<img>` usage on other pages and KaTeX display-newline warnings.
+- Local route smoke after restarting the correct dev server on port 3001:
+  `curl -I http://localhost:3001/domains/representation-learning/sparse-autoencoders/` returned `200 OK`.
+
+Please review the attached files as a strict implementation reviewer. I want blockers before this slice is considered complete, not a broad brainstorm.
+
+Questions:
+
+1. Are there any correctness, pedagogy, claim-calibration, accessibility, SSR/static-export, or UX blockers in this implementation?
+2. Did the new notebook shell avoid duplicate chrome while preserving legacy dark `/foundations` behavior?
+3. Is the prediction-check language now mechanism-first enough, or are there remaining "game / benchmark leaderboard / empirical operating point" leaks?
+4. Is the demo-state emission useful and safe for the AI companion context?
+5. Are there any exact copy/code changes you would require before continuing the rollout to the next demo?
+
+Please answer with:
+
+- "BLOCKERS" first, ordered by severity, with file/section references.
+- "REQUIRED PATCH" with exact text/code changes if blockers exist.
+- "ACCEPTABLE TO CONTINUE" if no blockers remain.
+- Keep optional polish separate from blockers.

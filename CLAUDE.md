@@ -30,7 +30,7 @@ Interactive visualizations follow a consistent pattern:
 - Shared math types and utilities in `lib/mathObjects.ts` (Point2D, ScalarField2D, MATH_COLORS palette, numerical gradient computation)
 
 ### Layout
-- `components/Layout.tsx` wraps all pages via `_app.tsx`
+- `components/app/Layout.tsx` wraps all pages via `_app.tsx`
 - Global styles in `styles/globals.css`
 - Static export mode (`output: 'export'` in next.config.mjs)
 
@@ -78,67 +78,24 @@ Oracle CLI bundles prompts with files to query AI models for code review, analys
 
 **Repository:** https://github.com/steipete/oracle
 
-### Supported Models
-
-- **GPT-5.1 Pro** (default), GPT-5.1 Codex, GPT-5.1
-- **Gemini 3 Pro**
-- **Claude Sonnet 4.5**, Claude Opus 4.1
-- **OpenRouter** models
-
-### Execution Modes
-
-| Mode | Description |
-|------|-------------|
-| **API** | Direct API calls (requires API keys) |
-| **Browser** | Automates ChatGPT via Chromium (no API key needed) |
-| **Manual** | Generates bundles for manual pasting (`--render --copy`) |
-| **TUI** | Interactive terminal mode (`oracle tui`) |
-
-### Installation
+### Local Setup
 
 ```bash
 npm install -g @steipete/oracle
-# Or use npx (prefer over pnpx due to sqlite binding issues):
-npx -y @steipete/oracle [options]
 ```
 
-### Essential CLI Flags
-
-| Flag | Purpose |
-|------|---------|
-| `-p, --prompt` | User query (required) |
-| `-f, --file` | File paths with glob support |
-| `-e, --engine` | `api` or `browser` |
-| `-m, --model` | Single model selection |
-| `--models` | Comma-separated for multi-model runs |
-| `--wait` | Block until completion |
-| `--dry-run` | Preview bundle (`summary`, `json`, `full`) |
-| `--files-report` | Show per-file token usage |
-| `--render` | Display assembled bundle |
-| `--copy` | Copy bundle to clipboard |
-| `--write-output` | Write response to file |
-
-### Usage Examples
+Use browser mode for this repo through Oracle's documented manual-login flow:
 
 ```bash
-# API mode with file context
-npx -y @steipete/oracle -p "Review this code" --file src/*.ts
-
-# Browser automation (no API key needed)
-npx -y @steipete/oracle --engine browser -p "Analyze architecture" \
-  --file "src/**/*.ts" --wait
-
-# Multi-model comparison
-npx -y @steipete/oracle -p "Review implementation" \
-  --models gpt-5.1-pro,gemini-3-pro,claude-sonnet-4.5 \
-  --file "src/**/*.ts" --wait
-
-# Preview without spending tokens
-npx -y @steipete/oracle --dry-run summary -p "Question" --file docs/*.md
-
-# Manual mode for ChatGPT pasting
-npx -y @steipete/oracle --render --copy -p "Explain this" --file src/main.ts
+./scripts/oracle/login.sh
+./scripts/oracle/run.sh <slug> <prompt-file> <write-output> [--file <path> ...]
 ```
+
+The persistent Oracle browser profile is `~/.oracle/browser-profile-continuous-function`. It must be logged into ChatGPT as `Archit Khare / adrinkscoffee@gmail.com`.
+
+Do not use normal Chrome cookie-copy, `--remote-chrome`, or `scripts/oracle/start-chrome-profile.sh` unless the user explicitly asks.
+
+See `ORACLE_GUIDE.md` for first-time login, config, dry-run, and recovery details.
 
 ### Session Management
 
@@ -161,29 +118,13 @@ awk '/^\*\*\* Begin Patch/{f=1} f; /^\*\*\* End Patch/{print; f=0}' "$LOG" > pat
 awk '/^diff --git/{f=1} f' "$LOG" > changes.diff
 ```
 
-### Configuration
-
-Create `~/.oracle/config.json` (JSON5 format):
-```json5
-{
-  model: "gpt-5.1-pro",
-  engine: "api",
-  filesReport: true,
-  notify: true,
-  browser: {
-    chatgptUrl: "https://chatgpt.com/your-workspace-url",
-    inputTimeout: "180s",
-    timeout: "30m"
-  }
-}
-```
-
 ### Environment Variables
 
 - `OPENAI_API_KEY` - GPT models
 - `GEMINI_API_KEY` - Gemini 3 Pro
 - `ANTHROPIC_API_KEY` - Claude models
 - `ORACLE_HOME_DIR` - Override session storage location
+- `ORACLE_BROWSER_PROFILE_DIR` - Override Oracle's persistent browser profile only when the user explicitly changes the target session
 
 ### MCP Integration
 
@@ -196,45 +137,10 @@ oracle-mcp
 
 Configure in `.cursor/mcp.json` for Cursor IDE integration.
 
-### Advanced Features
-
-- **Extended Thinking Mode (GPT-5.2 Pro):** Use `--browser-extended-thinking` to enable longer reasoning time for complex questions. Requires local fork until next npm release.
-- **Remote Browser Service:** Run `oracle serve` on a signed-in host, connect via `--remote-host` and `--remote-token`
-- **Azure OpenAI:** Use `--azure-endpoint`, `--azure-deployment`, `--azure-api-version`
-- **Multi-model aggregation:** Combines responses with aggregated cost tracking
-
-### Extended Thinking (GPT-5.2 Pro)
-
-For complex reasoning tasks, enable extended thinking mode:
-
-```bash
-oracle --engine browser \
-  --browser-extended-thinking \
-  --browser-chrome-profile "Profile 1" \
-  --browser-port 9888 \
-  --browser-timeout 60m \
-  -m "gpt-5.2-pro" \
-  --wait \
-  -p "Your complex reasoning prompt"
-```
-
-**Note:** This feature requires installing Oracle from the local fork at `~/Desktop/oracle-fork` until the next npm release:
-```bash
-cd ~/Desktop/oracle-fork && npm link
-```
-
-### Platform Support
-
-| Platform | Status |
-|----------|--------|
-| macOS | Stable |
-| Linux | Functional (may need `--browser-chrome-path`, `--browser-cookie-path`) |
-| Windows | Supported (manual login or inline cookies recommended) |
-
 ### AI Agent Best Practices
 
-- Run Oracle in background (`run_in_background: true`)
-- Check output every 2-3 minutes
-- Wait 15-20 minutes for GPT-5 Pro responses
+- Run `--dry-run summary` before large requests
+- Save outputs with `--slug` and `--write-output responses/...`
+- Reattach with `oracle session <slug> --render` instead of duplicating a stuck run
+- Wait 15-60 minutes for large Pro browser responses
 - Use unique session IDs; never reuse while a run is active
-- Prefer `--dry-run summary` to preview token usage before expensive runs

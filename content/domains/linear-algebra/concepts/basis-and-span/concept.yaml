@@ -3,7 +3,7 @@ title: "Basis and Span"
 domain: linear-algebra
 slug: basis-and-span
 difficulty: 2
-status: published
+status: review
 importance: critical
 prerequisites:
   - vector-spaces

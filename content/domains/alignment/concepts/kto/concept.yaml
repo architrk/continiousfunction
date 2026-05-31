@@ -1,18 +1,19 @@
 id: kto
-title: "KTO: Alignment from Binary Feedback via Human-Aware Losses"
+title: "Kahneman-Tversky Optimization"
 domain: alignment
 slug: kto
 difficulty: 4
 status: published
 importance: important
 prerequisites:
-  - rlhf
   - dpo
 leads_to:
-  - reward-hacking
+  - process-reward-models
 related:
   - dpo
+  - rlhf
   - reward-hacking
+  - test-time-compute
 tags:
   - alignment
   - kto
@@ -22,9 +23,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "How to align from thumbs-up/down data: shape a KL-anchored objective so gradients focus on borderline cases instead of extreme, noisy feedback."
+sources:
+  - id: ethayarajh-2024-kto
+    kind: paper
+    title: "KTO: Model Alignment as Prospect Theoretic Optimization"
+    authors: "Ethayarajh et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2402.01306"
+    note: "Grounds KTO as a HALO objective that learns from binary desirable/undesirable feedback instead of pairwise preferences."
+claim_checks:
+  - id: kto-binary-label-kl-reference-saturation
+    status: source-checked
+    claim: "KTO trains from binary desirable/undesirable feedback using a label-dependent logistic value of the margin r_theta(x,y)-z0, where r_theta is a policy/reference log-ratio and z0 is KL-derived; desirable updates increase the margin, undesirable updates decrease it, and beta controls saturation."
+    source_ids:
+      - ethayarajh-2024-kto
+    support: "Ethayarajh et al. define KTO with binary desirable/undesirable labels, r_theta=log(pi_theta/pi_ref), z0 as a KL reference, and v_D/v_U logistic values containing beta. The page's first two exported math refs now cover that objective plus dL_D/dr_theta<0 and dL_U/dr_theta>0 under stop-gradient z0; code/demo show saturation and directions."
+    caveat: "Covers only the KTO objective/update mechanics. It does not review claims that KTO outperforms DPO, prospect theory is psychologically true for text, every library implements z0 this way, or that KTO prevents reward hacking or guarantees alignment."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Ethayarajh et al. support KTO as binary desirable/undesirable optimization with r_theta=log(pi_theta/pi_ref), KL reference z0, logistic label values, and beta saturation. The first two exported equations now witness the objective and stop-gradient derivative signs; code/demo mirror the update directions."
+    object_refs:
+      - "#source-span-ethayarajh-2024-kto"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "KTO turns binary desirable/undesirable labels into a reference-relative utility loss: push a labeled output's policy/reference log-ratio above or below a KL-derived baseline, with saturating gradients."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 18
-

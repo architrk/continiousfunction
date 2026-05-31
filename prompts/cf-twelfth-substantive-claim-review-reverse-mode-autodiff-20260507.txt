@@ -1,0 +1,40 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, calculus/reverse-mode-autodiff#reverse-mode-scalar-loss-gradient.
+
+Claim under review:
+"Reverse-mode AD records a forward evaluation trace of primitive operations and saved values, seeds a scalar output cotangent with 1, then sweeps backward applying local VJPs and += accumulation so one reverse pass computes the full gradient of one scalar loss with respect to many inputs."
+
+Cited source:
+Baydin et al., "Automatic Differentiation in Machine Learning: a Survey", JMLR 18(153):1-43 (2018), https://jmlr.csail.mit.edu/papers/v18/17-468.html
+
+Primary-source evidence I checked before this prompt from the official JMLR PDF:
+- PDF page 3: Baydin et al. distinguish AD from symbolic/numerical differentiation and say AD evaluates derivatives accurately by applying symbolic differentiation rules while keeping track of derivative values.
+- PDF page 12: Section 3.2 says reverse mode AD propagates derivatives backward from a given output, complements each intermediate variable vi with an adjoint/cotangent, and for backpropagation the considered output is a scalar error.
+- PDF page 12: Baydin et al. state reverse mode uses a two-phase process: run original function code forward to populate intermediate variables and record graph dependencies, then calculate derivatives by propagating adjoints backward from outputs to inputs.
+- PDF page 12: In the reused-variable example, a variable affects the output through two downstream variables, so its adjoint is a sum of downstream contributions; the paper shows the contribution being computed incrementally.
+- PDF pages 12-13: The reverse pass starts with output adjoint v5_bar = y_bar = partial y / partial y = 1 and computes both input derivatives in one reverse pass.
+- PDF page 12: For f:R^n -> R, one reverse-mode application computes the full gradient, while forward mode needs n passes; this is why reverse mode is the mainstay for scalar objectives with many parameters.
+- PDF page 13: Baydin et al. describe reverse mode computing transposed Jacobian-vector products by initializing the reverse phase with an output vector.
+- PDF page 13: Baydin et al. note reverse mode has increased storage requirements and mention checkpointing/data-flow analysis as implementation strategies.
+- PDF page 18: Baydin et al. distinguish static and dynamic computational graphs, useful for caveat wording around control-flow conventions.
+
+Attached local files:
+- content/domains/calculus/concepts/reverse-mode-autodiff/concept.yaml
+- content/domains/calculus/concepts/reverse-mode-autodiff/content.mdx
+- content/domains/calculus/concepts/reverse-mode-autodiff/viz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether Baydin et al. substantively supports the claim as written, not merely that the page has a source ID.
+2. Check whether the local math/code/demo witnesses match the claim's scope: forward evaluation trace, saved primitive/intermediate values, scalar output cotangent seed 1, reverse sweep, local VJPs/transposed-Jacobian-vector products, += accumulation for reused values, and one reverse pass for a scalar loss with many inputs.
+3. Identify any overclaim, missing caveat, misleading wording, or witness mismatch.
+4. If publishable after small edits, provide the exact revised evidence_review.summary and caveat wording you would accept.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require memory-optimal checkpointing, every nonsmooth primitive convention, every control-flow behavior, full framework coverage, or higher-order derivative theory unless the current wording accidentally claims them.
+- If the source URL should align with the reviewed JMLR page rather than the arXiv page, say so explicitly as a small fix.

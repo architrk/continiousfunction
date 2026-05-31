@@ -140,7 +140,7 @@ export default withMDX(nextConfig)
 
 ```tsx
 import type { AppProps } from 'next/app'
-import Layout from '@/components/Layout'
+import Layout from '@/components/app/Layout'
 import 'katex/dist/katex.min.css'  // KaTeX styles - CRITICAL!
 import '@/styles/globals.css'
 
@@ -1057,7 +1057,7 @@ export function useExplorable() {
 ### 7.2 Two-Column Layout
 
 ```tsx
-// components/ExplorableLayout.tsx
+// components/explorable/ExplorableLayout.tsx
 import { ReactNode } from 'react'
 import { ExplorableProvider } from '@/contexts/ExplorableContext'
 
@@ -1101,7 +1101,7 @@ export function ExplorableLayout({
 ### 7.3 Scroll-Triggered Sections
 
 ```tsx
-// components/ExplorableSection.tsx
+// components/explorable/ExplorableSection.tsx
 import { useEffect, useRef, ReactNode } from 'react'
 import { useExplorable } from '@/contexts/ExplorableContext'
 
@@ -1158,8 +1158,8 @@ export function ExplorableSection({
 
 ```tsx
 // pages/topics/optimization.tsx
-import { ExplorableLayout } from '@/components/ExplorableLayout'
-import { ExplorableSection } from '@/components/ExplorableSection'
+import { ExplorableLayout } from '@/components/explorable/ExplorableLayout'
+import { ExplorableSection } from '@/components/explorable/ExplorableSection'
 import { useExplorable } from '@/contexts/ExplorableContext'
 
 function OptimizationVisualPanel() {

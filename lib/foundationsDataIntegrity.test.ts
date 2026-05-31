@@ -3,6 +3,7 @@ import path from 'path'
 
 import { conceptRelations, foundationsConcepts, studyOrder } from '../data/foundationsData'
 import { conceptVisualizationMap } from '../data/visualizationMappings'
+import { loadConceptMetas } from './contentLoader'
 
 function sorted<T>(arr: T[]): T[] {
   return [...arr].sort()
@@ -80,25 +81,28 @@ describe('foundationsData integrity', () => {
   })
 
   it('visualization mappings reference valid concepts and registered viz names', () => {
-    const conceptIdSet = new Set(foundationsConcepts.map(c => c.id))
+    const conceptIdSet = new Set([
+      ...foundationsConcepts.map(c => c.id),
+      ...loadConceptMetas().map((c) => c.id),
+    ])
 
     const conceptMapKeys = Object.keys(conceptVisualizationMap)
     for (const conceptId of conceptMapKeys) {
       expect(conceptIdSet.has(conceptId)).toBe(true)
     }
 
-    // Ensure every mapped visualization name is registered in the page-level vizMap.
-    const conceptPagePath = path.join(process.cwd(), 'pages', 'foundations', '[id].tsx')
+    // Ensure every mapped visualization name is registered in the foundation viz deck.
+    const conceptPagePath = path.join(process.cwd(), 'components', 'foundations', 'FoundationsVizDeck.tsx')
     const conceptPageSrc = fs.readFileSync(conceptPagePath, 'utf8')
 
     const vizMapStart = conceptPageSrc.indexOf('const vizMap')
     expect(vizMapStart).toBeGreaterThan(-1)
 
-    const vizMapEnd = conceptPageSrc.indexOf('// Escape HTML entities', vizMapStart)
+    const vizMapEnd = conceptPageSrc.indexOf('export default function', vizMapStart)
     expect(vizMapEnd).toBeGreaterThan(vizMapStart)
 
     const vizMapSrc = conceptPageSrc.slice(vizMapStart, vizMapEnd)
-    const vizNameMatches = [...vizMapSrc.matchAll(/^\s*'([^']+)':/gm)]
+    const vizNameMatches = [...vizMapSrc.matchAll(/^\s*([A-Za-z0-9_]+),\s*$/gm)]
     const registeredVizNames = new Set(vizNameMatches.map(m => m[1]))
 
     for (const vizNames of Object.values(conceptVisualizationMap)) {

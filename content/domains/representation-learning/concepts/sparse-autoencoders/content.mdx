@@ -1,0 +1,118 @@
+---
+title: "Sparse Autoencoders: Feature Dictionaries for Mechanistic Interpretability"
+---
+
+## Intuition
+
+Large models do not usually store one clean concept per neuron.
+
+Instead, many concepts are packed into the same activation vector. A direction might partly mean "Python code", partly mean "HTML tag", and partly mean "list formatting". This is the **superposition** problem: the model is using the same coordinates for several overlapping features.
+
+A sparse autoencoder (SAE) tries to learn a better coordinate system.
+
+- The **encoder** looks at a dense activation and asks which hidden features are present.
+- The **decoder** turns those hidden features back into a reconstruction of the original activation.
+- The **sparsity constraint** says only a small number of features are allowed to fire for each token.
+
+That is intended to make the latent code behave like a **parts list** for the residual stream. Instead of saying "this activation is a mysterious 4096-dimensional vector", we say "this activation seems to use a few reusable feature directions". The practical teaching knob is the **explanatory budget per activation**: how many features are you allowed to use before interpretability starts to melt into dense mush again?
+
+## Math
+
+Let $x \in \mathbb{R}^d$ be an activation vector from some model layer, often the residual stream.
+
+### Encode to sparse latents, decode back to the activation
+
+An SAE maps $x$ into a sparse latent code $z \in \mathbb{R}^m$ and reconstructs it as $\hat x$:
+
+$$
+z = \mathrm{ReLU}(W_{\text{enc}}(x - b_{\text{pre}}) + b_{\text{enc}}),
+\qquad
+\hat x = W_{\text{dec}} z + b_{\text{pre}}.
+$$
+
+The columns of $W_{\text{dec}}$ act like a learned **feature dictionary**. If $z_j$ is active, the $j$th feature direction contributes to the reconstruction.
+
+### Reconstruction plus sparsity
+
+The classic objective balances faithfulness and simplicity:
+
+$$
+\mathcal{L}
+=
+\lVert x - \hat x \rVert_2^2
++
+\lambda \lVert z \rVert_1.
+$$
+
+- $\lVert x - \hat x \rVert_2^2$ asks the dictionary to explain the real activation.
+- $\lambda \lVert z \rVert_1$ punishes too many active features.
+
+If $\lambda$ is too small, the code becomes dense and hard to interpret. If it is too large, reconstruction worsens and useful structure may be missed or pushed into inactive latents.
+
+### Top-k sparse coding
+
+Some recent SAE work replaces the soft $L_1$ penalty with a hard "only keep the best $k$ features" rule:
+
+$$
+a = \mathrm{ReLU}(W_{\text{enc}}(x - b_{\text{pre}}) + b_{\text{enc}}),
+\qquad
+z = \mathrm{TopK}(a, k),
+\qquad
+\hat x = W_{\text{dec}}z + b_{\text{pre}},
+\qquad
+\mathcal{L} = \lVert x - \hat x \rVert_2^2.
+$$
+
+Here $\mathrm{TopK}(a, k)$ keeps the $k$ largest nonnegative activation scores and sets the rest to zero.
+
+Now $k$ is explicit: each activation gets a fixed budget of kept latent slots. This is easier to reason about pedagogically and makes the reconstruction versus interpretability tradeoff visible in one number.
+
+## Code
+
+```python
+import numpy as np
+
+rs = np.random.RandomState(0)
+n, d, m, k = 256, 10, 24, 3
+D_true = rs.randn(d, m); D_true /= np.linalg.norm(D_true, axis=0, keepdims=True)
+Z_true = np.zeros((n, m))
+for row in Z_true:
+    row[rs.choice(m, k, replace=False)] = rs.uniform(0.5, 1.5, k)
+X = Z_true @ D_true.T + 0.02 * rs.randn(n, d)
+
+
+def train_sae(lam, steps=500, lr=0.05):
+    W_enc, W_dec = 0.1 * rs.randn(m, d), 0.1 * rs.randn(d, m)
+    for _ in range(steps):
+        pre = X @ W_enc.T
+        Z = np.maximum(pre, 0.0)
+        X_hat = Z @ W_dec.T
+        err = (X_hat - X) / n
+        grad_dec = err.T @ Z
+        grad_z = err @ W_dec + lam * (Z > 0) / n
+        W_enc -= lr * ((grad_z * (pre > 0)).T @ X)
+        W_dec -= lr * grad_dec
+        W_dec /= np.linalg.norm(W_dec, axis=0, keepdims=True) + 1e-9
+    Z = np.maximum(X @ W_enc.T, 0.0)
+    X_hat = Z @ W_dec.T
+    return np.mean((X - X_hat) ** 2), np.mean(np.count_nonzero(Z > 1e-3, axis=1))
+
+
+faithful = train_sae(lam=0.0005)
+sparse = train_sae(lam=0.30)
+print("low lambda:  mse %.4f, avg active latents %.1f" % faithful)
+print("high lambda: mse %.4f, avg active latents %.1f" % sparse)
+assert sparse[1] < faithful[1] and sparse[0] > faithful[0]
+```
+
+This toy SAE trains an encoder and decoder dictionary on synthetic activations. Raising $\lambda$ makes the latent code sparser on average, but the reconstruction error rises: exactly the local tradeoff the claim is about.
+
+## Interactive Demo
+
+Use the demo to explore the main SAE design tradeoff:
+
+- how reconstruction error falls as more features are allowed to fire,
+- how this toy frontier illustrates an $L_1$ shrinkage failure mode and contrasts it with `TopK` and gated-style mechanisms,
+- and how "better reconstruction" is not the same thing as "cleaner, more interpretable features".
+
+{/* viz.tsx component renders here if it exists */}

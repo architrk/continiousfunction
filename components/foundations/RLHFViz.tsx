@@ -1034,10 +1034,10 @@ export default function RLHFDemo() {
                   Helpfulness →
                 </text>
                 <text
-                  x={scaleX(0) - 14}
+                  x={scaleX(0) + 4}
                   y={scaleY(1)}
                   className="axis-label"
-                  textAnchor="end"
+                  textAnchor="start"
                 >
                   ↑ Harmlessness
                 </text>

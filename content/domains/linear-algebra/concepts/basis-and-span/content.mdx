@@ -14,7 +14,9 @@ That uniqueness is why bases show up everywhere: once you pick a basis, a compli
 
 **Span.** Given vectors $v_1,\dots,v_k$ in a vector space $V$, their span is
 
-$$\operatorname{span}(v_1,\dots,v_k) = \left\{\sum_{i=1}^k a_i v_i \;\middle|\; a_i \in \mathbb{R} \right\}.$$
+$$
+\operatorname{span}(v_1,\dots,v_k) = \left\{\sum_{i=1}^k a_i v_i \;\middle|\; a_i \in \mathbb{R} \right\}.
+$$
 
 **Basis.** A set $\{b_1,\dots,b_n\}$ is a basis of $V$ if:
 
@@ -23,15 +25,21 @@ $$\operatorname{span}(v_1,\dots,v_k) = \left\{\sum_{i=1}^k a_i v_i \;\middle|\; 
 
 **Key insight:** in a basis, coordinates are unique. If $x \in V$ and $\{b_i\}$ is a basis, then there exists a unique coefficient vector $c \in \mathbb{R}^n$ such that
 
-$$x = \sum_{i=1}^n c_i b_i.$$
+$$
+x = \sum_{i=1}^n c_i b_i.
+$$
 
 Matrix form: let $B = [b_1\;\cdots\; b_n]$. Then
 
-$$x = Bc.$$
+$$
+x = Bc.
+$$
 
 If $B$ is square and invertible (a basis in $\mathbb{R}^n$), then
 
-$$c = B^{-1}x.$$
+$$
+c = B^{-1}x.
+$$
 
 ## Code
 

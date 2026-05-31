@@ -1,9 +1,15 @@
 'use client'
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react'
+import { emitDemoState } from '../../lib/demoState'
 
 type ArchitectureId = 'MHA' | 'GQA' | 'MQA'
 type GamePhase = 'setup' | 'countdown' | 'reveal'
+
+type GQAVizProps = {
+  chrome?: 'legacy' | 'notebook'
+  conceptId?: string
+}
 
 // Challenge scenarios for architecture prediction
 const ARCH_CHALLENGES = [
@@ -20,7 +26,7 @@ function getArchPredictionFeedback(
 ): string {
   const explanations: Record<ArchitectureId, string> = {
     'MHA': 'MHA gives each query head its own KV head, maximizing expressiveness. Best when quality is paramount and memory is abundant.',
-    'GQA': 'GQA shares KV heads among groups of query heads. This is the "Goldilocks" choice—Llama 3 uses GQA-8 for great quality with 8× KV cache reduction.',
+    'GQA': 'GQA shares KV heads among groups of query heads. Llama-family models use this pattern to reduce KV-cache size; the exact reduction is Hq / Hkv.',
     'MQA': 'MQA uses a single KV head for ALL queries—maximum memory savings but some quality loss. Great for high-throughput serving.',
   }
 
@@ -71,6 +77,76 @@ const ARCH_CONFIGS: ArchConfig[] = [
     numKVHeads: 1,
   },
 ]
+
+const NOTEBOOK_HQ_OPTIONS = [16, 32, 64]
+const NOTEBOOK_HEAD_DIM_OPTIONS = [64, 128]
+const NOTEBOOK_CONTEXT_OPTIONS = [4096, 32768, 128000, 256000]
+const NOTEBOOK_BATCH = 1
+const NOTEBOOK_LAYERS = 32
+const NOTEBOOK_BYTES = 2
+
+function getKvHeadOptions(hq: number): number[] {
+  return Array.from(new Set([hq, hq / 2, hq / 4, hq / 8, 1]
+    .filter((value) => Number.isInteger(value) && value >= 1 && hq % value === 0)))
+}
+
+function getGroupSizeOptions(hq: number): number[] {
+  return Array.from(new Set([1, 2, 4, 8, 16, 32, 64]
+    .filter((value) => value <= hq && hq % value === 0)))
+}
+
+function getArchitectureClass(hq: number, hkv: number): ArchitectureId {
+  if (hkv === hq) return 'MHA'
+  if (hkv === 1) return 'MQA'
+  return 'GQA'
+}
+
+function getKvCacheGb({
+  tokens,
+  layers,
+  hkv,
+  headDim,
+  batch = NOTEBOOK_BATCH,
+  bytes = NOTEBOOK_BYTES,
+}: {
+  tokens: number
+  layers: number
+  hkv: number
+  headDim: number
+  batch?: number
+  bytes?: number
+}): number {
+  return batch * layers * tokens * hkv * headDim * 2 * bytes / 1e9
+}
+
+function formatGb(value: number): string {
+  if (value >= 100) return `${value.toFixed(0)} GB`
+  if (value >= 10) return `${value.toFixed(1)} GB`
+  return `${value.toFixed(2)} GB`
+}
+
+function formatPercent(value: number): string {
+  const percent = value * 100
+  if (percent < 10) return `${percent.toFixed(1)}%`
+  return `${percent.toFixed(0)}%`
+}
+
+function formatTokens(value: number): string {
+  if (value === 4096) return '4k'
+  if (value === 32768) return '32k'
+  return value >= 1000 ? `${Math.round(value / 1000)}k` : String(value)
+}
+
+function formatRatioChoice(value: number): string {
+  if (value === 1) return '100%'
+  const inverse = 1 / value
+  if (Number.isInteger(inverse)) return `1/${inverse}`
+  return formatPercent(value)
+}
+
+function formatReductionFactor(value: number): string {
+  return Number.isInteger(value) ? `${value}x` : `${value.toFixed(1)}x`
+}
 
 interface ParamStats {
   qParams: number
@@ -180,7 +256,8 @@ const ArchitectureDiagramColumn: React.FC<ArchitectureDiagramColumnProps> = ({
   return (
     <div
       style={{
-        flex: '1 1 0',
+        flex: '1 1 15rem',
+        minWidth: 'min(100%, 15rem)',
         borderRadius: '0.75rem',
         border: isActive
           ? '1px solid rgba(249, 115, 22, 0.9)'
@@ -500,106 +577,869 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
         Approximate parameters for Q / K / V projections for a Llama&nbsp;3
         style layer (32 Q heads, grouped KV heads).
       </div>
-      <table
+      <div
         style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: '0.75rem',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: '0.25rem',
         }}
+        aria-label="Projection parameter counts table"
       >
-        <thead>
-          <tr
-            style={{
-              color: 'rgba(148,163,184,0.95)',
-              textAlign: 'left',
-            }}
-          >
-            <th style={{ padding: '0.35rem 0.35rem' }}>Arch</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>Q heads</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>KV heads</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>KV params</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>Total (Q+KV)</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>vs MHA</th>
-          </tr>
-        </thead>
-        <tbody>
-          {configs.map(c => {
-            const s = statsById[c.id]
-            const isActive = c.id === activeId
-            const rel = s.totalParams / baselineTotal
-            return (
-              <tr
-                key={c.id}
-                style={{
-                  backgroundColor: isActive
-                    ? 'rgba(249, 115, 22, 0.12)'
-                    : 'transparent',
-                  color: '#e5e7eb',
-                }}
-              >
-                <td
+        <table
+          style={{
+            width: '100%',
+            minWidth: '28rem',
+            borderCollapse: 'collapse',
+            fontSize: '0.75rem',
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                color: 'rgba(148,163,184,0.95)',
+                textAlign: 'left',
+              }}
+            >
+              <th style={{ padding: '0.35rem 0.35rem' }}>Arch</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>Q heads</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>KV heads</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>KV params</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>Total (Q+KV)</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>vs MHA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {configs.map(c => {
+              const s = statsById[c.id]
+              const isActive = c.id === activeId
+              const rel = s.totalParams / baselineTotal
+              return (
+                <tr
+                  key={c.id}
                   style={{
-                    padding: '0.28rem 0.35rem',
-                    whiteSpace: 'nowrap',
+                    backgroundColor: isActive
+                      ? 'rgba(249, 115, 22, 0.12)'
+                      : 'transparent',
+                    color: '#e5e7eb',
                   }}
                 >
-                  <span
+                  <td
                     style={{
-                      fontWeight: 600,
-                      fontSize: '0.75rem',
-                      marginRight: '0.25rem',
+                      padding: '0.28rem 0.35rem',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {c.shortLabel}
-                  </span>
-                  <span
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        marginRight: '0.25rem',
+                      }}
+                    >
+                      {c.shortLabel}
+                    </span>
+                    <span
+                      style={{
+                        color: 'rgba(148,163,184,0.95)',
+                      }}
+                    >
+                      {c.label}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.28rem 0.35rem' }}>
+                    {c.numQHeads}
+                  </td>
+                  <td style={{ padding: '0.28rem 0.35rem' }}>
+                    {c.numKVHeads}
+                  </td>
+                  <td
                     style={{
-                      color: 'rgba(148,163,184,0.95)',
+                      padding: '0.28rem 0.35rem',
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    {c.label}
-                  </span>
-                </td>
-                <td style={{ padding: '0.28rem 0.35rem' }}>
-                  {c.numQHeads}
-                </td>
-                <td style={{ padding: '0.28rem 0.35rem' }}>
-                  {c.numKVHeads}
-                </td>
-                <td
-                  style={{
-                    padding: '0.28rem 0.35rem',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {formatParams(s.kvParams)}
-                </td>
-                <td
-                  style={{
-                    padding: '0.28rem 0.35rem',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {formatParams(s.totalParams)}
-                </td>
-                <td
-                  style={{
-                    padding: '0.28rem 0.35rem',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {(rel * 100).toFixed(0)}%
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                    {formatParams(s.kvParams)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '0.28rem 0.35rem',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {formatParams(s.totalParams)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '0.28rem 0.35rem',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {(rel * 100).toFixed(0)}%
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
-const AttentionArchitecturesExplorer: React.FC = () => {
+const GQANotebookExplorer: React.FC<{ conceptId: string }> = ({ conceptId }) => {
+  const [hq, setHq] = useState(32)
+  const [hkv, setHkv] = useState(8)
+  const [tokens, setTokens] = useState(128000)
+  const [headDim, setHeadDim] = useState(128)
+  const [selectedQ, setSelectedQ] = useState(9)
+  const [predictedGroupSize, setPredictedGroupSize] = useState<number | null>(null)
+  const [predictedRatio, setPredictedRatio] = useState<number | null>(null)
+  const [revealed, setRevealed] = useState(false)
+
+  const kvOptions = useMemo(() => getKvHeadOptions(hq), [hq])
+  const groupSizeOptions = useMemo(() => getGroupSizeOptions(hq), [hq])
+  const ratioOptions = useMemo(
+    () => kvOptions.map((kvHeads) => kvHeads / hq),
+    [hq, kvOptions]
+  )
+
+  const groupSize = hq / hkv
+  const selectedKv = Math.min(hkv - 1, Math.floor(selectedQ / groupSize))
+  const architecture = getArchitectureClass(hq, hkv)
+  const ratio = hkv / hq
+  const reductionFactor = hq / hkv
+  const kvCacheGb = getKvCacheGb({
+    tokens,
+    layers: NOTEBOOK_LAYERS,
+    hkv,
+    headDim,
+  })
+  const mhaCacheGb = getKvCacheGb({
+    tokens,
+    layers: NOTEBOOK_LAYERS,
+    hkv: hq,
+    headDim,
+  })
+  const groupPredictionCorrect = predictedGroupSize === groupSize
+  const ratioPredictionCorrect =
+    predictedRatio !== null && Math.abs(predictedRatio - ratio) < 1e-9
+  const canReveal = predictedGroupSize !== null && predictedRatio !== null
+
+  const qNodes = useMemo(() => {
+    const top = 26
+    const bottom = 26
+    const height = 272
+    const spacing = hq > 1 ? (height - top - bottom) / (hq - 1) : 0
+    return Array.from({ length: hq }, (_, index) => ({
+      index,
+      x: 92,
+      y: top + index * spacing,
+    }))
+  }, [hq])
+
+  const kvNodes = useMemo(() => {
+    const top = 26
+    const bottom = 26
+    const height = 272
+    const spacing = hkv > 1 ? (height - top - bottom) / (hkv - 1) : 0
+    return Array.from({ length: hkv }, (_, index) => ({
+      index,
+      x: 402,
+      y: hkv === 1 ? height / 2 : top + index * spacing,
+    }))
+  }, [hkv])
+
+  const kvPlaceholderNodes = useMemo(() => {
+    const columns = hkv > 16 ? 4 : hkv > 4 ? 2 : 1
+    const rows = Math.ceil(hkv / columns)
+    const xStart = 402 - (columns - 1) * 18
+    const yStart = 136 - (rows - 1) * 11
+
+    return Array.from({ length: hkv }, (_, index) => ({
+      index,
+      x: xStart + (index % columns) * 36,
+      y: yStart + Math.floor(index / columns) * 22,
+    }))
+  }, [hkv])
+
+  const edges = useMemo(
+    () =>
+      qNodes.map((q) => {
+        const kvIndex = Math.min(hkv - 1, Math.floor(q.index / groupSize))
+        const kv = kvNodes[kvIndex]
+        return {
+          id: `q-${q.index}-kv-${kvIndex}`,
+          q,
+          kv,
+          kvIndex,
+        }
+      }),
+    [groupSize, hkv, kvNodes, qNodes]
+  )
+
+  const resetReveal = () => {
+    setRevealed(false)
+  }
+
+  const resetPredictions = () => {
+    setPredictedGroupSize(null)
+    setPredictedRatio(null)
+    setRevealed(false)
+  }
+
+  const applyHq = (nextHq: number) => {
+    const nextKvOptions = getKvHeadOptions(nextHq)
+    setHq(nextHq)
+    setHkv((current) =>
+      nextKvOptions.includes(current) ? current : nextKvOptions[Math.min(1, nextKvOptions.length - 1)]
+    )
+    setSelectedQ((current) => Math.min(current, nextHq - 1))
+    resetPredictions()
+  }
+
+  const applyHkv = (nextHkv: number) => {
+    setHkv(nextHkv)
+    resetPredictions()
+  }
+
+  const applyTokens = (nextTokens: number) => {
+    setTokens(nextTokens)
+    resetPredictions()
+  }
+
+  const applyHeadDim = (nextHeadDim: number) => {
+    setHeadDim(nextHeadDim)
+    resetPredictions()
+  }
+
+  useEffect(() => {
+    const values = [
+      `query heads Hq: ${hq}`,
+      `KV heads Hkv: ${hkv}`,
+      `context length T: ${tokens}`,
+      `head dimension d_head: ${headDim}`,
+      `batch: ${NOTEBOOK_BATCH}`,
+      `layers: ${NOTEBOOK_LAYERS}`,
+      `bytes per element: ${NOTEBOOK_BYTES}`,
+      `selected query head: Q${selectedQ}`,
+      `predicted group size: ${predictedGroupSize ?? 'none'}`,
+      `predicted KV-cache ratio: ${predictedRatio === null ? 'none' : formatRatioChoice(predictedRatio)}`,
+      `revealed: ${revealed ? 'yes' : 'no'}`,
+    ]
+
+    if (revealed) {
+      values.push(
+        `architecture: ${architecture}`,
+        `actual group size: ${groupSize}`,
+        `selected mapping: Q${selectedQ} -> KV${selectedKv}`,
+        `KV cache: ${formatGb(kvCacheGb)}`,
+        `MHA KV cache baseline: ${formatGb(mhaCacheGb)}`,
+        `ratio vs MHA: ${formatPercent(ratio)}`,
+        `reduction factor: ${formatReductionFactor(reductionFactor)}`
+      )
+    }
+
+    emitDemoState({
+      conceptId,
+      label: 'Grouped-query attention sharing prediction',
+      summary: revealed
+        ? `${architecture} maps Q${selectedQ} to KV${selectedKv}; KV cache is ${formatGb(kvCacheGb)}, ${formatPercent(ratio)} of MHA.`
+        : 'Predict the KV sharing pattern and memory ratio from the visible head and cache settings.',
+      values,
+    })
+  }, [
+    architecture,
+    conceptId,
+    groupSize,
+    headDim,
+    hkv,
+    hq,
+    kvCacheGb,
+    mhaCacheGb,
+    predictedGroupSize,
+    predictedRatio,
+    ratio,
+    reductionFactor,
+    revealed,
+    selectedKv,
+    selectedQ,
+    tokens,
+  ])
+
+  return (
+    <div className="gqa-notebook" data-gqa-notebook="true">
+      <div className="control-strip" aria-label="Visible attention head configuration">
+        <div className="control-group">
+          <span>Hq</span>
+          <div className="segment" role="group" aria-label="Query head count">
+            {NOTEBOOK_HQ_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={hq === option}
+                onClick={() => applyHq(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="control-group">
+          <span>Hkv</span>
+          <div className="segment" role="group" aria-label="Key value head count">
+            {kvOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={hkv === option}
+                onClick={() => applyHkv(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="control-group">
+          <span>T</span>
+          <div className="segment" role="group" aria-label="Context length">
+            {NOTEBOOK_CONTEXT_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={tokens === option}
+                onClick={() => applyTokens(option)}
+              >
+                {formatTokens(option)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="control-group">
+          <span>d_head</span>
+          <div className="segment" role="group" aria-label="Attention head dimension">
+            {NOTEBOOK_HEAD_DIM_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={headDim === option}
+                onClick={() => applyHeadDim(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="stage-grid">
+        <section className="panel diagram-panel">
+          <div className="panel-heading">
+            <p className="eyebrow">head sharing</p>
+            <h3>Query heads read from fewer KV heads</h3>
+            <p>
+              Public cache assumptions: batch {NOTEBOOK_BATCH}, {NOTEBOOK_LAYERS} layers,
+              fp16/bf16 cache elements, K and V stored for each token.
+            </p>
+          </div>
+
+          <label className="q-slider">
+            <span>Selected query head: Q{selectedQ}</span>
+            <input
+              type="range"
+              min={0}
+              max={hq - 1}
+              step={1}
+              value={selectedQ}
+              onChange={(event) => {
+                setSelectedQ(Number(event.target.value))
+                resetReveal()
+              }}
+            />
+          </label>
+
+          <svg
+            viewBox="0 0 496 272"
+            role="img"
+            aria-label="Query heads and key value head placeholders"
+            className="head-map"
+          >
+            <g className="column-labels">
+              <text x="92" y="14">Q heads</text>
+              <text x="402" y="14">KV heads</text>
+            </g>
+
+            {revealed ? (
+              <g className="revealed-edges">
+                {edges.map((edge) => {
+                  const isSelected = edge.q.index === selectedQ
+                  return (
+                    <line
+                      key={edge.id}
+                      x1={edge.q.x + 9}
+                      y1={edge.q.y}
+                      x2={edge.kv.x - 10}
+                      y2={edge.kv.y}
+                      className={isSelected ? 'selected' : ''}
+                    />
+                  )
+                })}
+              </g>
+            ) : null}
+
+            <g>
+              {qNodes.map((node) => (
+                <circle
+                  key={`q-${node.index}`}
+                  cx={node.x}
+                  cy={node.y}
+                  r={node.index === selectedQ ? 7 : 5}
+                  className={node.index === selectedQ ? 'q-node selected' : 'q-node'}
+                />
+              ))}
+            </g>
+
+            <g>
+              {(revealed ? kvNodes : kvPlaceholderNodes).map((node) => (
+                <rect
+                  key={`kv-${node.index}`}
+                  x={node.x - 7}
+                  y={node.y - 7}
+                  width={14}
+                  height={14}
+                  rx={2}
+                  className={revealed && node.index === selectedKv ? 'kv-node selected' : 'kv-node'}
+                />
+              ))}
+            </g>
+          </svg>
+        </section>
+
+        <section className="panel prediction-panel">
+          <p className="eyebrow">prediction</p>
+          <h3>Commit the sharing invariant before reveal</h3>
+
+          <div className="prediction-block">
+            <span>Query heads per KV head</span>
+            <div className="prediction-grid" role="group" aria-label="Predict query heads per key value head">
+              {groupSizeOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={predictedGroupSize === option}
+                  onClick={() => {
+                    setPredictedGroupSize(option)
+                    resetReveal()
+                  }}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="prediction-block">
+            <span>KV cache as fraction of MHA</span>
+            <div className="prediction-grid" role="group" aria-label="Predict key value cache ratio">
+              {ratioOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={predictedRatio !== null && Math.abs(predictedRatio - option) < 1e-9}
+                  onClick={() => {
+                    setPredictedRatio(option)
+                    resetReveal()
+                  }}
+                >
+                  {formatRatioChoice(option)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="actions">
+            <button
+              type="button"
+              disabled={!canReveal}
+              onClick={() => setRevealed(true)}
+            >
+              Reveal
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={resetPredictions}
+            >
+              Reset
+            </button>
+          </div>
+
+          <div className={`reveal-readout ${revealed ? 'shown' : ''}`} role="status" aria-live="polite">
+            {revealed ? (
+              <>
+                <strong>
+                  {groupPredictionCorrect && ratioPredictionCorrect
+                    ? 'Both predictions matched.'
+                    : 'Compare the invariant to the cache ratio.'}
+                </strong>
+                <p>
+                  {architecture}: each KV head serves {groupSize} query head
+                  {groupSize === 1 ? '' : 's'}, so Q{selectedQ} reads KV{selectedKv}.
+                </p>
+                <div className="diagnostic-grid">
+                  <span>Group size</span>
+                  <code>
+                    predicted {predictedGroupSize ?? 'none'} / actual {groupSize}
+                    {groupPredictionCorrect ? ' correct' : ' missed'}
+                  </code>
+                  <span>Cache ratio</span>
+                  <code>
+                    predicted {predictedRatio === null ? 'none' : formatRatioChoice(predictedRatio)} / actual {formatRatioChoice(ratio)}
+                    {ratioPredictionCorrect ? ' correct' : ' missed'}
+                  </code>
+                </div>
+              </>
+            ) : (
+              <p>Group size, Q-to-KV mapping, cache size, and ratio are locked until reveal.</p>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="metric-grid">
+        <section className="panel metric-panel">
+          <span>Architecture</span>
+          <strong>{revealed ? architecture : 'locked'}</strong>
+        </section>
+        <section className="panel metric-panel">
+          <span>Group size</span>
+          <strong>{revealed ? `${groupSize}:1` : 'locked'}</strong>
+        </section>
+        <section className="panel metric-panel">
+          <span>Selected mapping</span>
+          <strong>{revealed ? `Q${selectedQ} -> KV${selectedKv}` : 'locked'}</strong>
+        </section>
+        <section className="panel metric-panel">
+          <span>KV cache</span>
+          <strong>{revealed ? formatGb(kvCacheGb) : 'locked'}</strong>
+        </section>
+        <section className="panel metric-panel">
+          <span>vs MHA cache</span>
+          <strong>{revealed ? formatPercent(ratio) : 'locked'}</strong>
+        </section>
+        <section className="panel metric-panel">
+          <span>Reduction</span>
+          <strong>{revealed ? formatReductionFactor(reductionFactor) : 'locked'}</strong>
+        </section>
+      </div>
+
+      <style jsx>{`
+        .gqa-notebook {
+          min-width: min(100%, 780px);
+          background: #f9f4eb;
+          color: #17202a;
+          padding: 1rem;
+        }
+
+        .control-strip {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.7rem;
+          margin-bottom: 0.8rem;
+        }
+
+        .control-group,
+        .panel {
+          border: 1px solid rgba(31, 44, 56, 0.12);
+          border-radius: 8px;
+          background: rgba(255, 253, 248, 0.82);
+        }
+
+        .control-group {
+          padding: 0.65rem;
+        }
+
+        .control-group > span,
+        .prediction-block > span,
+        .metric-panel > span {
+          display: block;
+          margin-bottom: 0.4rem;
+          color: #596977;
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
+        }
+
+        .segment,
+        .prediction-grid,
+        .actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.35rem;
+        }
+
+        button {
+          min-height: 40px;
+          border: 1px solid rgba(31, 44, 56, 0.14);
+          border-radius: 7px;
+          background: #fffaf1;
+          color: #24313d;
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.78rem;
+        }
+
+        button[aria-pressed='true'] {
+          background: #1f6f78;
+          border-color: #1f6f78;
+          color: #ffffff;
+        }
+
+        button:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+        }
+
+        button:focus-visible {
+          outline: 2px solid rgba(31, 111, 120, 0.42);
+          outline-offset: 2px;
+        }
+
+        .stage-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.85fr);
+          gap: 0.8rem;
+          align-items: stretch;
+        }
+
+        .panel {
+          padding: 0.85rem;
+        }
+
+        .panel-heading {
+          display: grid;
+          gap: 0.25rem;
+          margin-bottom: 0.7rem;
+        }
+
+        .eyebrow {
+          margin: 0;
+          color: #b75f25;
+          font-family: var(--font-mono);
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        h3 {
+          margin: 0;
+          color: #17202a;
+          font-size: 1rem;
+          letter-spacing: 0;
+        }
+
+        p {
+          margin: 0;
+          color: #566574;
+          font-size: 0.86rem;
+          line-height: 1.55;
+        }
+
+        .q-slider {
+          display: grid;
+          gap: 0.4rem;
+          margin-bottom: 0.65rem;
+          color: #344451;
+          font-family: var(--font-mono);
+          font-size: 0.76rem;
+        }
+
+        .q-slider input {
+          width: 100%;
+          accent-color: #1f6f78;
+        }
+
+        .head-map {
+          width: 100%;
+          min-width: 520px;
+          height: auto;
+          display: block;
+          border-radius: 8px;
+          background:
+            linear-gradient(90deg, rgba(249, 250, 251, 0.96), rgba(237, 246, 244, 0.92));
+          border: 1px solid rgba(31, 44, 56, 0.1);
+        }
+
+        .column-labels text {
+          fill: #596977;
+          font-family: var(--font-mono);
+          font-size: 11px;
+          text-anchor: middle;
+        }
+
+        .revealed-edges line {
+          stroke: rgba(31, 111, 120, 0.38);
+          stroke-width: 1.2;
+        }
+
+        .revealed-edges line.selected {
+          stroke: #b75f25;
+          stroke-width: 3;
+        }
+
+        .q-node {
+          fill: #d97932;
+          stroke: #fffaf1;
+          stroke-width: 1.5;
+        }
+
+        .q-node.selected {
+          fill: #b75f25;
+          stroke: #17202a;
+          stroke-width: 2;
+        }
+
+        .kv-node {
+          fill: #1f6f78;
+          stroke: #fffaf1;
+          stroke-width: 1.5;
+        }
+
+        .kv-node.selected {
+          fill: #103f47;
+          stroke: #b75f25;
+          stroke-width: 2;
+        }
+
+        .prediction-panel {
+          display: grid;
+          align-content: start;
+          gap: 0.8rem;
+        }
+
+        .prediction-block {
+          display: grid;
+          gap: 0.35rem;
+        }
+
+        .prediction-grid button {
+          flex: 1 1 56px;
+        }
+
+        .actions button {
+          flex: 1 1 100px;
+          background: #b75f25;
+          border-color: #b75f25;
+          color: #ffffff;
+          font-weight: 650;
+        }
+
+        .actions .ghost {
+          background: #fffaf1;
+          color: #344451;
+          border-color: rgba(31, 44, 56, 0.14);
+          font-weight: 500;
+        }
+
+        .reveal-readout {
+          min-height: 104px;
+          border-radius: 8px;
+          border: 1px solid rgba(31, 44, 56, 0.1);
+          background: rgba(249, 244, 235, 0.78);
+          padding: 0.75rem;
+        }
+
+        .reveal-readout.shown {
+          border-color: rgba(31, 111, 120, 0.34);
+          background: rgba(232, 247, 244, 0.85);
+        }
+
+        .reveal-readout strong {
+          display: block;
+          margin-bottom: 0.35rem;
+          color: #17202a;
+        }
+
+        .diagnostic-grid {
+          display: grid;
+          grid-template-columns: max-content minmax(0, 1fr);
+          gap: 0.35rem 0.55rem;
+          margin-top: 0.6rem;
+          align-items: center;
+        }
+
+        .diagnostic-grid span {
+          color: #596977;
+          font-family: var(--font-mono);
+          font-size: 0.7rem;
+        }
+
+        .diagnostic-grid code {
+          min-width: 0;
+          color: #24313d;
+          background: rgba(255, 250, 241, 0.9);
+          border-radius: 6px;
+          padding: 0.28rem 0.4rem;
+          font-size: 0.72rem;
+          overflow-wrap: anywhere;
+        }
+
+        .metric-grid {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 0.65rem;
+          margin-top: 0.8rem;
+        }
+
+        .metric-panel {
+          min-height: 74px;
+          display: grid;
+          align-content: center;
+        }
+
+        .metric-panel strong {
+          color: #17202a;
+          font-size: 1rem;
+          font-variant-numeric: tabular-nums;
+          overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 980px) {
+          .control-strip,
+          .stage-grid,
+          .metric-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .diagram-panel {
+            grid-column: 1 / -1;
+            overflow-x: auto;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .gqa-notebook {
+            padding: 0.75rem;
+          }
+
+          .control-strip,
+          .stage-grid,
+          .metric-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .head-map {
+            min-width: 480px;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+const LegacyAttentionArchitecturesExplorer: React.FC = () => {
   const [activeArch, setActiveArch] = useState<ArchitectureId>('MHA')
 
   // Prediction game state
@@ -996,6 +1836,17 @@ const AttentionArchitecturesExplorer: React.FC = () => {
       </footer>
     </section>
   )
+}
+
+const AttentionArchitecturesExplorer: React.FC<GQAVizProps> = ({
+  chrome = 'legacy',
+  conceptId = 'grouped-query-attention',
+}) => {
+  if (chrome === 'notebook') {
+    return <GQANotebookExplorer conceptId={conceptId} />
+  }
+
+  return <LegacyAttentionArchitecturesExplorer />
 }
 
 export default AttentionArchitecturesExplorer

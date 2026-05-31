@@ -1,0 +1,38 @@
+You are Oracle reviewing Continuous Function, a Next.js static learning atlas for deep learning math and frontier AI.
+
+Task: give a focused product/UX critique for the next concept notebook pass. The user asked us to improve the website using research in education and research workflows, and to keep evolving the UX through reference images.
+
+Context:
+- The site now has a consistent dark atlas/lab visual shell across the public routes.
+- The next high-impact surface is ConceptNotebookPage, where a learner moves through Intuition -> Math -> Code -> Interactive Demo, object selection, prediction checkpoints, and Research Room handoff.
+- The current page already has selected-object chips, a continuity panel, section strip, prediction checkpoint inside VizShell, source/claim panels, practice, and a research reading room drawer.
+- The desired product is not a generic AI chatbot. It is a source-grounded research-learning environment where exact objects (equations, claims, code witnesses, demo state, sources) carry the learner's question forward.
+
+Please use learning science and research-workflow principles, especially:
+- cognitive load and progressive disclosure
+- worked examples and faded scaffolding
+- retrieval practice / prediction before reveal
+- self-explanation and metacognitive calibration
+- dual coding and object-level visual grounding
+- productive failure / desirable difficulty, but without confusion theater
+- research reading workflows: question -> claim -> evidence -> model/mechanism -> next experiment
+
+Review the attached implementation and answer with only the few highest-impact improvements we should implement now.
+
+Constraints:
+- Static/export-safe. No auth, database, API route, live AI dependency, or backend.
+- Must improve mobile at 390px.
+- Must preserve the current atlas/lab visual language.
+- Must make learner, researcher, experimenter, and professor dynamics more intuitive without adding a landing-page explanation.
+- Prefer concrete UI changes and labels we can implement in React/CSS now.
+
+Requested output:
+1. Publish/no-publish judgment for the current concept notebook UX direction.
+2. 3 to 5 prioritized improvements, each with:
+   - user problem
+   - education/research principle
+   - concrete UI/component change
+   - mobile risk
+   - acceptance check
+3. One reference-image brief for a code-native mockup we should generate locally.
+4. One thing to remove or simplify.

@@ -814,6 +814,14 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
           font-weight: 600;
           letter-spacing: 0.02em;
           margin: 0 0 4px;
+          padding-left: 0;
+          color: #f8fafc;
+          line-height: 1.2;
+        }
+
+        .kv-title::before {
+          content: none;
+          display: none;
         }
 
         .kv-subtitle {
@@ -1079,6 +1087,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
         .kv-attention-label {
           fill: #9ca3af;
           font-size: 0.65rem;
+          text-anchor: middle;
         }
 
         .kv-attention-token-label {
@@ -1347,6 +1356,44 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
         .kv-feedback-wrong {
           background: rgba(239, 68, 68, 0.15);
           border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        @media (max-width: 640px) {
+          .kv-container {
+            padding: 14px;
+            border-radius: 12px;
+          }
+
+          .kv-header,
+          .kv-panel-header {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .kv-header-badge {
+            align-self: flex-start;
+            max-width: 100%;
+          }
+
+          .kv-badge-pill,
+          .kv-panel-tag {
+            white-space: normal;
+            line-height: 1.35;
+          }
+
+          .kv-body {
+            gap: 14px;
+          }
+
+          .kv-panel {
+            padding: 12px;
+            overflow: hidden;
+          }
+
+          .kv-attention-svg,
+          .kv-chart-svg {
+            max-width: 100%;
+          }
         }
 
         /* Animations */

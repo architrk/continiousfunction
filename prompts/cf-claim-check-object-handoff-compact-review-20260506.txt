@@ -1,0 +1,50 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning environment.
+
+Strict Oracle review request for `claim-check-object-handoff-v1`.
+
+Goal:
+Every valid structured concept `claim_checks[]` entry should become an exact, selectable Research Reading Room `claim` object with:
+- discussion anchor segment `claim-check/<claimCheck.id>`
+- object key `claim:<domain>/<conceptId>#<claimCheck.id>`
+- exact UI href `#claim-check-<claimCheck.id>`
+- claim-specific prompt containing concept title, claim, status, source IDs, support, caveat, and object refs
+- safe panel rendering where local `#fragment` refs are links but content object keys like `source-span:...` or `claim:...` are inert code chips
+
+Hard constraints:
+- No storage/schema/API/auth/DB/middleware changes.
+- Do not rewrite claim content or mark source-quality audit complete.
+- Do not over-certify source metadata as proof.
+- Preserve concepts without claim checks and the existing central-claim behavior.
+
+Implementation summary:
+- `lib/conceptNotebookDiscussion.ts` adds `ConceptNotebookClaimCheck`, DOM/segment helpers, and `claimCheckReviewSeeds`.
+- Claim-check seeds use `segments: [domain, conceptId, 'claim-check', segment]`, `href: #claim-check-<segment>`, `sourceIds`, and `objectKey: buildConceptContentObjectKey('claim', domain, conceptId, claimCheck.id)`.
+- No cap remains in the reading-room or panel claim-check mapping.
+- `components/concepts/ConceptNotebookPage.tsx` exports `ConceptClaimReviewPanel`, assigns each claim-check card an exact id, and renders non-fragment object refs as `<code>` instead of raw links.
+- `scripts/generate-content-object-manifest.ts` now emits claim-check `href` and `discussionAnchorId` matching the reading-room anchor. The generated manifest was regenerated separately and stayed at 851 objects.
+- Tests were added/updated in the attached test files.
+
+Validation already run after removing caps:
+- `npm run generate-object-manifest` passed: 851 objects.
+- `npm test -- conceptNotebookDiscussion ConceptNotebookPage contentObjectManifest researchDiscussionRoom --runInBand` passed: 5 suites, 29 tests.
+- `npm run validate-content` passed: 70 content concepts, 851 manifest objects, 0 warnings, 0 errors.
+- `npm run validate:object-memory` passed: 0 warnings.
+- `npm run typecheck` passed.
+- `git diff --check` passed.
+- `npx ts-node --transpileOnly -O '{"module":"CommonJS"}' ...` all-concepts probe found `claimChecks=51`, `claimObjects=51`, `bad=[]`.
+- `rg -n 'claim-check-' content/_generated/content-object-manifest.json | wc -l` returned `51`.
+
+Please review only for blockers in the attached implementation/test files.
+Return:
+1. `PUBLISH` or `NO-PUBLISH`.
+2. Any must-fix blockers.
+3. Non-blocking improvements.
+4. Whether this satisfies the contract above.
+
+Be strict about:
+- prompt truncation dropping required fields,
+- fallback segment/object-key mismatch,
+- manifest anchor mismatch,
+- unsafe object-ref rendering,
+- accidentally dropping valid claim checks,
+- regressions for concepts with no claim checks.

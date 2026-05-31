@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778014592394,
+      "tag": "0000_object_memory_contract",
+      "breakpoints": true
+    }
+  ]
+}

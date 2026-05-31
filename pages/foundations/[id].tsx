@@ -3,20 +3,26 @@ import Link from 'next/link'
 import Head from 'next/head'
 import dynamic from 'next/dynamic'
 import katex from 'katex'
-import { foundationsConcepts, Concept, CATEGORY_LABELS, getDependents, studyOrder } from '../../data/foundationsData'
-import { conceptVisualizationMap } from '../../data/visualizationMappings'
-import NextMovesPanel from '../../components/foundations/NextMovesPanel'
+import ExperienceBridge from '@/components/editorial/ExperienceBridge'
+import NotebookLayout from '@/components/editorial/NotebookLayout'
+import { FoundationConceptHeroFigure } from '@/components/editorial/EditorialFigures'
+import type { Concept } from '../../data/foundationsData'
+import NextMovesPanel from '@/components/foundations/NextMovesPanel'
 import { sanitizeRenderedHtml } from '../../lib/htmlSafety'
 
-// Helper to find which study phase a concept belongs to
-function getStudyPhase(conceptId: string): { phase: number; title: string } | null {
-  for (const phase of studyOrder) {
-    if (phase.concepts.includes(conceptId)) {
-      return { phase: phase.phase, title: phase.title }
-    }
-  }
-  return null
-}
+const FoundationsVizDeck = dynamic(() => import('@/components/foundations/FoundationsVizDeck'), { ssr: false })
+
+const CATEGORY_LABELS = {
+  core: 'Core Training',
+  optimization: 'Optimization',
+  generative: 'Generative Models',
+  representation: 'Representations',
+  scaling: 'Scaling & Alignment',
+  efficiency: 'Efficiency',
+  theory: 'Theory',
+} as const
+
+type ConceptLink = Pick<Concept, 'id' | 'color' | 'icon' | 'shortTitle'>
 
 interface Props {
   concept: Concept
@@ -24,112 +30,9 @@ interface Props {
   nextConcept: Concept | null
   studyPhase: { phase: number; title: string } | null
   migratedHref: string | null
-}
-
-// Lazy load visualizations (client-only chunks; keep SSR stable)
-const CrossEntropyViz = dynamic(() => import('../../components/foundations/CrossEntropyViz'), { ssr: false })
-const AttentionGeometryViz = dynamic(() => import('../../components/foundations/AttentionGeometryViz'), { ssr: false })
-const AdamOptimizerViz = dynamic(() => import('../../components/foundations/AdamOptimizerViz'), { ssr: false })
-const LossLandscapeViz = dynamic(() => import('../../components/foundations/LossLandscapeViz'), { ssr: false })
-const DoubleDescentViz = dynamic(() => import('../../components/foundations/DoubleDescentViz'), { ssr: false })
-const NTKViz = dynamic(() => import('../../components/foundations/NTKViz'), { ssr: false })
-const VAEELBOViz = dynamic(() => import('../../components/foundations/VAEELBOViz'), { ssr: false })
-const DiffusionScoreViz = dynamic(() => import('../../components/foundations/DiffusionScoreViz'), { ssr: false })
-const FlowMatchingViz = dynamic(() => import('../../components/foundations/FlowMatchingViz'), { ssr: false })
-const SuperpositionViz = dynamic(() => import('../../components/foundations/SuperpositionViz'), { ssr: false })
-const LinearProbeViz = dynamic(() => import('../../components/foundations/LinearProbeViz'), { ssr: false })
-const InductionHeadsViz = dynamic(() => import('../../components/foundations/InductionHeadsViz'), { ssr: false })
-const ScalingLawsViz = dynamic(() => import('../../components/foundations/ScalingLawsViz'), { ssr: false })
-const RLHFViz = dynamic(() => import('../../components/foundations/RLHFViz'), { ssr: false })
-const LoRAViz = dynamic(() => import('../../components/foundations/LoRAViz'), { ssr: false })
-const InfoBottleneckViz = dynamic(() => import('../../components/foundations/InfoBottleneckViz'), { ssr: false })
-
-// Additional specialized visualizations
-const TransformerArchitectureViz = dynamic(() => import('../../components/foundations/TransformerArchitectureViz'), { ssr: false })
-const KVCacheViz = dynamic(() => import('../../components/foundations/KVCacheViz'), { ssr: false })
-const RoPEViz = dynamic(() => import('../../components/foundations/RoPEViz'), { ssr: false })
-const SlidingWindowViz = dynamic(() => import('../../components/foundations/SlidingWindowViz'), { ssr: false })
-const NewtonSchulzViz = dynamic(() => import('../../components/foundations/NewtonSchulzViz'), { ssr: false })
-const EdgeOfStabilityViz = dynamic(() => import('../../components/foundations/EdgeOfStabilityViz'), { ssr: false })
-const GrokkingViz = dynamic(() => import('../../components/foundations/GrokkingViz'), { ssr: false })
-const LayerNormViz = dynamic(() => import('../../components/foundations/LayerNormViz'), { ssr: false })
-const NeuralScalingViz = dynamic(() => import('../../components/foundations/NeuralScalingViz'), { ssr: false })
-const DPOViz = dynamic(() => import('../../components/foundations/DPOViz'), { ssr: false })
-const MoERoutingViz = dynamic(() => import('../../components/foundations/MoERoutingViz'), { ssr: false })
-
-// New additions: 3D loss, parallel transport, self-attention, task vectors, backprop, diffusion process
-const LossLandscape3DViz = dynamic(() => import('../../components/foundations/LossLandscape3DViz'), { ssr: false })
-const ParallelTransportViz = dynamic(() => import('../../components/foundations/ParallelTransportViz'), { ssr: false })
-const SelfAttentionViz = dynamic(() => import('../../components/foundations/SelfAttentionViz'), { ssr: false })
-const TaskVectorViz = dynamic(() => import('../../components/foundations/TaskVectorViz'), { ssr: false })
-const AttentionBackpropViz = dynamic(() => import('../../components/foundations/AttentionBackpropViz'), { ssr: false })
-const DiffusionProcessViz = dynamic(() => import('../../components/foundations/DiffusionProcessViz'), { ssr: false })
-const KVCacheDashboard = dynamic(() => import('../../components/foundations/KVCacheDashboard'), { ssr: false })
-const SpeculativeDecodingViz = dynamic(() => import('../../components/foundations/SpeculativeDecodingViz'), { ssr: false })
-const ServingLatencyViz = dynamic(() => import('../../components/foundations/ServingLatencyViz'), { ssr: false })
-const KTOViz = dynamic(() => import('../../components/foundations/KTOViz'), { ssr: false })
-const RewardHackingViz = dynamic(() => import('../../components/foundations/RewardHackingViz'), { ssr: false })
-const SparseAutoencoderViz = dynamic(() => import('../../components/foundations/SparseAutoencoderViz'), { ssr: false })
-const TokenizationViz = dynamic(() => import('../../components/foundations/TokenizationViz'), { ssr: false })
-const SSMViz = dynamic(() => import('../../components/foundations/SSMViz'), { ssr: false })
-const MambaViz = dynamic(() => import('../../components/foundations/MambaViz'), { ssr: false })
-const DecodingSamplingViz = dynamic(() => import('../../components/foundations/DecodingSamplingViz'), { ssr: false })
-const EquivarianceViz = dynamic(() => import('../../components/foundations/EquivarianceViz'), { ssr: false })
-const GQAViz = dynamic(() => import('../../components/foundations/GQAViz'), { ssr: false })
-const SwiGLUViz = dynamic(() => import('../../components/foundations/SwiGLUViz'), { ssr: false })
-const GANsViz = dynamic(() => import('../../components/foundations/GANsViz'), { ssr: false })
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Each visualization has unique props; union type would be impractical
-const vizMap: Record<string, React.ComponentType<any>> = {
-  'CrossEntropyViz': CrossEntropyViz,
-  'AttentionGeometryViz': AttentionGeometryViz,
-  'AdamOptimizerViz': AdamOptimizerViz,
-  'LossLandscapeViz': LossLandscapeViz,
-  'DoubleDescentViz': DoubleDescentViz,
-  'NTKViz': NTKViz,
-  'VAEELBOViz': VAEELBOViz,
-  'DiffusionScoreViz': DiffusionScoreViz,
-  'FlowMatchingViz': FlowMatchingViz,
-  'SuperpositionViz': SuperpositionViz,
-  'LinearProbeViz': LinearProbeViz,
-  'InductionHeadsViz': InductionHeadsViz,
-  'ScalingLawsViz': ScalingLawsViz,
-  'RLHFViz': RLHFViz,
-  'LoRAViz': LoRAViz,
-  'InfoBottleneckViz': InfoBottleneckViz,
-  // Additional visualizations
-  'TransformerArchitectureViz': TransformerArchitectureViz,
-  'KVCacheViz': KVCacheViz,
-  'RoPEViz': RoPEViz,
-  'SlidingWindowViz': SlidingWindowViz,
-  'NewtonSchulzViz': NewtonSchulzViz,
-  'EdgeOfStabilityViz': EdgeOfStabilityViz,
-  'GrokkingViz': GrokkingViz,
-  'LayerNormViz': LayerNormViz,
-  'NeuralScalingViz': NeuralScalingViz,
-  'DPOViz': DPOViz,
-  'MoERoutingViz': MoERoutingViz,
-  // New additions
-  'LossLandscape3DViz': LossLandscape3DViz,
-  'ParallelTransportViz': ParallelTransportViz,
-  'SelfAttentionViz': SelfAttentionViz,
-  'TaskVectorViz': TaskVectorViz,
-  'AttentionBackpropViz': AttentionBackpropViz,
-  'DiffusionProcessViz': DiffusionProcessViz,
-  'KVCacheDashboard': KVCacheDashboard,
-  'SpeculativeDecodingViz': SpeculativeDecodingViz,
-  'ServingLatencyViz': ServingLatencyViz,
-  'KTOViz': KTOViz,
-  'RewardHackingViz': RewardHackingViz,
-  'SparseAutoencoderViz': SparseAutoencoderViz,
-  'TokenizationViz': TokenizationViz,
-  'SSMViz': SSMViz,
-  'MambaViz': MambaViz,
-  'DecodingSamplingViz': DecodingSamplingViz,
-  'EquivarianceViz': EquivarianceViz,
-  'GQAViz': GQAViz,
-  'SwiGLUViz': SwiGLUViz,
-  'GANsViz': GANsViz,
+  totalConcepts: number
+  prereqConcepts: ConceptLink[]
+  dependentConcepts: ConceptLink[]
 }
 
 // Escape HTML entities to prevent XSS in fallback rendering
@@ -179,48 +82,6 @@ const getSafeExternalHref = (rawUrl?: string): string | null => {
   } catch {
     return null
   }
-}
-
-const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
-  const m = hex.trim().match(/^#?([0-9a-fA-F]{6})$/)
-  if (!m) return null
-  const v = m[1]
-  return {
-    r: parseInt(v.slice(0, 2), 16),
-    g: parseInt(v.slice(2, 4), 16),
-    b: parseInt(v.slice(4, 6), 16),
-  }
-}
-
-const relativeLuminance = (rgb: { r: number; g: number; b: number }): number => {
-  const srgbToLinear = (c: number): number => {
-    const s = c / 255
-    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
-  }
-  const r = srgbToLinear(rgb.r)
-  const g = srgbToLinear(rgb.g)
-  const b = srgbToLinear(rgb.b)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
-
-const contrastRatio = (l1: number, l2: number): number => {
-  const a = Math.max(l1, l2)
-  const b = Math.min(l1, l2)
-  return (a + 0.05) / (b + 0.05)
-}
-
-// Pick between near-black and white based on best WCAG contrast against background.
-const getReadableTextColor = (bgHex: string): string => {
-  const bg = hexToRgb(bgHex)
-  if (!bg) return '#0a0a0a'
-
-  const Lbg = relativeLuminance(bg)
-  const Ldark = relativeLuminance({ r: 10, g: 10, b: 10 }) // #0a0a0a
-  const Llight = 1 // #ffffff
-
-  const darkContrast = contrastRatio(Lbg, Ldark)
-  const lightContrast = contrastRatio(Lbg, Llight)
-  return darkContrast >= lightContrast ? '#0a0a0a' : '#ffffff'
 }
 
 const renderInline = (text: string, keyPrefix: string): React.ReactNode[] => {
@@ -536,7 +397,7 @@ function MathContent({ content }: { content: string }) {
         }
         .math-hr {
           border: none;
-          border-top: 1px solid rgba(245, 158, 11, 0.25);
+          border-top: 1px solid rgba(31, 111, 120, 0.22);
           margin: 1.5rem 0;
         }
         .math-list {
@@ -548,8 +409,8 @@ function MathContent({ content }: { content: string }) {
           margin: 0.25rem 0;
         }
         .math-code {
-          background: rgba(8, 12, 20, 0.55);
-          border: 1px solid rgba(245, 158, 11, 0.18);
+          background: rgba(248, 243, 234, 0.92);
+          border: 1px solid rgba(27, 36, 48, 0.08);
           padding: 0.9rem 1rem;
           border-radius: 10px;
           margin: 1rem 0 1.5rem;
@@ -560,25 +421,26 @@ function MathContent({ content }: { content: string }) {
           font-family: var(--font-mono);
           font-size: 0.9rem;
           line-height: 1.5;
+          color: #17202a;
         }
         .math-block {
-          background: rgba(0, 0, 0, 0.3);
+          background: rgba(239, 247, 245, 0.78);
           padding: 1rem 1.5rem;
           border-radius: 8px;
           margin: 1.5rem 0;
           overflow-x: auto;
-          border-left: 3px solid var(--accent);
+          border-left: 3px solid #1f6f78;
         }
         .math-code {
-          background: rgba(0, 0, 0, 0.45);
+          background: rgba(248, 243, 234, 0.92);
           padding: 1rem 1.25rem;
           border-radius: 8px;
           margin: 1.5rem 0;
           overflow-x: auto;
-          border-left: 3px solid rgba(245, 158, 11, 0.35);
+          border-left: 3px solid rgba(31, 111, 120, 0.24);
         }
         .math-text :global(.inline-math) {
-          background: rgba(245, 158, 11, 0.1);
+          background: rgba(239, 247, 245, 0.9);
           padding: 0.15rem 0.4rem;
           border-radius: 4px;
         }
@@ -604,33 +466,98 @@ function MathContent({ content }: { content: string }) {
   )
 }
 
-export default function ConceptPage({ concept, prevConcept, nextConcept, studyPhase, migratedHref }: Props) {
-  // Get visualizations for this concept
-  const vizNames = conceptVisualizationMap[concept.id] || []
-  const visualizations = vizNames.map(name => vizMap[name]).filter(Boolean)
-  const dependents = getDependents(concept.id)
+export default function ConceptPage({
+  concept,
+  prevConcept,
+  nextConcept,
+  studyPhase,
+  migratedHref,
+  totalConcepts,
+  prereqConcepts,
+  dependentConcepts,
+}: Props) {
+  const conceptLede = toPlainText(concept.whyItMatters[0] || concept.title)
+  const categoryLabel = CATEGORY_LABELS[concept.category as keyof typeof CATEGORY_LABELS]
+  const bridgeItems = [
+    {
+      label: 'Orient',
+      title: 'Read the mechanism before the demo.',
+      body: 'The legacy page starts with why the concept matters and what common explanations skip, so the visualization has a job.',
+      href: '#why-it-matters',
+      cta: 'Start there',
+    },
+    {
+      label: 'Test',
+      title: 'Treat the old dark panel as the lab bench.',
+      body: 'The visualization deck stays in place here because many legacy demos are still the best runnable witness for the concept.',
+      href: '#interactive-viz',
+      cta: 'Open demo',
+    },
+    migratedHref
+      ? {
+          label: 'Upgrade',
+          title: 'A newer notebook exists.',
+          body: 'When a concept has been migrated, the domain notebook is the preferred Intuition -> Math -> Code -> Demo version.',
+          href: migratedHref,
+          cta: 'Open notebook',
+        }
+      : {
+          label: 'Continue',
+          title: 'Use connections to choose the next move.',
+          body: 'Prerequisites, dependents, and semantic links keep the old page from becoming a dead end.',
+          href: '#connections',
+          cta: 'Trace links',
+        },
+  ]
 
   return (
     <>
       <Head>
         <title>{`${concept.shortTitle} — Continuous Function`}</title>
-        <meta name="description" content={toPlainText(concept.whyItMatters[0] || concept.title)} />
+        <meta name="description" content={conceptLede} />
         {prevConcept && <link rel="prev" href={`/foundations/${prevConcept.id}/`} />}
         {nextConcept && <link rel="next" href={`/foundations/${nextConcept.id}/`} />}
       </Head>
+      <NotebookLayout
+        eyebrow="Legacy Concept Lab"
+        title={concept.title}
+        lede={conceptLede}
+        breadcrumb={[
+          { label: 'Home', href: '/' },
+          { label: 'Foundations', href: '/foundations/' },
+          { label: concept.shortTitle },
+        ]}
+        meta={[
+          `Concept ${concept.number} of ${totalConcepts}`,
+          categoryLabel,
+          studyPhase ? `Phase ${studyPhase.phase}` : 'Legacy route',
+        ]}
+        actions={[
+          migratedHref
+            ? { href: migratedHref, label: 'Open New Notebook' }
+            : { href: '#interactive-viz', label: 'Open Demo' },
+          { href: '/foundations/#all-concepts', label: 'All Foundations', variant: 'secondary' },
+        ]}
+        heroVisual={(
+          <FoundationConceptHeroFigure
+            number={concept.number}
+            shortTitle={concept.shortTitle}
+            category={categoryLabel}
+            color={concept.color}
+            equation={concept.coreEquation}
+          />
+        )}
+        rail={(
+          <ExperienceBridge
+            compact
+            eyebrow="Legacy Route"
+            title="Bridge the old lab into the new atlas."
+            intro="Use this page as a working demo surface, then move through links when a newer notebook is available."
+            items={bridgeItems}
+          />
+        )}
+      >
       <div className="concept-page">
-        <a href="#main-content" className="skip-link">
-          Skip to content
-        </a>
-
-        {/* Breadcrumb Navigation */}
-        <nav className="breadcrumb" aria-label="Breadcrumb">
-          <Link href="/">Home</Link>
-          <span className="breadcrumb-sep">/</span>
-          <Link href="/foundations/">Foundations</Link>
-          <span className="breadcrumb-sep">/</span>
-          <span className="breadcrumb-current" aria-current="page">{concept.shortTitle}</span>
-        </nav>
 
         {/* Learning Context Banner */}
         {studyPhase && (
@@ -639,7 +566,7 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
               Phase {studyPhase.phase}: {studyPhase.title}
             </span>
             <span className="context-position">
-              Concept {concept.number} of {foundationsConcepts.length}
+              Concept {concept.number} of {totalConcepts}
             </span>
           </div>
         )}
@@ -675,30 +602,6 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
             )}
           </div>
         </nav>
-
-        <header className="concept-header">
-          <div className="concept-meta-header">
-            <span
-              className="concept-number"
-              style={{ backgroundColor: concept.color, color: getReadableTextColor(concept.color) }}
-            >
-              {concept.number}
-            </span>
-            <span
-              className="category-badge"
-              style={{
-                backgroundColor: `${concept.color}20`,
-                color: concept.color
-              }}
-            >
-              {CATEGORY_LABELS[concept.category as keyof typeof CATEGORY_LABELS]}
-            </span>
-          </div>
-          <h1>
-            <span className="concept-icon">{concept.icon}</span>
-            {concept.title}
-          </h1>
-        </header>
 
       <main id="main-content" className="concept-content">
         <nav className="content-toc" aria-label="On this page">
@@ -736,23 +639,7 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
 
         <section id="interactive-viz" className="content-section viz-section">
           <h2>Interactive Visualization</h2>
-          {visualizations.length > 0 ? (
-            <div className="visualizations">
-              {visualizations.map((VizComponent, i) => (
-                <div key={i} className="viz-container">
-                  <VizComponent />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="viz-placeholder" role="note">
-              <p className="viz-placeholder-title">No interactive demo for this concept yet.</p>
-              <p className="viz-placeholder-body">
-                We will add one soon. For now, use the key equation, the connections, and the "Next Moves" panel
-                to build intuition.
-              </p>
-            </div>
-          )}
+          <FoundationsVizDeck conceptId={concept.id} />
         </section>
 
         <section id="core-math" className="content-section math-section">
@@ -808,52 +695,44 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         <section id="connections" className="content-section connections-section">
           <h2>Connections</h2>
           <div className="connections-grid">
-            {concept.prereqs.length > 0 && (
+            {prereqConcepts.length > 0 && (
               <div className="connection-group">
                 <h3>Prerequisites</h3>
                 <div className="connection-links">
-                  {concept.prereqs.map(prereqId => {
-                    const prereq = foundationsConcepts.find(c => c.id === prereqId)
-                    if (!prereq) return null
-                    return (
-                      <Link
-                        key={prereqId}
-                        href={`/foundations/${prereqId}/`}
-                        className="connection-link"
-                        style={{ borderColor: prereq.color }}
-                      >
-                        <span className="connection-icon">{prereq.icon}</span>
-                        <span>{prereq.shortTitle}</span>
-                      </Link>
-                    )
-                  })}
+                  {prereqConcepts.map((prereq) => (
+                    <Link
+                      key={prereq.id}
+                      href={`/foundations/${prereq.id}/`}
+                      className="connection-link"
+                      style={{ borderColor: prereq.color }}
+                    >
+                      <span className="connection-icon">{prereq.icon}</span>
+                      <span>{prereq.shortTitle}</span>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}
-            {dependents.length > 0 && (
+            {dependentConcepts.length > 0 && (
               <div className="connection-group">
                 <h3>Enables</h3>
                 <div className="connection-links">
-                  {dependents.map(depId => {
-                    const dep = foundationsConcepts.find(c => c.id === depId)
-                    if (!dep) return null
-                    return (
-                      <Link
-                        key={depId}
-                        href={`/foundations/${depId}/`}
-                        className="connection-link"
-                        style={{ borderColor: dep.color }}
-                      >
-                        <span className="connection-icon">{dep.icon}</span>
-                        <span>{dep.shortTitle}</span>
-                      </Link>
-                    )
-                  })}
+                  {dependentConcepts.map((dep) => (
+                    <Link
+                      key={dep.id}
+                      href={`/foundations/${dep.id}/`}
+                      className="connection-link"
+                      style={{ borderColor: dep.color }}
+                    >
+                      <span className="connection-icon">{dep.icon}</span>
+                      <span>{dep.shortTitle}</span>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}
           </div>
-          {concept.prereqs.length === 0 && dependents.length === 0 && (
+          {prereqConcepts.length === 0 && dependentConcepts.length === 0 && (
             <p className="connections-empty">No connections mapped yet for this concept.</p>
           )}
         </section>
@@ -866,9 +745,10 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
 
       <style jsx>{`
         .concept-page {
-          max-width: 900px;
-          margin: 0 auto;
+          max-width: none;
+          margin: 0;
           position: relative;
+          min-width: 0;
         }
 
         .skip-link {
@@ -922,15 +802,15 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           justify-content: space-between;
           align-items: center;
           padding: 0.75rem 1rem;
-          background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), transparent);
-          border-left: 3px solid var(--accent);
+          background: linear-gradient(90deg, rgba(31, 111, 120, 0.1), transparent);
+          border-left: 3px solid #1f6f78;
           border-radius: 0 8px 8px 0;
           margin-bottom: 1.5rem;
           font-size: 0.85rem;
         }
 
         .context-phase {
-          color: var(--accent);
+          color: #1f6f78;
           font-weight: 500;
         }
 
@@ -945,8 +825,8 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           gap: 0.6rem;
           padding: 0.75rem 1rem;
           border-radius: 12px;
-          border: 1px solid rgba(99, 102, 241, 0.35);
-          background: rgba(99, 102, 241, 0.10);
+          border: 1px solid rgba(31, 75, 153, 0.2);
+          background: rgba(239, 247, 245, 0.72);
           margin-bottom: 1.5rem;
         }
 
@@ -955,15 +835,15 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           font-size: 0.75rem;
           letter-spacing: 0.06em;
           text-transform: uppercase;
-          color: rgba(199, 210, 254, 0.95);
-          background: rgba(99, 102, 241, 0.22);
-          border: 1px solid rgba(99, 102, 241, 0.35);
+          color: #1f6f78;
+          background: rgba(255, 251, 245, 0.78);
+          border: 1px solid rgba(31, 111, 120, 0.22);
           border-radius: 999px;
           padding: 0.18rem 0.55rem;
         }
 
         .migration-link {
-          color: #c7d2fe;
+          color: #1f4b99;
           text-decoration: none;
           font-weight: 500;
         }
@@ -973,7 +853,7 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
 
         .migration-hint {
-          color: rgba(148, 163, 184, 0.95);
+          color: #52606b;
           font-size: 0.85rem;
         }
 
@@ -983,11 +863,11 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           align-items: center;
           margin-bottom: 2rem;
           padding-bottom: 1rem;
-          border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+          border-bottom: 1px solid rgba(27, 36, 48, 0.08);
         }
 
         .back-link {
-          color: var(--accent);
+          color: #1f4b99;
           text-decoration: none;
           font-size: 0.9rem;
         }
@@ -1003,12 +883,13 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           text-decoration: none;
           padding: 0.5rem 1rem;
           border-radius: 8px;
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
+          background: rgba(255, 251, 245, 0.84);
+          border: 1px solid rgba(27, 36, 48, 0.08);
         }
 
         .nav-arrow:hover {
-          border-color: var(--accent);
+          border-color: rgba(31, 111, 120, 0.28);
+          text-shadow: none;
         }
 
         .nav-label {
@@ -1070,8 +951,8 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         .content-toc {
           margin: 0 0 1.5rem;
           padding: 0.75rem;
-          background: rgba(8, 12, 20, 0.35);
-          border: 1px solid rgba(245, 158, 11, 0.12);
+          background: rgba(255, 251, 245, 0.76);
+          border: 1px solid rgba(27, 36, 48, 0.08);
           border-radius: 12px;
         }
 
@@ -1097,16 +978,17 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           border-radius: 999px;
           text-decoration: none;
           font-size: 0.85rem;
-          color: var(--text-secondary);
-          border: 1px solid rgba(245, 158, 11, 0.18);
-          background: rgba(8, 12, 20, 0.45);
+          color: #455361;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          background: rgba(255, 251, 245, 0.88);
           transition: border-color 150ms ease, color 150ms ease, transform 150ms ease;
         }
 
         .toc-link:hover {
-          border-color: rgba(245, 158, 11, 0.5);
-          color: var(--text-primary);
+          border-color: rgba(31, 111, 120, 0.28);
+          color: #17202a;
           transform: translateY(-1px);
+          text-shadow: none;
         }
 
         .toc-link:focus-visible,
@@ -1122,12 +1004,12 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           scroll-margin-top: 90px;
         }
 
-        .content-section h2 {
+        .content-section > h2 {
           font-family: var(--font-display);
           font-size: 1.25rem;
           margin-bottom: 1rem;
           padding-bottom: 0.5rem;
-          border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+          border-bottom: 1px solid rgba(27, 36, 48, 0.08);
         }
 
         .papers-list {
@@ -1137,8 +1019,8 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
 
         .paper-card {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
+          background: rgba(255, 251, 245, 0.86);
+          border: 1px solid rgba(27, 36, 48, 0.08);
           border-radius: 8px;
           padding: 1rem;
         }
@@ -1157,7 +1039,7 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
 
         .paper-link {
-          color: var(--accent);
+          color: #1f4b99;
           font-size: 0.85rem;
           text-decoration: none;
         }
@@ -1167,8 +1049,8 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
 
         .math-content-wrapper {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
+          background: rgba(255, 251, 245, 0.86);
+          border: 1px solid rgba(27, 36, 48, 0.08);
           border-radius: 8px;
           padding: 1.5rem;
           font-size: 0.95rem;
@@ -1177,15 +1059,15 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         .key-equation {
           margin-top: 1.5rem;
           padding: 1rem;
-          background: rgba(245, 158, 11, 0.1);
+          background: rgba(239, 247, 245, 0.78);
           border-radius: 8px;
-          border-left: 3px solid var(--accent);
+          border-left: 3px solid #1f6f78;
         }
 
         .equation-label {
           display: block;
           font-size: 0.75rem;
-          color: var(--accent);
+          color: #1f6f78;
           font-weight: 600;
           margin-bottom: 0.5rem;
           text-transform: uppercase;
@@ -1214,19 +1096,30 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
 
         .viz-container {
-          background: rgba(8, 12, 20, 0.3);
-          border: 1px solid rgba(245, 158, 11, 0.15);
+          background: rgba(8, 12, 20, 0.82);
+          border: 1px solid rgba(27, 36, 48, 0.16);
           border-radius: 12px;
           padding: 1.5rem;
           overflow-x: auto;
+        }
+
+        .viz-container :global(h2) {
+          padding-left: 0;
+          color: inherit;
+          border-bottom: 0;
+        }
+
+        .viz-container :global(h2::before) {
+          content: none;
+          display: none;
         }
 
         .viz-placeholder {
           margin-top: 0.75rem;
           padding: 1rem 1.25rem;
           border-radius: 12px;
-          background: rgba(8, 12, 20, 0.55);
-          border: 1px dashed rgba(245, 158, 11, 0.35);
+          background: rgba(255, 251, 245, 0.84);
+          border: 1px dashed rgba(31, 111, 120, 0.28);
         }
 
         .viz-placeholder-title {
@@ -1277,15 +1170,15 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
 
         .connections-section {
-          background: linear-gradient(135deg, rgba(20, 184, 166, 0.05), rgba(245, 158, 11, 0.05));
-          border: 1px solid rgba(20, 184, 166, 0.2);
+          background: linear-gradient(135deg, rgba(239, 247, 245, 0.82), rgba(255, 251, 245, 0.82));
+          border: 1px solid rgba(31, 111, 120, 0.18);
           border-radius: 12px;
           padding: 1.5rem;
           margin-top: 2rem;
         }
 
         .connections-section h2 {
-          color: var(--converge-teal);
+          color: #1f6f78;
           margin-bottom: 1.25rem;
         }
 
@@ -1320,18 +1213,19 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
           align-items: center;
           gap: 0.4rem;
           padding: 0.4rem 0.8rem;
-          background: rgba(8, 12, 20, 0.8);
+          background: rgba(255, 251, 245, 0.88);
           border: 1px solid;
           border-radius: 20px;
           font-size: 0.85rem;
           text-decoration: none;
-          color: var(--text-primary);
+          color: #17202a;
           transition: all 0.2s;
         }
 
         .connection-link:hover {
-          background: rgba(245, 158, 11, 0.1);
+          background: rgba(239, 247, 245, 0.86);
           transform: translateY(-1px);
+          text-shadow: none;
         }
 
         .connection-icon {
@@ -1349,11 +1243,13 @@ export default function ConceptPage({ concept, prevConcept, nextConcept, studyPh
         }
       `}</style>
     </div>
+    </NotebookLayout>
     </>
   )
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
+  const { foundationsConcepts } = await import('../../data/foundationsData')
   const paths = foundationsConcepts.map(concept => ({
     params: { id: concept.id }
   }))
@@ -1362,6 +1258,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
 }
 
 export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
+  const { foundationsConcepts, getDependents, studyOrder } = await import('../../data/foundationsData')
   const id = params?.id as string
   const conceptIndex = foundationsConcepts.findIndex(c => c.id === id)
   const concept = foundationsConcepts[conceptIndex]
@@ -1374,7 +1271,28 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
   const nextConcept = conceptIndex < foundationsConcepts.length - 1
     ? foundationsConcepts[conceptIndex + 1]
     : null
-  const studyPhase = getStudyPhase(id)
+  const studyPhase =
+    studyOrder
+      .map((phase) =>
+        phase.concepts.includes(id)
+          ? { phase: phase.phase, title: phase.title }
+          : null
+      )
+      .find(Boolean) ?? null
+  const toConceptLink = (entry: Concept): ConceptLink => ({
+    id: entry.id,
+    color: entry.color,
+    icon: entry.icon,
+    shortTitle: entry.shortTitle,
+  })
+  const prereqConcepts = concept.prereqs.flatMap((prereqId) => {
+    const entry = foundationsConcepts.find((candidate) => candidate.id === prereqId)
+    return entry ? [toConceptLink(entry)] : []
+  })
+  const dependentConcepts = getDependents(id).flatMap((depId) => {
+    const entry = foundationsConcepts.find((candidate) => candidate.id === depId)
+    return entry ? [toConceptLink(entry)] : []
+  })
 
   let migratedHref: string | null = null
   try {
@@ -1393,6 +1311,9 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
       nextConcept,
       studyPhase,
       migratedHref,
+      totalConcepts: foundationsConcepts.length,
+      prereqConcepts,
+      dependentConcepts,
     }
   }
 }

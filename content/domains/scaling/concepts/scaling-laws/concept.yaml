@@ -10,6 +10,7 @@ prerequisites:
   - double-descent
 leads_to:
   - rlhf
+  - test-time-compute
   - mixture-of-experts
   - llm-serving
 related:
@@ -25,9 +26,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: kaplan-2020-scaling-laws
+    kind: paper
+    title: "Scaling Laws for Neural Language Models"
+    authors: "Kaplan et al."
+    year: 2020
+    url: "https://arxiv.org/abs/2001.08361"
+    note: "Grounds empirical power-law fits between model size, data, compute, and language-model loss."
+  - id: hoffmann-2022-chinchilla
+    kind: paper
+    title: "Training Compute-Optimal Large Language Models"
+    authors: "Hoffmann et al."
+    year: 2022
+    url: "https://arxiv.org/abs/2203.15556"
+    note: "Grounds compute-optimal scaling as a balance between parameter count and training tokens."
+claim_checks:
+  - id: power-law-compute-optimal-allocation
+    status: source-checked
+    claim: "Kaplan et al. fit language-model cross-entropy loss with empirical power laws in model size, dataset size, and training compute; Hoffmann et al. find compute-optimal training scales parameters and tokens together under a fixed budget."
+    source_ids:
+      - kaplan-2020-scaling-laws
+      - hoffmann-2022-chinchilla
+    support: "Kaplan et al. study language-model cross-entropy loss and report power-law scaling with model size, dataset size, and training compute. Hoffmann et al. train over 400 models and find that compute-optimal training scales model size and training tokens equally under a fixed compute budget. The page's first two equations, code witness, and loss-scaling demo instantiate this loss-plus-iso-compute planning view."
+    caveat: "This checks empirical pretraining scaling and training-compute allocation, not a proof of intelligence, universal exponents across architectures/datasets, inference-time compute, data-quality effects, downstream benchmark emergence, or post-training/RLHF behavior."
+    object_refs:
+      - "#source-span-kaplan-2020-scaling-laws"
+      - "#source-span-hoffmann-2022-chinchilla"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-20"
+      reviewer: codex
+      summary: "Checked arXiv abstracts: Kaplan et al. support cross-entropy loss power laws over model size, dataset size, and training compute; Hoffmann et al. support equal scaling of model size and token count for compute-optimal fixed-budget training. Local math/code/demo instantiate only this scoped pretraining loss and N-D budget view."
 short_description: "Empirical power laws that predict how loss and capability improve with parameters, data, and compute, and how to choose compute-optimal training runs."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-20"
 estimated_read_time: 18
-

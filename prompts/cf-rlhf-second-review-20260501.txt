@@ -1,0 +1,30 @@
+You are Oracle/GPT Pro performing the second publish/no-publish review for the rebuilt RLHF concept in Continuous Function.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- Published means the page can survive a serious reader.
+- Review intuition, math, code, demo, graph links, and mobile/visual pedagogy.
+
+Context:
+- First RLHF review is attached in `responses/cf-rlhf-publish-review-20260501.md`.
+- The first verdict was demote to review and structurally rebuild.
+- Codex applied that verdict: metadata now says `status: review`; the title removed Constitutional AI; the MDX was rebuilt around preference data, Bradley-Terry reward modeling, reward identifiability, KL-regularized finite-action optimization, PPO-as-optimizer caveat, reward hacking, and the bridge to DPO.
+- The old multi-story demo was replaced with `RLHFProbabilityShapingViz`, a finite-action probability-shaping explorer with controls for beta, reward shift, and proxy reward gap.
+- Local checks passed after rebuild: `npm run generate-content`, `npm run validate-content`, `npm run typecheck`, a Python code witness, desktop/mobile route checks for `/domains/alignment/rlhf/`, and `npm run build`.
+
+Primary sources:
+- Ouyang et al., "Training language models to follow instructions with human feedback", arXiv:2203.02155: https://arxiv.org/abs/2203.02155
+- Christiano et al., "Deep reinforcement learning from human preferences", arXiv:1706.03741: https://arxiv.org/abs/1706.03741
+
+Please review the attached rebuilt files and decide whether RLHF can move from review to published.
+
+Return:
+1. Verdict: publishable, publishable after small fixes, keep review, or demote to draft.
+2. Remaining blocking correctness issues.
+3. Remaining blocking pedagogy issues.
+4. Important improvements before publication.
+5. Optional polish.
+6. Exact patch-style edits for the highest-impact fixes.
+7. Whether `concept.yaml` should stay `review` or move to `published`.
+
+Be strict and specific. If the page is still not publishable, say exactly what must change.

@@ -1,70 +1,209 @@
 ---
-title: "Reward Hacking & Overoptimization: Goodhart's Law in Preference Optimization"
+title: "Reward Hacking: Overoptimizing Preference Proxies"
 ---
 
 ## Intuition
 
-Reward hacking is Goodhart's law in ML form: *when a measure becomes a target, it stops being a good measure*.
+Source map: Amodei et al. introduce reward hacking as a wrong-objective safety problem; Gao et al. study reward-model overoptimization in RLHF; Manheim and Garrabrant provide the Goodhart-variants taxonomy used near the end of this page.
 
-In preference optimization, the "reward" is not the true thing you care about. It's a learned proxy (a reward model, or an implicit preference objective) trained on finite, noisy comparisons. As you optimize the policy, you push it into regions where:
+A reward model can validate well on held-out comparisons. Why can the policy get worse when we keep optimizing it?
 
-- the reward model has **less data** (distribution shift),
-- small prediction errors get **amplified** by optimization pressure,
-- the policy discovers **loopholes** that score well but are actually bad.
+The problem is not that optimization is mysterious. It is doing exactly what we asked: put more probability on completions with high proxy reward. The failure is that the proxy reward is not the real target. When the policy is optimized hard enough, it selects for places where the reward model is wrong in the optimizer's favor.
 
-This is why modern post-training recipes use conservative objectives, ensembles, monitoring, and KL anchors. The point is not "solve Goodhart forever" but "slow it down and detect it early."
+The mechanism is:
+
+> One useful finite-action model of reward hacking is selected proxy error. Optimization increases expected proxy reward while shifting probability mass toward outputs whose true utility is lower than the proxy says.
+
+KL anchors, uncertainty penalties, ensembles, early stopping, fresh labels, and adversarial evaluation are brakes: in this setup they reduce optimization pressure, expose uncertainty, or slow concentration on proxy exploits. They do not prove the proxy is the target.
 
 ## Math
 
-### Proxy reward optimization with a trust region
+Let one prompt $x$ have a finite set of candidate completions $y_1,\dots,y_K$.
 
-A common shape (RLHF-style) is:
+The target, learned proxy, and proxy error are
 
-$$\\max_{\\pi_\\theta}\\;\\mathbb E_{y\\sim\\pi_\\theta(\\cdot\\mid x)}[\\hat r_\\phi(x,y)] - \\beta\\,\\mathrm{KL}\\!\\left(\\pi_\\theta(\\cdot\\mid x)\\ \\|\\ \\pi_{\\text{ref}}(\\cdot\\mid x)\\right).$$
+$$
+u_i = u(x,y_i), \qquad \hat r_i = u_i+\varepsilon_i, \qquad \varepsilon_i=\hat r_i-u_i.
+$$
 
-The KL term helps, but it's not a magic shield: you can still find high-scoring hacks inside the trust region if the proxy is wrong there.
+A KL-regularized finite-action update shifts probability toward high proxy scores and selects proxy error:
 
-### Conservative optimization via ensembles (a practical anti-Goodhart move)
+$$
+\pi_\beta(i\mid x)
+=
+\frac{
+\pi_{\mathrm{ref}}(i\mid x)\exp(\hat r_i/\beta)
+}{
+\sum_j \pi_{\mathrm{ref}}(j\mid x)\exp(\hat r_j/\beta)
+},
+\qquad
+E(\beta)
+=
+\sum_i \pi_\beta(i\mid x)(\hat r_i-u_i).
+$$
 
-With an ensemble of reward models $\\{r_{\\phi_j}\\}_{j=1}^K$, define mean and standard deviation:
+In practice we do not know $u_i$, but the toy keeps it visible so we can see the failure.
 
-$$\\mu(x,y)=\\frac{1}{K}\\sum_{j=1}^K r_{\\phi_j}(x,y),\\qquad
-\\sigma(x,y)=\\sqrt{\\frac{1}{K}\\sum_{j=1}^K\\left(r_{\\phi_j}(x,y)-\\mu(x,y)\\right)^2}.$$
+A KL-regularized RLHF-style update uses the direction
 
-Then optimize a lower confidence bound:
+$$
+\mathrm{KL}(\pi\|\pi_{\mathrm{ref}})
+=
+\sum_i
+\pi_i
+\log
+\frac{\pi_i}{\pi_{\mathrm{ref},i}}.
+$$
 
-$$r_{\\text{LCB}}(x,y)=\\mu(x,y)-\\lambda\\,\\sigma(x,y).$$
+The unpenalized-proxy policy solves
 
-Intuition: prefer high reward you are *confident* about, not just high mean reward.
+$$
+\max_{\pi\in\Delta_K}
+\sum_i
+\pi_i\hat r_i
+-
+\beta
+\sum_i
+\pi_i
+\log
+\frac{\pi_i}{\pi_{\mathrm{ref},i}}.
+$$
+
+Smaller $\beta$ means stronger optimization pressure. The proxy objective can improve while the real target gets worse:
+
+$$
+\widehat R(\beta)
+=
+\sum_i \pi_\beta(i\mid x)\hat r_i,
+$$
+
+while
+
+$$
+U(\beta)
+=
+\sum_i \pi_\beta(i\mid x)u_i.
+$$
+
+In this toy, reward hacking is visible when $\widehat R(\beta)$ keeps increasing but $U(\beta)$ peaks and then falls.
+
+Optimization does not merely reveal random error; it selects for candidates where the proxy error is useful to the optimizer.
+
+### Conservative score
+
+With an ensemble, define a mean reward $\mu_i$ and disagreement $\sigma_i$. A lower-confidence score is
+
+$$
+s_i(\lambda)=\mu_i-\lambda\sigma_i.
+$$
+
+Optimizing this score gives
+
+$$
+\pi_{\beta,\lambda}(i\mid x)
+=
+\frac{
+\pi_{\mathrm{ref}}(i\mid x)\exp(s_i(\lambda)/\beta)
+}{
+\sum_j \pi_{\mathrm{ref}}(j\mid x)\exp(s_j(\lambda)/\beta)
+}.
+$$
+
+In the conservative setting, the selected proxy error is still measured against the unpenalized proxy mean:
+
+$$
+E_{\mathrm{sel}}(\beta,\lambda)
+=
+\sum_i
+\pi_{\beta,\lambda}(i\mid x)
+(\mu_i-u_i).
+$$
+
+The lower-confidence score changes which completions become attractive to the optimizer. It does not make the proxy error disappear, and it is not scored as $s_i(\lambda)-u_i$.
+
+This can reduce concentration on uncertain proxy exploits. It does not prove $s_i(\lambda)=u_i$; it only changes which errors are attractive.
+
+### Goodhart variants near this toy
+
+| Variant | How to read it here |
+| --- | --- |
+| Regressional Goodhart | Directly modeled: selecting high proxy scores also selects positive proxy error $\mu_i-u_i$. |
+| Extremal Goodhart | Suggested, not proved: the exploit starts with low reference probability and high uncertainty, a stand-in for moving away from the reward model's reliable region. |
+| Adversarial Goodhart | Suggested, not dynamically modeled: the fixed "proxy exploit" represents an output pattern that scores well under the evaluator while failing the intended target. |
+| Causal Goodhart | Not modeled here. Causal Goodhart needs the optimization process to change the data-generating or evaluation process itself. |
 
 ## Code
+
+This witness implements the same finite-action object as the math and demo.
 
 ```python
 import numpy as np
 
-x = np.linspace(-3, 3, 401)
-r_true = -(x - 1.0) ** 2                      # true objective (unknown in practice)
+def normalize(weights):
+    weights = np.asarray(weights, dtype=float)
+    return weights / weights.sum()
 
-# A proxy reward that "extrapolates wrong" beyond where it was trained
-bias = 0.6 * np.tanh(2 * (x - 1.5))
-r_hat = r_true + bias
+def kl(p, q):
+    return float(np.sum(p * (np.log(p) - np.log(q))))
 
-# Uncertainty grows off-distribution (toy model)
-sigma = 0.1 + 0.4 * np.abs(x - 1.0)
-lam = 1.0
-r_lcb = r_hat - lam * sigma
+def expected(p, values):
+    return float(np.sum(p * values))
 
-x_true = float(x[np.argmax(r_true)])
-x_proxy = float(x[np.argmax(r_hat)])
-x_lcb = float(x[np.argmax(r_lcb)])
+labels = np.array([
+    "clear answer",
+    "safe refusal",
+    "thin answer",
+    "proxy exploit",
+])
 
-print("true optimum x~", round(x_true, 3))
-print("proxy optimum x~", round(x_proxy, 3))
-print("LCB optimum  x~", round(x_lcb, 3))
+# One prompt, four possible completions.
+# Shapes: all arrays are (K,).
+pi_ref = np.array([0.28, 0.22, 0.42, 0.08])
+
+# True utility is hidden in practice; visible here for diagnosis.
+u = np.array([1.20, 0.70, -0.30, -0.80])
+
+# Mean reward model score. The final candidate is a reward-model exploit:
+# it is truly bad, but the proxy scores it highly.
+mu = np.array([1.10, 0.60, -0.10, 1.90])
+
+# Ensemble disagreement / uncertainty.
+sigma = np.array([0.15, 0.15, 0.20, 1.00])
+
+def policy(beta, lam=0.0):
+    score = mu - lam * sigma
+    logits = np.log(pi_ref) + score / beta
+    logits = logits - logits.max()
+    return normalize(np.exp(logits))
+
+u_ref = expected(pi_ref, u)
+
+print("reference true utility:", round(u_ref, 3))
+print()
+
+for beta in [3.0, 2.0, 1.0, 0.7, 0.45, 0.30]:
+    pi = policy(beta, lam=0.0)
+    print("beta:", beta)
+    print("  policy:       ", dict(zip(labels, np.round(pi, 3))))
+    print("  proxy reward: ", round(expected(pi, mu), 3))
+    print("  true utility: ", round(expected(pi, u), 3))
+    print("  selected err: ", round(expected(pi, mu - u), 3))
+    print("  KL to ref:    ", round(kl(pi, pi_ref), 3))
+    print()
+
+print("With an uncertainty penalty:")
+for beta in [0.7, 0.45, 0.30]:
+    pi = policy(beta, lam=1.0)
+    print("beta:", beta)
+    print("  policy:       ", dict(zip(labels, np.round(pi, 3))))
+    print("  proxy reward: ", round(expected(pi, mu), 3))
+    print("  true utility: ", round(expected(pi, u), 3))
+    print("  KL to ref:    ", round(kl(pi, pi_ref), 3))
+    print()
 ```
 
 ## Interactive Demo
 
-Use the demo to see how optimization pressure, KL anchors, and uncertainty penalties change where the policy moves, and why "over-optimizing the proxy" is expected behavior.
+Use the demo to watch one prompt's probability mass move. Lower $\beta$ increases optimization pressure. Turning on the proxy gap makes one bad completion look excellent to the reward model. Increasing the uncertainty penalty slows concentration on that exploit, but it does not make the proxy identical to true utility.
 
 {/* viz.tsx component renders here if it exists */}

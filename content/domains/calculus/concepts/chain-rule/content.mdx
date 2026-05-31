@@ -14,11 +14,13 @@ That is the entire story of backpropagation: derivatives flow through a computat
 
 Let $u = g(x)$ and $y = f(u) = f(g(x))$. The chain rule says:
 
-$$(f \circ g)'(x) = f'(g(x))\, g'(x).$$
+$$
+(f \circ g)'(x) = f'(g(x))\, g'(x).
+$$
 
 A useful way to remember it is “differentiate the outside, then multiply by the derivative of the inside.”
 
-For multi-variable functions (what we use in ML), the chain rule becomes Jacobian multiplication, and backprop is efficient Jacobian-vector products.
+For multi-variable functions (what we use in ML), the chain rule becomes Jacobian multiplication. Forward-mode autodiff computes Jacobian-vector products; reverse-mode backprop computes vector-Jacobian products, which is why it works well when one scalar loss depends on many parameters.
 
 ## Code
 

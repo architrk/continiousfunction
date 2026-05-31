@@ -1,0 +1,44 @@
+You are reviewing Continuous Function, a Next.js/TypeScript learning platform that is moving from a static atlas toward logged-in learner memory and object-attached research collaboration.
+
+Current product direction:
+- Public atlas content remains canonical in the repo.
+- Postgres will store the private learner/team/research overlay.
+- Durable memory must attach to stable content object keys, not URLs alone.
+- This specific slice must be schema-only: no Neon connection, no DATABASE_URL import, no Clerk runtime, no API routes, no protected pages, no migration execution, no dynamic atlas reads, no billing, no uploads, no realtime, no AI endpoint changes.
+
+Previous reviewed slice created a deterministic content-object manifest:
+- content/_generated/content-object-manifest.json has 851 objects.
+- Objects include concepts, routes, demos, equations, code witnesses, sources, source spans, claims, and misconceptions.
+- Existing local route snapshots can carry objectKey.
+
+This slice is intended to implement object-memory-contract-v1:
+- db/schema.ts defines Drizzle/Postgres tables/enums/indexes/check constraints.
+- drizzle/0000_object_memory_contract.sql is the committed generated migration, manually prefixed with pgcrypto extension for gen_random_uuid().
+- db/objectMemoryTypes.ts and db/objectMemoryMappers.ts define portable TS contracts and pure mapping functions.
+- scripts/validate-object-memory-contract.ts checks migration/table/object-key/ownership/no-runtime boundaries.
+- db/*.test.ts covers manifest-to-ref rows, snapshot/observation/evidence mapping, URL-only rejection, owner uuid requirement, and SQL contract shape.
+- docs/TODO/handoff were updated to mark this as schema contract only; live Neon migration and auth helpers remain pending.
+
+Please review as a publish/no-publish implementation gate.
+
+Return:
+1. Verdict: publish, publish-after-fixes, or no-publish.
+2. Must-fix blockers, if any.
+3. Should-fix improvements, if any.
+4. Whether this accidentally introduces runtime/auth/database/billing/upload/dynamic atlas behavior.
+5. Whether the schema preserves the intended durable product unit: object-attached learner/research memory, not generic social feed.
+6. Whether JSONB is used only for compact structured state/locator/metadata, not identity/ownership/permissions.
+7. Whether any tests or validators are missing for this slice.
+
+Local checks already passing before this review:
+- npm run validate-content
+- npm run validate:object-memory
+- npm test -- contentObjectManifestDbContract objectMemory --runInBand
+- npm run typecheck
+- npm run verify:deployment-readiness
+- npm run audit:prod
+- CF_NEXT_BUILD_CPUS=1 npm run build
+
+Known existing noise not part of this slice:
+- The working tree has untracked iCloud duplicate files like pages/pillars/index 2.tsx. They are not staged and should not be part of the review.
+- Build emits existing raw <img> warnings and KaTeX newLineInDisplayMode warnings.

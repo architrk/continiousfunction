@@ -1,9 +1,14 @@
 import type { GetStaticPaths, GetStaticProps } from 'next'
 import Head from 'next/head'
-import Link from 'next/link'
-import { contentConceptVizMap } from '../../../content/_generated/vizMap'
+import dynamic from 'next/dynamic'
+import ConceptNotebookPage from '@/components/concepts/ConceptNotebookPage'
+import { getConceptImage, type ConceptImage } from '@/lib/conceptImages'
+import { extractConceptObjectSpans, type ConceptObjectSpan } from '@/lib/conceptObjectSpans'
+import { assertSafeContentMdx, sanitizeContentMdxSource } from '../../../lib/contentMdxSafety'
 import type { ConceptMeta } from '../../../lib/contentLoader'
 import { compileSafeMarkdownToHtml, parseConceptMdxSections } from '../../../lib/safeMdx'
+
+const ContentConceptViz = dynamic(() => import('@/components/concepts/ContentConceptViz'), { ssr: false })
 
 type ConceptMetaPublic = Omit<ConceptMeta, '_dirPath' | '_conceptYamlPath' | '_contentMdxPath' | '_vizPath'>
 
@@ -27,16 +32,34 @@ type Props = {
     codeHtml: string
     demoHtml: string
   }
+  sectionPrompts: {
+    intuition: string
+    math: string
+    code: string
+    demo: string
+  }
+  objectSpans: ConceptObjectSpan[]
   prerequisites: ResolvedLink[]
   leadsTo: ResolvedLink[]
   related: ResolvedLink[]
   prevInDomain: Neighbor | null
   nextInDomain: Neighbor | null
+  conceptImage: ConceptImage | null
 }
 
 const stripInternalMeta = (meta: ConceptMeta): ConceptMetaPublic => {
   const { _dirPath, _conceptYamlPath, _contentMdxPath, _vizPath, ...publicMeta } = meta
   return publicMeta
+}
+
+const compactPromptSnippet = (raw: string, maxLength = 700): string => {
+  const cleaned = raw
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+  if (cleaned.length <= maxLength) return cleaned
+  return `${cleaned.slice(0, maxLength).trimEnd()}...`
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
@@ -64,8 +87,10 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
   if (!meta) return { notFound: true }
 
   const fs = await import('node:fs')
+  const path = await import('node:path')
   const mdxRaw = fs.readFileSync(meta._contentMdxPath, 'utf8')
-  const parsed = parseConceptMdxSections(mdxRaw)
+  assertSafeContentMdx(mdxRaw, meta._contentMdxPath)
+  const parsed = parseConceptMdxSections(sanitizeContentMdxSource(mdxRaw))
 
   const [intuitionHtml, mathHtml, codeHtml] = await Promise.all([
     compileSafeMarkdownToHtml(parsed.intuition),
@@ -74,19 +99,40 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
   ])
 
   const demoHtml = await compileSafeMarkdownToHtml(parsed.demo)
+  const objectSpans = extractConceptObjectSpans(parsed)
 
   // Resolve cross-links (prefer content/ concepts; fall back to legacy /foundations when possible).
   const contentIndex = new Map(metas.map((m) => [m.id, m] as const))
 
   let legacyIds = new Set<string>()
   try {
-    const legacy = await import('../../../data/foundationsData')
-    legacyIds = new Set(legacy.foundationsConcepts.map((c) => c.id))
+    const legacyPath = path.join(process.cwd(), 'data', 'foundationsData.ts')
+    const legacyRaw = fs.readFileSync(legacyPath, 'utf8')
+    const ids = new Set<string>()
+    const idRe = /\bid:\s*'([^']+)'\s*,/g
+    let match: RegExpExecArray | null
+    while ((match = idRe.exec(legacyRaw))) ids.add(match[1])
+    legacyIds = ids
   } catch {
-    // Legacy import is best-effort; content pages still work without it.
+    // Legacy ID scan is best-effort; content pages still work without it.
   }
 
-  const linkFor = (id: string): ResolvedLink => {
+  const titleizeConceptId = (id: string) =>
+    id
+      .split('-')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+
+  const linkFor = (rawId: string): ResolvedLink => {
+    const plannedPrefix = 'planned:'
+    const isPlanned = rawId.startsWith(plannedPrefix)
+    const id = isPlanned ? rawId.slice(plannedPrefix.length) : rawId
+
+    if (isPlanned) {
+      return { id: rawId, title: `${titleizeConceptId(id)} (planned)` }
+    }
+
     const content = contentIndex.get(id)
     if (content) {
       return { id, title: content.title, href: `/domains/${content.domain}/${content.slug}/` }
@@ -120,11 +166,19 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
         codeHtml,
         demoHtml,
       },
+      sectionPrompts: {
+        intuition: compactPromptSnippet(parsed.intuition),
+        math: compactPromptSnippet(parsed.math),
+        code: compactPromptSnippet(parsed.code),
+        demo: compactPromptSnippet(parsed.demo),
+      },
+      objectSpans,
       prerequisites,
       leadsTo,
       related,
       prevInDomain: prev ? { title: prev.title, href: `/domains/${prev.domain}/${prev.slug}/` } : null,
       nextInDomain: next ? { title: next.title, href: `/domains/${next.domain}/${next.slug}/` } : null,
+      conceptImage: getConceptImage(meta.id),
     },
   }
 }
@@ -133,394 +187,43 @@ export default function ConceptPage({
   domainTitle,
   concept,
   sections,
+  sectionPrompts,
+  objectSpans,
   prerequisites,
   leadsTo,
   related,
   prevInDomain,
   nextInDomain,
+  conceptImage,
 }: Props) {
-  const Viz = contentConceptVizMap[concept.id]
-
-  const hasDemo = Boolean(Viz)
+  const Viz = concept.has_visualization
+    ? function ConceptViz() {
+        return <ContentConceptViz conceptId={concept.id} />
+      }
+    : undefined
 
   return (
-    <div>
+    <>
       <Head>
-        <title>{concept.title} — {domainTitle} — Continuous Function</title>
+        <title>{`${concept.title} — ${domainTitle} — Continuous Function`}</title>
         {concept.short_description ? (
           <meta name="description" content={concept.short_description} />
         ) : null}
       </Head>
-
-      <nav className="breadcrumb" aria-label="Breadcrumb">
-        <Link href="/">Home</Link>
-        <span className="breadcrumb-sep">/</span>
-        <Link href="/domains/">Domains</Link>
-        <span className="breadcrumb-sep">/</span>
-        <Link href={`/domains/${concept.domain}/`}>{domainTitle}</Link>
-        <span className="breadcrumb-sep">/</span>
-        <span className="breadcrumb-current">{concept.title}</span>
-      </nav>
-
-      <section className="hero">
-        <h1>{concept.title}</h1>
-        {concept.short_description ? <p className="hero-tagline">{concept.short_description}</p> : null}
-
-        <div className="meta-row">
-          <span className={`badge status ${concept.status}`}>{concept.status}</span>
-          <span className={`badge importance ${concept.importance}`}>{concept.importance}</span>
-          <span className="badge">difficulty: {concept.difficulty}/5</span>
-          <span className="badge">math: {concept.math_level || '—'}</span>
-          <span className="badge">read: {concept.estimated_read_time || 0}m</span>
-          {hasDemo ? <span className="badge demo">demo</span> : <span className="badge muted">no demo yet</span>}
-        </div>
-
-        {concept.tags?.length ? (
-          <div className="tags">
-            {concept.tags.slice(0, 10).map((t) => (
-              <span key={t} className="tag">{t}</span>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="link-section">
-        {prerequisites.length > 0 ? (
-          <div className="link-block">
-            <h2 className="link-title">Prerequisites</h2>
-            <div className="link-list">
-              {prerequisites.map((p) => (
-                p.href ? (
-                  <Link key={p.id} href={p.href} className="chip">
-                    {p.title ?? p.id}
-                  </Link>
-                ) : (
-                  <span key={p.id} className="chip disabled">{p.id}</span>
-                )
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {leadsTo.length > 0 ? (
-          <div className="link-block">
-            <h2 className="link-title">Leads To</h2>
-            <div className="link-list">
-              {leadsTo.map((p) => (
-                p.href ? (
-                  <Link key={p.id} href={p.href} className="chip">
-                    {p.title ?? p.id}
-                  </Link>
-                ) : (
-                  <span key={p.id} className="chip disabled">{p.id}</span>
-                )
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {related.length > 0 ? (
-          <div className="link-block">
-            <h2 className="link-title">Related</h2>
-            <div className="link-list">
-              {related.map((p) => (
-                p.href ? (
-                  <Link key={p.id} href={p.href} className="chip">
-                    {p.title ?? p.id}
-                  </Link>
-                ) : (
-                  <span key={p.id} className="chip disabled">{p.id}</span>
-                )
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="content">
-        <h2>Intuition</h2>
-        <div className="content-html" dangerouslySetInnerHTML={{ __html: sections.intuitionHtml }} />
-
-        <h2>Math</h2>
-        <div className="content-html" dangerouslySetInnerHTML={{ __html: sections.mathHtml }} />
-
-        <h2>Code</h2>
-        <div className="content-html" dangerouslySetInnerHTML={{ __html: sections.codeHtml }} />
-
-        <h2>Interactive Demo</h2>
-        {sections.demoHtml ? (
-          <div className="content-html" dangerouslySetInnerHTML={{ __html: sections.demoHtml }} />
-        ) : null}
-        {Viz ? (
-          <div className="demo">
-            <Viz />
-          </div>
-        ) : (
-          <p className="muted">No interactive demo yet. Add a <code>viz.tsx</code> next to this concept to enable it.</p>
-        )}
-      </section>
-
-      {(prevInDomain || nextInDomain) ? (
-        <nav className="pager" aria-label="Domain navigation">
-          {prevInDomain ? (
-            <Link href={prevInDomain.href} className="pager-link">
-              <span className="pager-kicker">Previous</span>
-              <span className="pager-title">{prevInDomain.title}</span>
-            </Link>
-          ) : (
-            <span />
-          )}
-          {nextInDomain ? (
-            <Link href={nextInDomain.href} className="pager-link" style={{ textAlign: 'right' }}>
-              <span className="pager-kicker">Next</span>
-              <span className="pager-title">{nextInDomain.title}</span>
-            </Link>
-          ) : null}
-        </nav>
-      ) : null}
-
-      <style jsx>{`
-        .breadcrumb {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          font-size: 0.85rem;
-          color: var(--text-muted);
-          margin-bottom: 1.25rem;
-          flex-wrap: wrap;
-        }
-        .breadcrumb a {
-          color: var(--converge-teal);
-          text-decoration: none;
-        }
-        .breadcrumb a:hover {
-          text-decoration: underline;
-        }
-        .breadcrumb-sep {
-          color: var(--text-muted);
-          opacity: 0.7;
-        }
-        .breadcrumb-current {
-          color: var(--text-secondary);
-        }
-
-        .meta-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-top: 1rem;
-        }
-
-        .badge {
-          font-family: var(--font-mono);
-          font-size: 0.75rem;
-          padding: 0.18rem 0.5rem;
-          border-radius: 999px;
-          border: 1px solid var(--border-subtle);
-          color: var(--text-muted);
-          background: rgba(8, 12, 20, 0.4);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          white-space: nowrap;
-        }
-
-        .badge.muted {
-          opacity: 0.7;
-        }
-
-        .badge.demo {
-          border-color: rgba(20, 184, 166, 0.35);
-          color: var(--converge-teal);
-          background: rgba(20, 184, 166, 0.12);
-        }
-
-        .badge.status.published {
-          border-color: rgba(245, 158, 11, 0.35);
-          color: var(--gradient-orange);
-          background: rgba(245, 158, 11, 0.12);
-        }
-
-        .badge.status.review {
-          border-color: rgba(251, 191, 36, 0.35);
-          color: #fbbf24;
-          background: rgba(251, 191, 36, 0.12);
-        }
-
-        .badge.status.draft {
-          border-color: rgba(148, 163, 184, 0.25);
-          color: rgba(148, 163, 184, 0.9);
-          background: rgba(148, 163, 184, 0.08);
-        }
-
-        .badge.importance.critical {
-          border-color: rgba(239, 68, 68, 0.35);
-          color: #ef4444;
-          background: rgba(239, 68, 68, 0.12);
-        }
-
-        .badge.importance.important {
-          border-color: rgba(34, 197, 94, 0.35);
-          color: #22c55e;
-          background: rgba(34, 197, 94, 0.12);
-        }
-
-        .badge.importance.supplementary {
-          border-color: rgba(59, 130, 246, 0.35);
-          color: #3b82f6;
-          background: rgba(59, 130, 246, 0.12);
-        }
-
-        .badge.importance.advanced {
-          border-color: rgba(168, 85, 247, 0.35);
-          color: #a855f7;
-          background: rgba(168, 85, 247, 0.12);
-        }
-
-        .tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.35rem;
-          margin-top: 0.9rem;
-        }
-
-        .tag {
-          font-family: var(--font-mono);
-          font-size: 0.72rem;
-          padding: 0.12rem 0.45rem;
-          border-radius: 999px;
-          border: 1px solid var(--border-subtle);
-          color: var(--text-muted);
-          background: rgba(8, 12, 20, 0.25);
-        }
-
-        .link-section {
-          margin-top: 1.5rem;
-          padding: 1.25rem;
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-lg);
-          background: rgba(8, 12, 20, 0.25);
-        }
-
-        .link-block + .link-block {
-          margin-top: 1rem;
-        }
-
-        .link-title {
-          margin: 0 0 0.6rem 0;
-          font-size: 1rem;
-          padding-left: 0;
-        }
-
-        .link-title::before {
-          content: none;
-        }
-
-        .link-list {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-
-        .chip {
-          display: inline-flex;
-          align-items: center;
-          padding: 0.35rem 0.6rem;
-          border-radius: 999px;
-          border: 1px solid var(--border-subtle);
-          background: rgba(8, 12, 20, 0.35);
-          color: var(--text-secondary);
-          text-decoration: none;
-          font-size: 0.85rem;
-        }
-
-        .chip:hover {
-          border-color: var(--converge-teal);
-          color: var(--text-primary);
-        }
-
-        .chip.disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        .content {
-          margin-top: 2rem;
-        }
-
-        .content-html :global(pre) {
-          margin: 1rem 0;
-          padding: 1rem 1rem;
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--border-subtle);
-          background: rgba(8, 12, 20, 0.55);
-          overflow-x: auto;
-        }
-
-        .content-html :global(pre code) {
-          border: none;
-          background: transparent;
-          padding: 0;
-          font-size: 0.85rem;
-          color: var(--text-secondary);
-          display: block;
-          line-height: 1.6;
-        }
-
-        .demo {
-          margin-top: 1rem;
-          padding: 1rem;
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--border-subtle);
-          background: rgba(8, 12, 20, 0.25);
-        }
-
-        .muted {
-          color: var(--text-muted);
-        }
-
-        .pager {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 1rem;
-          margin-top: 2.5rem;
-        }
-
-        .pager-link {
-          display: block;
-          padding: 1rem;
-          border-radius: var(--radius-lg);
-          border: 1px solid var(--border-subtle);
-          background: rgba(8, 12, 20, 0.25);
-          text-decoration: none;
-        }
-
-        .pager-link:hover {
-          border-color: var(--converge-teal);
-        }
-
-        .pager-kicker {
-          display: block;
-          font-family: var(--font-mono);
-          font-size: 0.7rem;
-          color: var(--text-muted);
-          letter-spacing: 0.12em;
-          text-transform: uppercase;
-        }
-
-        .pager-title {
-          display: block;
-          margin-top: 0.4rem;
-          color: var(--text-primary);
-          font-family: var(--font-display);
-          font-size: 1rem;
-        }
-
-        @media (max-width: 720px) {
-          .pager {
-            grid-template-columns: 1fr;
-          }
-        }
-      `}</style>
-    </div>
+      <ConceptNotebookPage
+        domainTitle={domainTitle}
+        concept={concept}
+        sections={sections}
+        sectionPrompts={sectionPrompts}
+        objectSpans={objectSpans}
+        prerequisites={prerequisites}
+        leadsTo={leadsTo}
+        related={related}
+        prevInDomain={prevInDomain}
+        nextInDomain={nextInDomain}
+        conceptImage={conceptImage}
+        Viz={Viz}
+      />
+    </>
   )
 }

@@ -10,7 +10,7 @@ Reference: Codex docs on `AGENTS.md` custom instructions: https://developers.ope
 
 ## Role
 
-You are the builder of **Continuous Function**: an ever-expanding interactive educational platform for mathematics, deep learning, and adjacent domains.
+You are the builder of **Continuous Function**: the most engaging, intuitive, rigorous, and worthwhile learning experience for the mathematics behind modern deep learning and frontier AI.
 
 Your job never ends.
 
@@ -21,11 +21,17 @@ Every session:
 4. leave the repo better than you found it,
 5. leave a non-empty queue for the next session.
 
+For concept, pedagogy, product, or UI work, read `content/_agent/CONCEPT_QUALITY_BAR.md` and treat it as the publication standard.
+For product direction and prioritization, read `content/_agent/PRODUCT_NORTH_STAR.md` and treat it as the north star.
+For visual design, image generation, component styling, layout, or interaction polish, read `content/_agent/DESIGN_LANGUAGE.md` and keep the site moving toward one cohesive Living Notebook Lab.
+
 ---
 
 ## What This Project Is
 
-A static-exported **Next.js (Pages Router) + TypeScript** site that teaches deep learning and mathematics through interactive visualizations.
+A static-exported **Next.js (Pages Router) + TypeScript** site that teaches deep learning and mathematics through connected concepts, source-grounded explanations, runnable witnesses, and prediction-first interactive demos.
+
+The site should be a premier one-stop destination for serious learners. A learner should be able to start from a modern paper, equation, architecture, model behavior, or system tradeoff and find a clear path to understanding it.
 
 Pedagogy is always:
 
@@ -80,6 +86,19 @@ Infrastructure:
 
 Research outputs:
 - `responses/` (Oracle outputs and research notes)
+- `prompts/oracle-templates/` (reusable Oracle review prompts for concept and UI work)
+
+Agent/editorial operating docs:
+- `content/_agent/TODO.yaml` (task queue; read this first)
+- `content/_agent/PRODUCT_NORTH_STAR.md` (product identity, experience standard, AI/research direction)
+- `content/_agent/CONCEPT_QUALITY_BAR.md` (mission, concept rubric, Oracle loop, image/UI exploration rules)
+- `content/_agent/DESIGN_LANGUAGE.md` (aesthetic language, pedagogical design principles, visual semantics, component doctrine)
+
+Root hygiene:
+- keep conventional repo-root files here (`README.md`, `AGENTS.md`, `package.json`, config)
+- put long-lived agent/editorial process docs under `content/_agent/`
+- put Oracle prompts under `prompts/` and outputs under `responses/`
+- do not add new root notes unless they are standard project docs or explicitly requested
 
 ---
 
@@ -87,6 +106,9 @@ Research outputs:
 
 1. **READ**
    - Open `content/_agent/TODO.yaml` and select the top `pending` task by priority.
+   - For product, route, AI, research-discussion, or prioritization work, also open `content/_agent/PRODUCT_NORTH_STAR.md`.
+   - For non-trivial concept/product/UI work, also open `content/_agent/CONCEPT_QUALITY_BAR.md`.
+   - For visual design, generated images, layout, components, or interaction polish, also open `content/_agent/DESIGN_LANGUAGE.md`.
 
 2. **EXECUTE**
    - Do the task end-to-end (create concept, fix bug, deepen content, add viz, build infra).
@@ -241,6 +263,8 @@ P2 (frontier, as foundations fill in):
 
 ## Content Quality Rules
 
+Full standard: `content/_agent/CONCEPT_QUALITY_BAR.md`.
+
 Tone:
 - curious, patient, and specific
 - no “obviously”; admit confusion and then clarify
@@ -315,10 +339,46 @@ Examples:
 
 ---
 
-## Oracle-First (For Non-Trivial Work)
+## Oracle As Second Mind
 
-For non-trivial concepts, tricky math, or new visualizations:
-- use the Oracle workflow in `ORACLE_GUIDE.md`
-- use a dedicated remote-Chrome profile (`--remote-chrome 127.0.0.1:922x`) and log into ChatGPT manually once; keep that window open until completion
-- always set `--slug` and `--write-output responses/...` so research is saved
-- keep Oracle outputs as a durable knowledge base
+Use Oracle/GPT Pro extensively for non-trivial work. It is the repo's standing critique partner for pedagogy, math, code equivalence, demo design, product direction, and UI/UX. Treat Oracle outputs as advisory: verify claims against the repo, primary sources, local checks, and your own judgment.
+
+Required for:
+- new serious concepts or deep rewrites
+- tricky math, derivations, tensor shapes, or probability claims
+- new visualizations or major demo redesigns
+- homepage/domain/concept-page UX direction
+- cross-domain philosophy, learning paths, and graph/link doctrine
+- any change where a weak explanation could mislead learners
+
+Use the workflow in `ORACLE_GUIDE.md`:
+- run `./scripts/oracle/run.sh`, which follows Oracle's documented `--browser-manual-login` flow
+- keep Oracle's persistent browser profile at `~/.oracle/browser-profile-continuous-function`
+- make sure that Oracle browser profile is logged into ChatGPT as `adrinkscoffee@gmail.com`; run `./scripts/oracle/login.sh` if it is not
+- do not use normal Chrome cookie-copy, `--remote-chrome`, or `scripts/oracle/start-chrome-profile.sh` unless the user explicitly asks
+- always set a readable slug and `--write-output responses/...` so research is saved
+- if a run detaches or goes quiet, check `oracle status` and reattach; do not restart a long GPT Pro run just because it is slow
+
+Preferred Oracle loop for serious concepts:
+1. concept brief and misconception scan
+2. source/research scan
+3. pedagogical outline review
+4. math audit
+5. code-equivalence audit
+6. visualization/demo critique
+7. full draft publish/no-publish review
+
+Ask Oracle for the few highest-impact improvements, not broad idea dumps. Keep every useful answer in `responses/` and encode decisions back into content, docs, TODOs, or validators.
+
+Reusable prompt templates live in `prompts/oracle-templates/`. Prefer those templates for concept briefs, research scans, outline reviews, math audits, code-equivalence audits, visualization critiques, full publish/no-publish reviews, and UI/product reviews.
+
+## Visual/UI And Image Exploration
+
+Use image generation and Oracle brainstorming to improve UI/UX when visual direction is unclear or when an educational visual would make the concept easier to feel. Generated images are useful for mockups, concept art, reference visuals, and static educational assets; they should not replace precise repo-native diagrams or interactive demos when D3, Three, SVG, canvas, CSS, or React components are the better final form.
+
+For product and website design:
+- ask Oracle/GPT Pro to critique the learner journey, information architecture, visual hierarchy, and interaction goal before making broad UI changes
+- use image generation for targeted UI mockups or visual directions, then translate the best ideas into maintainable components
+- keep the site feeling like an atlas, notebook, and lab surface: dense enough for serious learners, approachable enough for enthusiasts
+- verify meaningful UI changes in a browser on desktop and mobile
+- keep visuals pedagogical; decoration that does not clarify a mechanism should be removed

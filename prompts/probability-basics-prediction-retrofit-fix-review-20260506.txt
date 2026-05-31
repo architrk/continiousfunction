@@ -1,0 +1,43 @@
+You are doing a fix review for a narrow Continuous Function learning-platform slice.
+
+Previous Oracle verdict was no-publish for the Probability Basics prediction retrofit.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- The product direction is prediction-first, mechanism-first concept learning: learners should commit to a causal/mathematical prediction before a visualization reveals the measured result.
+- The shared demo-state event lets a demo carry compact measured values into the concept page's checkpoint, saved route snapshot, research-room prompt, and future learner memory.
+- This slice must stay repo-only and static-export-safe. It must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+
+Previous blocker:
+- The local Probability Basics visualizer hid evidence/posterior after a scenario reset, but `latestDemoStates` still retained the last revealed payload. That could leak stale values like `P(H)=0.394`, `P(B and H)=0.072`, and `P(B|H)=0.183` into the shared checkpoint or future memory handoff before the learner re-committed.
+
+Applied fixes:
+- Added `clearDemoState(conceptId)` and a `DemoStateClear` event variant in `lib/demoState.ts`. It deletes the cached state and dispatches a same-channel clear event.
+- Updated `DemoPredictionCheckpoint` to remove its visible matching demo state when it receives a clear event.
+- Updated `LearningCompanionPanel` with the same clear-event handling so scoped AI prompts do not retain stale measured state.
+- Updated `ProbabilityBasicsViz` to clear shared state on mount, preset changes, slider changes, observation changes, and prediction changes after reveal/reset.
+- Added a concept/checkpoint regression test: reveal default setup, confirm the shared checkpoint sees the measured summary, change to the Tail setup, confirm the old `P(B)=0.080 -> P(B|H)=0.183` measured state disappears, and confirm the checkpoint reveal payload no longer carries `demoState`.
+- Added a checkpoint unit test for direct `clearDemoState`.
+- Applied your non-blocking polish:
+  - disclosed that "about same" means within 0.04 of the prior;
+  - added `role="status"` to reveal feedback;
+  - included the actual movement class in reveal feedback;
+  - fixed the stale MDX sentence so it says the table shows joint probabilities after reveal;
+  - updated the audit row to mention both Reverse-Mode Autodiff and Probability Basics as completed in-demo retrofit slices without closing the whole P0.
+
+Verification after fixes:
+- `npm test -- ProbabilityBasicsViz DemoPredictionCheckpoint --runInBand` passed. It shows the existing styled-jsx React warning seen elsewhere in this repo.
+- `npm run validate-content` passed.
+- `npm run typecheck` passed.
+- `npm run verify:deployment-readiness` passed with the expected warnings: public `origin` still exists but deployment must use `private-origin`, and the working tree is not yet committed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed. The build shows existing raw `<img>` warnings, existing KaTeX newline warnings, and the unrelated untracked iCloud duplicate `pages/pillars/index 2.tsx` as `/pillars/index 2`.
+- `npm test -- --runInBand` passed: 25 suites, 165 tests.
+- Fresh headless Chrome checks against `next start` on the production build at desktop 1440 and mobile 390 confirmed:
+  - before reveal: at least 19 hidden readouts/cells, no `P(B) moves from 0.080 to 0.183`, no `P(H)=0.394`, no `0.394`, no `0.183`, posterior bar width is `0`, no KaTeX error, no horizontal document overflow;
+  - after clicking `B gets more likely` and `Reveal conditioning`: correct feedback is visible, evidence and posterior are visible, no KaTeX error, no horizontal document overflow;
+  - after clicking `tail setup`: old feedback disappears, hidden readouts return, no horizontal document overflow.
+
+Please review only the fix and return:
+- `publish` or `no-publish`
+- if no-publish, exact remaining blockers and concrete fixes
+- if publish, note any non-blocking suggestions separately

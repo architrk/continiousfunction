@@ -1,0 +1,37 @@
+You are helping Continuous Function choose the next concrete product slice.
+
+Mission:
+- Make the site a deep, joyful, non-trivial learning environment for deep learning/math.
+- The current P0 repo-only gap is prediction-first demo retrofit: older published demos have a global notebook checkpoint, but many still need a concept-specific predict-before-reveal state plus compact measured demo-state emission.
+
+Current state:
+- Object-memory-contract-v1 was just shipped and Oracle fix review returned publish.
+- External deployment/account work is blocked on user-created Vercel/Clerk/Neon setup.
+- The best next work should be repo-only and improve actual learning quality.
+- Audit says published coverage is broad, but north-star is not achieved because older demos still need deeper concept-specific reveal states and compact state emission.
+
+Candidate published demos that still look weak by quick scan because their filesystem viz lacks emitDemoState and often lacks a bespoke reveal wrapper:
+- content/domains/attention-transformers/concepts/efficient-attention/viz.tsx
+- content/domains/calculus/concepts/reverse-mode-autodiff/viz.tsx
+- content/domains/generative-models/concepts/vaes/viz.tsx
+- content/domains/optimization/concepts/adam/viz.tsx
+- content/domains/probability/concepts/probability-basics/viz.tsx
+- content/domains/probability/concepts/random-variables/viz.tsx
+- content/domains/scaling/concepts/tree-search-reasoning/viz.tsx
+
+Please choose exactly one next slice and give a precise implementation plan.
+
+Return:
+1. The one demo/concept to retrofit now, and why it is highest leverage for the learning platform.
+2. The specific learner prediction to ask before reveal.
+3. What information must be hidden before reveal so we do not leak the answer.
+4. What compact demo-state fields should be emitted after reveal for saved route observations and future AI handoff.
+5. Files likely to change.
+6. Tests/verification/browser checks needed.
+7. Review risks you would likely flag after implementation.
+
+Constraints:
+- Keep changes narrow.
+- No auth/DB/API/deployment work in this slice.
+- Do not change unrelated concepts.
+- Preserve existing notebook/global shell behavior.

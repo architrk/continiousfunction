@@ -1,0 +1,61 @@
+id: process-reward-models
+title: "Process Reward Models: Step-Level Verifiers for Reasoning"
+domain: alignment
+slug: process-reward-models
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - rlhf
+  - reward-hacking
+  - cross-entropy
+  - kl-divergence
+leads_to:
+  - test-time-compute
+  - tree-search-reasoning
+related:
+  - dpo
+  - kto
+  - instruction-tuning
+tags:
+  - alignment
+  - process-supervision
+  - reward-modeling
+  - reasoning
+  - verifiers
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: lightman-2023-verify-step-by-step
+    kind: paper
+    title: "Let's Verify Step by Step"
+    authors: "Lightman et al."
+    year: 2023
+    url: "https://arxiv.org/abs/2305.20050"
+    note: "Grounds process supervision and PRM800K as step-level feedback for mathematical reasoning traces."
+claim_checks:
+  - id: process-step-verifier-proxy
+    status: source-checked
+    claim: "Process reward models are step-level verifiers rather than only final-answer judges: for prefix h and next step a, a binary formulation estimates P_phi(c=1|h,a)=sigma(r_phi(h,a)), enabling reranking or search while remaining a learned proxy."
+    source_ids:
+      - lightman-2023-verify-step-by-step
+    support: "Lightman et al. contrast ORMs using final results with PRMs receiving feedback for each step, train PRMs to predict step correctness, reduce step scores for solution ranking, and evaluate by best-of-N search. Local math gives the binary verifier and BCE teaching form; code/demo witness outcome vs process selection and verifier-error/proxy failure."
+    caveat: "Binary Bernoulli/BCE is a teaching reduction; Lightman use positive/negative/neutral labels and token log-likelihood. Excludes exact aggregation, calibration, KL/RL generator training, universal gains, cheap labels, reward-hacking prevention, and broad alignment guarantees."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Lightman et al. support PRMs as process-supervised reward models trained on step-level labels and evaluated by best-of-N selection of the highest-ranked generated solution. The page's binary Bernoulli/BCE notation is a didactic collapse of their positive/negative/neutral token-likelihood setup. PRM reliability/proxy limits are supported by their reward-model mistake/false-positive examples. KL reweighting is outside this reviewed claim."
+    object_refs:
+      - "#source-span-lightman-2023-verify-step-by-step"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "A process reward model scores intermediate reasoning steps instead of only terminal answers, giving denser verifier feedback for reranking and search while remaining a learned proxy."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-07"
+estimated_read_time: 24

@@ -1,0 +1,44 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning platform for modern deep learning and frontier AI.
+
+Current branch/workflow:
+- Work is on the private repo branch `private/research-learning-loop-20260505`.
+- The public atlas is still mostly static/cacheable, but the product direction is Vercel + Clerk + Neon/Postgres + Drizzle for durable learner memory later.
+- Do not propose a generic community platform, social feed, broad content dump, or premature realtime/collaboration backend.
+- The recent completed slice was `claim-check-handoff-integrity-validator-v1`: structured claim checks now have permanent validation that their Reading Room object, manifest object, exact anchor/href, source IDs, witness refs, and grounded prompt handoff stay aligned.
+
+North-star objective:
+Make the website a place where learning feels joyful enough to return to, deep enough for serious learners, interactive enough to build intuition, rigorous enough to trust, and broad enough over time to cover important concepts without shallow sprawl.
+
+Relevant current evidence from the audit:
+- Published concept coverage is strong at the checklist level: 51/51 published concepts have live demos, source panels, graph connectivity, and a baseline prediction shell.
+- The audit explicitly says the north-star is not achieved.
+- Open gaps are quality/depth gaps, not basic existence gaps:
+  1. Older demos still need concept-specific prediction-first reveal states and compact measured-state handoff.
+  2. Claim-level source quality is still not substantively reviewed across every page.
+  3. Research discussion is object-attached and locally resumable, but not live, personalized across devices, or backed by a database/permissions layer.
+- Platform docs say the next external deployment/account work needs user-created Vercel/Clerk/Neon resources. Repo-only account work should avoid pretending real auth/db exists until env/projects exist.
+- The TODO file has become a long completion ledger; there is not a clear fresh pending queue at the top.
+
+Ask:
+Choose the next smallest durable slice that should be implemented now, after the claim-check handoff integrity guard.
+
+Please do NOT give a broad list of ideas. I need one concrete recommended slice, plus at most two alternatives. The slice should be high leverage for the north star and feasible as a repo-local implementation/review cycle.
+
+For the recommended slice, return:
+1. Slice id/name.
+2. Why this is the right next move now, compared with continuing P0 demo retrofits, doing source-audit content, or starting account/auth scaffolding.
+3. Exact learner/product contract in 4-8 bullet points.
+4. Non-goals and anti-overclaim guardrails.
+5. Likely file scope.
+6. Acceptance criteria that can be verified locally.
+7. Tests/validation/browser checks to run.
+8. What should be written back into TODO/audit docs if the slice ships.
+
+Biases:
+- Prefer a small mechanism that compounds across the platform over a one-off nice page.
+- Prefer object-attached learning/research loops if they can stay honest and static/export-safe.
+- Prefer one flagship-adjacent concept-specific retrofit if that is clearly more valuable than product plumbing.
+- Keep source grounding honest: a handoff or workflow is not a proof that a claim is source-supported.
+- Keep the public atlas fast and anonymous; require accounts only for durable cross-device writes later.
+
+Attached files contain the repo instructions, north-star docs, current audit/TODO, deployment/platform constraints, and recent object-memory/journal/claim-handoff context.

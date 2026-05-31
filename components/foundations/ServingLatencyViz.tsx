@@ -6,40 +6,40 @@ import { MATH_COLORS } from '../../lib/mathObjects';
 const PRESETS = [
   {
     id: 'chat',
-    name: '💬 Chat Bot',
-    description: 'Short prompts, medium responses',
+    name: '💬 Toy chat',
+    description: 'Short prompt, medium toy response',
     promptLength: 256,
     outputLength: 150,
     batchSize: 1
   },
   {
     id: 'rag',
-    name: '📚 RAG Pipeline',
-    description: 'Long context from retrieval',
+    name: '📚 Toy long prompt',
+    description: 'Long prompt from retrieved context',
     promptLength: 2048,
     outputLength: 100,
     batchSize: 4
   },
   {
     id: 'code',
-    name: '💻 Code Gen',
-    description: 'Medium prompt, long output',
+    name: '💻 Toy long output',
+    description: 'Medium prompt, long toy output',
     promptLength: 512,
     outputLength: 400,
     batchSize: 2
   },
   {
     id: 'batch',
-    name: '🏭 Batch Inference',
-    description: 'High throughput batch',
+    name: '🏭 Toy batch',
+    description: 'Larger batch in the lab',
     promptLength: 512,
     outputLength: 100,
     batchSize: 16
   },
   {
     id: 'summarize',
-    name: '📝 Summarization',
-    description: 'Very long input, short output',
+    name: '📝 Toy summary',
+    description: 'Very long input, short toy output',
     promptLength: 2048,
     outputLength: 50,
     batchSize: 1
@@ -64,7 +64,7 @@ const CHALLENGES: Challenge[] = [
     question: 'If we double batch size from 4→8, which grows more?',
     options: ['TTFT grows more', 'Decode time grows more', 'Both grow equally'],
     correctIndex: 1,
-    explanation: 'Decode is memory-bandwidth bound. Doubling batch size means 2× KV cache reads per token, so TPOT increases. TTFT only grows with √batch (parallel compute).',
+    explanation: 'In this toy model, doubling batch size means 2x KV cache reads per decode step, so TPOT increases more than the simplified TTFT term.',
     setup: { promptLength: 512, outputLength: 200, batchSize: 4 }
   },
   {
@@ -72,7 +72,7 @@ const CHALLENGES: Challenge[] = [
     question: 'With a 2048-token prompt and 50-token output, what dominates latency?',
     options: ['Prefill (TTFT)', 'Decode phase', 'About equal'],
     correctIndex: 0,
-    explanation: 'Long prompts mean massive prefill (O(T²) attention). With only 50 output tokens, decode is quick. This is the "summarization" pattern.',
+    explanation: 'In this toy model, a long prompt makes the prefill term large. With only 50 output tokens, fewer decode iterations are added.',
     setup: { promptLength: 2048, outputLength: 50, batchSize: 1 }
   },
   {
@@ -80,15 +80,15 @@ const CHALLENGES: Challenge[] = [
     question: 'With 256-token prompt and 500-token output, what dominates?',
     options: ['Prefill (TTFT)', 'Decode phase', 'About equal'],
     correctIndex: 1,
-    explanation: 'Short prompts mean fast prefill. With 500 output tokens, each taking ~5ms, decode dominates. This is the "code generation" pattern.',
+    explanation: 'In this toy model, a short prompt keeps prefill small. A long output adds many one-token decode iterations.',
     setup: { promptLength: 256, outputLength: 500, batchSize: 1 }
   },
   {
     id: 'mystery',
-    question: 'RAG scenario: 2048 prompt, 100 output, batch=4. What bottleneck?',
+    question: 'Toy long-context scenario: 2048 prompt, 100 output, batch=4. What bottleneck?',
     options: ['Prefill is bottleneck', 'Decode is bottleneck', 'Well balanced'],
     correctIndex: 0,
-    explanation: 'RAG prompts are huge (retrieved docs). The O(T²) prefill attention on 2048 tokens dominates. This is why chunking and caching matter for RAG.',
+    explanation: 'In this toy model, the long prompt makes prefill large before the shorter decode loop begins.',
     setup: { promptLength: 2048, outputLength: 100, batchSize: 4 }
   }
 ];
@@ -102,18 +102,18 @@ const getInsight = (
   tpot: number
 ): string => {
   if (prefillFraction > 0.7) {
-    return `⚡ Prefill-dominated (${(prefillFraction * 100).toFixed(0)}%). Long prompts create massive O(T²) attention costs. Consider: prompt caching, chunked prefill, or FlashAttention.`;
+    return `⚡ Toy prefill-dominated (${(prefillFraction * 100).toFixed(0)}%). Long prompts make the lab's prefill term large before decode iterations begin.`;
   }
   if (prefillFraction < 0.3) {
-    return `🔄 Decode-dominated (${((1 - prefillFraction) * 100).toFixed(0)}%). Long outputs mean many sequential KV cache reads. Consider: speculative decoding, GQA/MQA for smaller KV cache.`;
+    return `🔄 Toy decode-dominated (${((1 - prefillFraction) * 100).toFixed(0)}%). Long outputs add many one-token decode steps and repeated KV-cache reads.`;
   }
   if (batchSize > 8) {
-    return `📦 High batch (${batchSize}). Throughput increases but latency grows due to KV cache contention. TPOT is ${tpot.toFixed(1)}ms — consider batch size vs latency tradeoff.`;
+    return `📦 Toy high batch (${batchSize}). The lab increases TPOT with batch size to show KV-cache pressure. TPOT is ${tpot.toFixed(1)}ms.`;
   }
   if (promptLength > 1500 && outputLength > 200) {
-    return `⚠️ Both prompt (${promptLength}) and output (${outputLength}) are long. This is expensive! Total context grows to ${promptLength + outputLength} tokens by the end.`;
+    return `⚠️ Both prompt (${promptLength}) and output (${outputLength}) are long in this toy setup. Total context reaches ${promptLength + outputLength} tokens by the end.`;
   }
-  return `📊 Balanced workload. Prefill: ${(prefillFraction * 100).toFixed(0)}%, Decode: ${((1 - prefillFraction) * 100).toFixed(0)}%. This is a healthy mix for most serving scenarios.`;
+  return `📊 Mixed toy workload. Prefill: ${(prefillFraction * 100).toFixed(0)}%, Decode: ${((1 - prefillFraction) * 100).toFixed(0)}%. Use the sliders to see which term moves.`;
 };
 
 export default function ServingLatencyViz() {
@@ -450,10 +450,9 @@ export default function ServingLatencyViz() {
 
       <div className="insight-box">
         <strong>★ Key Insight:</strong> Prefill and decode are fundamentally different workloads.
-        Prefill is <strong>compute-bound</strong> (big parallel matrix multiplications), while
-        decode is <strong>bandwidth-bound</strong> (reading huge KV caches). This is why DistServe
-        disaggregates them—colocating these workloads creates interference and hurts both TTFT and TPOT.
-        Long prompts dominate TTFT, long outputs dominate total cost.
+        In this toy model, prefill is represented as parallel compute over the prompt, while
+        decode is represented as repeated KV-cache reads across one-token iterations.
+        Long prompts move the prefill term; long outputs move the repeated decode term.
       </div>
 
       <style jsx>{`

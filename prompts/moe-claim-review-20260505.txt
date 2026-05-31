@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, math objects, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/efficiency/concepts/mixture-of-experts. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what Shazeer 2017 Sparsely-Gated MoE and Fedus 2021 Switch Transformers actually support. Also flag any local content wording that should be softened before this claim is added.
+
+Proposed claim_check:
+- id: top-k-routing-activated-compute-load-balance
+- status: source-checked
+- claim: Sparse MoE layers use a learned router to select a small top-k set of experts per token, letting total expert parameters grow while activated expert computation per token stays limited; load-balancing/capacity terms are needed because skewed routing can overload experts and create dispatch or communication constraints.
+- source_ids: shazeer-2017-sparsely-gated-moe, fedus-2021-switch-transformers
+- support: Shazeer et al. introduce sparsely gated experts, top-k conditional computation, and auxiliary load balancing to avoid expert collapse. Fedus et al. simplify routing to top-1 Switch routing and analyze expert capacity/token dropping tradeoffs for scaling sparse transformers. The page math, code, and demo instantiate router probabilities, top-k selection, load-balancing signals, activated expert count, and toy load skew.
+- caveat: This checks the sparse-routing and load-balance lesson, not exact throughput numbers, full distributed all-to-all behavior, expert-parallel implementation details, or claims that MoE always reduces wall-clock latency.
+- object_refs: #source-span-shazeer-2017-sparsely-gated-moe, #source-span-fedus-2021-switch-transformers, #math-object-1, #math-object-2, #code-witness-1, #interactive-demo

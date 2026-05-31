@@ -1,0 +1,16 @@
+Very narrow final review for the content-object manifest spine.
+
+Previous must-fixes:
+1. Validator generated-ref extraction did not strip frontmatter the same way the generator did.
+2. Generator source fallback segment grammar allowed 65-80 char source IDs while validator/UI source segment fallback used the shorter discussion-segment grammar.
+
+Fixes applied:
+- `validate-content.ts` now strips `FRONTMATTER_RE` before `getGeneratedConceptObjectRefs(...)` extracts math/code refs.
+- `generate-content-object-manifest.ts` now uses a dedicated `sourceSegmentPattern` with the same 64-ish discussion/source segment grammar as validation/UI source fallback, instead of the broader content-object path segment grammar.
+
+Commands passed:
+- `npm run generate-object-manifest`
+- `npm run validate-content` -> 0 warnings, 0 errors, 851 manifest objects
+- `npm run typecheck`
+
+Please review only these two equivalence fixes. Return publish / publish-after-fixes / no-publish, with must-fix items only.

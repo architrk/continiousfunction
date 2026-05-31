@@ -1,0 +1,33 @@
+You are GPT-Pro acting as a senior product architect and pedagogy reviewer for Continuous Function.
+
+Context:
+- Continuous Function is an atlas/notebook/lab for deep learning math.
+- The site now has a saved route/observation spine: concept notebooks, Search, Graph, Paper Mapper, and the homepage can carry route state, observations, selected objects, next repair, and role-specific moves.
+- Recent implemented surfaces:
+  - Search result cards are bucketed into Repair first, Inspect mechanism, Run witness, Source/claim, Continue route.
+  - Graph has a route workbench with Learner Repair, Researcher Object, Experimenter Lab, Professor Edge.
+  - Paper Mapper can carry a prior observation into a paper route only when the learner opts in.
+  - ObservationLedgerCard renders the smallest saved observation across surfaces.
+  - Mobile #interactive-demo anchors now land on the live prediction checkpoint rather than prose.
+
+Please critique the cross-surface product coherence. Assume the current visual language is a serious ivory/navy editorial notebook surface, not a playful consumer app.
+
+Files to inspect if attached:
+- components/product/SearchActionResultCard.tsx
+- components/product/SearchRouteBridge.tsx
+- components/product/GraphProductNavigator.tsx
+- components/product/PaperConceptMapper.tsx
+- components/product/ObservationLedgerCard.tsx
+- components/product/LearningRouteContinuityBanner.tsx
+- components/concepts/ConceptNotebookPage.tsx
+- content/_agent/PRODUCT_NORTH_STAR.md
+- content/_agent/CONCEPT_QUALITY_BAR.md
+
+Deliver:
+1. The 7 highest-impact coherence fixes or upgrades across Search/Graph/Paper Mapper/concept notebooks.
+2. Where the route state may currently confuse the learner or feel like internal product machinery.
+3. How to make Learner, Researcher, Experimenter, and Professor roles feel like natural modes of thought rather than labels.
+4. A short implementation plan for the next cross-surface slice that can be done without backend/auth.
+5. Any visual hierarchy changes needed for desktop and 390px mobile.
+
+Be blunt. I want the app to become a great learning environment, not merely consistent UI.

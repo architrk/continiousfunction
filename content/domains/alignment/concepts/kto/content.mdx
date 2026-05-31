@@ -1,67 +1,284 @@
 ---
-title: "KTO: Alignment from Binary Feedback via Human-Aware Losses"
+title: "Kahneman-Tversky Optimization"
 ---
 
 ## Intuition
 
-Pairwise preferences (A vs B) are great when you can afford them. In many production settings, you mostly get **binary feedback**:
+Canonical source: Ethayarajh et al., ["KTO: Model Alignment as Prospect Theoretic Optimization"](https://arxiv.org/abs/2402.01306), ICML 2024.
 
-- thumbs up / thumbs down
-- "helpful" / "not helpful"
-- "safe" / "unsafe"
+The prospect-theory borrowing is specific: KTO uses a reference point and a saturating value function. It is not a claim that the Kahneman-Tversky utility curve is the true psychology of how humans judge text.
 
-KTO (and related "HALO" objectives) treat alignment as **loss engineering**: you want an objective that uses cheap feedback, stays anchored to a reference model, and does not overreact to noisy labels.
+DPO teaches one powerful measurement: the policy/reference log-ratio $\log(\pi_\theta(y\mid x)/\pi_{\mathrm{ref}}(y\mid x))$.
 
-A key idea is *saturation*: if an example is extremely desirable or extremely undesirable, gradients should shrink. That focuses learning on the borderline cases where the model is uncertain and feedback is most informative.
+That number says how much more the current policy likes a completion than the reference policy did. DPO uses it in pairs: the winner should beat the loser by more than the reference already made it beat the loser.
+
+KTO asks a different question:
+
+> Can we use the same policy/reference ratio when the data is only thumbs-up or thumbs-down?
+
+The answer is to compare one labeled output against a reference point. For a desirable output, KTO wants the output's policy/reference log-ratio to rise above the policy's average drift from the reference. For an undesirable output, KTO wants that log-ratio to fall below the same baseline.
+
+The mechanism is:
+
+> KTO uses a label-dependent saturating utility of the margin $r_\theta(x,y)-z_0$, where $r_\theta$ is the policy/reference log-ratio and $z_0$ is a KL-derived reference point.
+
+The saturation matters. Once a desirable example is already far above the baseline, or an undesirable example is already far below it, the gradient shrinks. KTO focuses updates near the boundary $r_\theta(x,y)\approx z_0$. That can protect against noisy labels, but it can also underfit examples that are hard yet important.
 
 ## Math
 
-### Implied reward (policy vs reference)
+### Setup
 
-KTO often starts from the log-probability ratio:
+For a prompt $x$, completion $y$, trainable policy $\pi_\theta$, and reference policy $\pi_{\mathrm{ref}}$, define the KTO implied reward:
 
-$$r_\\theta(x,y) = \\log\\frac{\\pi_\\theta(y\\mid x)}{\\pi_{\\text{ref}}(y\\mid x)}.$$
+$$
+\begin{aligned}
+r_\theta(x,y)
+&=
+\log\frac{\pi_\theta(y\mid x)}
+{\pi_{\mathrm{ref}}(y\mid x)},\\
+z_0
+&=
+\mathrm{KL}(\pi_\theta(\cdot\mid x)\|\pi_{\mathrm{ref}}(\cdot\mid x)),\\
+\delta
+&=
+r_\theta(x,y)-z_0,\\
+v_D
+&=
+\lambda_D\,\sigma(\beta\delta),\\
+v_U
+&=
+\lambda_U\,\sigma(-\beta\delta),\\
+\mathcal L_y
+&=
+\lambda_y-v_y.
+\end{aligned}
+$$
 
-This is an "implied reward": it measures how much the policy prefers $(x,y)$ compared to the reference.
+With $z_0$ treated as fixed for the update and $s=\sigma(\beta\delta)$, the label-dependent derivative through $r_\theta$ is
 
-### A KL baseline (reference point)
+$$
+\begin{aligned}
+\frac{\partial \mathcal L_D}{\partial r_\theta}
+&=
+-\lambda_D\beta s(1-s),\\
+\frac{\partial \mathcal L_U}{\partial r_\theta}
+&=
+\lambda_U\beta s(1-s).
+\end{aligned}
+$$
 
-Use a baseline based on how far the policy has drifted:
+For an autoregressive language model, both log-probabilities are sequence log-probabilities: sums over the completion tokens.
 
-$$z_0 = \\mathrm{KL}\\!\\left(\\pi_\\theta(\\cdot\\mid x)\\ \\|\\ \\pi_{\\text{ref}}(\\cdot\\mid x)\\right).$$
+Each training example has a binary label $\ell\in\{D,U\}$, where $D$ means desirable and $U$ means undesirable.
 
-Intuition: if the policy already drifted far, you should be more conservative.
+### The KL reference point
 
-### Logistic value function (saturating gradients)
+KTO does not compare $y$ to one rejected completion. It compares $y$ to the policy's average reference-relative reward:
 
-One form is a value function with a sigmoid:
+$$
+z_0
+=
+\mathrm{KL}(\pi_\theta(\cdot\mid x)\|\pi_{\mathrm{ref}}(\cdot\mid x)).
+$$
 
-$$v(x,y)=
-\\begin{cases}
-\\lambda_D\\,\\sigma\\!\\big(\\beta(r_\\theta(x,y)-z_0)\\big) & y\\in\\text{desirable} \\\\
-\\lambda_U\\,\\sigma\\!\\big(\\beta(z_0-r_\\theta(x,y))\\big) & y\\in\\text{undesirable}
-\\end{cases}$$
+Equivalently, this is the current policy's expected implied reward at prompt $x$:
 
-The derivative of a sigmoid includes $\\sigma(1-\\sigma)$, so gradients are largest near the decision boundary and shrink for extreme values.
+$$
+z_0
+=
+\mathbb E_{y'\sim\pi_\theta(\cdot\mid x)}
+[r_\theta(x,y')].
+$$
+
+The important scalar is
+
+$$
+\delta = r_\theta(x,y)-z_0.
+$$
+
+A desirable output should have positive $\delta$. An undesirable output should have negative $\delta$.
+
+In practical KTO training, $z_0$ is usually estimated from mismatched outputs in the same microbatch, clamped to be nonnegative, and treated as a stop-gradient quantity. It controls loss saturation; it is not itself the thing KTO tries to optimize through.
+
+For a microbatch of size $m\ge 2$, define $\rho_i$ as the policy/reference log-ratio of a shifted output $y_{j(i)}$ under prompt $x_i$:
+
+$$
+\rho_i
+=
+\log
+\frac{\pi_\theta(y_{j(i)}\mid x_i)}
+{\pi_{\mathrm{ref}}(y_{j(i)}\mid x_i)}.
+$$
+
+A toy version of the paper's reference estimate is then
+
+$$
+\hat z_0=\max(0,\operatorname{mean}_i \rho_i).
+$$
+
+The point is not to reuse the labeled pair $(x_i,y_i)$, because those completions were deliberately selected as good or bad and can have unrepresentative rewards.
+
+### Label-dependent value and loss
+
+KTO uses a logistic value function. For a desirable example,
+
+$$
+v_D
+=
+\lambda_D\,\sigma(\beta\delta).
+$$
+
+For an undesirable example,
+
+$$
+v_U
+=
+\lambda_U\,\sigma(-\beta\delta).
+$$
+
+The default KTO loss subtracts this value from the label's class weight:
+
+$$
+\mathcal L_y = \lambda_y - v_y.
+$$
+
+Over the dataset, this is:
+
+$$
+\mathcal L_{\mathrm{KTO}}
+=
+\mathbb E_{(x,y,\ell)\sim D}
+[\lambda_\ell-v_\ell(x,y)].
+$$
+
+So the two label cases are:
+
+$$
+\mathcal L_D
+=
+\lambda_D(1-\sigma(\beta\delta)),
+$$
+
+and
+
+$$
+\mathcal L_U
+=
+\lambda_U(1-\sigma(-\beta\delta)).
+$$
+
+Gradient descent pushes desirable examples upward in reference-relative reward and undesirable examples downward. If $z_0$ is treated as fixed for the update, let $s=\sigma(\beta\delta)$. Then
+
+$$
+\frac{\partial \mathcal L_D}{\partial r_\theta}
+=
+-\lambda_D\beta s(1-s),
+$$
+
+while
+
+$$
+\frac{\partial \mathcal L_U}{\partial r_\theta}
+=
+\lambda_U\beta s(1-s).
+$$
+
+Both gradients have their largest magnitude near $\delta=0$, then saturate.
+
+Here $\beta$ is KTO's value-function saturation parameter. It has a practical anchoring effect similar to DPO's $\beta$, but in KTO it is introduced directly to control how quickly utility saturates.
+
+The weights $\lambda_D$ and $\lambda_U$ are class/utility weights, not a universal moral setting. They are often chosen to account for the ratio of desirable to undesirable examples. Increasing $\lambda_U$ emphasizes undesirable examples; increasing $\lambda_D$ emphasizes desirable examples.
+
+### How this differs from DPO
+
+DPO uses a pairwise margin:
+
+$$
+r_\theta(x,y_w)-r_\theta(x,y_\ell).
+$$
+
+KTO uses a pointwise margin:
+
+$$
+r_\theta(x,y)-z_0.
+$$
+
+That is the bridge. DPO asks whether the winner beats the loser by enough. KTO asks whether a single labeled output sits on the correct side of a KL-derived baseline.
+
+### Limits of the mechanism
+
+KTO is natural when feedback is already binary or when desirable and undesirable examples are imbalanced. If preference data is clean, consistent, and pairwise, DPO may be the better fit. If labels are noisy or intransitive, KTO's saturation can be useful because extreme examples receive small updates.
+
+When KTO is trained from preference pairs, a common conversion is to treat the preferred response as desirable and the rejected response as undesirable. That is a simplifying assumption, not a law of the method. Naturally binary feedback is the cleaner setting for KTO.
+
+The same property can fail. A hard desirable example with very negative implied reward may be ignored instead of learned. Lower $\beta$ and more epochs can reduce this underfitting risk, but they do not remove it.
+
+A natural next step is Process Reward Models: instead of labeling a whole completion as desirable or undesirable, ask what changes when feedback attaches to intermediate reasoning steps.
 
 ## Code
+
+This small witness mirrors the math: compute the policy/reference log-ratio, estimate a toy KL baseline, apply the label-dependent KTO loss, and inspect the gradient direction.
 
 ```python
 import numpy as np
 
-beta = 2.0
-deltas = np.array([-5, -2, -1, 0, 1, 2, 5], dtype=float)  # think: r_theta - z0
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-x))
 
-sig = 1.0 / (1.0 + np.exp(-beta * deltas))
-grad_mag = beta * sig * (1.0 - sig)  # proportional to sigmoid' (largest near 0)
+# Batch of four labeled prompt/completion examples.
+# Shapes:
+#   logp_theta, logp_ref, desirable are all (B,)
+#   desirable=True means label D; False means label U.
+logp_theta = np.array([-8.2, -5.1, -7.0, -6.4])
+logp_ref   = np.array([-8.6, -5.0, -6.1, -6.9])
+desirable  = np.array([ True, True, False, False])
 
-for d, s, g in zip(deltas, sig, grad_mag):
-    print("delta=", d, "sigmoid=", round(float(s), 3), "grad~", round(float(g), 3))
+beta = 0.2
+lambda_D = 1.0
+lambda_U = 1.0
+
+# KTO implied reward: policy/reference sequence log-ratio.
+r = logp_theta - logp_ref
+
+# Toy microbatch estimate of the KL reference point.
+# These are log-probabilities for mismatched pairs (x_i, y_j),
+# not the original labeled pairs (x_i, y_i).
+mismatch_logp_theta = np.array([-6.0, -7.2, -5.8, -8.0])
+mismatch_logp_ref   = np.array([-6.3, -7.6, -6.0, -8.2])
+mismatch_r = mismatch_logp_theta - mismatch_logp_ref
+z0_hat = max(0.0, float(np.mean(mismatch_r)))
+
+delta = r - z0_hat
+
+value_D = lambda_D * sigmoid(beta * delta)
+value_U = lambda_U * sigmoid(-beta * delta)
+
+value = np.where(desirable, value_D, value_U)
+lambda_y = np.where(desirable, lambda_D, lambda_U)
+loss = lambda_y - value
+
+# Stop-gradient z0: derivative is only through r.
+s = sigmoid(beta * delta)
+grad_D = -lambda_D * beta * s * (1.0 - s)
+grad_U =  lambda_U * beta * s * (1.0 - s)
+grad_r = np.where(desirable, grad_D, grad_U)
+
+print("r_theta:", np.round(r, 3))
+print("mismatched r for z0:", np.round(mismatch_r, 3))
+print("z0_hat:", round(z0_hat, 3))
+print("delta = r - z0:", np.round(delta, 3))
+print("per-example KTO loss:", np.round(loss, 3))
+print("d loss / d r:", np.round(grad_r, 3))
+print("mean loss:", round(float(loss.mean()), 3))
+
+assert np.all(grad_r[desirable] < 0)
+assert np.all(grad_r[~desirable] > 0)
 ```
+
+For desirable examples, the gradient is negative, so gradient descent increases $r_\theta$. For undesirable examples, the gradient is positive, so gradient descent decreases $r_\theta$. In both cases, the magnitude is largest near $r_\theta=z_0$.
 
 ## Interactive Demo
 
-Use the demo to compare binary-feedback objectives to pairwise preference losses, and to see how saturation changes optimization dynamics.
+Use the demo to inspect one labeled example. Change the label, the implied reward $r_\theta$, the KL baseline $z_0$, $\beta$, and the class weights. Watch the KTO loss and gradient flip direction between desirable and undesirable examples, while saturating away from the baseline.
 
 {/* viz.tsx component renders here if it exists */}
-

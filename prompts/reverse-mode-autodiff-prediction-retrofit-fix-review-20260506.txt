@@ -1,0 +1,34 @@
+You are doing a fix review for a Continuous Function learning-platform slice.
+
+Previous Oracle verdict was no-publish for the Reverse-Mode Autodiff prediction retrofit.
+
+Previous blockers:
+1. Pre-reveal answer leakage:
+   - Prediction hints said `direct +1`.
+   - Preset label said `Cancel near pi`.
+   - Requested fix: remove pre-reveal `direct +1` and outcome-revealing preset copy, and add regression assertions.
+2. Audit overclaim:
+   - The published coverage table said `51/51 global shell, 51/51 concept-specific`, conflicting with the P0 section that says older demos still need deeper concept-specific retrofits.
+   - Requested fix: say concept-specific retrofits are in progress, with Reverse-Mode Autodiff as one newly completed slice.
+
+Applied fixes:
+- In `viz.tsx`, changed the middle prediction to `Direct path dominates` and removed `direct +1` from pre-reveal hints.
+- In `viz.tsx`, changed the preset label from `Cancel near pi` to `Product sample`.
+- In `content.mdx`, changed the old article text that said `Try the Cancel near pi preset...` to neutral copy: `Try the second preset after making a prediction...`.
+- In `ReverseModeAutodiffViz.test.tsx`, added pre-reveal assertions that the document does not include `direct +1`, `bar a += 1`, or `Cancel near pi`, and updated the preset click to `Product sample`.
+- In `PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md`, changed the table row to `51/51 global shell; concept-specific retrofits in progress` and explicitly says Reverse-Mode Autodiff is the newly completed in-demo retrofit while older demos still need work.
+
+Verification after fixes:
+- `npm test -- ReverseModeAutodiffViz --runInBand` passed.
+- `npm run validate-content` passed.
+- `npm run typecheck` passed.
+- Headless Chrome route checks at 1440px and 390px confirmed:
+  - before reveal: `bar a=hidden` visible;
+  - before reveal: no `Cancel near pi`, no `direct +1`, no `bar a += 1`, no `1.960 = 1.000 + 0.960`, no `[5.881, 3.920]`;
+  - after clicking `Paths reinforce` and `Reveal reverse sweep`: `Correct.`, `1.960 = 1.000 + 0.960`, and `[5.881, 3.920]` are visible;
+  - document overflow is zero before and after reveal on desktop and mobile.
+
+Please review only the fix and return:
+- `publish` or `no-publish`
+- if no-publish, exact remaining blockers and concrete fixes
+- if publish, note any non-blocking suggestions separately

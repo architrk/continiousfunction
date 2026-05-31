@@ -1,0 +1,21 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning concepts. We are working on `components/product/AttentionServingModule.tsx`, a flagship route that connects attention mechanics to serving constraints.
+
+I asked Oracle/GPT Pro for a pedagogy review of a proposed Decoding Lab predict-first probe. The prior response recommended:
+- ship a compact "binding constraint" decoding challenge
+- ask "High temperature, top-k = 1: what survives?"
+- keep it transient and do not save it as route/localStorage observation
+- use a Run probe action that sets temperature high and top-k to 1
+- avoid misleading cut-token bars
+- keep the card visually smaller than the KV checkpoint
+
+I implemented that patch. Local checks already pass:
+- `npm run validate-content`
+- `npm run typecheck`
+- `CF_NEXT_BUILD_CPUS=1 npm run build`
+
+Please review the implementation:
+1. Did the patch preserve the intended pedagogy and avoid turning Decoding into a second heavyweight lesson?
+2. Does the copy correctly explain temperature, top-k, top-p, logits, filtering, and renormalization without overclaiming?
+3. Are there UI/UX problems, mobile-layout risks, accessibility issues, or state edge cases?
+4. Did I accidentally pollute durable route state or contradict the single-resume-checkpoint goal?
+5. Give a concise list of blocking fixes, important improvements, and optional polish. If no blocking fixes remain, say that clearly.

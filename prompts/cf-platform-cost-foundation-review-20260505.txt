@@ -1,0 +1,35 @@
+We are building Continuous Function, a Next.js Pages Router + TypeScript learning platform for deep learning/math concepts, interactive demos, paper-to-concept mapping, and eventually logged-in learner memory plus object-attached research collaboration.
+
+Current product philosophy:
+- The public atlas should remain fast, rigorous, visual, and mostly cacheable.
+- The durable product unit is not a generic feed. It is an object-attached learning/research journey around concepts, equations, papers, source spans, demo states, predictions, notes, threads, and next actions.
+- We want accounts, profiles, saved progress, private notes, workspaces, private paper uploads, and source-grounded AI later.
+- We do not want a premature generic community platform.
+
+Current proposed foundation after several rounds of research:
+- Vercel as the primary full-stack Next.js host.
+- Clerk for auth, profiles, sessions, organizations/invites later.
+- Neon Postgres as the canonical app database.
+- Drizzle for schema and migrations.
+- Static export only as an archival/static mirror using CF_STATIC_EXPORT=1.
+- Liveblocks only later for specialized realtime presence/drafting after the object model exists.
+- Convex only as a contained future spike if realtime route boards or research-thread sync become the bottleneck.
+- Avoid Supabase unless we intentionally go all-in on Supabase Auth + Postgres + RLS + Realtime + Storage.
+
+Fresh pricing/cost facts checked from official pages on 2026-05-05:
+- Vercel Pro is listed at $20/mo plus additional usage, with $20 included usage credit. Hobby is for personal/non-commercial use. Pro usage can pay as you go, so spend controls matter.
+- Vercel docs say managed infrastructure is usage-based across traffic, requests, and compute resources.
+- Clerk pricing includes 50,000 monthly retained users and 100 monthly retained organizations on the free/Hobby side; beyond that, Pro/add-ons apply. Clerk says production should not use development instances.
+- Neon Free includes 100 CU-hours per project and 0.5 GB per project; Launch is usage-based with a typical small intermittent-load example around $15/mo, $0.106/CU-hour, and $0.35/GB-month. Neon recommends autoscaling limits, scale-to-zero, and short-lived branches for cost control.
+- Cloudflare Workers Paid starts at $5/mo, includes 10M monthly requests and 30M CPU ms, with no extra data transfer charges for Workers; static asset requests are free/unlimited. Cloudflare is therefore attractive for static mirrors, edge gateways, and object storage, but it is not the chosen primary Next.js full-stack host for this phase.
+- Supabase Pro has fixed organization subscription cost plus per-project compute and usage overages; each project includes a dedicated Postgres instance and each project increases compute cost.
+- Convex has attractive realtime primitives and usage pricing, but adopting it as the canonical store adds another data model and platform.
+- Liveblocks Pro is paid and should wait until actual collaborative surfaces justify it.
+
+Please review the attached files and answer:
+1. Is the Vercel + Clerk + Neon/Postgres + Drizzle decision still the best pragmatic foundation when cost, migration risk, lock-in, security, source-grounded data modeling, and future collaboration are all considered?
+2. What concrete cost traps or migration traps are still missing from the docs?
+3. Should any wording be changed before we commit this direction?
+4. If you disagree, propose the smallest alternative that preserves the product philosophy.
+
+Return a concise architecture review with blockers first, then recommended doc/code edits, then a short final decision.

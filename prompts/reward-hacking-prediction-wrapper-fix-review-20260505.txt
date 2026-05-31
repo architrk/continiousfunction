@@ -1,0 +1,20 @@
+You previously reviewed the Reward Hacking prediction-first wrapper and gave a no-publish verdict.
+
+This is a narrow fix review. Please verify whether the must-fix blocker is resolved and return either:
+- "acceptable, no remaining must-fix blockers", or
+- the exact remaining must-fix blocker.
+
+Previous blocker:
+- The pre-reveal visual preview leaked the expected diagnostic by drawing one line rising and another rising-then-falling, visually telegraphing "proxy rises, target falls".
+
+Applied fixes:
+- Replaced the pre-reveal diagnostic chart with two neutral, non-diverging placeholder lines.
+- Renamed the preview CSS classes from proxy/target semantics to neutral semantics.
+- Moved the "KL/uncertainty are not guarantees" caveat from pre-reveal notes into the post-reveal result copy; the pre-reveal note is now neutral.
+
+Local checks after fixes:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+
+Please focus only on whether the prior leakage blocker is resolved. Do not expand scope into broad redesign advice unless there is a new publish blocker.

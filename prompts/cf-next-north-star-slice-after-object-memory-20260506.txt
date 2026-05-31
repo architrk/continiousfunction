@@ -1,0 +1,52 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning environment for deep learning/frontier AI.
+
+Current branch/state:
+- Branch: private/research-learning-loop-20260505.
+- Private repo push target: private-origin, not public origin.
+- Current focus in TODO: deepen Continuous Function toward north-star quality while laying the Vercel/Clerk/Neon/Postgres foundation for logged-in learner memory, object-attached research collaboration, and gradual source-aware AI.
+
+Important completed work. Do not recommend repeating these:
+- content-object-manifest-spine is done: deterministic object keys for concepts, routes, demos, equations, code witnesses, sources, source spans, claims, and misconceptions.
+- object-memory-contract-v1 is done: repo-only Drizzle/Postgres schema, SQL migration, mapper contracts, and object-memory validator. No live Neon migration, runtime DB client, Clerk runtime, protected routes, or write APIs exist yet.
+- published concept source metadata coverage is complete, but claim-level source quality review is still not complete.
+- public concept pages now have object-attached reading rooms and browser-local route snapshots, but not live saved discussions across devices.
+- recent Oracle-reviewed prediction/reveal slices include Transformer Architecture residual-shape, MoE capacity/drop, and Structured Decoding valid-token mask hardening. Do not pick those again.
+
+Broad objective:
+Make the website joyful, deep, rigorous, highly interactive, research-useful, and worth returning to. It should grow slowly through high-quality slices, not broad idea dumps.
+
+Current unresolved north-star blockers from the audit:
+1. Claim-level source quality still needs per-page review before calling the atlas research-grade.
+2. Many older demos still need deep concept-specific reveal states and compact measured-state emission, despite the global demo-shell checkpoint.
+3. Research discussion and gradual AI are object-attached and locally resumable, but not live/personalized across devices or backed by database/permissions.
+
+Question:
+Choose exactly one next concrete implementation slice after the object manifest/schema foundation and the latest Structured Decoding hardening. This should be one bounded Codex pass with Oracle review, tests, build, and private push.
+
+Candidate directions you may choose from or reject:
+1. A static/export-safe object-attached research action journal: let a learner save a local draft note/next-action against the selected content object key, using the existing route snapshot/storage event model, without Clerk/Neon writes.
+2. A claim-level source-quality pass for one flagship path or concept cluster, with stronger evidence mapping and claim-check regressions.
+3. Another deep concept-specific reveal retrofit for a high-value older demo, such as Loss Landscapes 3D, Adam/Optimization, LLM systems, or another route that still emits too much answer-bearing state.
+4. The first live-account skeleton: install/wire Clerk provider/middleware/protected route only if you judge it safe without credentials and not premature.
+5. A better research reading-room UX layer that makes the existing object anchors more useful without creating a database-backed feature.
+
+Hard constraints:
+- Pick one target and one behavior contract only.
+- No secrets, no paid API use, no live database migrations, no production account setup, and no dynamic reads on anonymous atlas pages.
+- Keep public atlas routes static/cache-friendly.
+- Preserve existing local route snapshots and reading-room behavior.
+- Work must be shippable in one commit and testable locally.
+- Use source/object-key contracts that already exist; do not invent a parallel identity model.
+
+Desired output:
+1. Recommended slice name.
+2. Why it is the best next step versus at least two plausible alternatives.
+3. Exact files/modules to inspect first.
+4. Minimum behavior contract.
+5. Pre/post conditions or lifecycle requirements.
+6. Tests and validators to add or update.
+7. Risks/no-go boundaries.
+8. What counts as PUBLISH for this slice.
+9. If this requires user account credentials or external setup, say so and pick a different credential-free slice instead.
+
+Be strict and pragmatic. The best answer should materially advance joy/depth/research usefulness without overbuilding the platform.

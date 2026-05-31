@@ -3,61 +3,56 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3'
 import { callAxis } from '../../lib/d3Types'
+import { clearDemoState, emitDemoState } from '../../lib/demoState'
 import { useKeyboardNav } from '../../lib/useKeyboardNav'
 
 // ─────────────────────────────────────────────────────────────
-// Gamification Types
+// Prediction checkpoint types
 // ─────────────────────────────────────────────────────────────
-type GamePhase = 'setup' | 'countdown' | 'revealed'
+type PredictionPhase = 'setup' | 'predicting' | 'revealed'
 type SavingsPrediction = 'low' | 'medium' | 'high' | 'extreme' | null
 
 interface SavingsChallenge {
   name: string
   sequenceLength: number
-  answer: Exclude<SavingsPrediction, null>
   description: string
 }
 
-// Mystery challenges - users predict savings percentage
+// Learners predict the bucket before seeing the computed work comparison.
 const SAVINGS_CHALLENGES: SavingsChallenge[] = [
   {
-    name: '🎲 Short Prompt',
+    name: 'Short prompt',
     sequenceLength: 3,
-    answer: 'low',
-    description: 'Just 3 tokens generated... how much can caching help?'
+    description: 'Only three generated tokens. The quadratic curve has barely started.'
   },
   {
-    name: '🎲 Chat Message',
+    name: 'Chat message',
     sequenceLength: 6,
-    answer: 'medium',
-    description: 'A typical short response... quadratic savings are building!'
+    description: 'A short response where repeated KV projection work starts to separate.'
   },
   {
-    name: '🎲 Paragraph',
+    name: 'Paragraph',
     sequenceLength: 10,
-    answer: 'high',
-    description: 'Getting longer now... O(L²) vs O(L) really diverges!'
+    description: 'Long enough that recomputing all prior K,V vectors becomes visibly wasteful.'
   },
   {
-    name: '🎲 Full Context',
+    name: 'Full local window',
     sequenceLength: 16,
-    answer: 'extreme',
-    description: 'Maximum context... imagine this at 100K tokens!'
+    description: 'The largest local window in this toy lab; the scaling gap is the point.'
   },
   {
-    name: '🎲 Edge Case',
+    name: 'Edge case',
     sequenceLength: 2,
-    answer: 'low',
-    description: 'The very first cache hit... minimal savings?'
+    description: 'The first moment when a previous K,V pair can be reused.'
   },
 ]
 
 // Prediction options for keyboard navigation
 const PREDICTION_OPTIONS = [
-  { value: 'low' as const, label: '📉 Low', desc: '<50%' },
-  { value: 'medium' as const, label: '📊 Medium', desc: '50-70%' },
-  { value: 'high' as const, label: '📈 High', desc: '70-85%' },
-  { value: 'extreme' as const, label: '🚀 Extreme', desc: '>85%' },
+  { value: 'low' as const, label: 'Low', desc: '<50%' },
+  { value: 'medium' as const, label: 'Medium', desc: '50-70%' },
+  { value: 'high' as const, label: 'High', desc: '70-85%' },
+  { value: 'extreme' as const, label: 'Extreme', desc: '>85%' },
 ]
 
 // Calculate actual savings
@@ -72,35 +67,45 @@ function calculateSavings(seqLength: number): { percent: number; category: Exclu
   return { percent, category: 'extreme' }
 }
 
+function predictionLabel(prediction: SavingsPrediction): string {
+  if (prediction === 'low') return 'low savings'
+  if (prediction === 'medium') return 'medium savings'
+  if (prediction === 'high') return 'high savings'
+  if (prediction === 'extreme') return 'extreme savings'
+  return 'none'
+}
+
 // Educational feedback
 function getSavingsFeedback(
   prediction: SavingsPrediction,
   challenge: SavingsChallenge,
   actualPercent: number
 ): string {
-  const isCorrect = prediction === challenge.answer
+  const actual = calculateSavings(challenge.sequenceLength)
+  const isCorrect = prediction === actual.category
   const naive = (challenge.sequenceLength * (challenge.sequenceLength + 1)) / 2
   const cached = challenge.sequenceLength
+  const mechanism = `No cache recomputes ${naive} K,V token-projections; the cache computes ${cached}. K,V are computed once per token, but the new query still attends over the cached prefix.`
 
   if (isCorrect) {
-    if (challenge.answer === 'low') {
-      return `✅ Correct! Only ${actualPercent.toFixed(0)}% savings. At small sequence lengths, the quadratic cost hasn't grown much yet. With ${naive} total ops vs ${cached} cached, the gap is modest.`
+    if (actual.category === 'low') {
+      return `Matched. Savings are ${actualPercent.toFixed(0)}%, because the sequence is still short. ${mechanism}`
     }
-    if (challenge.answer === 'medium') {
-      return `✅ Correct! ${actualPercent.toFixed(0)}% savings. The O(L²) curve is starting to pull away! ${naive} ops without cache vs ${cached} with cache.`
+    if (actual.category === 'medium') {
+      return `Matched. Savings are ${actualPercent.toFixed(0)}%; the L(L+1)/2 curve is starting to pull away from L. ${mechanism}`
     }
-    if (challenge.answer === 'high') {
-      return `✅ Correct! ${actualPercent.toFixed(0)}% savings! The quadratic term (${naive}) is now much larger than linear (${cached}). This is why KV cache is essential!`
+    if (actual.category === 'high') {
+      return `Matched. Savings are ${actualPercent.toFixed(0)}%; the avoided K,V recomputation is now the dominant visible effect. ${mechanism}`
     }
-    return `✅ Correct! ${actualPercent.toFixed(0)}% savings!! At this scale, without caching you'd do ${naive} KV operations. With cache: just ${cached}. Imagine this at 100K tokens!`
+    return `Matched. Savings are ${actualPercent.toFixed(0)}%; in long decode loops, avoiding K,V recomputation is essential. ${mechanism}`
   }
 
-  // Wrong answers
-  return `❌ Not quite! The actual savings is ${actualPercent.toFixed(0)}% (${challenge.answer}). At length ${challenge.sequenceLength}: naive = ${naive} ops, cached = ${cached} ops. Remember: naive grows as L(L+1)/2 while cached grows as L!`
+  return `Actual bucket: ${actual.category}. Savings are ${actualPercent.toFixed(0)}%. ${mechanism}`
 }
 
 interface KVCacheVisualizerProps {
   maxTokens?: number
+  conceptId?: string
 }
 
 interface Token {
@@ -112,10 +117,10 @@ const DEFAULT_MAX_TOKENS = 16
 
 // Sequence length presets for quick exploration
 const SEQUENCE_PRESETS = [
-  { name: '📝 Short', length: 4, description: 'A brief prompt (4 tokens)' },
-  { name: '💬 Chat', length: 8, description: 'Typical chat message (8 tokens)' },
-  { name: '📄 Paragraph', length: 12, description: 'Full paragraph (12 tokens)' },
-  { name: '📚 Maximum', length: 16, description: 'Full context (16 tokens)' },
+  { name: 'Short', length: 4, description: 'A brief prompt (4 tokens)' },
+  { name: 'Chat', length: 8, description: 'Typical chat message (8 tokens)' },
+  { name: 'Paragraph', length: 12, description: 'Full paragraph (12 tokens)' },
+  { name: 'Maximum', length: 16, description: 'Full context (16 tokens)' },
 ];
 
 // Dynamic educational insights based on current state
@@ -125,28 +130,29 @@ const getKVCacheInsight = (
   maxTokens: number
 ): string => {
   if (seqLength === 1) {
-    return '🚀 Starting fresh! At step 1, there\'s no cache advantage yet - we compute Q, K, V for the first token. The magic starts with token 2!';
+    return 'At step 1 there is no cache advantage yet: the model computes Q, K, and V for the first token.';
   }
   if (seqLength === 2) {
-    return '✨ First cache hit! Now Q₂ attends to K₁,V₁ from cache instead of recomputing them. We\'re already saving 33% work!';
+    return 'First reuse: Q_2 can read K_1,V_1 from cache instead of recomputing the previous K,V pair.';
   }
   if (seqLength <= 4) {
-    return `📈 Building momentum! With ${seqLength} tokens, we've saved ${savedPercent.toFixed(0)}% of KV compute. Notice how savings grow quadratically!`;
+    return `With ${seqLength} tokens, the cache avoids ${savedPercent.toFixed(0)}% of KV projection recomputation. The gap is still modest, but the shape is visible.`;
   }
   if (seqLength <= 8) {
-    return `💪 Significant savings! At ${seqLength} tokens, ${savedPercent.toFixed(0)}% of work avoided. This is why LLMs can do inference at all - O(L) vs O(L²) is huge!`;
+    return `At ${seqLength} tokens, ${savedPercent.toFixed(0)}% of KV projection work is avoided. The cache changes repeated K,V computation from L(L+1)/2 to L.`;
   }
   if (seqLength <= 12) {
-    return `🎯 Cache is crucial now! Without caching, we'd do ${Math.round((seqLength * (seqLength + 1)) / 2)} KV ops. With cache: just ${seqLength}. That's ${savedPercent.toFixed(0)}% savings!`;
+    return `Without caching, this toy decode would compute ${Math.round((seqLength * (seqLength + 1)) / 2)} K,V token-projections. With cache: ${seqLength}.`;
   }
   if (seqLength >= maxTokens) {
-    return `🏆 Maximum context reached! At ${seqLength} tokens, KV cache saves ${savedPercent.toFixed(0)}% of compute. Imagine this at 100K tokens - O(L²) would be impossible!`;
+    return `At ${seqLength} tokens, the cache avoids ${savedPercent.toFixed(0)}% of repeated K,V projection work. Attention still reads the cached prefix, and the cache still occupies memory.`;
   }
-  return `📊 ${savedPercent.toFixed(0)}% savings at length ${seqLength}. Real models cache across hundreds of thousands of tokens!`;
+  return `${savedPercent.toFixed(0)}% of repeated K,V projection work is avoided at length ${seqLength}.`;
 };
 
 const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
   maxTokens = DEFAULT_MAX_TOKENS,
+  conceptId = 'efficient-attention',
 }) => {
   const [tokens, setTokens] = useState<Token[]>(() => [{ id: 0, label: 'T1' }])
   const chartRef = useRef<SVGSVGElement | null>(null)
@@ -156,38 +162,32 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
   const autoGenIntervalRef = useRef<number | null>(null)
 
   // ─────────────────────────────────────────────────────────────
-  // Gamification State
+  // Prediction checkpoint state
   // ─────────────────────────────────────────────────────────────
-  const [gameMode, setGameMode] = useState(false)
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
+  const [predictionPhase, setPredictionPhase] = useState<PredictionPhase>('setup')
   const [selectedChallenge, setSelectedChallenge] = useState<SavingsChallenge | null>(null)
   const [prediction, setPrediction] = useState<SavingsPrediction>(null)
-  const [countdown, setCountdown] = useState(3)
-  const [score, setScore] = useState(0)
-  const [completedChallenges, setCompletedChallenges] = useState<string[]>([])
 
   // Keyboard navigation for prediction options
   const predictionNav = useKeyboardNav({
     options: PREDICTION_OPTIONS,
     onSelect: (option) => submitPrediction(option.value),
     onEscape: () => {
-      setGameMode(false)
-      setGamePhase('setup')
+      setPredictionPhase('setup')
       setSelectedChallenge(null)
     },
-    enabled: gameMode && gamePhase === 'countdown',
+    enabled: predictionPhase === 'predicting',
   })
 
-  // Game control functions
+  // Prediction control functions
   const startChallenge = (challenge: SavingsChallenge) => {
     setSelectedChallenge(challenge)
     setPrediction(null)
-    setGamePhase('countdown')
-    setCountdown(3)
+    setPredictionPhase('predicting')
   }
 
   const submitPrediction = (pred: SavingsPrediction) => {
-    if (!selectedChallenge || gamePhase !== 'countdown') return
+    if (!selectedChallenge || predictionPhase !== 'predicting') return
     setPrediction(pred)
     // Set tokens to the challenge's sequence length
     const newTokens: Token[] = []
@@ -195,38 +195,18 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       newTokens.push({ id: i, label: `T${i + 1}` })
     }
     setTokens(newTokens)
-    setGamePhase('revealed')
-    // Score
-    if (pred === selectedChallenge.answer) {
-      setScore((s) => s + 1)
-    }
-    if (!completedChallenges.includes(selectedChallenge.name)) {
-      setCompletedChallenges((c) => [...c, selectedChallenge.name])
-    }
+    setPredictionPhase('revealed')
   }
 
-  const resetGame = () => {
-    setGamePhase('setup')
+  const resetPrediction = () => {
+    setPredictionPhase('setup')
     setSelectedChallenge(null)
     setPrediction(null)
-    setCountdown(3)
   }
 
-  const _exitGameMode = () => {
-    setGameMode(false)
-    resetGame()
-  }
-
-  // Countdown effect
   useEffect(() => {
-    if (gamePhase !== 'countdown') return
-    if (countdown <= 0) return
-
-    const timer = setTimeout(() => {
-      setCountdown((c) => c - 1)
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [gamePhase, countdown])
+    return () => clearDemoState(conceptId)
+  }, [conceptId])
 
   const sequenceLength = tokens.length
 
@@ -286,10 +266,102 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
 
   const currentStepWorkNaive = sequenceLength
   const currentStepWorkCached = 1
+  const attentionKeysReadThisStep = sequenceLength
+  const retainedKVMemory = sequenceLength
 
   const formatInt = (n: number) => Math.round(n).toLocaleString('en-US')
 
-  // D3 chart: memory / compute vs sequence length
+  useEffect(() => {
+    const challengeActual = selectedChallenge
+      ? calculateSavings(selectedChallenge.sequenceLength)
+      : null
+    const revealedPrediction = predictionPhase === 'revealed'
+    const values = [
+      `sequence length L: ${sequenceLength}`,
+      `no-cache KV projection work: ${formatInt(naiveTotalKV)} token-computes`,
+      `cached KV projection work: ${formatInt(cachedTotalKV)} token-computes`,
+      `saved KV projection work: ${formatInt(savedKV)} token-computes`,
+      `saved KV projection work percent: ${savedPercent.toFixed(1)}%`,
+      `current decode step without cache: ${formatInt(currentStepWorkNaive)} K,V token-computes`,
+      `current decode step with cache: ${formatInt(currentStepWorkCached)} K,V token-compute`,
+      `attention span this step: ${attentionKeysReadThisStep} cached keys/values`,
+      `retained cache memory: ${retainedKVMemory} K,V pairs`,
+      'invariant: K,V are computed once per token; the new query still attends across cached keys',
+    ]
+
+    if (selectedChallenge && challengeActual) {
+      values.push(
+        `prediction case: ${selectedChallenge.name}`,
+        `prediction length: ${selectedChallenge.sequenceLength}`,
+        `prediction: ${predictionLabel(prediction)}`,
+        `actual bucket: ${revealedPrediction ? predictionLabel(challengeActual.category) : 'hidden until reveal'}`,
+        `prediction correct: ${revealedPrediction ? (prediction === challengeActual.category ? 'yes' : 'no') : 'not checked'}`,
+        `actual savings: ${revealedPrediction ? `${challengeActual.percent.toFixed(1)}%` : 'hidden until reveal'}`
+      )
+    }
+
+    emitDemoState({
+      conceptId,
+      label: 'KV cache decode-compute witness',
+      summary:
+        revealedPrediction && selectedChallenge && challengeActual
+          ? `At L=${selectedChallenge.sequenceLength}, KV cache computes ${formatInt(cachedTotalKV)} K,V token-projections instead of ${formatInt(naiveTotalKV)}, saving ${challengeActual.percent.toFixed(1)}%.`
+          : selectedChallenge
+          ? `The learner is predicting the KV projection savings bucket for L=${selectedChallenge.sequenceLength}; exact work stays hidden until reveal.`
+          : `At L=${sequenceLength}, KV cache computes ${formatInt(cachedTotalKV)} K,V token-projections instead of ${formatInt(naiveTotalKV)}, saving ${savedPercent.toFixed(1)}%.`,
+      phase:
+        revealedPrediction
+          ? 'revealed'
+          : selectedChallenge
+          ? 'predicted'
+          : 'observing',
+      prediction: selectedChallenge
+        ? {
+            prompt: `At L=${selectedChallenge.sequenceLength}, which KV projection savings bucket applies?`,
+            learnerChoice: predictionLabel(prediction),
+            actual: revealedPrediction && challengeActual ? predictionLabel(challengeActual.category) : 'hidden',
+            correct: revealedPrediction && challengeActual ? prediction === challengeActual.category : undefined,
+          }
+        : undefined,
+      measurements:
+        selectedChallenge && !revealedPrediction
+          ? {
+              currentVisibleSequenceLength: sequenceLength,
+              predictionLength: selectedChallenge.sequenceLength,
+              exactPredictionWorkHidden: true,
+            }
+          : {
+              sequenceLength,
+              noCacheKvProjectionWork: naiveTotalKV,
+              cachedKvProjectionWork: cachedTotalKV,
+              savedKvProjectionWork: savedKV,
+              savedPercent: Number(savedPercent.toFixed(1)),
+              currentStepNoCacheKvWork: currentStepWorkNaive,
+              currentStepCachedKvWork: currentStepWorkCached,
+              attentionKeysReadThisStep,
+              retainedKvPairs: retainedKVMemory,
+            },
+      invariant: 'K,V are computed once per token; the new query still attends across cached keys, and the cache still occupies memory.',
+      nextQuestion: 'When sequence length grows, does the serving bottleneck move from recomputing K,V to reading/storing the KV cache?',
+      values,
+    })
+  }, [
+    cachedTotalKV,
+    conceptId,
+    attentionKeysReadThisStep,
+    currentStepWorkCached,
+    currentStepWorkNaive,
+    naiveTotalKV,
+    prediction,
+    predictionPhase,
+    retainedKVMemory,
+    savedKV,
+    savedPercent,
+    selectedChallenge,
+    sequenceLength,
+  ])
+
+  // D3 chart: repeated KV projection work vs sequence length.
   useEffect(() => {
     const svgEl = chartRef.current
     if (!svgEl) return
@@ -307,7 +379,11 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
 
     const svg = d3.select(svgEl)
     svg.selectAll('*').remove()
-    svg.attr('width', width).attr('height', height)
+    svg
+      .attr('width', width)
+      .attr('height', height)
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
 
     const g = svg
       .append('g')
@@ -337,7 +413,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .call(g =>
         g
           .selectAll('line')
-          .attr('stroke', 'rgba(148,163,184,0.08)')
+          .attr('stroke', 'rgba(229,240,248,0.08)')
       )
       .call(g => g.select('path').remove())
       .attr('pointer-events', 'none')
@@ -362,15 +438,15 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .call(callAxis(yAxis))
 
     g.selectAll('.kv-axis text')
-      .attr('fill', '#9ca3af')
+      .attr('fill', 'rgba(238,247,255,0.58)')
       .attr('font-size', 10)
 
     g.selectAll('.kv-axis line')
-      .attr('stroke', 'rgba(148,163,184,0.35)')
+      .attr('stroke', 'rgba(229,240,248,0.18)')
       .attr('stroke-width', 1)
 
     g.selectAll('.kv-axis path')
-      .attr('stroke', 'rgba(148,163,184,0.6)')
+      .attr('stroke', 'rgba(229,240,248,0.24)')
       .attr('stroke-width', 1)
 
     // Lines
@@ -384,7 +460,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .append('path')
       .datum(noCacheSeries)
       .attr('fill', 'none')
-      .attr('stroke', 'rgba(148,163,184,0.95)')
+      .attr('stroke', 'rgba(207,218,231,0.74)')
       .attr('stroke-width', 1.5)
       .attr('class', 'kv-line-no-cache')
       .attr('d', lineGen)
@@ -393,14 +469,14 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .append('path')
       .datum(cacheSeries)
       .attr('fill', 'none')
-      .attr('stroke', '#14b8a6')
+      .attr('stroke', '#22b8a6')
       .attr('stroke-width', 2)
       .attr('class', 'kv-line-cache')
       .attr('d', lineGen)
 
     // Animate teal line
     const cacheNode = cachePath.node() as SVGPathElement | null
-    if (cacheNode) {
+    if (cacheNode && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const totalLength = cacheNode.getTotalLength()
       cachePath
         .attr('stroke-dasharray', `${totalLength} ${totalLength}`)
@@ -425,7 +501,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .attr('x2', currentX)
       .attr('y1', 0)
       .attr('y2', innerHeight)
-      .attr('stroke', 'rgba(248,250,252,0.45)')
+      .attr('stroke', 'rgba(232,180,73,0.62)')
       .attr('stroke-dasharray', '4,4')
       .attr('stroke-width', 1)
 
@@ -434,24 +510,24 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .attr('cx', currentX)
       .attr('cy', y(currentNoCacheVal))
       .attr('r', 4)
-      .attr('fill', 'rgba(148,163,184,0.95)')
+      .attr('fill', 'rgba(207,218,231,0.78)')
 
     highlight
       .append('circle')
       .attr('cx', currentX)
       .attr('cy', y(currentCacheVal))
       .attr('r', 4.5)
-      .attr('fill', '#14b8a6')
+      .attr('fill', '#22b8a6')
 
     // Legend
     const legend = g
       .append('g')
       .attr('class', 'kv-legend')
-      .attr('transform', `translate(${innerWidth - 152},${8})`)
+      .attr('transform', 'translate(8,8)')
 
     const legendItems = [
-      { color: 'rgba(148,163,184,0.95)', label: 'recompute every step (O(L²))' },
-      { color: '#14b8a6', label: 'KV cache (O(L))' },
+      { color: 'rgba(207,218,231,0.78)', label: 'no cache: recompute K,V for prefix' },
+      { color: '#22b8a6', label: 'cache: compute each K,V once' },
     ]
 
     legendItems.forEach((item, idx) => {
@@ -466,7 +542,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
         .append('text')
         .attr('x', 18)
         .attr('y', 10)
-        .attr('fill', '#9ca3af')
+        .attr('fill', 'rgba(238,247,255,0.64)')
         .attr('font-size', 10)
         .text(item.label)
     })
@@ -475,7 +551,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
     g.append('text')
       .attr('x', innerWidth / 2)
       .attr('y', innerHeight + 28)
-      .attr('fill', '#9ca3af')
+      .attr('fill', 'rgba(238,247,255,0.64)')
       .attr('text-anchor', 'middle')
       .attr('font-size', 11)
       .text('sequence length L')
@@ -484,10 +560,10 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       .attr('transform', 'rotate(-90)')
       .attr('x', -innerHeight / 2)
       .attr('y', -margin.left + 14)
-      .attr('fill', '#9ca3af')
+      .attr('fill', 'rgba(238,247,255,0.64)')
       .attr('text-anchor', 'middle')
       .attr('font-size', 11)
-      .text('relative KV work / memory')
+      .text('KV projection token-computes')
   }, [sequenceLength, maxTokens])
 
   const handleGenerate = () => {
@@ -515,7 +591,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
 
   // Layout constants for the attention diagram SVG
   const attentionWidth = 260
-  const attentionHeight = 160
+  const attentionHeight = Math.max(160, 56 + sequenceLength * 18)
   const kvStartX = 30
   const keyWidth = 26
   const valueWidth = 26
@@ -529,149 +605,135 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
   const qX = 190
   const qY =
     kvStartY + ((sequenceLength - 1) * kvRowHeight) / 2 - qHeight / 2
+  const loopPhase =
+    predictionPhase === 'setup'
+      ? 'question'
+      : predictionPhase === 'predicting'
+        ? 'predict'
+        : 'evidence'
 
   return (
-    <section className="kv-container">
+    <section className="kv-container cf-surface-lab">
       <div className="kv-inner">
         <header className="kv-header">
           <div>
             <h2 className="kv-title">KV Cache in Autoregressive Generation</h2>
             <p className="kv-subtitle">
-              Click <span className="kv-subtitle-accent">Generate next token</span>{' '}
-              to watch the KV cache grow and see how much recompute you avoid.
+              Predict the KV projection work saved during decoding. K,V are cached
+              once per token; the new query still attends over the cached prefix.
             </p>
-            {/* Gamification Toggle */}
-            <div style={{ marginTop: 10 }}>
-              <button
-                type="button"
-                onClick={() => setGameMode(!gameMode)}
-                className={`kv-button ${gameMode ? 'kv-game-active' : 'kv-button-ghost'}`}
-                style={{ fontSize: '0.75rem', padding: '5px 12px' }}
-              >
-                {gameMode ? '🎮 Exit Challenge Mode' : '🎯 Try Savings Challenge'}
-              </button>
-              {score > 0 && (
-                <span style={{ marginLeft: 10, fontSize: '0.75rem', color: '#fcd34d' }}>
-                  Score: {score}/{completedChallenges.length}
-                </span>
-              )}
-            </div>
           </div>
           <div className="kv-header-badge">
-            <span className="kv-badge-pill">Q attends to cached K,V only</span>
+            <span className="kv-badge-pill">K,V cached once; Q_t still attends over K_1...K_t</span>
           </div>
         </header>
 
-        {/* ─────────────────────────────────────────────────────────────
-            Gamification Panel
-           ───────────────────────────────────────────────────────────── */}
-        {gameMode && (
-          <div className="kv-game-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fcd34d', margin: 0 }}>
-                🎯 Savings Prediction Challenge
-              </h3>
-              {gamePhase !== 'setup' && (
-                <button
-                  type="button"
-                  onClick={resetGame}
-                  className="kv-button kv-button-ghost"
-                  style={{ fontSize: '0.7rem', padding: '4px 10px' }}
-                >
-                  ← Back to Challenges
-                </button>
-              )}
+        <ol className="kv-loop-rail" aria-label="KV cache learning loop">
+          <li className={`kv-loop-step ${loopPhase === 'question' ? 'is-active' : 'is-complete'}`}>
+            <span className="kv-loop-index">1</span>
+            <span>
+              <strong>Question</strong>
+              <small>Where does repeated K,V work grow?</small>
+            </span>
+          </li>
+          <li className={`kv-loop-step ${loopPhase === 'predict' ? 'is-active' : predictionPhase === 'revealed' ? 'is-complete' : ''}`}>
+            <span className="kv-loop-index">2</span>
+            <span>
+              <strong>Predict</strong>
+              <small>Choose the savings bucket before reveal.</small>
+            </span>
+          </li>
+          <li className={`kv-loop-step ${loopPhase === 'evidence' ? 'is-active' : ''}`}>
+            <span className="kv-loop-index">3</span>
+            <span>
+              <strong>Evidence</strong>
+              <small>Compare L(L+1)/2 with L.</small>
+            </span>
+          </li>
+          <li className={predictionPhase === 'revealed' ? 'kv-loop-step is-invariant' : 'kv-loop-step'}>
+            <span className="kv-loop-index">4</span>
+            <span>
+              <strong>Invariant</strong>
+              <small>K,V are cached; Q_t still attends.</small>
+            </span>
+          </li>
+        </ol>
+
+        <div className="kv-prediction-panel cf-prediction-gate" data-child-demo-gate="kv-cache-projection-work">
+          <div className="kv-prediction-head">
+            <div>
+              <h3>Predict the KV projection savings</h3>
+              <p>
+                Pick a decode length, commit a bucket, then reveal the exact
+                K,V recomputation work. This does not claim attention is free:
+                the new query still reads the cached prefix.
+              </p>
             </div>
-
-            {gamePhase === 'setup' && (
-              <>
-                <p style={{ fontSize: '0.78rem', color: '#d1d5db', marginBottom: 10 }}>
-                  Can you predict how much compute the KV cache will save? Remember: savings = (O(L²) - O(L)) / O(L²)
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {SAVINGS_CHALLENGES.map((challenge) => {
-                    const isCompleted = completedChallenges.includes(challenge.name)
-                    return (
-                      <button
-                        key={challenge.name}
-                        type="button"
-                        onClick={() => startChallenge(challenge)}
-                        className={`kv-preset-btn ${isCompleted ? 'kv-preset-complete' : ''}`}
-                      >
-                        {isCompleted ? '✓ ' : ''}{challenge.name}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-
-            {gamePhase === 'countdown' && selectedChallenge && (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: '0.85rem', color: '#fcd34d', marginBottom: 6, fontWeight: 500 }}>
-                  {selectedChallenge.name}
-                </p>
-                <p style={{ fontSize: '0.78rem', color: '#d1d5db', marginBottom: 14, fontStyle: 'italic' }}>
-                  &ldquo;{selectedChallenge.description}&rdquo;
-                </p>
-                <p style={{ fontSize: '0.85rem', color: '#e5e7eb', marginBottom: 10 }}>
-                  At {selectedChallenge.sequenceLength} tokens, how much compute is saved?
-                </p>
-                <p className="sr-only">Use arrow keys to navigate options, Enter to select, Escape to exit</p>
-                <div
-                  style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 12 }}
-                  {...predictionNav.containerProps}
-                  className="prediction-options"
-                >
-                  {PREDICTION_OPTIONS.map((option, index) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      {...predictionNav.getOptionProps(option, index)}
-                      className={`kv-game-option ${predictionNav.focusedIndex === index ? 'kb-focused' : ''}`}
-                    >
-                      <div style={{ fontWeight: 500 }}>{option.label}</div>
-                      <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginTop: 2 }}>{option.desc}</div>
-                    </button>
-                  ))}
-                </div>
-                {countdown > 0 && (
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
-                    Make your prediction! ({countdown}s to think...)
-                  </div>
-                )}
-              </div>
-            )}
-
-            {gamePhase === 'revealed' && selectedChallenge && (
-              <div role="status" aria-live="polite" aria-atomic="true">
-                <div
-                  className={`kv-game-result ${prediction === selectedChallenge.answer ? 'kv-game-correct' : 'kv-game-incorrect'}`}
-                  aria-label={prediction === selectedChallenge.answer ? 'Correct prediction' : 'Incorrect prediction'}
-                >
-                  <p style={{ fontSize: '0.78rem', color: '#e5e7eb', lineHeight: 1.5, margin: 0 }}>
-                    {getSavingsFeedback(prediction, selectedChallenge, calculateSavings(selectedChallenge.sequenceLength).percent)}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: 10, fontSize: '0.7rem', color: '#9ca3af', marginTop: 10 }}>
-                  <div>
-                    Your guess: <span style={{ color: prediction === selectedChallenge.answer ? '#86efac' : '#fca5a5' }}>
-                      {prediction === 'low' ? '📉 Low' : prediction === 'medium' ? '📊 Medium' : prediction === 'high' ? '📈 High' : '🚀 Extreme'}
-                    </span>
-                  </div>
-                  <div>
-                    Actual: <span style={{ color: '#fcd34d' }}>
-                      {selectedChallenge.answer === 'low' ? '📉 Low' : selectedChallenge.answer === 'medium' ? '📊 Medium' : selectedChallenge.answer === 'high' ? '📈 High' : '🚀 Extreme'}
-                    </span>
-                  </div>
-                </div>
-                <p style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: 10, marginBottom: 0 }}>
-                  👆 The visualization now shows {selectedChallenge.sequenceLength} tokens - check the chart!
-                </p>
-              </div>
-            )}
+            {predictionPhase !== 'setup' ? (
+              <button type="button" onClick={resetPrediction} className="kv-button kv-button-ghost">
+                Choose another case
+              </button>
+            ) : null}
           </div>
-        )}
+
+          {predictionPhase === 'setup' ? (
+            <div className="kv-case-grid" aria-label="KV cache prediction cases">
+              {SAVINGS_CHALLENGES.map((challenge) => (
+                <button
+                  key={challenge.name}
+                  type="button"
+                  onClick={() => startChallenge(challenge)}
+                  className="kv-case-button"
+                >
+                  <strong>{challenge.name}</strong>
+                  <span>L={challenge.sequenceLength}</span>
+                  <small>{challenge.description}</small>
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {predictionPhase === 'predicting' && selectedChallenge ? (
+            <div className="kv-prediction-workspace">
+              <div className="kv-prediction-copy">
+                <strong>{selectedChallenge.name}: L={selectedChallenge.sequenceLength}</strong>
+                <p>{selectedChallenge.description}</p>
+                <p className="sr-only">Use arrow keys to navigate options, Enter to select, Escape to leave the prediction.</p>
+              </div>
+              <div {...predictionNav.containerProps} className="prediction-options">
+                {PREDICTION_OPTIONS.map((option, index) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    {...predictionNav.getOptionProps(option, index)}
+                    className={`kv-prediction-option ${predictionNav.focusedIndex === index ? 'kb-focused' : ''}`}
+                  >
+                    <strong>{option.label}</strong>
+                    <span>{option.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {predictionPhase === 'revealed' && selectedChallenge ? (() => {
+            const actual = calculateSavings(selectedChallenge.sequenceLength)
+            const correct = prediction === actual.category
+            return (
+              <div className="kv-prediction-result" role="status" aria-live="polite" aria-atomic="true">
+                <div className={correct ? 'kv-result-card kv-result-good' : 'kv-result-card kv-result-miss'}>
+                  <strong>{correct ? 'Prediction matched' : `Actual bucket: ${actual.category}`}</strong>
+                  <p>{getSavingsFeedback(prediction, selectedChallenge, actual.percent)}</p>
+                </div>
+                <div className="kv-result-facts">
+                  <span>Your prediction: {predictionLabel(prediction)}</span>
+                  <span>Actual: {predictionLabel(actual.category)}</span>
+                  <span>Saved: {actual.percent.toFixed(1)}%</span>
+                </div>
+              </div>
+            )
+          })() : null}
+        </div>
 
         <div className="kv-body">
           {/* LEFT: timeline, cache stack, attention diagram */}
@@ -694,7 +756,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
                     >
                       <div className="kv-token-label">{token.label}</div>
                       <div className="kv-token-sub">
-                        {isCurrent ? 'Q, K, V (new)' : 'K, V cached'}
+                        {isCurrent ? 'Q_t, K_t, V_t computed now' : 'K,V reused'}
                       </div>
                     </div>
                   )
@@ -746,7 +808,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
 
               {/* Attention diagram: new Q attends to all cached K,V */}
               <div className="kv-subpanel">
-                <h3 className="kv-subpanel-title">3. Only new Q attends</h3>
+                <h3 className="kv-subpanel-title">3. Q_t attends to cached K_1...K_t</h3>
                 <div className="kv-attention-wrapper">
                   <svg
                     className="kv-attention-svg"
@@ -849,30 +911,31 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
                     })}
                   </svg>
                   <p className="kv-caption">
-                    At step t, only <span className="kv-caption-strong">Qₜ</span> is
-                    fresh. All previous <span className="kv-caption-strong">K,V</span>{' '}
-                    are reused from the cache.
+                    At decode step t, the model computes Q_t, K_t, V_t for the
+                    new token, appends K_t,V_t to the cache, then Q_t attends
+                    over K_1...K_t and reads V_1...V_t. KV cache removes repeated
+                    K,V projections; it does not remove attention over the prefix.
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT: memory / compute chart + stats + controls */}
+          {/* RIGHT: KV projection work chart + stats + controls */}
           <div className="kv-right">
             <div className="kv-panel">
-              <h3>4. Memory / compute with and without KV cache</h3>
-              <svg ref={chartRef} className="kv-chart-svg" role="img" aria-label="Memory and compute comparison chart showing O(L²) without KV cache vs O(L) with caching" />
+              <h3>4. Cumulative KV projection work during decoding</h3>
+              <svg ref={chartRef} className="kv-chart-svg" role="img" aria-label="KV projection work comparison chart showing L squared recomputation without KV cache versus linear K,V projection work with caching" />
               <p className="kv-caption">
-                Without caching you redo work for all previous tokens each step
-                (gray), giving <span className="kv-caption-strong">O(L²)</span> KV
-                work. With KV cache (teal), total KV work grows only{' '}
-                <span className="kv-caption-strong">O(L)</span>.
+                Gray recomputes K,V for all tokens at every decode step:
+                1 + 2 + ... + L. Teal computes each token&apos;s K,V once and
+                reuses them. This chart excludes attention-weight and value mixing,
+                MLPs, output projections, and memory bandwidth.
               </p>
             </div>
 
             <div className="kv-panel kv-panel-stats">
-              <h3>5. Computational savings</h3>
+              <h3>5. Recomputed K,V avoided</h3>
               <div className="kv-stat-grid">
                 <div className="kv-stat">
                   <div className="kv-stat-label">Sequence length</div>
@@ -880,37 +943,51 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
                   <div className="kv-stat-note">tokens generated so far</div>
                 </div>
                 <div className="kv-stat">
-                  <div className="kv-stat-label">Total KV (no cache)</div>
+                  <div className="kv-stat-label">KV projections, no cache</div>
                   <div className="kv-stat-value">
                     {formatInt(naiveTotalKV)}
                   </div>
                   <div className="kv-stat-note">recomputed every step</div>
                 </div>
                 <div className="kv-stat">
-                  <div className="kv-stat-label">Total KV (with cache)</div>
+                  <div className="kv-stat-label">KV projections, cached</div>
                   <div className="kv-stat-value">
                     {formatInt(cachedTotalKV)}
                   </div>
                   <div className="kv-stat-note">each token once</div>
                 </div>
                 <div className="kv-stat">
-                  <div className="kv-stat-label">This step&apos;s KV work</div>
+                  <div className="kv-stat-label">This step&apos;s KV projection work</div>
                   <div className="kv-stat-value">
                     {currentStepWorkNaive} → {currentStepWorkCached}
                   </div>
                   <div className="kv-stat-note">
-                    naive → cached at step {sequenceLength}
+                    no cache → cached at step {sequenceLength}
+                  </div>
+                </div>
+                <div className="kv-stat">
+                  <div className="kv-stat-label">Attention span this step</div>
+                  <div className="kv-stat-value">{attentionKeysReadThisStep}</div>
+                  <div className="kv-stat-note">
+                    tokens; unchanged by KV cache
+                  </div>
+                </div>
+                <div className="kv-stat">
+                  <div className="kv-stat-label">Retained cache memory</div>
+                  <div className="kv-stat-value">{retainedKVMemory}</div>
+                  <div className="kv-stat-note">
+                    K,V pairs grow with context length
                   </div>
                 </div>
               </div>
 
               <div className="kv-counter">
-                <div className="kv-counter-label">KV computations avoided</div>
+                <div className="kv-counter-label">KV projection recomputes avoided</div>
                 <div className="kv-counter-value">
                   ≈{formatInt(savedKV)}
                 </div>
                 <div className="kv-counter-note">
-                  ~{savedPercent.toFixed(0)}% less KV work vs recomputing
+                  ~{savedPercent.toFixed(0)}% fewer K,V projection token-computes than recomputing the prefix each step
                 </div>
               </div>
 
@@ -934,7 +1011,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
                   onClick={() => setAutoGenerating(a => !a)}
                   disabled={sequenceLength >= maxTokens}
                 >
-                  {autoGenerating ? '⏸ Pause' : '▶ Auto-generate'}
+                  {autoGenerating ? 'Pause' : 'Auto-generate'}
                 </button>
                 <button
                   type="button"
@@ -971,13 +1048,15 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
       {/* Scoped styles */}
       <style jsx>{`
         .kv-container {
-          background: #080c14;
-          border-radius: 16px;
-          border: 1px solid rgba(148, 163, 184, 0.3);
+          background:
+            radial-gradient(circle at 12% 0%, rgba(34, 184, 166, 0.16), transparent 34%),
+            linear-gradient(135deg, var(--cf-lab-panel), var(--cf-lab));
+          border-radius: 14px;
+          border: 1px solid var(--cf-line-dark);
           padding: 24px;
-          color: #e5e7eb;
-          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-            'Inter', sans-serif;
+          color: #eef7ff;
+          font-family: var(--font-body);
+          box-shadow: var(--cf-shadow-lab);
         }
 
         .kv-inner {
@@ -994,16 +1073,26 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
         }
 
         .kv-title {
-          font-size: 1.25rem;
+          font-family: var(--font-display);
+          font-size: 1.28rem;
           font-weight: 600;
-          letter-spacing: 0.02em;
+          letter-spacing: 0;
           margin: 0 0 4px;
+          padding-left: 0;
+          color: #f7fbff;
+          line-height: 1.2;
+        }
+
+        .kv-title::before {
+          content: none;
+          display: none;
         }
 
         .kv-subtitle {
           margin: 0;
           font-size: 0.875rem;
-          color: #9ca3af;
+          color: rgba(238, 247, 255, 0.72);
+          max-width: 68ch;
         }
 
         .kv-subtitle-accent {
@@ -1020,14 +1109,87 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
           border-radius: 9999px;
           padding: 4px 10px;
           font-size: 0.75rem;
-          border: 1px solid rgba(148, 163, 184, 0.4);
+          border: 1px solid rgba(34, 184, 166, 0.45);
           background: radial-gradient(
             circle at top left,
-            rgba(245, 158, 11, 0.16),
-            rgba(15, 23, 42, 0.95)
+            var(--cf-invariant-soft),
+            rgba(8, 21, 35, 0.95)
           );
-          color: #fbbf24;
+          color: #a8fff2;
           white-space: nowrap;
+        }
+
+        .kv-loop-rail {
+          list-style: none;
+          margin: 0;
+          padding: 10px;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(229, 240, 248, 0.13);
+          background:
+            linear-gradient(135deg, rgba(247, 241, 230, 0.08), rgba(8, 21, 35, 0.5)),
+            repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 18px);
+        }
+
+        .kv-loop-step {
+          min-width: 0;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 8px;
+          align-items: start;
+          padding: 9px;
+          border-radius: 10px;
+          border: 1px solid rgba(229, 240, 248, 0.1);
+          background: rgba(8, 21, 35, 0.38);
+          color: rgba(238, 247, 255, 0.68);
+        }
+
+        .kv-loop-index {
+          width: 22px;
+          height: 22px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9999px;
+          border: 1px solid rgba(229, 240, 248, 0.18);
+          color: rgba(238, 247, 255, 0.72);
+          font-family: var(--font-mono);
+          font-size: 0.68rem;
+        }
+
+        .kv-loop-step strong {
+          display: block;
+          color: inherit;
+          font-size: 0.78rem;
+          line-height: 1.2;
+        }
+
+        .kv-loop-step small {
+          display: block;
+          margin-top: 2px;
+          color: rgba(238, 247, 255, 0.62);
+          font-size: 0.68rem;
+          line-height: 1.3;
+        }
+
+        .kv-loop-step.is-active {
+          border-color: rgba(232, 180, 73, 0.46);
+          background: linear-gradient(135deg, var(--cf-active-soft), rgba(8, 21, 35, 0.58));
+          color: #ffe7aa;
+        }
+
+        .kv-loop-step.is-complete {
+          border-color: rgba(79, 143, 216, 0.38);
+          background: linear-gradient(135deg, var(--cf-evidence-soft), rgba(8, 21, 35, 0.48));
+          color: #cfe6ff;
+        }
+
+        .kv-loop-step.is-invariant {
+          border-color: rgba(34, 184, 166, 0.45);
+          background: linear-gradient(135deg, var(--cf-invariant-soft), rgba(8, 21, 35, 0.5));
+          color: #b8fff3;
         }
 
         .kv-body {
@@ -1053,16 +1215,16 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
         }
 
         .kv-panel {
-          border-radius: 14px;
+          border-radius: 12px;
           padding: 14px 16px 16px;
           background: radial-gradient(
               circle at top left,
-              rgba(15, 23, 42, 0.96),
-              rgba(15, 23, 42, 0.98)
+              rgba(34, 184, 166, 0.08),
+              rgba(16, 34, 53, 0.96)
             ),
-            linear-gradient(to bottom right, rgba(15, 23, 42, 0.96), #020617);
-          border: 1px solid rgba(148, 163, 184, 0.35);
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+            linear-gradient(to bottom right, rgba(16, 34, 53, 0.97), rgba(8, 21, 35, 0.98));
+          border: 1px solid rgba(229, 240, 248, 0.16);
+          box-shadow: 0 16px 36px rgba(3, 10, 18, 0.38);
         }
 
         .kv-panel-header {
@@ -1084,8 +1246,8 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
           font-size: 0.7rem;
           padding: 2px 8px;
           border-radius: 9999px;
-          border: 1px solid rgba(148, 163, 184, 0.5);
-          color: #9ca3af;
+          border: 1px solid rgba(232, 180, 73, 0.42);
+          color: #f3d795;
           white-space: nowrap;
         }
 
@@ -1204,8 +1366,8 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
           display: flex;
           flex-direction: column-reverse;
           gap: 5px;
-          max-height: 150px;
-          overflow: hidden;
+          max-height: none;
+          overflow: visible;
         }
 
         .kv-cache-block {
@@ -1263,6 +1425,7 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
         .kv-attention-label {
           fill: #9ca3af;
           font-size: 0.65rem;
+          text-anchor: middle;
         }
 
         .kv-attention-token-label {
@@ -1516,63 +1679,234 @@ const KVCacheVisualizer: React.FC<KVCacheVisualizerProps> = ({
           color: #a5f3fc;
         }
 
-        .kv-preset-complete {
-          background: rgba(34, 197, 94, 0.15);
-          border-color: #22c55e;
-          color: #86efac;
-        }
-
         .kv-max-note {
           font-size: 0.75rem;
           color: #6b7280;
         }
 
-        /* Gamification styles */
-        .kv-game-active {
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(249, 115, 22, 0.1));
-          border: 1px solid #f59e0b;
-          color: #fcd34d;
-        }
-
-        .kv-game-panel {
+        .kv-prediction-panel {
           margin-bottom: 16px;
           padding: 14px 16px;
           border-radius: 12px;
-          background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(249, 115, 22, 0.05));
-          border: 1px solid rgba(245, 158, 11, 0.3);
+          background:
+            linear-gradient(135deg, var(--cf-active-soft), rgba(34, 184, 166, 0.08)),
+            linear-gradient(180deg, rgba(247, 241, 230, 0.06), transparent);
+          border: 1px solid rgba(232, 180, 73, 0.34);
         }
 
-        .kv-game-option {
-          font-size: 0.75rem;
-          padding: 8px 14px;
+        .kv-prediction-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: flex-start;
+          margin-bottom: 12px;
+        }
+
+        .kv-prediction-head h3 {
+          margin: 0 0 4px;
+          color: #ffe4a8;
+          font-size: 0.95rem;
+          font-weight: 600;
+        }
+
+        .kv-prediction-head p,
+        .kv-prediction-copy p,
+        .kv-result-card p {
+          margin: 0;
+          color: rgba(238, 247, 255, 0.76);
+          font-size: 0.8rem;
+          line-height: 1.5;
+        }
+
+        .kv-case-grid,
+        .prediction-options,
+        .kv-result-facts {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .kv-case-grid {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        .kv-case-button,
+        .kv-prediction-option {
+          min-width: 0;
           border-radius: 10px;
-          border: 1px solid #6b7280;
-          background: rgba(55, 65, 81, 0.7);
-          color: #e5e7eb;
+          border: 1px solid rgba(229, 240, 248, 0.16);
+          background: rgba(8, 21, 35, 0.7);
+          color: #eef7ff;
           cursor: pointer;
           transition: all 0.15s ease-out;
+        }
+
+        .kv-case-button {
+          display: grid;
+          gap: 4px;
+          padding: 10px;
+          text-align: left;
+        }
+
+        .kv-case-button strong,
+        .kv-prediction-option strong,
+        .kv-result-card strong {
+          color: #f8fafc;
+          font-size: 0.8rem;
+        }
+
+        .kv-case-button span,
+        .kv-result-facts span {
+          color: #a8fff2;
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
+        }
+
+        .kv-case-button small,
+        .kv-prediction-option span {
+          color: rgba(238, 247, 255, 0.64);
+          font-size: 0.72rem;
+          line-height: 1.32;
+        }
+
+        .kv-case-button:hover,
+        .kv-prediction-option:hover {
+          background: rgba(34, 184, 166, 0.16);
+          border-color: rgba(34, 184, 166, 0.56);
+        }
+
+        .kv-prediction-workspace {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(18rem, 1.2fr);
+          gap: 12px;
+          align-items: center;
+        }
+
+        .kv-prediction-copy {
+          display: grid;
+          gap: 4px;
+        }
+
+        .kv-prediction-copy strong {
+          color: #ffe4a8;
+        }
+
+        .kv-prediction-option {
+          font-size: 0.75rem;
+          padding: 8px 14px;
           text-align: center;
+          display: grid;
+          gap: 2px;
         }
 
-        .kv-game-option:hover {
-          background: rgba(245, 158, 11, 0.15);
-          border-color: rgba(245, 158, 11, 0.5);
+        .kv-prediction-option.kb-focused {
+          outline: 2px solid rgba(251, 191, 36, 0.85);
+          outline-offset: 2px;
         }
 
-        .kv-game-result {
+        .kv-result-card {
           padding: 10px 12px;
           border-radius: 10px;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
 
-        .kv-game-correct {
-          background: rgba(34, 197, 94, 0.15);
-          border: 1px solid rgba(34, 197, 94, 0.4);
+        .kv-result-good {
+          background: var(--cf-invariant-soft);
+          border: 1px solid rgba(34, 184, 166, 0.44);
         }
 
-        .kv-game-incorrect {
-          background: rgba(239, 68, 68, 0.15);
-          border: 1px solid rgba(239, 68, 68, 0.4);
+        .kv-result-miss {
+          background: var(--cf-active-soft);
+          border: 1px solid rgba(232, 180, 73, 0.38);
+        }
+
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border: 0;
+        }
+
+        @media (max-width: 640px) {
+          .kv-container {
+            padding: 14px;
+            border-radius: 12px;
+          }
+
+          .kv-header,
+          .kv-panel-header {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .kv-header-badge {
+            align-self: flex-start;
+            max-width: 100%;
+          }
+
+          .kv-badge-pill,
+          .kv-panel-tag {
+            white-space: normal;
+            line-height: 1.35;
+          }
+
+          .kv-body {
+            gap: 14px;
+          }
+
+          .kv-loop-rail {
+            grid-template-columns: 1fr;
+            padding: 8px;
+          }
+
+          .kv-loop-step {
+            min-height: 54px;
+          }
+
+          .kv-prediction-head,
+          .kv-prediction-workspace {
+            display: grid;
+            grid-template-columns: 1fr;
+          }
+
+          .kv-case-grid,
+          .prediction-options,
+          .kv-result-facts {
+            grid-template-columns: 1fr;
+          }
+
+          .kv-button,
+          .kv-prediction-option,
+          .kv-preset-btn {
+            min-height: 44px;
+          }
+
+          .kv-case-button {
+            min-height: 72px;
+          }
+
+          .kv-panel {
+            padding: 12px;
+            overflow: hidden;
+          }
+
+          .kv-attention-svg,
+          .kv-chart-svg {
+            max-width: 100%;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .kv-token,
+          .kv-cache-block,
+          .kv-attention-line {
+            animation: none;
+          }
         }
 
         /* Animations */

@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, math objects, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/generative-models/concepts/diffusion. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what Sohl-Dickstein 2015, Ho 2020 DDPM, and Song 2020 Score SDE actually support. Also flag any local content wording that should be softened before this claim is added.
+
+Proposed claim_check:
+- id: forward-noising-noise-prediction-score-bridge
+- status: source-checked
+- claim: Diffusion can be taught as gradual corruption plus learned denoising: DDPM defines q(x_t|x_0) and its reparameterized sample x_t, trains a noise-prediction MSE, and the score-based view connects denoising to estimating ∇_x log p_t(x) for reverse-time sampling.
+- source_ids: sohl-dickstein-2015-nonequilibrium, ho-2020-ddpm, song-2020-score-sde
+- support: Sohl-Dickstein et al. ground the forward diffusion plus learned reverse process framing. Ho et al. ground the DDPM marginal q(x_t|x_0), reparameterized noising equation, and simplified noise-prediction objective. Song et al. ground the score/reverse-time SDE interpretation. The page math, code, and demo instantiate forward noising, alpha-bar schedules, noise sampling, and the teaching bridge to denoising/score.
+- caveat: This checks the forward noising, DDPM training-objective, and score-bridge lesson, not exact sampler choices, continuous-time derivations, classifier-free guidance, modern latent diffusion systems, or flow matching.
+- object_refs: #source-span-sohl-dickstein-2015-nonequilibrium, #source-span-ho-2020-ddpm, #source-span-song-2020-score-sde, #math-object-1, #math-object-2, #math-object-3, #code-witness-1, #interactive-demo

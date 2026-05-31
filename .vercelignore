@@ -1,0 +1,43 @@
+# Dependencies and package-manager caches
+node_modules
+.npm
+.pnpm-store
+
+# Local Next.js build output
+.next
+.next.*
+.next-*
+out
+build
+dist
+
+# Local env and platform link files
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+.vercel
+
+# Repo and editor metadata
+.git
+.github
+.DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+*.tsbuildinfo
+
+# Local assistant, review, and generated-output state
+.claude
+.mcp.json
+.oracle-home
+oracle-outputs
+oracle-queries
+responses
+state
+coverage
+artifacts
+playwright-report
+test-results
+RALPH_CONTINUOUS_FUNCTION.md

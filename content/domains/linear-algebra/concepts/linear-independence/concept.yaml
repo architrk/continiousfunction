@@ -3,7 +3,7 @@ title: "Linear Independence"
 domain: linear-algebra
 slug: linear-independence
 difficulty: 2
-status: published
+status: review
 importance: critical
 prerequisites:
   - vector-spaces

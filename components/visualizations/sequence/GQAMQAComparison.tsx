@@ -180,7 +180,8 @@ const ArchitectureDiagramColumn: React.FC<ArchitectureDiagramColumnProps> = ({
   return (
     <div
       style={{
-        flex: '1 1 0',
+        flex: '1 1 15rem',
+        minWidth: 'min(100%, 15rem)',
         borderRadius: '0.75rem',
         border: isActive
           ? '1px solid rgba(249, 115, 22, 0.9)'
@@ -498,101 +499,112 @@ const ParameterPanel: React.FC<ParameterPanelProps> = ({
         Approximate parameters for Q / K / V projections for a Llama&nbsp;3
         style layer (32 Q heads, grouped KV heads).
       </div>
-      <table
+      <div
         style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: '0.75rem',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: '0.25rem',
         }}
+        aria-label="Projection parameter counts table"
       >
-        <thead>
-          <tr
-            style={{
-              color: 'rgba(148,163,184,0.95)',
-              textAlign: 'left',
-            }}
-          >
-            <th style={{ padding: '0.35rem 0.35rem' }}>Arch</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>Q heads</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>KV heads</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>KV params</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>Total (Q+KV)</th>
-            <th style={{ padding: '0.35rem 0.35rem' }}>vs MHA</th>
-          </tr>
-        </thead>
-        <tbody>
-          {configs.map(c => {
-            const s = statsById[c.id]
-            const isActive = c.id === activeId
-            const rel = s.totalParams / baselineTotal
-            return (
-              <tr
-                key={c.id}
-                style={{
-                  backgroundColor: isActive
-                    ? 'rgba(249, 115, 22, 0.12)'
-                    : 'transparent',
-                  color: '#e5e7eb',
-                }}
-              >
-                <td
+        <table
+          style={{
+            width: '100%',
+            minWidth: '28rem',
+            borderCollapse: 'collapse',
+            fontSize: '0.75rem',
+          }}
+        >
+          <thead>
+            <tr
+              style={{
+                color: 'rgba(148,163,184,0.95)',
+                textAlign: 'left',
+              }}
+            >
+              <th style={{ padding: '0.35rem 0.35rem' }}>Arch</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>Q heads</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>KV heads</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>KV params</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>Total (Q+KV)</th>
+              <th style={{ padding: '0.35rem 0.35rem' }}>vs MHA</th>
+            </tr>
+          </thead>
+          <tbody>
+            {configs.map(c => {
+              const s = statsById[c.id]
+              const isActive = c.id === activeId
+              const rel = s.totalParams / baselineTotal
+              return (
+                <tr
+                  key={c.id}
                   style={{
-                    padding: '0.28rem 0.35rem',
-                    whiteSpace: 'nowrap',
+                    backgroundColor: isActive
+                      ? 'rgba(249, 115, 22, 0.12)'
+                      : 'transparent',
+                    color: '#e5e7eb',
                   }}
                 >
-                  <span
+                  <td
                     style={{
-                      fontWeight: 600,
-                      fontSize: '0.75rem',
-                      marginRight: '0.25rem',
+                      padding: '0.28rem 0.35rem',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {c.shortLabel}
-                  </span>
-                  <span
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        marginRight: '0.25rem',
+                      }}
+                    >
+                      {c.shortLabel}
+                    </span>
+                    <span
+                      style={{
+                        color: 'rgba(148,163,184,0.95)',
+                      }}
+                    >
+                      {c.label}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.28rem 0.35rem' }}>
+                    {c.numQHeads}
+                  </td>
+                  <td style={{ padding: '0.28rem 0.35rem' }}>
+                    {c.numKVHeads}
+                  </td>
+                  <td
                     style={{
-                      color: 'rgba(148,163,184,0.95)',
+                      padding: '0.28rem 0.35rem',
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
-                    {c.label}
-                  </span>
-                </td>
-                <td style={{ padding: '0.28rem 0.35rem' }}>
-                  {c.numQHeads}
-                </td>
-                <td style={{ padding: '0.28rem 0.35rem' }}>
-                  {c.numKVHeads}
-                </td>
-                <td
-                  style={{
-                    padding: '0.28rem 0.35rem',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {formatParams(s.kvParams)}
-                </td>
-                <td
-                  style={{
-                    padding: '0.28rem 0.35rem',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {formatParams(s.totalParams)}
-                </td>
-                <td
-                  style={{
-                    padding: '0.28rem 0.35rem',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {(rel * 100).toFixed(0)}%
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                    {formatParams(s.kvParams)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '0.28rem 0.35rem',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {formatParams(s.totalParams)}
+                  </td>
+                  <td
+                    style={{
+                      padding: '0.28rem 0.35rem',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {(rel * 100).toFixed(0)}%
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

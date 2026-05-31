@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
+import { clearDemoState, emitDemoState } from '../../lib/demoState';
 
 const EXPERT_COUNT = 8;
 const TOP_K = 2;
-const ACTIVE_PERCENT = Math.round((TOP_K / EXPERT_COUNT) * 100);
 
 const EXPERT_COLORS: string[] = [
   '#fb923c',
@@ -18,37 +18,30 @@ const EXPERT_COLORS: string[] = [
   '#f97316',
 ];
 
-// Expert personalities - makes it more game-like!
-const EXPERT_PERSONALITIES = [
-  { name: 'Scribe', emoji: '📝', specialty: 'natural language' },
-  { name: 'Debugger', emoji: '🐛', specialty: 'code patterns' },
-  { name: 'Proofsmith', emoji: '📐', specialty: 'math & logic' },
-  { name: 'Stylist', emoji: '🎨', specialty: 'formatting' },
-  { name: 'Translator', emoji: '🌐', specialty: 'cross-domain' },
-  { name: 'Archivist', emoji: '📚', specialty: 'rare tokens' },
-  { name: 'Planner', emoji: '🗺️', specialty: 'structure' },
-  { name: 'Wildcard', emoji: '🃏', specialty: 'edge cases' },
-];
+const EXPERT_LABELS = Array.from({ length: EXPERT_COUNT }, (_, i) => ({
+  name: `E${i}`,
+  description: 'Toy FFN expert',
+}));
 
 // Why-this-expert insight tags
 const getExpertInsight = (tokenType: TokenPresetId, expertIndex: number): string => {
   const insights: Record<TokenPresetId, Record<number, string>> = {
     text: {
-      0: 'High word frequency patterns',
-      5: 'Common phrase structures',
+      0: 'High synthetic logit for this preset',
+      5: 'Second-highest synthetic logit',
     },
     code: {
-      2: 'Punctuation & operators detected',
-      3: 'Syntax patterns matched',
+      2: 'High synthetic logit for this preset',
+      3: 'Largest synthetic logit',
     },
     math: {
-      4: 'Numeric density recognized',
-      5: 'Mathematical symbols found',
+      4: 'Largest synthetic logit',
+      5: 'Second-highest synthetic logit',
     },
     rare: {
-      1: 'Unusual character sequences',
-      6: 'Domain-specific patterns',
-      7: 'Out-of-distribution detected',
+      1: 'High synthetic logit',
+      6: 'Largest synthetic logit',
+      7: 'Third-highest synthetic logit',
     },
   };
   return insights[tokenType]?.[expertIndex] || '';
@@ -56,9 +49,29 @@ const getExpertInsight = (tokenType: TokenPresetId, expertIndex: number): string
 
 type TokenPresetId = 'text' | 'code' | 'math' | 'rare';
 
+type CapacityOutcome = 'capacity-overflow' | 'all-served';
+type CapacityPredictionId =
+  | CapacityOutcome
+  | 'renormalized-backup'
+  | 'global-lowest-drop';
+
+type CapacityBatchPresetId = 'text-burst' | 'balanced' | 'rare-burst';
+
 interface TokenPreset {
   label: string;
   logits: number[];
+  description: string;
+}
+
+interface CapacityPredictionChoice {
+  id: CapacityPredictionId;
+  label: string;
+  explanation: string;
+}
+
+interface CapacityBatchPreset {
+  label: string;
+  tokenIds: TokenPresetId[];
   description: string;
 }
 
@@ -67,24 +80,113 @@ const TOKEN_PRESETS: Record<TokenPresetId, TokenPreset> = {
   text: {
     label: 'Natural language',
     logits: [3.2, 2.0, 0.3, -0.5, 0.6, 2.6, -0.2, -1.0],
-    description: 'Common words use general-language experts E0 and E5 the most.',
+    description: 'In this synthetic text preset, the router assigns the largest logits to E0 and E5.',
   },
   code: {
     label: 'Code token',
     logits: [0.3, -0.5, 2.6, 3.3, 0.0, 0.4, 1.4, -0.3],
-    description: 'Structured tokens like code route heavily to E2 and E3.',
+    description: 'In this synthetic code preset, E2 and E3 receive the largest router probabilities.',
   },
   math: {
     label: 'Number / math',
     logits: [-0.4, 0.2, 0.4, 0.5, 3.1, 2.4, 0.3, -0.2],
-    description: 'Numeric & math-ish tokens lean on E4 and E5.',
+    description: 'In this synthetic math preset, E4 and E5 receive the largest router probabilities.',
   },
   rare: {
     label: 'Rare / domain token',
     logits: [0.1, 2.7, 0.1, -0.6, 0.2, 0.4, 3.0, 2.4],
-    description: 'Rare or domain-specific tokens use E1, E6, and sometimes E7.',
+    description: 'In this synthetic rare-token preset, the high logits are concentrated on E1, E6, and E7.',
   },
 };
+
+const CAPACITY_PREDICTIONS: CapacityPredictionChoice[] = [
+  {
+    id: 'capacity-overflow',
+    label: 'Overloaded expert drops/overflows assignments',
+    explanation: 'Per-expert slots fill first; selected token-expert calls beyond capacity cannot run.',
+  },
+  {
+    id: 'all-served',
+    label: 'All top-2 selections are served',
+    explanation: 'Top-k sparsity would be enough, so capacity never binds in this batch.',
+  },
+  {
+    id: 'renormalized-backup',
+    label: 'Router probabilities pick backup experts',
+    explanation: 'The router would automatically re-sort into unused experts after capacity fills.',
+  },
+  {
+    id: 'global-lowest-drop',
+    label: 'Lowest-score token is globally removed',
+    explanation: 'The weakest token in the whole batch would be removed instead of enforcing expert slots.',
+  },
+];
+
+const MOE_CAPACITY_EVIDENCE_STEPS = [
+  {
+    label: 'Predict',
+    text: 'Commit to served vs overflow before slots fill.',
+  },
+  {
+    label: 'Observe',
+    text: 'Reveal expert slot fills and dropped assignments.',
+  },
+  {
+    label: 'Ground',
+    text: 'Compare top-k calls with capacity per expert.',
+  },
+  {
+    label: 'Carry',
+    text: 'Use max load and overflow, not average sparsity.',
+  },
+] as const;
+
+const CAPACITY_BATCH_PRESETS: Record<CapacityBatchPresetId, CapacityBatchPreset> = {
+  'text-burst': {
+    label: 'Batch A',
+    tokenIds: ['text', 'text', 'text', 'code', 'math', 'rare'],
+    description: 'Six tokens arrive in a fixed order with several repeated language-like items.',
+  },
+  balanced: {
+    label: 'Batch B',
+    tokenIds: ['text', 'code', 'math', 'rare'],
+    description: 'Four different token patterns arrive once each.',
+  },
+  'rare-burst': {
+    label: 'Batch C',
+    tokenIds: ['rare', 'rare', 'rare', 'text', 'code', 'math'],
+    description: 'Six tokens arrive with several repeated domain-specific items.',
+  },
+};
+
+interface CapacityTokenRoute {
+  tokenId: string;
+  presetId: TokenPresetId;
+  experts: number[];
+}
+
+interface CapacityAssignment {
+  tokenId: string;
+  presetId: TokenPresetId;
+  expertId: number;
+  rank: number;
+}
+
+interface CapacityPlan {
+  routes: CapacityTokenRoute[];
+  servedAssignments: CapacityAssignment[];
+  droppedAssignments: CapacityAssignment[];
+  expertLoads: number[];
+  overflowExpertIds: number[];
+  actual: CapacityOutcome;
+  topKAssignments: string;
+  servedAssignmentsLabel: string;
+  droppedAssignmentsLabel: string;
+  overflowExpertIdsLabel: string;
+  expertLoadsLabel: string;
+  overflowRate: number;
+  capacityUtilization: number;
+}
 
 function softmax(logits: ReadonlyArray<number>): number[] {
   const max = Math.max(...logits);
@@ -97,49 +199,112 @@ function formatPercent(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
 }
 
-// Fun achievements
-const ACHIEVEMENTS = [
-  { id: 'first_prediction', name: '🔮 First Prediction', description: 'Make your first prediction', threshold: 1 },
-  { id: 'streak_3', name: '🔥 Hot Streak', description: 'Get 3 correct in a row', threshold: 3 },
-  { id: 'perfect_5', name: '⭐ Expert Reader', description: 'Get 5 predictions right', threshold: 5 },
-  { id: 'load_balancer', name: '⚖️ Load Balancer', description: 'Route 10 tokens evenly', threshold: 10 },
-] as const;
+function topKExpertsForPreset(presetId: TokenPresetId): number[] {
+  return softmax(TOKEN_PRESETS[presetId].logits)
+    .map((score, index) => ({ score, index }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, TOP_K)
+    .map((entry) => entry.index);
+}
 
-// Fun feedback messages
-const FEEDBACK_MESSAGES = {
-  correct: [
-    "🎯 Perfect! You're learning the routing patterns!",
-    "✨ Nailed it! You predicted both experts correctly!",
-    "🧠 Impressive! You understand MoE routing!",
-    "🎪 Amazing prediction! You're an expert at experts!",
-  ],
-  partial: [
-    "👍 Close! You got 1 of 2 experts right.",
-    "🎯 Almost! One expert matched your prediction.",
-    "💡 Partial match! Keep learning the patterns.",
-  ],
-  wrong: [
-    "🤔 Not quite! Try to notice patterns in the router scores.",
-    "💭 Missed this one! Watch how different tokens prefer different experts.",
-    "🔍 Keep experimenting! Each token type has preferences.",
-  ],
+function formatAssignment(assignment: CapacityAssignment): string {
+  return `${assignment.tokenId}:E${assignment.expertId}`;
+}
+
+function computeCapacityPlan(
+  tokenIds: ReadonlyArray<TokenPresetId>,
+  capacityPerExpert: number,
+): CapacityPlan {
+  const routes = tokenIds.map((presetId, tokenIndex) => ({
+    tokenId: `T${tokenIndex}`,
+    presetId,
+    experts: topKExpertsForPreset(presetId),
+  }));
+  const expertLoads = new Array(EXPERT_COUNT).fill(0);
+  const servedAssignments: CapacityAssignment[] = [];
+  const droppedAssignments: CapacityAssignment[] = [];
+
+  routes.forEach((route) => {
+    route.experts.forEach((expertId, rank) => {
+      const assignment = {
+        tokenId: route.tokenId,
+        presetId: route.presetId,
+        expertId,
+        rank: rank + 1,
+      };
+      if ((expertLoads[expertId] ?? 0) < capacityPerExpert) {
+        expertLoads[expertId] = (expertLoads[expertId] ?? 0) + 1;
+        servedAssignments.push(assignment);
+      } else {
+        droppedAssignments.push(assignment);
+      }
+    });
+  });
+
+  const overflowExpertIds = Array.from(
+    new Set(droppedAssignments.map((assignment) => assignment.expertId)),
+  ).sort((a, b) => a - b);
+  const totalAssignments = Math.max(1, routes.length * TOP_K);
+  const totalCapacitySlots = Math.max(1, EXPERT_COUNT * capacityPerExpert);
+  const topKAssignments = routes
+    .map((route) => `${route.tokenId}:E${route.experts.join(',E')}`)
+    .join('; ');
+  const servedAssignmentsLabel = servedAssignments.length > 0
+    ? servedAssignments.map(formatAssignment).join('; ')
+    : 'none';
+  const droppedAssignmentsLabel = droppedAssignments.length > 0
+    ? droppedAssignments.map(formatAssignment).join('; ')
+    : 'none';
+
+  return {
+    routes,
+    servedAssignments,
+    droppedAssignments,
+    expertLoads,
+    overflowExpertIds,
+    actual: droppedAssignments.length > 0 ? 'capacity-overflow' : 'all-served',
+    topKAssignments,
+    servedAssignmentsLabel,
+    droppedAssignmentsLabel,
+    overflowExpertIdsLabel: overflowExpertIds.length > 0
+      ? overflowExpertIds.map((id) => `E${id}`).join(', ')
+      : 'none',
+    expertLoadsLabel: expertLoads.map((load, i) => `E${i}:${load}/${capacityPerExpert}`).join(', '),
+    overflowRate: droppedAssignments.length / totalAssignments,
+    capacityUtilization: servedAssignments.length / totalCapacitySlots,
+  };
+}
+
+type PredictionResult = {
+  correctCount: number;
+  predicted: number[];
+  actual: number[];
+} | null;
+
+type MoERoutingVizProps = {
+  chrome?: 'legacy' | 'notebook';
+  conceptId?: string;
 };
 
-function MoERoutingDemo() {
+function MoERoutingDemo({
+  chrome = 'legacy',
+  conceptId = 'mixture-of-experts',
+}: MoERoutingVizProps) {
+  const isNotebook = chrome === 'notebook';
   const [currentPresetId, setCurrentPresetId] = useState<TokenPresetId>('text');
   const [expertUsage, setExpertUsage] = useState<number[]>(
     () => new Array(EXPERT_COUNT).fill(0),
   );
 
-  // Gamification state
   const [predictionMode, setPredictionMode] = useState(false);
   const [selectedExperts, setSelectedExperts] = useState<number[]>([]);
-  const [score, setScore] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [totalPredictions, setTotalPredictions] = useState(0);
-  const [lastFeedback, setLastFeedback] = useState<string | null>(null);
-  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [predictionResult, setPredictionResult] = useState<PredictionResult>(null);
+  const [capacityBatchPresetId, setCapacityBatchPresetId] =
+    useState<CapacityBatchPresetId>('text-burst');
+  const [capacityPerExpert, setCapacityPerExpert] = useState(2);
+  const [capacityPrediction, setCapacityPrediction] =
+    useState<CapacityPredictionId | null>(null);
+  const [capacityRevealed, setCapacityRevealed] = useState(false);
 
   const probabilities = useMemo(
     () => softmax(TOKEN_PRESETS[currentPresetId].logits),
@@ -152,40 +317,33 @@ function MoERoutingDemo() {
     return pairs.slice(0, TOP_K).map((p) => p.index);
   }, [probabilities]);
 
-  // Compute router confidence (inverse of entropy)
-  const routerConfidence = useMemo(() => {
+  const probabilityConcentration = useMemo(() => {
     // Shannon entropy
     const entropy = -probabilities.reduce((sum, p) => {
       if (p > 0) return sum + p * Math.log2(p);
       return sum;
     }, 0);
-    // Max entropy for 8 experts is log2(8) = 3
-    // Confidence is 1 - normalized entropy
     return Math.max(0, 1 - entropy / 3);
   }, [probabilities]);
 
-  const confidenceLabel = routerConfidence > 0.7 ? '🎯 High' : routerConfidence > 0.4 ? '🤔 Medium' : '😵 Low';
+  const concentrationLabel = probabilityConcentration > 0.7 ? 'High' : probabilityConcentration > 0.4 ? 'Medium' : 'Low';
 
-  const totalTokens = useMemo(
+  const totalExpertCalls = useMemo(
     () => expertUsage.reduce((sum, c) => sum + c, 0),
     [expertUsage],
+  );
+  const routedSampleTokens = useMemo(
+    () => Math.floor(totalExpertCalls / TOP_K),
+    [totalExpertCalls],
   );
   const maxUsage = useMemo(
     () => expertUsage.reduce((max, v) => Math.max(max, v), 0),
     [expertUsage],
   );
 
-  // Check for load balancing achievement
-  const isLoadBalanced = useMemo(() => {
-    if (totalTokens < 10) return false;
-    const min = Math.min(...expertUsage);
-    const max = Math.max(...expertUsage);
-    return max - min <= 2; // Within 2 of each other
-  }, [expertUsage, totalTokens]);
-
-  // Toggle expert selection for prediction
   const toggleExpertPrediction = (index: number) => {
     if (!predictionMode) return;
+    setPredictionResult(null);
     setSelectedExperts((prev) => {
       if (prev.includes(index)) {
         return prev.filter((i) => i !== index);
@@ -198,73 +356,171 @@ function MoERoutingDemo() {
     });
   };
 
-  // Check prediction result
   const checkPrediction = () => {
     const correctCount = selectedExperts.filter((i) => topKIndices.includes(i)).length;
-    const isPerfect = correctCount === TOP_K;
-    const isPartial = correctCount === 1;
-
-    // Update score and streak
-    if (isPerfect) {
-      setScore((s) => s + 10 + streak * 2); // Bonus for streak
-      setStreak((s) => s + 1);
-      setLastFeedback(FEEDBACK_MESSAGES.correct[Math.floor(Math.random() * FEEDBACK_MESSAGES.correct.length)]);
-      setShowCelebration(true);
-      if (celebrationTimeoutRef.current !== null) {
-        window.clearTimeout(celebrationTimeoutRef.current);
-      }
-      celebrationTimeoutRef.current = window.setTimeout(() => setShowCelebration(false), 2000);
-    } else if (isPartial) {
-      setScore((s) => s + 3);
-      setStreak(0);
-      setLastFeedback(FEEDBACK_MESSAGES.partial[Math.floor(Math.random() * FEEDBACK_MESSAGES.partial.length)]);
-    } else {
-      setStreak(0);
-      setLastFeedback(FEEDBACK_MESSAGES.wrong[Math.floor(Math.random() * FEEDBACK_MESSAGES.wrong.length)]);
-    }
-
-    setTotalPredictions((t) => t + 1);
-
-    // Check achievements
-    const newAchievements: string[] = [];
-    if (totalPredictions === 0 && !unlockedAchievements.includes('first_prediction')) {
-      newAchievements.push('first_prediction');
-    }
-    if (isPerfect && streak + 1 >= 3 && !unlockedAchievements.includes('streak_3')) {
-      newAchievements.push('streak_3');
-    }
-    if (score + (isPerfect ? 10 : isPartial ? 3 : 0) >= 50 && !unlockedAchievements.includes('perfect_5')) {
-      newAchievements.push('perfect_5');
-    }
-    if (isLoadBalanced && !unlockedAchievements.includes('load_balancer')) {
-      newAchievements.push('load_balancer');
-    }
-
-    if (newAchievements.length > 0) {
-      setUnlockedAchievements((prev) => [...prev, ...newAchievements]);
-    }
-
-    // Clear selection after checking
+    setPredictionResult({
+      correctCount,
+      predicted: selectedExperts,
+      actual: topKIndices,
+    });
     setSelectedExperts([]);
   };
+
+  const predictionSummary = useMemo(() => {
+    if (predictionResult === null) return null;
+    const actual = predictionResult.actual.map((i) => `E${i}`).join(' and ');
+    if (predictionResult.correctCount === TOP_K) {
+      return `Matched ${TOP_K}/${TOP_K}: the selected experts are exactly the top-${TOP_K} softmax probabilities.`;
+    }
+    return `Matched ${predictionResult.correctCount}/${TOP_K}. The router activates ${actual} because those probabilities are largest.`;
+  }, [predictionResult]);
+
+  const capacityBatch = CAPACITY_BATCH_PRESETS[capacityBatchPresetId];
+  const capacityPlan = useMemo(
+    () => computeCapacityPlan(capacityBatch.tokenIds, capacityPerExpert),
+    [capacityBatch.tokenIds, capacityPerExpert],
+  );
+  const selectedCapacityPrediction = useMemo(
+    () => CAPACITY_PREDICTIONS.find((choice) => choice.id === capacityPrediction) ?? null,
+    [capacityPrediction],
+  );
+  const capacityPredictionCorrect =
+    capacityPrediction !== null && capacityPrediction === capacityPlan.actual;
+  const actualCapacityLabel =
+    capacityPlan.actual === 'capacity-overflow'
+      ? 'capacity overflow'
+      : 'all selected assignments served';
+  const capacityEvidenceActiveIndex = capacityRevealed ? 3 : capacityPrediction ? 1 : 0;
+  const capacityEvidencePhase =
+    MOE_CAPACITY_EVIDENCE_STEPS[capacityEvidenceActiveIndex]?.label ?? 'Predict';
+
+  const clearCapacityReveal = (clearPrediction = false) => {
+    if (clearPrediction) {
+      setCapacityPrediction(null);
+    }
+    setCapacityRevealed(false);
+    if (isNotebook) {
+      clearDemoState(conceptId);
+    }
+  };
+
+  const chooseCapacityPrediction = (prediction: CapacityPredictionId) => {
+    setCapacityPrediction(prediction);
+    clearCapacityReveal(false);
+  };
+
+  const applyCapacityBatchPreset = (presetId: CapacityBatchPresetId) => {
+    setCapacityBatchPresetId(presetId);
+    clearCapacityReveal(true);
+  };
+
+  const applyCapacityPerExpert = (capacity: number) => {
+    setCapacityPerExpert(capacity);
+    clearCapacityReveal(true);
+  };
+
+  useEffect(() => {
+    if (isNotebook) return;
+
+    const topExperts = topKIndices.map((i) => `E${i}`);
+    const topMass = topKIndices.reduce((sum, i) => sum + (probabilities[i] ?? 0), 0);
+    const highestLoad = Math.max(...expertUsage);
+    const hottestExperts = expertUsage
+      .map((count, i) => ({ count, label: `E${i}` }))
+      .filter((entry) => entry.count === highestLoad && highestLoad > 0)
+      .map((entry) => entry.label);
+
+    emitDemoState({
+      conceptId,
+      label: 'MoE routing demo',
+      summary: `${TOKEN_PRESETS[currentPresetId].label}: top-${TOP_K} routing activates ${topExperts.join(' and ')} in a synthetic router.`,
+      values: [
+        `top-k probability mass: ${(topMass * 100).toFixed(1)}%`,
+        `routed sample tokens: ${routedSampleTokens}`,
+        highestLoad > 0
+          ? `highest toy load: ${hottestExperts.join(', ')} with ${highestLoad} expert calls`
+          : 'highest toy load: none yet',
+        predictionResult
+          ? `prediction check: ${predictionResult.correctCount}/${TOP_K} matched`
+          : 'prediction check: not run',
+      ],
+    });
+  }, [
+    conceptId,
+    currentPresetId,
+    expertUsage,
+    isNotebook,
+    predictionResult,
+    probabilities,
+    routedSampleTokens,
+    topKIndices,
+  ]);
+
+  useEffect(() => {
+    if (!isNotebook) return;
+    clearDemoState(conceptId);
+    return () => clearDemoState(conceptId);
+  }, [conceptId, isNotebook]);
+
+  useEffect(() => {
+    if (!isNotebook) return;
+
+    emitDemoState({
+      conceptId,
+      label: 'MoE capacity drop reveal',
+      summary: capacityRevealed
+        ? `Learner predicted ${selectedCapacityPrediction?.label ?? capacityPrediction ?? 'none'}; revealed ${actualCapacityLabel} with ${capacityPlan.droppedAssignments.length} overflowed token-expert assignments.`
+        : `Learner is in the ${capacityEvidencePhase.toLowerCase()} phase for the MoE capacity outcome before final slot fills are shown.`,
+      values: [
+        'slice: mixture-of-experts-capacity-drop-reveal',
+        'evidence loop: predict -> observe -> ground -> carry',
+        `evidence phase: ${capacityEvidencePhase}`,
+        `prediction: ${selectedCapacityPrediction?.label ?? capacityPrediction ?? 'none'}`,
+        `actual: ${capacityRevealed ? capacityPlan.actual : 'hidden until reveal'}`,
+        `prediction correct: ${capacityRevealed && capacityPrediction !== null ? (capacityPredictionCorrect ? 'yes' : 'no') : 'not checked'}`,
+        `batch preset: ${capacityBatch.label}`,
+        `token count: ${capacityPlan.routes.length}`,
+        `expert count: ${EXPERT_COUNT}`,
+        `topK: ${TOP_K}`,
+        `capacity per expert: ${capacityPerExpert}`,
+        `token order: ${capacityPlan.routes.map((route) => route.tokenId).join(', ')}`,
+        `topKAssignments: ${capacityPlan.topKAssignments}`,
+        `servedAssignments: ${capacityRevealed ? capacityPlan.servedAssignmentsLabel : 'hidden until reveal'}`,
+        `droppedAssignments: ${capacityRevealed ? capacityPlan.droppedAssignmentsLabel : 'hidden until reveal'}`,
+        `overflowExpertIds: ${capacityRevealed ? capacityPlan.overflowExpertIdsLabel : 'hidden until reveal'}`,
+        `expertLoads: ${capacityRevealed ? capacityPlan.expertLoadsLabel : 'hidden until reveal'}`,
+        `overflowRate: ${capacityRevealed ? formatPercent(capacityPlan.overflowRate) : 'hidden until reveal'}`,
+        `slotUtilization: ${capacityRevealed ? formatPercent(capacityPlan.capacityUtilization) : 'hidden until reveal'}`,
+        `revealed: ${capacityRevealed ? 'yes' : 'no'}`,
+      ],
+    });
+  }, [
+    actualCapacityLabel,
+    capacityBatch.label,
+    capacityEvidencePhase,
+    capacityPerExpert,
+    capacityPlan,
+    capacityPrediction,
+    capacityPredictionCorrect,
+    capacityRevealed,
+    conceptId,
+    isNotebook,
+    selectedCapacityPrediction,
+  ]);
 
   // Refs for animation
   const sceneRef = useRef<HTMLDivElement | null>(null);
   const tokenSourceRef = useRef<HTMLDivElement | null>(null);
   const routerRef = useRef<HTMLDivElement | null>(null);
-  const expertRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const expertRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const routerBarRefs = useRef<(HTMLDivElement | null)[]>([]);
   const usageBarRefs = useRef<(HTMLDivElement | null)[]>([]);
   const tokenBubbleRef = useRef<HTMLDivElement | null>(null);
   const routeTimelineRef = useRef<gsap.core.Timeline | null>(null);
-  const celebrationTimeoutRef = useRef<number | null>(null);
 
   // Cleanup to prevent state updates after unmount and stop in-flight animations.
   useEffect(() => {
     return () => {
-      if (celebrationTimeoutRef.current !== null) {
-        window.clearTimeout(celebrationTimeoutRef.current);
-      }
       routeTimelineRef.current?.kill();
       routeTimelineRef.current = null;
     };
@@ -298,7 +554,7 @@ function MoERoutingDemo() {
       const count = expertUsage[i] ?? 0;
       const normalized = count / denom;
       gsap.to(bar, {
-        scaleY: 0.1 + normalized * 0.9,
+        scaleY: count === 0 ? 0 : 0.12 + normalized * 0.88,
         duration: 0.6,
         ease: 'power3.out',
       });
@@ -415,7 +671,7 @@ function MoERoutingDemo() {
   };
 
   return (
-    <section className="moe-card">
+    <section className={`moe-card ${chrome}`}>
       <header className="moe-header">
         <div>
           <h2 className="moe-title">Mixture-of-Experts Router</h2>
@@ -425,72 +681,246 @@ function MoERoutingDemo() {
           </p>
         </div>
         <div className="moe-header-right">
-          {/* Score display */}
-          {predictionMode && (
-            <div className="moe-score-panel">
-              <div className="moe-score-item">
-                <span className="moe-score-label">Score</span>
-                <span className="moe-score-value">{score}</span>
-              </div>
-              <div className="moe-score-item">
-                <span className="moe-score-label">Streak</span>
-                <span className="moe-score-value">{streak > 0 ? `🔥 ${streak}` : '0'}</span>
-              </div>
-            </div>
-          )}
           <div className="moe-compute-pill">
-            <span className="moe-compute-label">Active parameters</span>
+            <span className="moe-compute-label">Expert FFN calls</span>
             <span className="moe-compute-value">
-              {TOP_K}/{EXPERT_COUNT} experts = {ACTIVE_PERCENT}% compute
+              {TOP_K}/{EXPERT_COUNT} experts active for this token
             </span>
           </div>
         </div>
       </header>
 
-      {/* Prediction mode toggle & feedback */}
-      <div className="moe-game-bar">
-        <button
-          type="button"
-          onClick={() => {
-            setPredictionMode(!predictionMode);
-            setSelectedExperts([]);
-            setLastFeedback(null);
-          }}
-          className={`moe-game-toggle ${predictionMode ? 'active' : ''}`}
-        >
-          {predictionMode ? '🎮 Prediction Mode ON' : '🎯 Enable Prediction Mode'}
-        </button>
-        {predictionMode && (
-          <span className="moe-game-hint">
-            Click {TOP_K} experts to predict, then route the token!
-            {selectedExperts.length > 0 && ` (${selectedExperts.length}/${TOP_K} selected)`}
-          </span>
-        )}
-        {lastFeedback && (
-          <div className={`moe-feedback ${showCelebration ? 'celebrate' : ''}`}>
-            {lastFeedback}
-          </div>
-        )}
-      </div>
-
-      {/* Achievements display */}
-      {unlockedAchievements.length > 0 && (
-        <div className="moe-achievements">
-          {ACHIEVEMENTS.filter(a => unlockedAchievements.includes(a.id)).map(a => (
-            <div key={a.id} className="moe-achievement-badge" title={a.description}>
-              {a.name}
+      {!isNotebook && (
+        <div className="moe-prediction-bar">
+          <button
+            type="button"
+            onClick={() => {
+              setPredictionMode(!predictionMode);
+              setSelectedExperts([]);
+              setPredictionResult(null);
+            }}
+            className={`moe-prediction-toggle ${predictionMode ? 'active' : ''}`}
+            aria-pressed={predictionMode}
+          >
+            {predictionMode ? 'Close prediction check' : 'Start prediction check'}
+          </button>
+          {predictionMode && (
+            <span className="moe-prediction-hint">
+              Select {TOP_K} experts, then route the token to compare against top-k softmax.
+              {selectedExperts.length > 0 && ` (${selectedExperts.length}/${TOP_K} selected)`}
+            </span>
+          )}
+          {predictionSummary && (
+            <div className="moe-feedback" role="status" aria-live="polite">
+              {predictionSummary}
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* Celebration overlay */}
-      {showCelebration && (
-        <div className="moe-celebration">
-          <span className="moe-celebration-emoji">🎉</span>
+      {isNotebook && (
+        <div
+          className="moe-capacity-lab"
+          data-child-demo-gate="moe-capacity-overflow"
+          aria-label="Capacity-limited MoE batch prediction"
+        >
+          <div className="moe-capacity-toolbar">
+            <div className="moe-capacity-control">
+              <span>Batch</span>
+              <div className="moe-capacity-segment" role="group" aria-label="Capacity batch preset">
+                {(Object.entries(CAPACITY_BATCH_PRESETS) as [CapacityBatchPresetId, CapacityBatchPreset][])
+                  .map(([presetId, preset]) => (
+                    <button
+                      key={presetId}
+                      type="button"
+                      aria-pressed={capacityBatchPresetId === presetId}
+                      onClick={() => applyCapacityBatchPreset(presetId)}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+              </div>
+            </div>
+            <div className="moe-capacity-control">
+              <span>Capacity / expert</span>
+              <div className="moe-capacity-segment" role="group" aria-label="Capacity per expert">
+                {[1, 2, 3].map((capacity) => (
+                  <button
+                    key={capacity}
+                    type="button"
+                    aria-pressed={capacityPerExpert === capacity}
+                    onClick={() => applyCapacityPerExpert(capacity)}
+                  >
+                    {capacity}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="moe-capacity-stat">
+              top-{TOP_K} candidates, {EXPERT_COUNT} experts
+            </div>
+          </div>
+
+          <div className="moe-capacity-intro">
+            <strong>{capacityBatch.label}</strong>
+            <span>{capacityBatch.description}</span>
+          </div>
+
+          <div className="moe-capacity-grid">
+            <div className="moe-capacity-panel">
+              <div className="moe-capacity-panel-heading">
+                <span>Visible candidate routing</span>
+                <span>token order fixed</span>
+              </div>
+              <div className="moe-capacity-routes">
+                {capacityPlan.routes.map((route) => (
+                  <div key={route.tokenId} className="moe-capacity-route-row">
+                    <div>
+                      <strong>{route.tokenId}</strong>
+                      <span>{TOKEN_PRESETS[route.presetId].label}</span>
+                    </div>
+                    <div className="moe-capacity-candidate-list">
+                      {route.experts.map((expertId) => (
+                        <span key={`${route.tokenId}-${expertId}`}>
+                          E{expertId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="moe-capacity-panel">
+              <div className="moe-capacity-panel-heading">
+                <span>Expert slots</span>
+                <span>{capacityRevealed ? 'filled after reveal' : 'outcome hidden'}</span>
+              </div>
+              <div className="moe-capacity-slots">
+                {Array.from({ length: EXPERT_COUNT }).map((_, expertId) => {
+                  const servedForExpert = capacityPlan.servedAssignments
+                    .filter((assignment) => assignment.expertId === expertId);
+                  const droppedForExpert = capacityPlan.droppedAssignments
+                    .filter((assignment) => assignment.expertId === expertId);
+                  return (
+                    <div key={expertId} className="moe-capacity-expert-slot">
+                      <div className="moe-capacity-expert-title">E{expertId}</div>
+                      <div className="moe-capacity-slot-stack">
+                        {Array.from({ length: capacityPerExpert }).map((__, slotIndex) => (
+                          <span
+                            key={`${expertId}-${slotIndex}`}
+                            className={capacityRevealed && servedForExpert[slotIndex] ? 'filled' : ''}
+                            aria-label={
+                              capacityRevealed && servedForExpert[slotIndex]
+                                ? `E${expertId} slot ${slotIndex + 1} filled by ${servedForExpert[slotIndex].tokenId}`
+                                : `E${expertId} slot ${slotIndex + 1} hidden`
+                            }
+                          >
+                            {capacityRevealed && servedForExpert[slotIndex]
+                              ? servedForExpert[slotIndex].tokenId
+                              : 'slot'}
+                          </span>
+                        ))}
+                      </div>
+                      {capacityRevealed && droppedForExpert.length > 0 && (
+                        <div className="moe-capacity-drop-list">
+                          {droppedForExpert.map((assignment) => (
+                            <span
+                              key={`${assignment.tokenId}-${assignment.expertId}-${assignment.rank}`}
+                              aria-label={`E${expertId} overflowed ${assignment.tokenId}`}
+                            >
+                              {assignment.tokenId}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="moe-capacity-prediction" role="group" aria-label="Capacity outcome prediction">
+            <div className="moe-capacity-panel-heading">
+              <span>Predict the capacity outcome</span>
+              <span>{capacityPrediction ? 'ready to reveal' : 'choose one'}</span>
+            </div>
+            <div className="moe-capacity-options">
+              {CAPACITY_PREDICTIONS.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  aria-pressed={capacityPrediction === choice.id}
+                  onClick={() => chooseCapacityPrediction(choice.id)}
+                >
+                  <strong>{choice.label}</strong>
+                  <span>{choice.explanation}</span>
+                </button>
+              ))}
+            </div>
+            <div className="moe-capacity-evidence-strip" aria-label="MoE capacity evidence loop">
+              {MOE_CAPACITY_EVIDENCE_STEPS.map((step, index) => (
+                <div
+                  key={step.label}
+                  className={
+                    index <= capacityEvidenceActiveIndex
+                      ? 'moe-capacity-evidence-step evidence-step active'
+                      : 'moe-capacity-evidence-step evidence-step'
+                  }
+                >
+                  <strong>{step.label}</strong>
+                  <span>{step.text}</span>
+                </div>
+              ))}
+            </div>
+            <div className="moe-capacity-actions">
+              <button
+                type="button"
+                className="moe-capacity-reveal"
+                disabled={capacityPrediction === null}
+                onClick={() => setCapacityRevealed(true)}
+              >
+                Reveal capacity outcome
+              </button>
+              <span>
+                {capacityPrediction === null
+                  ? 'Final dispatch details stay hidden until you commit.'
+                  : 'Reveal to compare the prediction with the per-expert slots.'}
+              </span>
+            </div>
+          </div>
+
+          {capacityRevealed ? (
+            <div
+              className={`moe-capacity-result ${capacityPredictionCorrect ? 'correct' : 'missed'}`}
+              role="status"
+              aria-live="polite"
+            >
+              <strong>
+                {capacityPredictionCorrect
+                  ? 'Prediction matched.'
+                  : `Prediction missed. Actual: ${actualCapacityLabel}.`}
+              </strong>
+              <span>
+                Served assignments: {capacityPlan.servedAssignmentsLabel}
+              </span>
+              <span>
+                Dropped assignments: {capacityPlan.droppedAssignmentsLabel}
+              </span>
+              <span>
+                Overflow experts: {capacityPlan.overflowExpertIdsLabel}; slot utilization {formatPercent(capacityPlan.capacityUtilization)}.
+              </span>
+            </div>
+          ) : (
+            <div className="moe-capacity-locked">
+              Result readout hidden until reveal.
+            </div>
+          )}
         </div>
       )}
 
+      {!isNotebook && (
       <div className="moe-main">
         {/* Left: controls + misconception explainer */}
         <div className="moe-left-panel">
@@ -505,8 +935,13 @@ function MoERoutingDemo() {
                     <button
                       key={id}
                       type="button"
-                      onClick={() => setCurrentPresetId(id)}
+                      onClick={() => {
+                        setCurrentPresetId(id);
+                        setSelectedExperts([]);
+                        setPredictionResult(null);
+                      }}
                       className={`moe-token-pill ${isActive ? 'active' : ''} ${isRare && isActive ? 'rare' : ''}`}
+                      aria-pressed={isActive}
                     >
                       <span className="moe-token-pill-dot" />
                       <span className="moe-token-pill-label">
@@ -520,17 +955,17 @@ function MoERoutingDemo() {
               {TOKEN_PRESETS[currentPresetId].description}
             </p>
             <div className="moe-confidence-meter">
-              <span className="moe-confidence-label">Router confidence:</span>
+              <span className="moe-confidence-label">Softmax concentration:</span>
               <div className="moe-confidence-bar-track">
                 <div
                   className="moe-confidence-bar-fill"
                   style={{
-                    width: `${routerConfidence * 100}%`,
-                    background: routerConfidence > 0.7 ? '#22c55e' : routerConfidence > 0.4 ? '#facc15' : '#ef4444'
+                    width: `${probabilityConcentration * 100}%`,
+                    background: probabilityConcentration > 0.7 ? '#22c55e' : probabilityConcentration > 0.4 ? '#facc15' : '#ef4444'
                   }}
                 />
               </div>
-              <span className="moe-confidence-value">{confidenceLabel}</span>
+              <span className="moe-confidence-value">{concentrationLabel}</span>
             </div>
             <button
               type="button"
@@ -542,19 +977,19 @@ function MoERoutingDemo() {
           </div>
 
           <div className="moe-myth-card">
-            <div className="moe-myth-title">“8 × 7B ≠ 56B”</div>
+            <div className="moe-myth-title">Total parameters do not equal activated compute</div>
             <p className="moe-myth-body">
-              In a MoE layer we don&apos;t copy the whole 7B model 8×. The
-              shared trunk (embeddings, attention, layer norms, etc.) stays
-              single. Only the feed-forward (FFN/MLP) block is split into 8
-              experts, and each token touches just {TOP_K} of them.
+              A sparse MoE layer stores many expert FFNs, but each token only
+              dispatches to the selected top-k experts. Shared layers still run,
+              and real serving cost also depends on routing skew, capacity,
+              memory movement, and all-to-all communication.
             </p>
             <div className="moe-myth-diagram">
               <div className="moe-myth-row">
                 <span className="moe-myth-row-label">Shared trunk</span>
                 <div className="moe-myth-shared-bar">
                   <span className="moe-myth-shared-label">
-                    Attention + others (~7B)
+                    Attention + other shared work
                   </span>
                 </div>
               </div>
@@ -571,8 +1006,8 @@ function MoERoutingDemo() {
                 </div>
               </div>
               <p className="moe-myth-footnote">
-                Effective parameters per token are closer to{' '}
-                <strong>7B + 2 small FFNs</strong>, not 8 × 7B.
+                This toy separates expert activation from the full systems cost
+                of running a real MoE model.
               </p>
             </div>
           </div>
@@ -653,35 +1088,36 @@ function MoERoutingDemo() {
                 <div className="moe-expert-grid">
                   {Array.from({ length: EXPERT_COUNT }).map((_, i) => {
                     const isActive = topKIndices.includes(i);
-                    const isOverloaded =
+                    const isHighestLoad =
                       maxUsage > 0 && expertUsage[i] === maxUsage;
                     const isPredicted = selectedExperts.includes(i);
                     return (
-                      <div
+                      <button
                         key={i}
+                        type="button"
                         ref={(el) => {
                           expertRefs.current[i] = el;
                         }}
                         onClick={() => toggleExpertPrediction(i)}
+                        disabled={!predictionMode}
+                        aria-pressed={predictionMode ? isPredicted : undefined}
+                        aria-label={`Expert E${i}. ${isActive ? 'Active for this token. ' : ''}${isPredicted ? 'Selected prediction.' : 'Not selected.'}`}
                         className={`moe-expert-box ${
                           isActive ? 'active' : ''
-                        } ${isOverloaded ? 'hot' : ''} ${isPredicted ? 'predicted' : ''} ${predictionMode ? 'clickable' : ''}`}
+                        } ${isHighestLoad ? 'hot' : ''} ${isPredicted ? 'predicted' : ''} ${predictionMode ? 'clickable' : ''}`}
                         style={{
                           borderColor: EXPERT_COLORS[i],
                           cursor: predictionMode ? 'pointer' : 'default',
                         }}
                       >
                         <div className="moe-expert-header">
-                          <span className="moe-expert-emoji">
-                            {EXPERT_PERSONALITIES[i].emoji}
-                          </span>
                           <span className="moe-expert-id">
-                            {EXPERT_PERSONALITIES[i].name}
+                            {EXPERT_LABELS[i].name}
                           </span>
                         </div>
                         {isActive && (
                           <div className="moe-expert-insight">
-                            {getExpertInsight(currentPresetId, i) || EXPERT_PERSONALITIES[i].specialty}
+                            {getExpertInsight(currentPresetId, i) || EXPERT_LABELS[i].description}
                           </div>
                         )}
                         <div className="moe-expert-body">
@@ -698,13 +1134,13 @@ function MoERoutingDemo() {
                               active
                             </span>
                           )}
-                          {isOverloaded && !isActive && (
+                          {isHighestLoad && !isActive && (
                             <span className="moe-expert-chip hot-chip">
-                              overused
+                              highest toy load
                             </span>
                           )}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -720,9 +1156,9 @@ function MoERoutingDemo() {
             <div className="moe-load-header">
               <span className="moe-load-title">Expert load</span>
               <span className="moe-load-subtitle">
-                {totalTokens === 0
+                {routedSampleTokens === 0
                   ? 'Route a few tokens to see usage'
-                  : `${totalTokens} tokens routed so far`}
+                  : `${routedSampleTokens} sample tokens routed so far`}
               </span>
             </div>
             <div className="moe-load-chart">
@@ -754,12 +1190,13 @@ function MoERoutingDemo() {
               })}
             </div>
             <p className="moe-load-caption">
-              A good MoE router tries to keep experts balanced. If one column
-              dominates here, that&apos;s an overused expert.
+              This shows usage skew from repeated toy routing. Real systems
+              also enforce capacity factors and dispatch constraints.
             </p>
           </div>
         </div>
       </div>
+      )}
 
       {/* Component-scoped styles */}
       <style jsx>{`
@@ -787,37 +1224,7 @@ function MoERoutingDemo() {
           gap: 12px;
         }
 
-        .moe-score-panel {
-          display: flex;
-          gap: 12px;
-          padding: 8px 14px;
-          background: linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(168, 85, 247, 0.15));
-          border-radius: 999px;
-          border: 1px solid rgba(251, 146, 60, 0.4);
-        }
-
-        .moe-score-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-        }
-
-        .moe-score-label {
-          font-size: 0.65rem;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: #9ca3af;
-        }
-
-        .moe-score-value {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #fbbf24;
-          font-variant-numeric: tabular-nums;
-        }
-
-        .moe-game-bar {
+        .moe-prediction-bar {
           display: flex;
           align-items: center;
           gap: 12px;
@@ -826,7 +1233,7 @@ function MoERoutingDemo() {
           margin-bottom: 8px;
         }
 
-        .moe-game-toggle {
+        .moe-prediction-toggle {
           padding: 8px 16px;
           border-radius: 999px;
           border: 1px solid rgba(56, 189, 248, 0.5);
@@ -838,18 +1245,29 @@ function MoERoutingDemo() {
           transition: all 0.2s ease;
         }
 
-        .moe-game-toggle:hover {
+        .moe-prediction-toggle:hover {
           border-color: rgba(56, 189, 248, 0.8);
           background: rgba(56, 189, 248, 0.1);
         }
 
-        .moe-game-toggle.active {
+        .moe-prediction-toggle:focus-visible,
+        .moe-route-button:focus-visible,
+        .moe-token-pill:focus-visible,
+        .moe-expert-box:focus-visible,
+        .moe-capacity-segment button:focus-visible,
+        .moe-capacity-options button:focus-visible,
+        .moe-capacity-reveal:focus-visible {
+          outline: 2px solid rgba(56, 189, 248, 0.8);
+          outline-offset: 2px;
+        }
+
+        .moe-prediction-toggle.active {
           background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(168, 85, 247, 0.2));
           border-color: rgba(168, 85, 247, 0.7);
           box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
         }
 
-        .moe-game-hint {
+        .moe-prediction-hint {
           font-size: 0.8rem;
           color: #9ca3af;
         }
@@ -863,65 +1281,349 @@ function MoERoutingDemo() {
           animation: fadeIn 0.3s ease;
         }
 
-        .moe-feedback.celebrate {
-          background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(251, 146, 60, 0.2));
-          border-color: rgba(34, 197, 94, 0.6);
-          animation: celebrate 0.5s ease;
+        .moe-capacity-lab {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+
+        .moe-capacity-toolbar {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          padding: 10px;
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.28);
+          background: rgba(15, 23, 42, 0.92);
+        }
+
+        .moe-capacity-control {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.78rem;
+          color: #9ca3af;
+        }
+
+        .moe-capacity-segment {
+          display: inline-flex;
+          gap: 4px;
+          padding: 3px;
+          border-radius: 999px;
+          background: rgba(15, 23, 42, 0.8);
+          border: 1px solid rgba(148, 163, 184, 0.24);
+        }
+
+        .moe-capacity-segment button,
+        .moe-capacity-options button,
+        .moe-capacity-reveal {
+          appearance: none;
+          border: 1px solid transparent;
+          color: inherit;
+          font: inherit;
+          cursor: pointer;
+        }
+
+        .moe-capacity-segment button {
+          padding: 5px 10px;
+          border-radius: 999px;
+          background: transparent;
+          font-size: 0.78rem;
+        }
+
+        .moe-capacity-segment button[aria-pressed='true'] {
+          background: rgba(56, 189, 248, 0.18);
+          border-color: rgba(56, 189, 248, 0.4);
+          color: #e0f2fe;
+        }
+
+        .moe-capacity-stat {
+          margin-left: auto;
+          color: #9ca3af;
+          font-size: 0.78rem;
+        }
+
+        .moe-capacity-intro {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #d1d5db;
+          font-size: 0.84rem;
+        }
+
+        .moe-capacity-intro span {
+          color: #9ca3af;
+        }
+
+        .moe-capacity-grid {
+          display: grid;
+          grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.4fr);
+          gap: 12px;
+        }
+
+        .moe-capacity-panel,
+        .moe-capacity-prediction,
+        .moe-capacity-result,
+        .moe-capacity-locked {
+          border-radius: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.28);
+          background: rgba(15, 23, 42, 0.92);
+          padding: 12px;
+        }
+
+        .moe-capacity-panel-heading {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 10px;
+          font-size: 0.82rem;
+          font-weight: 600;
+        }
+
+        .moe-capacity-panel-heading span:last-child {
+          color: #9ca3af;
+          font-size: 0.72rem;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .moe-capacity-routes {
+          display: grid;
+          gap: 6px;
+        }
+
+        .moe-capacity-route-row {
+          display: grid;
+          grid-template-columns: minmax(128px, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          padding: 7px 8px;
+          border-radius: 8px;
+          background: rgba(2, 6, 23, 0.42);
+        }
+
+        .moe-capacity-route-row div:first-child {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .moe-capacity-route-row span {
+          color: #9ca3af;
+          font-size: 0.74rem;
+        }
+
+        .moe-capacity-candidate-list {
+          display: flex;
+          gap: 4px;
+        }
+
+        .moe-capacity-candidate-list span,
+        .moe-capacity-slot-stack span,
+        .moe-capacity-drop-list span {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 32px;
+          min-height: 24px;
+          padding: 3px 7px;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .moe-capacity-candidate-list span {
+          color: #dbeafe;
+          background: rgba(59, 130, 246, 0.18);
+          border: 1px solid rgba(59, 130, 246, 0.28);
+        }
+
+        .moe-capacity-slots {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .moe-capacity-expert-slot {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          min-width: 0;
+          padding: 8px;
+          border-radius: 10px;
+          background: rgba(2, 6, 23, 0.4);
+          border: 1px solid rgba(148, 163, 184, 0.16);
+        }
+
+        .moe-capacity-expert-title {
+          color: #e5e7eb;
+          font-size: 0.76rem;
+          font-weight: 700;
+        }
+
+        .moe-capacity-slot-stack,
+        .moe-capacity-drop-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px;
+        }
+
+        .moe-capacity-slot-stack span {
+          color: #94a3b8;
+          background: rgba(15, 23, 42, 0.84);
+          border: 1px dashed rgba(148, 163, 184, 0.3);
+        }
+
+        .moe-capacity-slot-stack span.filled {
+          color: #dcfce7;
+          background: rgba(34, 197, 94, 0.16);
+          border-style: solid;
+          border-color: rgba(34, 197, 94, 0.34);
+        }
+
+        .moe-capacity-drop-list span {
+          color: #fee2e2;
+          background: rgba(220, 38, 38, 0.16);
+          border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+
+        .moe-capacity-options {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+
+        .moe-capacity-options button {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 3px;
+          padding: 9px 10px;
+          border-radius: 10px;
+          background: rgba(2, 6, 23, 0.44);
+          border-color: rgba(148, 163, 184, 0.2);
+          text-align: left;
+        }
+
+        .moe-capacity-options button[aria-pressed='true'] {
+          background: rgba(31, 111, 120, 0.2);
+          border-color: rgba(45, 212, 191, 0.42);
+        }
+
+        .moe-capacity-options button strong {
+          color: #f8fafc;
+          font-size: 0.8rem;
+          line-height: 1.25;
+        }
+
+        .moe-capacity-options button span {
+          color: #9ca3af;
+          font-size: 0.72rem;
+          line-height: 1.35;
+        }
+
+        .moe-capacity-evidence-strip {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 10px;
+          padding: 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(45, 212, 191, 0.2);
+          background:
+            linear-gradient(135deg, rgba(20, 184, 166, 0.18), rgba(15, 23, 42, 0.94)),
+            rgba(15, 23, 42, 0.92);
+        }
+
+        .moe-capacity-evidence-step {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+          padding: 8px;
+          border-radius: 10px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          background: rgba(2, 6, 23, 0.38);
+          opacity: 0.58;
+        }
+
+        .moe-capacity-evidence-step.active {
+          opacity: 1;
+          border-color: rgba(45, 212, 191, 0.36);
+          background: rgba(6, 78, 89, 0.34);
+        }
+
+        .moe-capacity-evidence-step strong {
+          color: #ccfbf1;
+          font-size: 0.73rem;
+          line-height: 1.2;
+        }
+
+        .moe-capacity-evidence-step span {
+          color: #cbd5e1;
+          font-size: 0.7rem;
+          line-height: 1.34;
+          overflow-wrap: anywhere;
+        }
+
+        .moe-capacity-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-top: 10px;
+        }
+
+        .moe-capacity-reveal {
+          padding: 8px 13px;
+          border-radius: 999px;
+          background: #1f6f78;
+          border-color: rgba(45, 212, 191, 0.32);
+          color: #ecfeff;
+          font-weight: 700;
+        }
+
+        .moe-capacity-reveal:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
+
+        .moe-capacity-actions span {
+          color: #9ca3af;
+          font-size: 0.76rem;
+        }
+
+        .moe-capacity-result {
+          display: grid;
+          gap: 5px;
+          font-size: 0.82rem;
+        }
+
+        .moe-capacity-result.correct {
+          border-color: rgba(34, 197, 94, 0.38);
+          background: rgba(22, 101, 52, 0.14);
+        }
+
+        .moe-capacity-result.missed {
+          border-color: rgba(251, 146, 60, 0.38);
+          background: rgba(154, 52, 18, 0.14);
+        }
+
+        .moe-capacity-result strong {
+          color: #f8fafc;
+        }
+
+        .moe-capacity-result span,
+        .moe-capacity-locked {
+          color: #cbd5e1;
         }
 
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-5px); }
           to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes celebrate {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.05); }
-        }
-
-        .moe-achievements {
-          display: flex;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-bottom: 8px;
-        }
-
-        .moe-achievement-badge {
-          padding: 6px 12px;
-          border-radius: 999px;
-          background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 146, 60, 0.2));
-          border: 1px solid rgba(251, 191, 36, 0.5);
-          font-size: 0.8rem;
-          color: #fde68a;
-          animation: badgeUnlock 0.5s ease;
-        }
-
-        @keyframes badgeUnlock {
-          0% { opacity: 0; transform: scale(0.5) rotate(-10deg); }
-          50% { transform: scale(1.2) rotate(5deg); }
-          100% { opacity: 1; transform: scale(1) rotate(0); }
-        }
-
-        .moe-celebration {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          pointer-events: none;
-          z-index: 100;
-        }
-
-        .moe-celebration-emoji {
-          font-size: 4rem;
-          animation: celebrationPop 2s ease forwards;
-        }
-
-        @keyframes celebrationPop {
-          0% { opacity: 0; transform: scale(0) rotate(0deg); }
-          20% { opacity: 1; transform: scale(1.5) rotate(15deg); }
-          40% { transform: scale(1.2) rotate(-10deg); }
-          60% { transform: scale(1.3) rotate(5deg); }
-          100% { opacity: 0; transform: scale(2) rotate(0deg) translateY(-50px); }
         }
 
         .moe-title {
@@ -1388,6 +2090,10 @@ function MoERoutingDemo() {
         }
 
         .moe-expert-box {
+          appearance: none;
+          text-align: left;
+          color: inherit;
+          font: inherit;
           border-radius: 10px;
           border: 1px solid rgba(55, 65, 81, 1);
           padding: 6px 6px 7px;
@@ -1395,6 +2101,11 @@ function MoERoutingDemo() {
           transition: box-shadow 0.16s ease, transform 0.16s ease,
             border-color 0.16s ease;
           position: relative;
+        }
+
+        .moe-expert-box:disabled {
+          cursor: default;
+          opacity: 1;
         }
 
         .moe-expert-box::before {
@@ -1442,14 +2153,6 @@ function MoERoutingDemo() {
           transform: translateY(-2px);
         }
 
-        .moe-expert-box.predicted::after {
-          content: '🎯';
-          position: absolute;
-          top: -8px;
-          right: -8px;
-          font-size: 1rem;
-        }
-
         .predicted-chip {
           background: rgba(168, 85, 247, 0.2);
           color: #d8b4fe;
@@ -1461,10 +2164,6 @@ function MoERoutingDemo() {
           align-items: center;
           gap: 5px;
           margin-bottom: 4px;
-        }
-
-        .moe-expert-emoji {
-          font-size: 1rem;
         }
 
         .moe-expert-id {
@@ -1572,9 +2271,10 @@ function MoERoutingDemo() {
 
         .moe-load-bar-fill {
           width: 70%;
+          height: 100%;
           border-radius: 999px;
           transform-origin: bottom center;
-          transform: scaleY(0.1);
+          transform: scaleY(0);
           box-shadow: 0 0 10px rgba(15, 23, 42, 0.9);
         }
 
@@ -1596,7 +2296,211 @@ function MoERoutingDemo() {
           color: #9ca3af;
         }
 
+        .moe-card.notebook {
+          background: transparent;
+          border: 0;
+          box-shadow: none;
+          padding: 0;
+        }
+
+        .moe-card.notebook .moe-header {
+          display: none;
+        }
+
+        .moe-card.notebook .moe-main {
+          margin-top: 0;
+        }
+
+        .moe-card.notebook .moe-prediction-bar {
+          margin-top: 0;
+          padding: 0.7rem 0.85rem;
+          border-radius: 14px;
+          background: rgba(255, 251, 245, 0.78);
+          border: 1px solid rgba(27, 36, 48, 0.08);
+        }
+
+        .moe-card.notebook .moe-prediction-toggle,
+        .moe-card.notebook .moe-token-pill,
+        .moe-card.notebook .moe-control-group,
+        .moe-card.notebook .moe-myth-card,
+        .moe-card.notebook .moe-router-card,
+        .moe-card.notebook .moe-scene,
+        .moe-card.notebook .moe-load-section,
+        .moe-card.notebook .moe-capacity-toolbar,
+        .moe-card.notebook .moe-capacity-panel,
+        .moe-card.notebook .moe-capacity-prediction,
+        .moe-card.notebook .moe-capacity-locked,
+        .moe-card.notebook .moe-expert-box {
+          background: rgba(246, 251, 252, 0.9);
+          color: #213040;
+          border-color: rgba(27, 36, 48, 0.12);
+          box-shadow: none;
+        }
+
+        .moe-card.notebook .moe-prediction-toggle.active,
+        .moe-card.notebook .moe-token-pill.active {
+          background: rgba(31, 111, 120, 0.12);
+          color: #1f6f78;
+          border-color: rgba(31, 111, 120, 0.32);
+        }
+
+        .moe-card.notebook .moe-prediction-hint,
+        .moe-card.notebook .moe-token-description,
+        .moe-card.notebook .moe-confidence-label,
+        .moe-card.notebook .moe-column-title,
+        .moe-card.notebook .moe-column-caption,
+        .moe-card.notebook .moe-router-caption,
+        .moe-card.notebook .moe-load-subtitle,
+        .moe-card.notebook .moe-load-caption,
+        .moe-card.notebook .moe-load-bar-label,
+        .moe-card.notebook .moe-myth-body,
+        .moe-card.notebook .moe-myth-row-label,
+        .moe-card.notebook .moe-myth-footnote,
+        .moe-card.notebook .moe-capacity-control,
+        .moe-card.notebook .moe-capacity-stat,
+        .moe-card.notebook .moe-capacity-intro span,
+        .moe-card.notebook .moe-capacity-actions span,
+        .moe-card.notebook .moe-capacity-panel-heading span:last-child {
+          color: #52606c;
+        }
+
+        .moe-card.notebook .moe-feedback,
+        .moe-card.notebook .moe-myth-card {
+          background: rgba(246, 251, 252, 0.84);
+          border-color: rgba(27, 36, 48, 0.1);
+          color: #263747;
+        }
+
+        .moe-card.notebook .moe-router-bar-track,
+        .moe-card.notebook .moe-confidence-bar-track,
+        .moe-card.notebook .moe-load-bar-track,
+        .moe-card.notebook .moe-token-stack .moe-token-pill,
+        .moe-card.notebook .moe-capacity-segment,
+        .moe-card.notebook .moe-capacity-route-row,
+        .moe-card.notebook .moe-capacity-expert-slot,
+        .moe-card.notebook .moe-capacity-options button {
+          background: rgba(27, 36, 48, 0.08);
+          border-color: rgba(27, 36, 48, 0.1);
+          color: #263747;
+        }
+
+        .moe-card.notebook .moe-router-bar-value,
+        .moe-card.notebook .moe-load-bar-count,
+        .moe-card.notebook .moe-router-title,
+        .moe-card.notebook .moe-load-title,
+        .moe-card.notebook .moe-myth-title,
+        .moe-card.notebook .moe-capacity-intro strong,
+        .moe-card.notebook .moe-capacity-panel-heading,
+        .moe-card.notebook .moe-capacity-expert-title,
+        .moe-card.notebook .moe-capacity-options button strong,
+        .moe-card.notebook .moe-capacity-result strong {
+          color: #17202a;
+        }
+
+        .moe-card.notebook .moe-capacity-segment button[aria-pressed='true'],
+        .moe-card.notebook .moe-capacity-options button[aria-pressed='true'] {
+          background: rgba(31, 111, 120, 0.13);
+          color: #1f6f78;
+          border-color: rgba(31, 111, 120, 0.3);
+        }
+
+        .moe-card.notebook .moe-capacity-options button span,
+        .moe-card.notebook .moe-capacity-route-row span,
+        .moe-card.notebook .moe-capacity-result span,
+        .moe-card.notebook .moe-capacity-locked {
+          color: #52606c;
+        }
+
+        .moe-card.notebook .moe-capacity-evidence-strip {
+          border-color: rgba(31, 111, 120, 0.2);
+          background:
+            linear-gradient(135deg, rgba(31, 111, 120, 0.18), rgba(23, 32, 42, 0.92)),
+            #17202a;
+        }
+
+        .moe-card.notebook .moe-capacity-evidence-step {
+          background: rgba(246, 251, 252, 0.08);
+          border-color: rgba(246, 251, 252, 0.14);
+        }
+
+        .moe-card.notebook .moe-capacity-evidence-step.active {
+          background: rgba(31, 111, 120, 0.28);
+          border-color: rgba(125, 211, 252, 0.28);
+        }
+
+        .moe-card.notebook .moe-capacity-evidence-step strong {
+          color: #ecfeff;
+        }
+
+        .moe-card.notebook .moe-capacity-evidence-step span {
+          color: #d7e8ea;
+        }
+
+        .moe-card.notebook .moe-capacity-candidate-list span {
+          color: #1d4ed8;
+          background: rgba(59, 130, 246, 0.12);
+          border-color: rgba(29, 78, 216, 0.22);
+        }
+
+        .moe-card.notebook .moe-capacity-slot-stack span {
+          color: #5b6773;
+          background: rgba(27, 36, 48, 0.06);
+          border-color: rgba(27, 36, 48, 0.18);
+        }
+
+        .moe-card.notebook .moe-capacity-slot-stack span.filled {
+          color: #166534;
+          background: rgba(34, 197, 94, 0.12);
+          border-color: rgba(22, 101, 52, 0.22);
+        }
+
+        .moe-card.notebook .moe-capacity-drop-list span {
+          color: #991b1b;
+          background: rgba(220, 38, 38, 0.1);
+          border-color: rgba(153, 27, 27, 0.22);
+        }
+
+        .moe-card.notebook .moe-capacity-result.correct {
+          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(22, 101, 52, 0.2);
+        }
+
+        .moe-card.notebook .moe-capacity-result.missed {
+          background: rgba(251, 146, 60, 0.11);
+          border-color: rgba(154, 52, 18, 0.22);
+        }
+
+        .moe-card.notebook .moe-expert-insight {
+          color: #7a4b00;
+          background: rgba(251, 191, 36, 0.18);
+          border: 1px solid rgba(180, 83, 9, 0.24);
+        }
+
+        .moe-card.notebook .active-chip {
+          color: #9a3412;
+          background: rgba(251, 146, 60, 0.16);
+          border-color: rgba(154, 52, 18, 0.28);
+        }
+
+        .moe-card.notebook .predicted-chip {
+          color: #6b21a8;
+          background: rgba(168, 85, 247, 0.13);
+          border-color: rgba(107, 33, 168, 0.28);
+        }
+
+        .moe-card.notebook .hot-chip {
+          color: #991b1b;
+          background: rgba(220, 38, 38, 0.12);
+          border-color: rgba(153, 27, 27, 0.28);
+        }
+
         @media (max-width: 900px) {
+          .moe-capacity-grid {
+            grid-template-columns: 1fr;
+          }
+          .moe-capacity-evidence-strip {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
           .moe-main {
             flex-direction: column;
           }
@@ -1631,6 +2535,21 @@ function MoERoutingDemo() {
           }
           .moe-compute-pill {
             align-items: flex-start;
+          }
+          .moe-capacity-options {
+            grid-template-columns: 1fr;
+          }
+          .moe-capacity-evidence-strip {
+            grid-template-columns: 1fr;
+          }
+          .moe-capacity-slots {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .moe-capacity-route-row {
+            grid-template-columns: 1fr;
+          }
+          .moe-capacity-stat {
+            margin-left: 0;
           }
         }
       `}</style>

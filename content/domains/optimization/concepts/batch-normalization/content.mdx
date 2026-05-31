@@ -12,19 +12,27 @@ But BatchNorm has an important downside: it introduces a **train vs inference mi
 
 ## Math
 
-For a batch of activations $x\\in\\mathbb R^{m\\times d}$ (batch size $m$, features $d$), BatchNorm normalizes each feature dimension:
+For a batch of activations $x\in\mathbb R^{m\times d}$ (batch size $m$, features $d$), BatchNorm normalizes each feature dimension:
 
-$$\\hat x_{b,j} = \\frac{x_{b,j} - \\mu_j}{\\sqrt{\\sigma_j^2 + \\epsilon}},$$
+$$
+\hat x_{b,j} = \frac{x_{b,j} - \mu_j}{\sqrt{\sigma_j^2 + \epsilon}},
+$$
 
 where
 
-$$\\mu_j = \\frac{1}{m}\\sum_{b=1}^m x_{b,j},\\qquad \\sigma_j^2 = \\frac{1}{m}\\sum_{b=1}^m (x_{b,j} - \\mu_j)^2.$$
+$$
+\mu_j = \frac{1}{m}\sum_{b=1}^m x_{b,j},\qquad \sigma_j^2 = \frac{1}{m}\sum_{b=1}^m (x_{b,j} - \mu_j)^2.
+$$
 
 Then apply learned scale and shift:
 
-$$y_{b,j} = \\gamma_j\\,\\hat x_{b,j} + \\beta_j.$$
+$$
+y_{b,j} = \gamma_j\,\hat x_{b,j} + \beta_j.
+$$
 
-At inference, you typically use running averages of $(\\mu_j,\\sigma_j^2)$ accumulated during training instead of per-batch values.
+The learned $\gamma_j$ and $\beta_j$ are important: normalization gives the optimizer a stable coordinate system, but the model can still recover whatever feature scale and offset are useful. During backpropagation, each example's normalized value depends on the other examples in the same mini-batch through $\mu_j$ and $\sigma_j^2$, so the layer is not example-independent while training.
+
+At inference, you typically use running averages of $(\mu_j,\sigma_j^2)$ accumulated during training instead of per-batch values.
 
 ## Code
 
@@ -51,4 +59,3 @@ No interactive demo yet for this concept. A good next step is a small visualizat
 - how batch size affects the noise in batch statistics,
 - why small batches can destabilize BatchNorm,
 - why LayerNorm avoids the batch coupling.
-

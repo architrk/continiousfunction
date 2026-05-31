@@ -1,0 +1,34 @@
+Project: Continuous Function.
+
+Context: Oracle/GPT Pro reviewed `self-attention-prediction-first-value-mixing-reveal` and returned `no-publish` for two blockers:
+
+1. `conceptId` changes cleared shared demo state but did not reset local `prediction` / `revealed`, so an already-revealed state could be re-emitted under the new concept id.
+2. Tests did not cover concept id change, active-query change, prediction change after reveal, reset, or unmount clearing.
+
+Fix applied:
+
+- `SelfAttentionViz` now tracks the current `conceptId` in a ref.
+- On `conceptId` change it clears shared demo state and resets local `prediction` and `revealed`.
+- The reveal-emission effect also guards against the render where `conceptId` has changed before the reset effect runs.
+- Added focused tests for active-query reset, post-reveal prediction reset, reset-button clearing, unmount clearing, and concept-id rerender with no stale re-emission.
+
+Validation after fix:
+
+- `npm test -- SelfAttentionViz --runInBand` passed: 10 tests.
+- `npm run typecheck` passed.
+
+Question:
+
+Review only the blocker fixes as a publish gate.
+
+Return exactly:
+
+1. `publish` or `no-publish`.
+2. If `no-publish`, list only blockers that remain.
+3. If `publish`, list non-blocking follow-ups briefly.
+
+Check especially:
+
+- Does concept id change now reset local reveal state and avoid stale measured re-emission under the new concept id?
+- Do tests now cover the stale-state blast radius Oracle identified?
+- Did the fix introduce any new leak or correctness issue?

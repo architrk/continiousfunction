@@ -1,0 +1,29 @@
+Project: Continuous Function, a slow-growth mathematical learning atlas.
+
+The current alignment branch is now published:
+- RLHF: reward modeling plus KL-regularized finite-action probability shaping
+- DPO: reference-relative Bradley-Terry / logistic preference objective
+- KTO: binary desirable/undesirable feedback objective with prospect-style weights
+- Reward Hacking: selected proxy error under KL-regularized optimization, with uncertainty penalties as brakes
+
+The user wants slow, high-quality growth, not a flood of pages. The next concept should extend the branch naturally and be teachable with a small, honest mathematical model plus a visual/interactive demo.
+
+Candidate directions already in the project backlog include:
+- process reward models
+- test-time compute
+- tree-search reasoning
+- instruction tuning / RAG / systems concepts
+
+Question:
+What should the next single concept be for the alignment/math atlas, and why?
+
+Please return:
+1. One recommended next concept slug/title.
+2. A tight 3-5 paragraph scope: what the page should teach and what it should not try to teach.
+3. The simplest mathematical object for the page, preferably finite/discrete and directly demoable.
+4. A concrete interactive demo design that is truthful and not gamified filler.
+5. Prerequisites, leads_to, related links for the atlas graph.
+6. Primary sources to anchor the page. Prefer papers/books/repos that can be cited directly.
+7. A publish-quality bar: what must be true before this page leaves review.
+
+Do not give a bulk roadmap. Pick one concept and make the case rigorously.

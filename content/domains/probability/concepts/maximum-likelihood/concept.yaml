@@ -1,18 +1,19 @@
 id: maximum-likelihood
-title: "Maximum Likelihood, Cross-Entropy & KL"
+title: "Maximum Likelihood"
 domain: probability
 slug: maximum-likelihood
 difficulty: 3
 status: published
 importance: critical
 prerequisites:
-  - random-variables
+  - distributions
   - derivatives
 leads_to:
   - cross-entropy
   - bayesian-inference
 related:
-  - adam
+  - kl-divergence
+  - gradient-descent
 tags:
   - probability
   - optimization
@@ -21,8 +22,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Maximum likelihood fits parameters by making observed data most probable; for models it becomes minimizing cross-entropy and (implicitly) KL divergence."
+sources:
+  - id: goodfellow-2016-deep-learning
+    kind: book
+    title: "Deep Learning"
+    authors: "Goodfellow, Bengio, and Courville"
+    year: 2016
+    url: "https://www.deeplearningbook.org/"
+    note: "Grounds maximum likelihood as the standard objective behind many supervised and generative models."
+claim_checks:
+  - id: likelihood-loglikelihood-nll-objective
+    status: source-checked
+    claim: "Maximum likelihood treats observed data as fixed and fits parameters by maximizing the product of model probabilities, usually by maximizing summed log likelihood or minimizing negative log likelihood."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-06"
+      reviewer: "codex+oracle"
+      summary: "Checked Goodfellow et al. chapters 5.5 and 5.6: section 5.5 defines theta_ML as argmax over theta of p_model(X;theta), decomposes i.i.d. data into a product over examples, then uses logs to turn the product into sum_i log p_model(x_i;theta). It also frames training as minimizing -E_data log p_model, NLL, or cross-entropy. Section 5.6 contrasts ML point estimates with Bayesian posterior distributions over theta."
+    source_ids:
+      - goodfellow-2016-deep-learning
+    support: "Goodfellow et al. present maximum likelihood in log space as a sum over examples and connect negative log likelihood to the supervised-learning objective used for probabilistic models."
+    caveat: "This checks the likelihood objective, not a Bayesian posterior interpretation or a guarantee that the model family can represent the data-generating distribution."
+    object_refs:
+      - "#source-span-goodfellow-2016-deep-learning"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Maximum likelihood fits parameters by making the observed data most probable; for classifiers it becomes negative log-likelihood, cross-entropy, and a KL fit to the empirical distribution."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-05"
 estimated_read_time: 18

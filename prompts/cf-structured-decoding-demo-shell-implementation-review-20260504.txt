@@ -1,0 +1,55 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning feel joyful, deep, rigorous, visual, and worth returning to: learners should move from intuition to math to code to manipulation without losing the central invariant.
+
+This is the implementation review for the Structured Decoding demo-shell rollout slice selected by Oracle/GPT Pro.
+
+Oracle selected this slice with the central learner action:
+- At the current DFA state q, predict whether the raw highest-logit token survives the schema mask M(q), gets replaced by the highest valid token, or has no valid continuation.
+- Reveal should show raw logits -> schema mask -> masked/renormalized probabilities -> next token/state.
+- The guarantee boundary must remain explicit: formal schema membership is not truth, safety, or task success.
+
+What I changed:
+- `content/domains/llm-systems/concepts/structured-decoding/viz.tsx`
+  - Replaced the direct foundation export with a `VizShell` + `VizStageAdapter` route wrapper.
+  - The shell challenge asks the learner to predict raw-top vs masked-winner vs impossible continuation.
+  - Notes caveat that this toy is an ordered token-level schema and production systems work over real tokenizer IDs/richer grammars.
+- `components/foundations/StructuredDecodingViz.tsx`
+  - Added `chrome?: 'legacy' | 'notebook'` and `conceptId` props, defaulting to legacy behavior.
+  - Added notebook-only prediction state and reveal gating.
+  - Pre-reveal: shows current state, prefix, raw logits/probabilities, and prediction options, but hides allowed-token answers, masked probabilities, result diagnosis, and masked winner in demo-state.
+  - Reveal: shows allowed column, masked probabilities, rejection mass, masked top token, next token/state, correctness, and the formal-guarantee boundary.
+  - Added controls for schema mask on/off, model profile, temperature, and top-p-after-mask.
+  - Added notebook actions for reveal, emit revealed token, run to EOS, and reset.
+  - Mask off + format-confused can emit `"DROP"` and break the prefix.
+  - Semantic mismatch + mask on can run to EOS and accept while selecting the wrong source.
+  - Emits compact demo-state only in notebook mode.
+  - Added accessible prediction buttons with `aria-pressed`, polite reveal feedback, visible focus states, and a local scroll token table for mobile.
+- `content/domains/llm-systems/concepts/structured-decoding/content.mdx`
+  - Updated the Interactive Demo section to match the prediction/reveal task.
+- `content/domains/llm-systems/concepts/structured-decoding/concept.yaml`
+  - Updated the short description/date to include the guarantee boundary.
+
+Local checks already run:
+- `npm run typecheck` passed.
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- Route checks:
+  - `/domains/llm-systems/structured-decoding/` returns 200.
+  - There is no existing `/foundations/structured-decoding/` route; legacy preservation here means the foundation component still defaults to legacy when imported without `chrome="notebook"`.
+- Headless Chrome DevTools checks against the running local dev server passed on desktop 1366x900 and mobile 390x844:
+  - exactly one notebook root for the Structured Decoding demo.
+  - no pre-reveal result panel.
+  - no pre-reveal masked-winner wording leak in prediction choices.
+  - masked probabilities are hidden before reveal.
+  - pre-reveal demo-state includes `revealed: no` and does not include `masked top token`.
+  - reveal shows the mask result and demo-state includes `revealed: yes` plus masked top token.
+  - emitting the revealed token advances from q0 to q1 and resets reveal.
+  - mask off + format-confused emits an invalid high-logit token and shows invalid prefix.
+  - mask on + semantic-mismatch runs to EOS, accepts, and shows wrong source.
+  - no horizontal document overflow on desktop or mobile.
+
+Please review for blockers only:
+1. Must-fix correctness or pedagogy blockers, especially guarantee wording, tokenizer/schema caveats, and top-p/mask order.
+2. Must-fix UI/accessibility blockers, especially pre-reveal leakage and mobile containment.
+3. Must-fix architecture/regression blockers, especially legacy default behavior.
+4. Exact wording fixes if current copy overclaims.
+
+Do not request broad expansion or future-slice ideas unless necessary to ship this slice. Say explicitly whether the slice is acceptable after the listed fixes.

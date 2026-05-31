@@ -26,9 +26,51 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: sze-2017-efficient-dnn
+    kind: paper
+    title: "Efficient Processing of Deep Neural Networks: A Tutorial and Survey"
+    authors: "Sze, Chen, Yang, and Emer"
+    year: 2017
+    url: "https://arxiv.org/abs/1703.09039"
+    note: "Grounds efficiency as a system-level tradeoff among computation, memory movement, energy, throughput, and accuracy."
+  - id: hu-2021-lora
+    kind: paper
+    title: "LoRA: Low-Rank Adaptation of Large Language Models"
+    authors: "Hu et al."
+    year: 2021
+    url: "https://arxiv.org/abs/2106.09685"
+    note: "Grounds low-rank adaptation as a parameter-efficient alternative to full fine-tuning."
+  - id: shazeer-2017-sparsely-gated-moe
+    kind: paper
+    title: "Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer"
+    authors: "Shazeer et al."
+    year: 2017
+    url: "https://arxiv.org/abs/1701.06538"
+    note: "Grounds conditional computation as a way to increase model capacity without activating every parameter."
+claim_checks:
+  - id: resource-levers-active-compute-trainable-params
+    status: source-checked
+    claim: "Efficiency is a resource-bottleneck tradeoff: Sze frames compute, memory movement, energy, throughput, and accuracy; LoRA lowers adaptation cost by freezing W and training a low-rank BA update; sparse MoE grows expert capacity while activating only top-k experts per token."
+    source_ids:
+      - sze-2017-efficient-dnn
+      - hu-2021-lora
+      - shazeer-2017-sparsely-gated-moe
+    support: "Sze et al. ground efficiency as system-level resource tradeoffs rather than one scalar. Hu et al. ground frozen-base, low-rank LoRA adaptation and reduced trainable parameters. Shazeer et al. ground sparse expert routing as increasing capacity without activating every parameter. The code and demo instantiate LoRA trainable-parameter count and MoE active-compute intuition."
+    caveat: "This checks the overview resource-lever lesson for system framing, LoRA, and sparse MoE only; it does not source-check distillation, quantization, task vectors, exact speedups, or serving-cost claims."
+    object_refs:
+      - "#source-span-sze-2017-efficient-dnn"
+      - "#source-span-hu-2021-lora"
+      - "#source-span-shazeer-2017-sparsely-gated-moe"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Sze supports efficiency as a system tradeoff across compute, memory/data movement, energy, throughput, accuracy, and hardware/resource constraints. Hu supports LoRA as frozen pretrained weights plus trainable low-rank A/B matrices for W0 + BA adaptation with greatly reduced trainable parameters and adaptation memory/storage cost. Shazeer supports sparse MoE conditional computation with top-k sparse gating so only selected experts are evaluated while capacity can grow without proportional compute."
 short_description: "The practical toolkit for making big models cheaper: quantize weights/activations, distill teachers into students, adapt with low-rank updates (LoRA), and use sparsity (MoE)."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 20
-

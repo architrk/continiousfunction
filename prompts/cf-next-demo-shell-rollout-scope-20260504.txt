@@ -1,0 +1,49 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. Current direction: slow high-quality concept growth, mechanism-first animations, math/code witnesses, prediction checks, AI companion demo-state context, and a coherent shared visualization shell.
+
+We are in the middle of the "flagship demo shell rollout": port the highest-leverage interactive demos onto the shared `VizShell` / `VizStageAdapter` contract without breaking legacy `/foundations` behavior.
+
+Already completed in this rollout:
+
+1. Speculative Decoding
+   - Added `VizStageAdapter`.
+   - Filesystem concept route passes `chrome="notebook"`.
+   - Legacy foundation component defaults to `chrome="legacy"`.
+   - Prediction check became mechanism-first.
+   - Demo emits compact `emitDemoState`.
+   - GPT Pro Oracle implementation review blockers were applied.
+
+2. Sparse Autoencoders
+   - Filesystem concept route uses `VizShell` + `VizStageAdapter`.
+   - Foundation component defaults to legacy dark chrome and supports `chrome="notebook"`.
+   - Game/countdown/winner language replaced by mechanism-first prediction checks.
+   - Toy frontier claims calibrated after GPT Pro Oracle implementation review.
+   - Demo emits compact `emitDemoState`.
+   - Accessibility blockers from Oracle were patched.
+
+Now choose the next narrow rollout slice. Candidate demos attached:
+
+- Mixture of Experts / MoE routing
+- Diffusion / score matching / flow matching
+- Loss landscapes / 3D surface / edge of stability
+
+Please review the attached candidate files and choose the next best target for a small, high-quality patch. I do not want a bulk brainstorm. I want the next slice that gives the best pedagogical/product return while being safe to complete in one focused pass.
+
+Constraints:
+
+- Keep legacy foundation demos working if they are reused elsewhere.
+- Prefer the existing local patterns: `VizShell`, `VizStageAdapter`, `chrome="legacy" | "notebook"` where useful, and `emitDemoState` for interactive state.
+- Avoid creating new backend/account/live-data requirements.
+- Static export must keep working.
+- Avoid broad refactors and avoid redesigning unrelated concept pages.
+- Any copy must be mechanism-first, caveated when toy data is synthetic, and not a leaderboard unless the underlying demo truly supports it.
+- The user wants this platform to feel intuitive, elegant, joyful, and serious: visuals should explain the idea, not just decorate it.
+
+Please answer with:
+
+1. "TARGET" with the chosen next target and why it beats the other two right now.
+2. "PATCH PLAN" with the smallest useful file set.
+3. "PEDAGOGY RISKS" with exact claims/interactions to avoid.
+4. "IMPLEMENTATION NOTES" with concrete prop/CSS/state/copy changes.
+5. "VALIDATION" with exact local checks and route smoke checks.
+
+Assume I will implement exactly one slice after your answer, then send it back to GPT Pro Oracle for implementation review.

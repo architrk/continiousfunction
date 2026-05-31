@@ -1,0 +1,52 @@
+Project: Continuous Function, a Next.js/TypeScript learning atlas for deep learning math. We are running a review-gated claim-evidence workflow. A claim should only be marked `evidence_review.state: substantive-reviewed` after checking that the listed sources and local witnesses substantively support the exact wording, and after adding a bounded review summary/caveat.
+
+Current task: review the next pending claim check.
+
+Concept:
+- Domain: attention-transformers
+- Concept ID: layer-normalization
+- Title: Layer Normalization & RMSNorm
+
+Exact claim:
+"LayerNorm normalizes one token/example vector across its features by subtracting that vector's mean and dividing by its standard deviation, then applying learned gain/bias. RMSNorm uses the same per-vector rescaling frame but omits mean-centering and divides by the root mean square."
+
+Current sources:
+- ba-2016-layer-normalization: Ba, Kiros, and Hinton 2016, "Layer Normalization"
+- zhang-2019-rmsnorm: Zhang and Sennrich 2019, "Root Mean Square Layer Normalization"
+- Current URLs in concept.yaml are arXiv abstract URLs, not direct PDFs.
+
+Primary-source evidence I extracted:
+- Ba et al. abstract: LayerNorm computes the mean and variance used for normalization from all summed inputs to neurons in a layer on a single training case. It also gives each neuron adaptive bias and gain applied after normalization and before the nonlinearity. It performs the same computation at training and test time.
+- Ba et al. Section 3: LayerNorm computes statistics over all hidden units in the same layer: mu_l = (1/H) sum_i a_i^l and sigma_l = sqrt((1/H) sum_i (a_i^l - mu_l)^2). It says all hidden units in a layer share the same mu and sigma, while different training cases have different normalization terms.
+- Ba et al. RNN equation: h_t = f[(g/sigma_t) odot (a_t - mu_t) + b], where b and g are bias and gain parameters with the same dimension as h_t.
+- Zhang/Sennrich abstract: RMSNorm hypothesizes re-centering invariance in LayerNorm is dispensable and regularizes summed inputs according to root mean square (RMS), giving rescaling invariance.
+- Zhang/Sennrich Section 3 reviews LayerNorm as a_i_bar = ((a_i - mu)/sigma) g_i, y_i = f(a_i_bar + b_i), with mu and sigma estimated from raw summed inputs.
+- Zhang/Sennrich Section 4 defines RMSNorm as a_i_bar = (a_i / RMS(a)) g_i, RMS(a)=sqrt((1/n) sum_i a_i^2), and says RMSNorm simplifies LayerNorm by totally removing the mean statistic in Eq. 3.
+- Zhang/Sennrich Section 4.1 gives the general RMSNorm form y = f((Wx / RMS(a)) odot g + b), and states RMSNorm is invariant to input/weight rescaling but not to re-centering operations.
+
+Local witness refs in the claim:
+- #source-span-ba-2016-layer-normalization
+- #source-span-zhang-2019-rmsnorm
+- #math-object-1
+- #math-object-2
+- #code-witness-1
+- #interactive-demo
+
+Attached files:
+- content/domains/attention-transformers/concepts/layer-normalization/concept.yaml
+- content/domains/attention-transformers/concepts/layer-normalization/content.mdx
+- content/domains/attention-transformers/concepts/layer-normalization/viz.tsx
+- content/_generated/claim-evidence-review-queue.json
+
+Please answer as a strict reviewer, not a brainstormer:
+1. Does the listed source set plus local witnesses substantively support the exact claim?
+2. Are any parts too broad or under-caveated? Pay special attention to "one token/example vector across its features", learned gain/bias, RMSNorm omitting mean-centering, and the page's transformer framing.
+3. Should the source URLs be switched from arXiv abstract pages to direct PDF URLs for this source-backed claim?
+4. If approved, provide the exact YAML patch shape for `claim_checks[0].evidence_review`, and any revised source note/support/caveat wording. Keep `evidence_review.summary` under 520 characters and `caveat` under 280 characters.
+5. If not approved, give the smallest local fixes needed before approval.
+
+Constraints:
+- Do not propose broad page redesigns.
+- Do not add transformer adoption or training-stability guarantees beyond what the claim/caveat can support.
+- Treat the interactive demo and NumPy code as finite-vector teaching witnesses, not as proof of all framework implementations.
+- Use reviewer value `codex+oracle` and date `2026-05-07` if approved.

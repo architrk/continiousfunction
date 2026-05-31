@@ -1,0 +1,28 @@
+You are Oracle/GPT Pro performing a full publish/no-publish review for Continuous Function.
+
+Project briefing:
+- Continuous Function is a mathematical atlas for modern AI foundations.
+- A serious concept must move cleanly between intuition, math, code, and an interactive demo.
+- Filesystem concepts live under `content/domains/*/concepts/*`.
+- `concept.yaml` controls graph links and status; `content.mdx` is restricted markdown; `viz.tsx` is a co-located client-only React demo.
+- Local checks already passing before this review: `npm run generate-content`, `npm run validate-content`, `npm run typecheck`, and the Python code witness.
+
+Current goal:
+- Review the upgraded `probability-basics` concept in the probability domain.
+- It is intended to become the published upstream foundation for random variables, distributions, maximum likelihood, cross-entropy, and Bayesian inference.
+- The demo's central claim is: conditional probability filters the joint table by an observed event and renormalizes; Bayes' rule is product rule plus normalization.
+- The example uses a hidden coin A/B and observed Head/Tail to expose priors, likelihoods, evidence, joint probabilities, and posterior P(B | observation).
+
+Please review the attached files against `content/_agent/CONCEPT_QUALITY_BAR.md`.
+
+Return:
+1. Verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and missing P0 concepts.
+8. Exact patch-style edits for the highest-impact fixes when possible.
+
+Be strict. Do not say "looks good" unless the concept actually meets the quality bar.

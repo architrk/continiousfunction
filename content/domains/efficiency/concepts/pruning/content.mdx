@@ -9,7 +9,7 @@ Deep nets are often heavily overparameterized. Pruning asks: can we remove weigh
 Two big distinctions matter:
 
 - **Unstructured pruning**: set individual weights to zero. This can give huge sparsity numbers, but you only get speedups if your hardware/software stack has sparse kernels.
-- **Structured pruning**: remove whole channels/heads/blocks. This usually gives smaller compression but real wall-clock speedups on standard GPUs.
+- **Structured pruning**: remove whole channels/heads/blocks. This often gives smaller compression, but because it changes dense tensor shapes, it is more likely to translate into wall-clock speedups on standard kernels.
 
 The surprising part is that naive rules (like "prune small weights") often work decently, even though they are not theoretically optimal.
 
@@ -17,17 +17,21 @@ The surprising part is that naive rules (like "prune small weights") often work 
 
 ### Magnitude pruning (a common baseline)
 
-Let $W$ be a weight matrix and let $\\theta$ be a threshold. Define a mask:
+Let $W$ be a weight matrix and let $\theta$ be a threshold. Define a mask:
 
-$$M_{ij}=\\mathbf 1[|W_{ij}|>\\theta],\\qquad W_{\\text{pruned}}=W\\odot M.$$
+$$
+M_{ij}=\mathbf 1[|W_{ij}|>\theta],\qquad W_{\text{pruned}}=W\odot M.
+$$
 
 ### Structured pruning (remove units)
 
-If you remove a set of columns/heads $S$, you effectively keep only those indices:
+If $S$ is the set of columns/heads you keep, structured pruning changes the layer shape:
 
-$$W_{\\text{pruned}} = W[:,\\,S].$$
+$$
+W_{\text{pruned}} = W[:,\,S].
+$$
 
-This changes the model shape, which is why it tends to translate into real speedups.
+This changes the model shape, which is why it can translate into ordinary dense-kernel speedups more directly.
 
 ## Code
 
@@ -49,5 +53,4 @@ print("L2 norm ratio ||W_pruned||/||W||:", round(float(np.linalg.norm(W_pruned) 
 
 ## Interactive Demo
 
-No demo yet for this concept. A good demo would compare unstructured vs structured pruning and show when sparsity actually becomes a speedup.
-
+The demo below asks you to predict which pruning pattern actually turns into a speedup before revealing the mask and deployment metrics. The key invariant is that unstructured zeros reduce storage and sometimes sparse-kernel work, but structured pruning changes the dense matrix shape and therefore can map to ordinary GPU speedups more directly.

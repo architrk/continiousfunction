@@ -1,0 +1,25 @@
+Project: Continuous Function, static-export Next.js Pages Router learning platform.
+
+Goal: finish the queued task `graph-route-saved-progress` without overbuilding accounts/cloud sync. Current TODO says:
+
+"Persist graph-route state into saved learning paths: known concepts, chosen target, computed route, next repair, and source paper/concept objects should survive across sessions and feed the AI tutor."
+
+Current implementation state:
+- `lib/learningRouteSnapshot.ts` already stores a browser-local `cf:last-learning-route` snapshot with source, route labels/concepts, next repair, equation, lab, grounding status, and structured last observations. It validates internal hrefs, raw JSON size, bounded strings, and KV lab-state.
+- `components/product/GraphProductNavigator.tsx` has static path presets and an explicit Save route button. It now separates preview vs saved route and does not silently overwrite saved progress when users click preset queries.
+- `components/product/GraphRouteEngine.tsx` computes a route from selected known concepts and target, but it is not yet persisted into the saved route snapshot. It has `knownIds`, `targetId`, a computed `route`, edge witness, and route nodes.
+- `components/home/HomeResumeRoutePanel.tsx` can resume the last snapshot, but does not yet display known concepts / chosen target / computed route details.
+- `lib/productGraphRoutes.ts` defines graph nodes/edges, route known/target options, and `computeGraphRoute`.
+
+Question for GPT Pro:
+Give me the narrow implementation plan to finish this task. I want a surgical patch, not a new backend.
+
+Please check:
+1. What fields should be added to `LearningRouteSnapshot` so a computed graph route survives safely?
+2. How should validation bounds be set for those fields?
+3. How should `GraphRouteEngine` save a computed route without breaking the existing preview-vs-save separation in `GraphProductNavigator`?
+4. What should `HomeResumeRoutePanel` display so the saved route meaningfully "feeds the AI tutor" and resume surface?
+5. What should not be implemented yet?
+6. What tests/browser checks are necessary?
+
+Desired output: patch plan with exact files/sections and any correctness/pedagogy caveats.

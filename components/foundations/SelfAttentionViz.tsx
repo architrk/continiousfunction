@@ -3,8 +3,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { createColorScale } from '../../lib/d3Types';
+import { clearDemoState, emitDemoState } from '../../lib/demoState';
 
 type Matrix = number[][];
+export type ValueMixPrediction = number | 'tie';
 
 interface HeatmapProps {
   data: Matrix;
@@ -219,6 +221,7 @@ const Heatmap: React.FC<HeatmapProps> = ({
 
 const DEFAULT_TOKENS = ['The', 'cat', 'sat', 'on', 'the', 'mat'];
 const D_K = 4;
+export const VALUE_CONTRIBUTION_TOLERANCE = 0.01;
 
 // Temperature presets
 const TEMPERATURE_PRESETS = [
@@ -228,67 +231,8 @@ const TEMPERATURE_PRESETS = [
   { name: '🌫️ Diffuse', temp: 2.2, description: 'Very uniform attention' },
 ];
 
-// Gamification types and challenges
-type GamePhase = 'setup' | 'countdown' | 'revealed'
-type TokenPrediction = string | null
-
-interface AttentionChallenge {
-  name: string
-  queryIndex: number
-  temperature: number
-  question: string
-  correctToken: string // Token that gets highest attention
-  explanation: string
-}
-
-// Mystery scenarios for the prediction game
-const ATTENTION_CHALLENGES: AttentionChallenge[] = [
-  {
-    name: '🎲 Sharp Focus',
-    queryIndex: 1, // "cat"
-    temperature: 0.4,
-    question: 'With sharp temperature (T=0.4), which token does "cat" attend to most?',
-    correctToken: 'sat',
-    explanation: '🎯 "cat" → "sat"! With low temperature, attention concentrates on the verb that describes the subject\'s action. Semantic association wins.',
-  },
-  {
-    name: '🎲 Article Mystery',
-    queryIndex: 0, // "The"
-    temperature: 1.0,
-    question: 'At standard temperature, which token does "The" (first) attend to most?',
-    correctToken: 'The',
-    explanation: '📝 "The" → "The"! Articles often self-attend because they lack strong semantic content. The embeddings are similar.',
-  },
-  {
-    name: '🎲 Warm Spread',
-    queryIndex: 3, // "on"
-    temperature: 1.5,
-    question: 'With warm temperature (T=1.5), where does "on" attend most?',
-    correctToken: 'mat',
-    explanation: '💨 "on" → "mat"! Prepositions attend to their objects. Even with warm temperature spreading attention, "mat" still dominates as the prepositional phrase target.',
-  },
-  {
-    name: '🎲 Final Token',
-    queryIndex: 5, // "mat"
-    temperature: 1.0,
-    question: 'Which token does "mat" (final position) attend to most?',
-    correctToken: 'cat',
-    explanation: '🔍 "mat" → "cat"! Nouns attend to related nouns. "mat" and "cat" have similar syntactic roles and rhyming embeddings.',
-  },
-];
-
-// Educational feedback for predictions
-function getAttentionFeedback(
-  prediction: TokenPrediction,
-  challenge: AttentionChallenge
-): string {
-  if (prediction === null) return ''
-
-  if (prediction === challenge.correctToken) {
-    return `🎯 Perfect! ${challenge.explanation}`
-  } else {
-    return `❌ Not quite! ${challenge.explanation}`
-  }
+type SelfAttentionExplorerProps = {
+  conceptId?: string
 }
 
 // Compute entropy of attention weights
@@ -297,6 +241,40 @@ function computeEntropy(weights: number[]): number {
     if (w > 1e-10) return sum + w * Math.log2(w);
     return sum;
   }, 0);
+}
+
+function vectorNorm(values: number[]): number {
+  return Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
+}
+
+export function getValueContributionWinners(
+  attentionRow: number[],
+  values: Matrix
+): {
+  contributionVectors: Matrix;
+  contributionNorms: number[];
+  maxNorm: number;
+  winnerIndices: number[];
+  expectedAnswer: ValueMixPrediction;
+} {
+  const contributionVectors = values.map((valueVector, tokenIndex) =>
+    valueVector.map((value) => (attentionRow[tokenIndex] ?? 0) * value)
+  );
+  const contributionNorms = contributionVectors.map(vectorNorm);
+  const maxNorm = Math.max(...contributionNorms);
+  const tolerance = Math.max(VALUE_CONTRIBUTION_TOLERANCE, 0.025 * maxNorm);
+  const winnerIndices = contributionNorms
+    .map((norm, index) => ({ norm, index }))
+    .filter(({ norm }) => maxNorm - norm <= tolerance)
+    .map(({ index }) => index);
+
+  return {
+    contributionVectors,
+    contributionNorms,
+    maxNorm,
+    winnerIndices,
+    expectedAnswer: winnerIndices.length === 1 ? winnerIndices[0] : 'tie',
+  };
 }
 
 // Dynamic educational insight
@@ -361,21 +339,18 @@ const W_V: Matrix = [
   [0.0, -0.2, 0.3, 0.7],
 ];
 
-const SelfAttentionExplorer: React.FC = () => {
+const SelfAttentionExplorer: React.FC<SelfAttentionExplorerProps> = ({ conceptId = 'attention-transformers' }) => {
   const tokens = DEFAULT_TOKENS;
   const dimLabels = ['d₀', 'd₁', 'd₂', 'd₃'];
 
   const [temperature, setTemperature] = useState(1.0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(1);
+  const conceptIdRef = useRef(conceptId);
+  const conceptChanged = conceptIdRef.current !== conceptId;
 
-  // Gamification state
-  const [gameMode, setGameMode] = useState(false)
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
-  const [selectedChallenge, setSelectedChallenge] = useState<AttentionChallenge | null>(null)
-  const [prediction, setPrediction] = useState<TokenPrediction>(null)
-  const [countdown, setCountdown] = useState(0)
-  const [score, setScore] = useState(0)
-  const [completedChallenges, setCompletedChallenges] = useState<Set<string>>(new Set())
+  const [prediction, setPrediction] = useState<ValueMixPrediction | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const revealVisible = revealed && !conceptChanged;
 
   // Toy "token embeddings" – simple functions of position and rough POS
   const baseEmbeddings = useMemo<Matrix>(() => {
@@ -423,6 +398,113 @@ const SelfAttentionExplorer: React.FC = () => {
   const currentEntropy = useMemo(() => computeEntropy(activeAttentionRow), [activeAttentionRow]);
   const maxEntropy = Math.log2(tokens.length);
   const focusPercent = ((1 - currentEntropy / maxEntropy) * 100).toFixed(0);
+  const topWeight = Math.max(...activeAttentionRow);
+  const topTokenIndex = activeAttentionRow.indexOf(topWeight);
+  const activeScoreRow = useMemo(() => scores[activeIndex] ?? [], [scores, activeIndex]);
+  const rowSum = activeAttentionRow.reduce((sum, weight) => sum + weight, 0);
+  const dimCount = dimLabels.length
+  const tokenLabels = useMemo(
+    () => tokens.map((token, index) => `T${index} · ${token}`),
+    [tokens]
+  );
+  const valueMix = useMemo(
+    () =>
+      activeAttentionRow.reduce(
+        (acc, weight, index) => {
+          const value = V[index] ?? []
+          for (let dim = 0; dim < dimCount; dim++) {
+            acc[dim] += weight * (value[dim] ?? 0)
+          }
+          return acc
+        },
+        Array(dimCount).fill(0) as number[]
+      ),
+    [activeAttentionRow, V, dimCount]
+  );
+  const valueContribution = useMemo(
+    () => getValueContributionWinners(activeAttentionRow, V),
+    [activeAttentionRow, V]
+  );
+  const expectedValueAnswer = valueContribution.expectedAnswer;
+  const predictionCorrect =
+    prediction !== null &&
+    (expectedValueAnswer === 'tie'
+      ? prediction === 'tie'
+      : prediction === expectedValueAnswer);
+  const predictionLabel =
+    prediction === null
+      ? 'none'
+      : prediction === 'tie'
+      ? 'No clear single contributor'
+      : tokenLabels[prediction];
+  const actualContributorLabel =
+    expectedValueAnswer === 'tie'
+      ? valueContribution.winnerIndices.map((index) => tokenLabels[index]).join(', ')
+      : tokenLabels[expectedValueAnswer];
+  const topAttentionLabel = tokenLabels[topTokenIndex];
+  const valueEvidenceSteps = [
+    {
+      title: 'Predict',
+      detail:
+        prediction === null
+          ? 'Commit to the largest weighted value contributor.'
+          : `Committed to ${predictionLabel}.`,
+    },
+    {
+      title: 'Observe',
+      detail: revealVisible
+        ? `Measured contributor: ${actualContributorLabel}.`
+        : 'Score, attention, and output rows stay locked.',
+    },
+    {
+      title: 'Ground',
+      detail: revealVisible
+        ? `Use alpha_ij * V_j, not attention alone.`
+        : 'Reason from the visible Q, K, V setup first.',
+    },
+    {
+      title: 'Carry',
+      detail: revealVisible
+        ? `${predictionCorrect ? 'Matched' : 'Missed'}; carry row sum, entropy, and O_i.`
+        : 'Research Room receives compact evidence after reveal.',
+    },
+  ];
+  const valueActiveEvidenceIndex = revealVisible ? 3 : 0;
+  const neutralTokenMatrix = useMemo(
+    () => tokens.map(() => tokens.map(() => 0)),
+    [tokens]
+  );
+  const visibleScores = revealVisible ? scores : neutralTokenMatrix;
+  const visibleAttention = revealVisible ? attention : neutralTokenMatrix;
+
+  const resetReveal = () => {
+    setPrediction(null);
+    setRevealed(false);
+    clearDemoState(conceptId);
+  };
+
+  const choosePrediction = (nextPrediction: ValueMixPrediction) => {
+    setPrediction(nextPrediction);
+    if (revealed) {
+      setRevealed(false);
+      clearDemoState(conceptId);
+    }
+  };
+
+  const revealValueMix = () => {
+    if (prediction === null) return;
+    setRevealed(true);
+  };
+
+  const changeTemperature = (nextTemperature: number) => {
+    setTemperature(nextTemperature);
+    resetReveal();
+  };
+
+  const changeActiveIndex = (nextIndex: number) => {
+    setHoveredIndex(nextIndex);
+    resetReveal();
+  };
 
   // Dynamic insight
   const currentInsight = useMemo(() => {
@@ -434,48 +516,67 @@ const SelfAttentionExplorer: React.FC = () => {
     );
   }, [tokens, activeIndex, temperature, activeAttentionRow]);
 
-  // Game control functions
-  const startChallenge = (challenge: AttentionChallenge) => {
-    setSelectedChallenge(challenge)
-    setPrediction(null)
-    setCountdown(3)
-    setGamePhase('countdown')
-    // Set the query token and temperature for this challenge
-    setHoveredIndex(challenge.queryIndex)
-    setTemperature(challenge.temperature)
-  }
-
-  const submitPrediction = () => {
-    if (prediction === null || !selectedChallenge) return
-    setGamePhase('revealed')
-    // Score based on correctness
-    if (prediction === selectedChallenge.correctToken) {
-      setScore((s) => s + 10)
-    }
-    setCompletedChallenges((prev) => new Set([...prev, selectedChallenge.name]))
-  }
-
-  const resetGame = () => {
-    setGamePhase('setup')
-    setSelectedChallenge(null)
-    setPrediction(null)
-    setCountdown(0)
-  }
-
-  // Countdown effect
   useEffect(() => {
-    if (gamePhase === 'countdown' && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [gamePhase, countdown])
+    conceptIdRef.current = conceptId;
+    setPrediction(null);
+    setRevealed(false);
+    clearDemoState(conceptId);
+    return () => clearDemoState(conceptId);
+  }, [conceptId]);
+
+  useEffect(() => {
+    if (!revealVisible || prediction === null) return;
+
+    emitDemoState({
+      conceptId,
+      label: 'Self-attention value mixing reveal',
+      summary: `Query ${tokenLabels[activeIndex]} at T=${temperature.toFixed(2)}: learner predicted ${predictionLabel}; strongest weighted value contribution is ${actualContributorLabel}; top attention token is ${topAttentionLabel}; prediction ${predictionCorrect ? 'matched' : 'missed'}.`,
+      values: [
+        `query token: ${tokenLabels[activeIndex]} (row ${activeIndex})`,
+        `temperature T: ${temperature.toFixed(2)}`,
+        `prediction: ${predictionLabel}`,
+        `actual value contributor: ${actualContributorLabel}`,
+        `prediction correct: ${predictionCorrect ? 'yes' : 'no'}`,
+        `top attention token: ${topAttentionLabel} (${(topWeight * 100).toFixed(1)}%)`,
+        `attention entropy: ${currentEntropy.toFixed(3)} bits`,
+        `probability row sum: ${rowSum.toFixed(4)}`,
+        `score row: [${activeScoreRow.map((value) => value.toFixed(2)).join(', ')}]`,
+        `attention row: [${activeAttentionRow.map((value) => value.toFixed(3)).join(', ')}]`,
+        `value contribution norms: [${valueContribution.contributionNorms.map((value) => value.toFixed(3)).join(', ')}]`,
+        `value mixture O_i: [${valueMix.map((value) => value.toFixed(3)).join(', ')}]`,
+        'reveal state: value mixing shown',
+        'evidence loop: predict -> observe -> ground -> carry',
+      ],
+    })
+  }, [
+    activeAttentionRow,
+    activeIndex,
+    activeScoreRow,
+    actualContributorLabel,
+    conceptChanged,
+    conceptId,
+    currentEntropy,
+    prediction,
+    predictionCorrect,
+    predictionLabel,
+    revealVisible,
+    rowSum,
+    temperature,
+    tokenLabels,
+    topAttentionLabel,
+    topWeight,
+    valueContribution.contributionNorms,
+    valueMix,
+  ]);
 
   return (
     <section
       style={{
         backgroundColor: '#080c14', // dark slate background
         color: '#e5e7eb',
-        padding: '1.75rem',
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: 'clamp(0.65rem, 3vw, 1.75rem)',
         borderRadius: '1rem',
         border: '1px solid #111827',
         fontFamily:
@@ -501,174 +602,258 @@ const SelfAttentionExplorer: React.FC = () => {
         <code>softmax(scores / T)</code>, where T is the softmax temperature.
       </p>
 
-      {/* Gamification Panel */}
+      {/* Local value-mixing prediction gate */}
       <div
+        data-child-demo-gate="self-attention-value-mix"
         style={{
-          padding: '14px 18px',
+          padding: '16px',
           marginBottom: '1rem',
-          borderRadius: '10px',
-          background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(56, 189, 248, 0.08) 100%)',
-          border: '1px solid rgba(168, 85, 247, 0.35)',
+          borderRadius: '8px',
+          background: revealVisible
+            ? 'linear-gradient(135deg, #fff7ed 0%, #f8f4ea 58%, #ecfdf5 100%)'
+            : 'linear-gradient(135deg, #fffaf0 0%, #f8f4ea 100%)',
+          border: revealVisible
+            ? '1px solid #f59e0b'
+            : '1px solid #d6c7ad',
+          boxShadow: revealVisible
+            ? '0 14px 34px rgba(15, 23, 42, 0.18)'
+            : '0 10px 24px rgba(15, 23, 42, 0.12)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setGameMode(!gameMode)
-                if (gameMode) resetGame()
-              }}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '999px',
-                border: gameMode ? '1px solid rgba(168, 85, 247, 0.7)' : '1px solid rgba(148, 163, 184, 0.4)',
-                background: gameMode ? 'rgba(168, 85, 247, 0.25)' : 'rgba(15, 23, 42, 0.6)',
-                color: gameMode ? '#d8b4fe' : '#d1d5db',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-              }}
-            >
-              {gameMode ? '🎮 Challenge Mode ON' : '🎯 Try Attention Quiz'}
-            </button>
-            {gameMode && (
-              <span style={{ fontSize: '0.85rem', color: '#a5b4fc' }}>
-                Score: <strong style={{ color: '#fbbf24' }}>{score}</strong>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {gameMode && gamePhase === 'setup' && (
-          <div>
-            <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '10px' }}>
-              Select a challenge and predict which token receives the most attention:
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {ATTENTION_CHALLENGES.map((challenge) => (
-                <button
-                  key={challenge.name}
-                  type="button"
-                  onClick={() => startChallenge(challenge)}
-                  disabled={completedChallenges.has(challenge.name)}
-                  style={{
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    border: completedChallenges.has(challenge.name)
-                      ? '1px solid rgba(34, 197, 94, 0.5)'
-                      : '1px solid rgba(56, 189, 248, 0.5)',
-                    background: completedChallenges.has(challenge.name)
-                      ? 'rgba(34, 197, 94, 0.15)'
-                      : 'rgba(56, 189, 248, 0.1)',
-                    color: completedChallenges.has(challenge.name) ? '#86efac' : '#7dd3fc',
-                    cursor: completedChallenges.has(challenge.name) ? 'default' : 'pointer',
-                    fontSize: '0.8rem',
-                    opacity: completedChallenges.has(challenge.name) ? 0.7 : 1,
-                  }}
-                >
-                  {completedChallenges.has(challenge.name) ? '✓ ' : ''}{challenge.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {gameMode && gamePhase === 'countdown' && selectedChallenge && (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '0.85rem', color: '#d1d5db', marginBottom: '8px' }}>
-              {selectedChallenge.question}
-            </p>
-            {countdown > 0 ? (
-              <div style={{ fontSize: '2rem', color: '#fbbf24', fontWeight: 700 }}>{countdown}</div>
-            ) : (
-              <div>
-                <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '10px' }}>
-                  Click the token that will receive the highest attention weight:
-                </p>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {tokens.map((token) => (
-                    <button
-                      key={token}
-                      type="button"
-                      onClick={() => setPrediction(token)}
-                      style={{
-                        padding: '10px 18px',
-                        borderRadius: '8px',
-                        border: prediction === token ? '2px solid #fbbf24' : '1px solid rgba(148, 163, 184, 0.4)',
-                        background: prediction === token ? 'rgba(251, 191, 36, 0.2)' : 'rgba(15, 23, 42, 0.6)',
-                        color: prediction === token ? '#fde68a' : '#d1d5db',
-                        cursor: 'pointer',
-                        fontSize: '0.9rem',
-                        fontWeight: prediction === token ? 700 : 400,
-                      }}
-                    >
-                      {token}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={submitPrediction}
-                  disabled={prediction === null}
-                  style={{
-                    marginTop: '12px',
-                    padding: '8px 24px',
-                    borderRadius: '999px',
-                    border: 'none',
-                    background: prediction !== null
-                      ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
-                      : 'rgba(75, 85, 99, 0.5)',
-                    color: prediction !== null ? '#111827' : '#6b7280',
-                    cursor: prediction !== null ? 'pointer' : 'default',
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                  }}
-                >
-                  Submit Prediction
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {gameMode && gamePhase === 'revealed' && selectedChallenge && (
-          <div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            alignItems: 'flex-start',
+            flexWrap: 'wrap',
+            marginBottom: '0.85rem',
+          }}
+        >
+          <div style={{ minWidth: 0, flex: '1 1 320px' }}>
             <div
               style={{
-                padding: '12px',
-                borderRadius: '8px',
-                background: prediction === selectedChallenge.correctToken
-                  ? 'rgba(34, 197, 94, 0.15)'
-                  : 'rgba(251, 146, 60, 0.1)',
-                border: `1px solid ${prediction === selectedChallenge.correctToken ? 'rgba(34, 197, 94, 0.5)' : 'rgba(251, 146, 60, 0.4)'}`,
-                marginBottom: '10px',
+                color: '#92400e',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                marginBottom: '0.3rem',
               }}
             >
-              <p style={{ fontSize: '0.85rem', color: '#d1d5db', margin: 0 }}>
-                Your prediction: <strong>{prediction}</strong> | Correct: <strong>{selectedChallenge.correctToken}</strong>
-              </p>
-              <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: '6px 0 0 0' }}>
-                {getAttentionFeedback(prediction, selectedChallenge)}
+              child prediction checkpoint
+            </div>
+            <p style={{ fontSize: '0.92rem', color: '#1f2937', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+              <strong>For selected query {tokenLabels[activeIndex]}, which source token contributes the largest weighted value vector?</strong>
+            </p>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280', lineHeight: 1.5 }}>
+              Pick the largest term in <code style={{ color: '#374151' }}>alpha_ij * V_j</code> before the score row, attention row, and output mixture unlock.
+            </div>
+          </div>
+          <div
+            style={{
+              flex: '0 1 240px',
+              padding: '0.65rem 0.75rem',
+              borderRadius: '8px',
+              background: '#111827',
+              border: '1px solid #334155',
+              color: '#e5e7eb',
+              fontSize: '0.76rem',
+              lineHeight: 1.45,
+            }}
+          >
+            Top attention can be a clue, but the output uses{' '}
+            <strong style={{ color: '#f8fafc' }}>weight x value vector norm</strong>.
+          </div>
+        </div>
+        <div
+          role="group"
+          aria-label="Self-attention value contributor prediction"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))',
+            gap: '0.5rem',
+            marginBottom: '0.85rem',
+          }}
+        >
+          {tokens.map((token, index) => (
+            <button
+              key={`${token}-${index}-value-prediction`}
+              type="button"
+              aria-pressed={prediction === index}
+              onClick={() => choosePrediction(index)}
+              style={{
+                padding: '0.45rem 0.7rem',
+                borderRadius: '8px',
+                border: prediction === index
+                  ? '2px solid #1d4ed8'
+                  : revealVisible && valueContribution.winnerIndices.includes(index)
+                  ? '2px solid #22c55e'
+                  : '1px solid #d6c7ad',
+                background: prediction === index
+                  ? '#dbeafe'
+                  : revealVisible && valueContribution.winnerIndices.includes(index)
+                  ? '#dcfce7'
+                  : '#fffaf0',
+                color: prediction === index ? '#1d4ed8' : '#1f2937',
+                cursor: 'pointer',
+                fontSize: '0.82rem',
+                fontWeight: prediction === index || (revealVisible && valueContribution.winnerIndices.includes(index)) ? 700 : 500,
+                textAlign: 'left',
+              }}
+            >
+              {tokenLabels[index]}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-pressed={prediction === 'tie'}
+            onClick={() => choosePrediction('tie')}
+            style={{
+              padding: '0.45rem 0.7rem',
+              borderRadius: '8px',
+              border: prediction === 'tie' ? '2px solid #1d4ed8' : '1px solid #d6c7ad',
+              background: prediction === 'tie' ? '#dbeafe' : '#fffaf0',
+              color: prediction === 'tie' ? '#1d4ed8' : '#1f2937',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: prediction === 'tie' ? 700 : 500,
+              textAlign: 'left',
+            }}
+          >
+            No clear single contributor
+          </button>
+        </div>
+        <div
+          aria-label="Self-attention value evidence loop"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))',
+            gap: '0.5rem',
+            padding: '0.6rem',
+            marginBottom: '0.85rem',
+            borderRadius: '8px',
+            background: '#0f172a',
+            border: '1px solid #334155',
+          }}
+        >
+          {valueEvidenceSteps.map((step, index) => (
+            <div
+              key={step.title}
+              style={{
+                padding: '0.6rem',
+                borderRadius: '7px',
+                border: index === valueActiveEvidenceIndex ? '1px solid #f59e0b' : '1px solid #1f2937',
+                background: index === valueActiveEvidenceIndex ? '#fff7ed' : '#111827',
+                color: index === valueActiveEvidenceIndex ? '#1f2937' : '#d1d5db',
+                minHeight: '82px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  marginBottom: '0.35rem',
+                }}
+              >
+                <span
+                  style={{
+                    width: '1.35rem',
+                    height: '1.35rem',
+                    borderRadius: '999px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: index === valueActiveEvidenceIndex ? '#f59e0b' : '#334155',
+                    color: index === valueActiveEvidenceIndex ? '#111827' : '#f8fafc',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    flex: '0 0 auto',
+                  }}
+                >
+                  {index + 1}
+                </span>
+                <strong
+                  style={{
+                    fontSize: '0.78rem',
+                    color: index === valueActiveEvidenceIndex ? '#111827' : '#f8fafc',
+                  }}
+                >
+                  {step.title}
+                </strong>
+              </div>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: '0.74rem',
+                  lineHeight: 1.35,
+                  color: index === valueActiveEvidenceIndex ? '#374151' : '#cbd5e1',
+                }}
+              >
+                {step.detail}
               </p>
             </div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            type="button"
+            onClick={revealValueMix}
+            disabled={prediction === null || revealVisible}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '999px',
+              border: 'none',
+              background: prediction !== null && !revealVisible
+                ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                : 'rgba(75, 85, 99, 0.5)',
+              color: prediction !== null && !revealVisible ? '#111827' : '#6b7280',
+              cursor: prediction !== null && !revealVisible ? 'pointer' : 'not-allowed',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+            }}
+          >
+            Reveal value mixture
+          </button>
+          {revealVisible && (
             <button
               type="button"
-              onClick={resetGame}
+              onClick={resetReveal}
               style={{
-                padding: '6px 16px',
+                padding: '0.5rem 0.8rem',
                 borderRadius: '999px',
                 border: '1px solid rgba(148, 163, 184, 0.4)',
                 background: 'rgba(15, 23, 42, 0.6)',
                 color: '#d1d5db',
                 cursor: 'pointer',
-                fontSize: '0.8rem',
+                fontSize: '0.82rem',
               }}
             >
-              Try Another Challenge
+              Reset reveal
             </button>
+          )}
+          {revealVisible && (
+            <span
+              style={{
+                padding: '0.45rem 0.75rem',
+                borderRadius: '8px',
+                background: predictionCorrect ? 'rgba(34, 197, 94, 0.18)' : 'rgba(251, 146, 60, 0.14)',
+                border: predictionCorrect ? '1px solid rgba(34, 197, 94, 0.42)' : '1px solid rgba(251, 146, 60, 0.36)',
+                color: predictionCorrect ? '#bbf7d0' : '#fed7aa',
+                fontSize: '0.83rem',
+                fontWeight: 650,
+              }}
+            >
+              {predictionCorrect ? 'Prediction matched.' : 'Prediction missed.'} Actual contributor: {actualContributorLabel}.
+            </span>
+          )}
+          {revealVisible && (
+            <span style={{ color: '#9ca3af', fontSize: '0.8rem' }}>
+              Top attention token: {topAttentionLabel} at {(topWeight * 100).toFixed(1)}%.
+            </span>
+          )}
           </div>
-        )}
       </div>
 
       {/* Token sequence */}
@@ -690,7 +875,7 @@ const SelfAttentionExplorer: React.FC = () => {
           }}
         >
           {tokens.map((token, j) => {
-            const w = activeAttentionRow[j] ?? 0;
+            const w = revealVisible ? activeAttentionRow[j] ?? 0 : 0;
             const isQuery = j === activeIndex;
             const baseAlpha = isQuery ? 0.3 : 0.1;
             const bgAlpha = baseAlpha + w * 0.9;
@@ -700,8 +885,8 @@ const SelfAttentionExplorer: React.FC = () => {
               <button
                 key={`${token}-${j}`}
                 type="button"
-                onMouseEnter={() => setHoveredIndex(j)}
-                onFocus={() => setHoveredIndex(j)}
+                onMouseEnter={() => changeActiveIndex(j)}
+                onFocus={() => changeActiveIndex(j)}
                 style={{
                   padding: '0.35rem 0.8rem',
                   borderRadius: '9999px',
@@ -747,7 +932,7 @@ const SelfAttentionExplorer: React.FC = () => {
           }}
         >
           Highlighted chip = query token. Orange intensity on other chips =
-          attention weight to that token.
+          {revealVisible ? 'attention weight to that token.' : 'locked until reveal.'}
         </div>
       </div>
 
@@ -761,7 +946,7 @@ const SelfAttentionExplorer: React.FC = () => {
           alignItems: 'stretch',
         }}
       >
-        {/* Entropy gauge */}
+        {/* Distribution readout */}
         <div
           style={{
             flex: '0 0 200px',
@@ -771,40 +956,55 @@ const SelfAttentionExplorer: React.FC = () => {
             border: '1px solid #1f2937',
           }}
         >
-          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.3rem' }}>
-            Attention Focus
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {revealVisible ? (
+            <>
+              <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '0.3rem' }}>
+                Attention Focus
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    height: '8px',
+                    borderRadius: '999px',
+                    background: '#1f2937',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${focusPercent}%`,
+                      height: '100%',
+                      borderRadius: '999px',
+                      background: Number(focusPercent) > 70
+                        ? 'linear-gradient(to right, #f59e0b, #ef4444)'
+                        : Number(focusPercent) > 40
+                          ? 'linear-gradient(to right, #14b8a6, #f59e0b)'
+                          : 'linear-gradient(to right, #6366f1, #14b8a6)',
+                      transition: 'width 0.3s ease-out',
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#e5e7eb', minWidth: '40px' }}>
+                  {focusPercent}%
+                </span>
+              </div>
+              <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                Entropy: {currentEntropy.toFixed(2)} / {maxEntropy.toFixed(2)} bits
+              </div>
+            </>
+          ) : (
             <div
               style={{
-                flex: 1,
-                height: '8px',
-                borderRadius: '999px',
-                background: '#1f2937',
-                overflow: 'hidden',
+                color: '#9ca3af',
+                fontSize: '0.82rem',
+                fontWeight: 550,
+                lineHeight: 1.45,
               }}
             >
-              <div
-                style={{
-                  width: `${focusPercent}%`,
-                  height: '100%',
-                  borderRadius: '999px',
-                  background: Number(focusPercent) > 70
-                    ? 'linear-gradient(to right, #f59e0b, #ef4444)'
-                    : Number(focusPercent) > 40
-                      ? 'linear-gradient(to right, #14b8a6, #f59e0b)'
-                      : 'linear-gradient(to right, #6366f1, #14b8a6)',
-                  transition: 'width 0.3s ease-out',
-                }}
-              />
+              Distribution readout locked until reveal.
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#e5e7eb', minWidth: '40px' }}>
-              {focusPercent}%
-            </span>
-          </div>
-          <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: '0.25rem' }}>
-            Entropy: {currentEntropy.toFixed(2)} / {maxEntropy.toFixed(2)} bits
-          </div>
+          )}
         </div>
 
         {/* Dynamic insight */}
@@ -813,22 +1013,28 @@ const SelfAttentionExplorer: React.FC = () => {
             flex: '1 1 300px',
             padding: '0.75rem',
             borderRadius: '0.75rem',
-            background: temperature < 0.6
-              ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))'
-              : temperature > 1.5
-                ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05))'
-                : 'linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(20, 184, 166, 0.05))',
-            border: temperature < 0.6
-              ? '1px solid rgba(245, 158, 11, 0.3)'
-              : temperature > 1.5
-                ? '1px solid rgba(99, 102, 241, 0.3)'
-                : '1px solid rgba(20, 184, 166, 0.3)',
+            background: revealVisible
+              ? temperature < 0.6
+                ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))'
+                : temperature > 1.5
+                  ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05))'
+                  : 'linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(20, 184, 166, 0.05))'
+              : 'rgba(15, 23, 42, 0.8)',
+            border: revealVisible
+              ? temperature < 0.6
+                ? '1px solid rgba(245, 158, 11, 0.3)'
+                : temperature > 1.5
+                  ? '1px solid rgba(99, 102, 241, 0.3)'
+                  : '1px solid rgba(20, 184, 166, 0.3)'
+              : '1px solid #1f2937',
             fontSize: '0.8rem',
             color: 'rgba(255, 255, 255, 0.9)',
             lineHeight: 1.5,
           }}
         >
-          {currentInsight}
+          {revealVisible
+            ? currentInsight
+            : 'Use the visible Q, K, and V setup plus the temperature to reason about which weighted value vector will dominate the output.'}
         </div>
       </div>
 
@@ -870,7 +1076,7 @@ const SelfAttentionExplorer: React.FC = () => {
                 <button
                   key={preset.name}
                   type="button"
-                  onClick={() => setTemperature(preset.temp)}
+                  onClick={() => changeTemperature(preset.temp)}
                   title={preset.description}
                   style={{
                     fontSize: '0.65rem',
@@ -896,11 +1102,12 @@ const SelfAttentionExplorer: React.FC = () => {
           </div>
           <input
             type="range"
+            aria-label="Softmax temperature"
             min={0.3}
             max={2.5}
             step={0.05}
             value={temperature}
-            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+            onChange={(e) => changeTemperature(parseFloat(e.target.value))}
             style={{
               width: '100%',
               accentColor: '#f59e0b',
@@ -986,20 +1193,54 @@ const SelfAttentionExplorer: React.FC = () => {
         }}
       >
         <Heatmap
-          data={scores}
-          title="Scaled scores QKᵀ / √dₖ"
+          data={visibleScores}
+          title={revealVisible ? 'Scaled scores QKᵀ / √dₖ' : 'Scaled scores QKᵀ / √dₖ (locked)'}
           rowLabels={tokens}
           colLabels={tokens}
           highlightedRow={activeIndex}
         />
         <Heatmap
-          data={attention}
-          title="Attention weights softmax(scores / T)"
+          data={visibleAttention}
+          title={revealVisible ? 'Attention weights softmax(scores / T)' : 'Attention weights softmax(scores / T) (locked)'}
           rowLabels={tokens}
           colLabels={tokens}
           highlightedRow={activeIndex}
         />
       </div>
+
+      {revealVisible ? (
+        <div
+          style={{
+            marginTop: '0.9rem',
+            padding: '0.9rem',
+            borderRadius: '0.75rem',
+            background: 'rgba(15, 23, 42, 0.82)',
+            border: '1px solid #1f2937',
+            color: '#d1d5db',
+            fontSize: '0.82rem',
+            lineHeight: 1.55,
+          }}
+        >
+          <strong>Revealed value mixture:</strong> strongest weighted value contribution is {actualContributorLabel}.{' '}
+          <span>Value contribution norms: [{valueContribution.contributionNorms.map((value) => value.toFixed(3)).join(', ')}]. </span>
+          <span>Value mixture O_i: [{valueMix.map((value) => value.toFixed(3)).join(', ')}]. </span>
+          <span>Probability row sum: {rowSum.toFixed(4)}.</span>
+        </div>
+      ) : (
+        <div
+          style={{
+            marginTop: '0.9rem',
+            padding: '0.9rem',
+            borderRadius: '0.75rem',
+            background: 'rgba(15, 23, 42, 0.72)',
+            border: '1px solid #1f2937',
+            color: '#9ca3af',
+            fontSize: '0.82rem',
+          }}
+        >
+          Derived rows and the final mixture are locked until reveal.
+        </div>
+      )}
 
       <p
         style={{
@@ -1009,8 +1250,9 @@ const SelfAttentionExplorer: React.FC = () => {
         }}
       >
         The highlighted row in each matrix corresponds to the current query
-        token. In the attention heatmap and token chips, bright orange cells
-        show which positions that query attends to most.
+        token. {revealVisible
+          ? 'Bright cells now show which positions the query attends to most.'
+          : 'The output-bearing rows are neutral until you reveal the value-mixing prediction.'}
       </p>
     </section>
   );

@@ -1,0 +1,39 @@
+Project: Continuous Function, a static-exported Next.js + TypeScript learning atlas for the mathematics behind deep learning. The publication standard is source-grounded, prediction-first pedagogy: Intuition -> Math -> Code -> Interactive Demo. Claim checks should only be promoted to substantive-reviewed when the cited sources and local witnesses really support the bounded claim.
+
+Task: audit the published concept `representation-learning/representations` for this claim check:
+
+`representations#representations-feature-contextual-elmo`
+
+Claim:
+"Representation learning trains encoders to transform raw inputs into internal features that make useful factors easier to extract; ELMo-style contextual embeddings make token representations depend on sentence context."
+
+Sources:
+- Bengio, Courville, and Vincent, 2013, "Representation Learning: A Review and New Perspectives"
+- Peters et al., 2018, "Deep contextualized word representations"
+
+Source support I verified before asking you:
+- Bengio et al. define representation learning as learning representations that make useful information easier to extract for classifiers or other predictors and connect good representations to explanatory factors of variation.
+- Peters et al. define ELMo word representations as functions of the entire input sentence, computed from a bidirectional language model, and give the task-specific weighted layer combination `ELMo_task_k = gamma_task sum_j s_task_j h^LM_{k,j}`.
+- Peters et al. analyze contextual biLM representations as disambiguating polysemous words through context.
+
+Local witnesses attached:
+- `content/domains/representation-learning/concepts/representations/concept.yaml`
+- `content/domains/representation-learning/concepts/representations/content.mdx`
+- `content/domains/representation-learning/concepts/representations/viz.tsx`
+- `components/concepts/RepresentationsConcept.test.tsx`
+- `lib/contentLoader.test.ts`
+
+Important local detail to audit:
+- The concept object extractor only exports the first two display equations in the Math section as `#math-object-1` and `#math-object-2`.
+- I revised `#math-object-1` so it should now cover both the learned representation/extractor shape and the ELMo contextual layer-combination formula.
+- I revised `#code-witness-1` to be a tiny contextual-token toy: static `bank` is neutral, `river bank` moves positive on a water-vs-finance probe, and `money bank` moves negative.
+- The interactive demo is broader geometry/prediction-first material and is intentionally not listed as a reviewed claim witness.
+
+Please review for:
+1. Source support: do the two papers substantively support the bounded claim?
+2. Witness alignment: do `#math-object-1` and `#code-witness-1` locally witness the claim rather than unrelated InfoNCE/geometry material?
+3. Pedagogical/scientific caveats: is the caveat in `concept.yaml` sufficient, especially around not certifying InfoNCE, task vectors, anisotropy, retrieval quality, or all representation-learning subfields?
+4. Local UX scope: is it acceptable that the live demo is not counted for this specific claim because it covers broader representation geometry?
+5. Final verdict: PASS to mark `evidence_review.state: substantive-reviewed`, or BLOCK with the smallest required fixes.
+
+Return concise findings with severity. If PASS, give a one-paragraph evidence review summary suitable for `concept.yaml` and keep it under 520 characters.

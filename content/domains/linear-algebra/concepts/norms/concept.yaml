@@ -3,15 +3,15 @@ title: "Norms"
 domain: linear-algebra
 slug: norms
 difficulty: 2
-status: published
+status: review
 importance: important
 prerequisites:
   - dot-product
 leads_to:
-  - distance-metrics
-  - regularization
+  - gradient-clipping
+  - weight-decay-adamw
 related:
-  - projections
+  - dot-product
   - basis-and-span
 tags:
   - linear-algebra
@@ -24,5 +24,5 @@ math_level: undergraduate
 short_description: "A norm is a notion of vector length; different norms change geometry, distances, and what 'small' means in optimization."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 14

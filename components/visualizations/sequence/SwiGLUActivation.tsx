@@ -313,8 +313,8 @@ export default function ActivationFunctionExplorer() {
   }
 
   return (
-    <section className="card interactive-card activation-functions-card" style={{ background: MATH_COLORS.surface }}>
-      <h2>Activation Functions: ReLU, GELU, SiLU &amp; SwiGLU</h2>
+    <section className="card interactive-card activation-functions-card" style={{ background: MATH_COLORS.surface, color: '#e5e7eb' }}>
+      <h2 style={{ color: '#f8fafc' }}>Activation Functions: ReLU, GELU, SiLU &amp; SwiGLU</h2>
       <p className="muted">
         Compare classic activations with SwiGLU, treating it not just as a new curve but as a
         <strong> learned gate</strong> where one projection modulates another.

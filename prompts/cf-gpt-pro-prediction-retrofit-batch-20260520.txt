@@ -1,0 +1,29 @@
+You are GPT-Pro acting as a senior learning-science + product-design reviewer for Continuous Function.
+
+Context:
+- Product north star: Continuous Function should make modern deep learning math intuitive through Intuition -> Math -> Code -> Interactive Demo.
+- Current implementation direction: every important demo should become prediction-first, emit compact measured state, and carry the learner's smallest useful observation across concept/search/graph/paper surfaces.
+- Recent implemented slices:
+  1. Efficient Attention / KV Cache Mechanics now emits demo state under conceptId="efficient-attention": sequence length L, no-cache KV work, cached KV work, saved compute, current decode-step work, challenge prediction, actual bucket, correctness, and actual savings.
+  2. Pretraining Data Mixtures is being retrofitted with a predict-before-reveal gate around which held-out slice has the highest cross-entropy. Losses, contamination, and entropy should stay hidden until prediction.
+  3. Tree Search Reasoning already has a branch prediction -> max backup reveal loop with compact demo state.
+
+Please critique this direction as if you are deciding what to implement next, not writing marketing copy.
+
+Files to inspect if attached:
+- components/foundations/KVCacheViz.tsx
+- components/foundations/PretrainingDataMixturesViz.tsx
+- components/foundations/TreeSearchReasoningViz.tsx
+- components/concepts/DemoPredictionCheckpoint.tsx
+- lib/demoState.ts
+- content/_agent/PRODUCT_NORTH_STAR.md
+- content/_agent/CONCEPT_QUALITY_BAR.md
+
+Deliver:
+1. The 5 highest-impact improvements to the prediction-first demo pattern.
+2. Any blocking pedagogical or UX risks in the current pattern.
+3. A recommended next retrofit order across remaining demos, with rationale.
+4. A compact implementation checklist that a coding agent can apply to the next 2 demos.
+5. What NOT to do, especially anything that would make the app feel gimmicky or cognitively heavy.
+
+Be concrete. Prefer specific component/file-level advice over broad UX principles.

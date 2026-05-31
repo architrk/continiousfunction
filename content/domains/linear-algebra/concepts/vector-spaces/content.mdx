@@ -20,6 +20,12 @@ The key idea is not "arrows". Arrows in 2D are a great mental model, but the rea
 - addition: $+: V \times V \to V$
 - scalar multiplication: $\cdot: \mathbb{F} \times V \to V$
 
+The closure encoded in those operation types gives the linear-combination check:
+
+$$
+a u + b v \in V \qquad (u,v \in V,\; a,b \in \mathbb{F}).
+$$
+
 such that for all $u,v,w \in V$ and $a,b \in \mathbb{F}$:
 
 1. $(u+v)+w = u+(v+w)$
@@ -66,5 +72,6 @@ Try this:
 
 1. Drag **u** and **v** around.
 2. Move sliders **a** and **b** to form the linear combination $w = a u + b v$.
+3. Before revealing the span witness, predict whether the two generators sweep a plane, nearly collapse, or collapse to a line/point.
 
-Notice the closure intuition: if you stay inside a vector space, scaling and addition keep you inside.
+Notice the two linked ideas: closure keeps $w$ inside the same ambient space, while the determinant/area witness tells whether the chosen generators can sweep a 2D patch or have collapsed into fewer directions.

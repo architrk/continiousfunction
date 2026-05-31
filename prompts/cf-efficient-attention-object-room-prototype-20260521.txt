@@ -1,0 +1,20 @@
+We are building Continuous Function, a high-signal AI learning platform for the mathematics behind modern AI.
+
+Current product thesis:
+- The core unit is a learning object: concept -> equation -> claim -> source span -> code witness -> demo state -> misconception -> learning route.
+- Object rooms should be shared only when useful, not a generic forum or feed.
+- The first prototype should be non-networked/static/local, but should make the future social/AI/community pattern obvious.
+- The flagship route is Efficient Attention in the Attention & Transformers domain.
+- The page already has a selected-object bar, Learner/Researcher/Experimenter/Professor lenses, prediction-first demos, source/claim panels, and a Research Reading Room with object-attached AI prompts and local action drafts.
+
+Task:
+Critique and design the smallest high-impact "Object Room" prototype for the Efficient Attention concept route.
+
+Please answer with:
+1. The one learning object this prototype should foreground first.
+2. The six or seven contribution cards it should show, using the roadmap categories: student question, professor note, practitioner example, source-backed correction, AI summary, open question, next experiment.
+3. What the copy should teach specifically for Efficient Attention / KV-cache / FlashAttention / GQA style confusion.
+4. What to avoid so this does not become a fake community feed, marketing panel, or generic chatbot.
+5. A desktop/mobile layout recommendation consistent with a Living Notebook Lab: atlas + notebook + lab, current object dominant, low noise, high-signal.
+
+Keep the answer implementation-facing and opinionated. Prefer concrete copy and interaction guidance over broad principles.

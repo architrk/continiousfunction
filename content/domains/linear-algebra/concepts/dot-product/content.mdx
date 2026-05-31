@@ -14,20 +14,65 @@ In ML, this becomes a similarity score (cosine similarity) and the core operatio
 
 ## Math
 
-In $\mathbb{R}^n$, the dot product of $u$ and $v$ is
+Let $u,v \in \mathbb{R}^n$, with coordinates
 
-$$u \cdot v = \sum_{i=1}^n u_i v_i.$$
+$$
+u = (u_1,\ldots,u_n), \qquad v = (v_1,\ldots,v_n).
+$$
 
-It connects algebra to geometry via the angle $\theta$ between the vectors:
+The dot product is the coordinate-wise multiply-and-sum operation
 
-$$u \cdot v = \|u\|\,\|v\|\cos\theta.$$
+$$
+u \cdot v = \sum_{i=1}^n u_i v_i.
+$$
+
+This definition is algebraic, but it is designed to preserve geometry. The squared length of a vector is
+
+$$
+\|u\|^2 = u \cdot u = \sum_{i=1}^n u_i^2,
+$$
+
+so $\|u\| = \sqrt{u\cdot u}$. If $\theta$ is the angle between two nonzero vectors, the same operation satisfies
+
+$$
+u \cdot v = \|u\|\,\|v\|\cos\theta.
+$$
+
+You can read this as:
+
+$$
+\frac{u \cdot v}{\|u\|\,\|v\|} = \cos\theta.
+$$
+
+That ratio is cosine similarity. It removes the lengths and keeps only direction, which is why embeddings often use it as a normalized similarity score.
 
 That immediately gives:
 
 - **Orthogonality:** $u \perp v \iff u\cdot v = 0$.
+- **Alignment:** $u\cdot v > 0$ means the angle is acute, while $u\cdot v < 0$ means the angle is obtuse.
+- **Scaling:** $(au)\cdot v = a(u\cdot v)$, so making one vector twice as long doubles the score.
 - **Projection:** the component of $u$ along $v$ is
 
-$$\operatorname{proj}_v(u) = \frac{u\cdot v}{v\cdot v} \, v \quad (v \neq 0).$$
+$$
+\operatorname{proj}_v(u) = \frac{u\cdot v}{v\cdot v} \, v \quad (v \neq 0).
+$$
+
+The scalar $\frac{u\cdot v}{v\cdot v}$ says how many copies of $v$ fit inside the part of $u$ that points along $v$. The leftover
+
+$$
+u_\perp = u - \operatorname{proj}_v(u)
+$$
+
+is perpendicular to $v$, because
+
+$$
+u_\perp \cdot v
+= \left(u - \frac{u\cdot v}{v\cdot v}v\right)\cdot v
+= u\cdot v - \frac{u\cdot v}{v\cdot v}(v\cdot v)
+= 0.
+$$
+
+In attention, this same operation appears as $q\cdot k$: a query vector receives a larger score when it points in a similar direction to a key vector.
 
 ## Code
 
@@ -52,4 +97,4 @@ print("perp component =", u - proj_u_on_v)
 
 ## Interactive Demo
 
-Drag $u$ and $v$ to see the dot product, angle, and the projection of $u$ onto $v$ update in real time.
+Drag $u$ and $v$, then predict whether the signed projection of $u$ along $v$ points with $v$, nearly vanishes, or points against $v$. Reveal after committing to connect that signed projection with the signs of $u\cdot v$ and $\cos\theta$.

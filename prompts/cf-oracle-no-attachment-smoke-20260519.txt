@@ -1,0 +1,7 @@
+You are Oracle/GPT Pro.
+
+This is a smoke test for the Continuous Function Oracle browser profile after login.
+
+Reply with:
+1. "Oracle profile is working."
+2. One sentence about how you would critique a deep-learning education website.

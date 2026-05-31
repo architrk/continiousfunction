@@ -1,0 +1,32 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas for deep learning concepts. The current trust work separates "source-linked claim metadata" from "substantively reviewed source support." Claim checks are conservative by default; a claim should only be marked `evidence_review.state: substantive-reviewed` when the exact cited source, caveat, and local witness refs honestly support the bounded claim.
+
+Current change to review:
+- I marked one Adam claim as `substantive-reviewed` in `content/domains/optimization/concepts/adam/concept.yaml`.
+- I regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`, moving the queue from 1 reviewed / 50 pending to 2 reviewed / 49 pending.
+- I updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml` to say the attention and Adam claims are now reviewed, with Gradient Descent next.
+
+Exact claim:
+"Adam maintains exponential moving averages of gradients and squared gradients, bias-corrects both from zero initialization, and takes elementwise adaptive steps by subtracting alpha*mhat_t/(sqrt(vhat_t)+epsilon)."
+
+Primary source checked:
+- Kingma and Ba, "Adam: A Method for Stochastic Optimization", arXiv:1412.6980, https://arxiv.org/abs/1412.6980
+
+Source evidence I checked from the paper PDF:
+- Algorithm 1 states vector operations are element-wise.
+- Algorithm 1 initializes `m0` and `v0` as zero vectors.
+- Algorithm 1 updates a biased first moment estimate from the gradient and a biased second raw moment estimate from the squared gradient.
+- Algorithm 1 computes bias-corrected first and second raw moment estimates.
+- Algorithm 1 updates parameters with the adaptive step using `alpha`, `mhat`, `sqrt(vhat)`, and `epsilon`.
+- Sections 2 and 3 explain the zero-initialization bias and correction terms.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the Adam claim is honestly marked `substantive-reviewed` given the source evidence, caveat, and local witness refs.
+3. Whether the review summary is too broad, too vague, or misses an important caveat.
+4. Whether the generated queue/audit/TODO wording remains honest.
+5. Any blocker fixes only. Do not propose broad product ideas here.
+
+Constraints:
+- Keep scope limited to original Adam update mechanics. Do not certify AdamW, AMSGrad, convergence guarantees, generalization, sparse-gradient variants, or framework-specific implementation details.
+- Treat attached source IDs and witness refs as review targets unless the evidence summary and caveat make the bounded support clear.
+- Avoid requiring a full new page rewrite unless the metadata is misleading.

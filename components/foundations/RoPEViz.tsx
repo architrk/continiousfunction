@@ -3,10 +3,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { MATH_COLORS } from '../../lib/mathObjects';
+import { emitDemoState } from '../../lib/demoState';
 
 const SVG_WIDTH = 340;
 const SVG_HEIGHT = 260;
 const MAX_POSITION = 10;
+
+type RoPEGeometryVisualizerProps = {
+  conceptId?: string;
+};
 
 // Fun frequency presets
 const FREQUENCY_PRESETS = [
@@ -72,7 +77,7 @@ function toDegrees(rad: number): number {
   return (rad * 180) / Math.PI;
 }
 
-export default function RoPEGeometryVisualizer() {
+export default function RoPEGeometryVisualizer({ conceptId = 'rope' }: RoPEGeometryVisualizerProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const [positionA, setPositionA] = useState<number>(2);
@@ -451,6 +456,47 @@ export default function RoPEGeometryVisualizer() {
   }, [thetaA, thetaB, deltaTheta, dot]);
 
   const relDist = Math.abs(positionB - positionA);
+  const effectivePositionA = positionA + globalShift;
+  const effectivePositionB = positionB + globalShift;
+  const deltaDegrees = toDegrees(deltaTheta);
+  const predictionError = Math.abs(userGuess - dot);
+
+  useEffect(() => {
+    emitDemoState({
+      conceptId,
+      label: 'RoPE relative-position geometry',
+      summary: `Positions i=${positionA} and j=${positionB} have relative distance ${relDist}; theta step ${thetaStepDeg} degrees gives dot product ${dot.toFixed(3)}. Translation-invariant check: global shift s=${globalShift} moves both positions while |j-i| stays ${relDist}.`,
+      values: [
+        `token A position i: ${positionA}`,
+        `token B position j: ${positionB}`,
+        `global shift s: ${globalShift}`,
+        `effective positions: ${effectivePositionA} and ${effectivePositionB}`,
+        `relative distance |j-i|: ${relDist}`,
+        `theta step: ${thetaStepDeg} degrees/token`,
+        `delta theta: ${deltaDegrees.toFixed(1)} degrees`,
+        `dot product cos(delta theta): ${dot.toFixed(3)}`,
+        `translation invariant: ${globalShift !== 0 ? 'demonstrated by shifted positions' : 'available through global shift control'}`,
+        gameMode ? `prediction phase: ${revealed ? 'revealed' : 'guessing'}` : 'prediction phase: setup',
+        gameMode ? `learner guess: ${userGuess.toFixed(2)}` : null,
+        gameMode && revealed ? `prediction error: ${predictionError.toFixed(3)}` : null,
+      ].filter((value): value is string => Boolean(value)),
+    });
+  }, [
+    conceptId,
+    deltaDegrees,
+    dot,
+    effectivePositionA,
+    effectivePositionB,
+    gameMode,
+    globalShift,
+    positionA,
+    positionB,
+    predictionError,
+    relDist,
+    revealed,
+    thetaStepDeg,
+    userGuess,
+  ]);
 
   return (
     <section className="card interactive-card">

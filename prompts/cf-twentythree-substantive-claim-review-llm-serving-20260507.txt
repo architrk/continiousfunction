@@ -1,0 +1,42 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning/math concepts. We are doing a slow, review-gated claim-evidence sweep so published learner-facing claims are only marked "substantive-reviewed" after exact primary-source support and matching local witnesses.
+
+Current task: review the pending claim check for `llm-systems/llm-serving`.
+
+Claim:
+"LLM serving is a multi-iteration scheduling and memory-management problem: autoregressive decode advances one token at a time, batching must adapt between iterations, and KV cache memory can limit throughput."
+
+Current source ids:
+- `yu-2022-orca`
+- `kwon-2023-pagedattention`
+
+Current local witness refs:
+- `#source-span-yu-2022-orca`
+- `#source-span-kwon-2023-pagedattention`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Important local extraction rule:
+- `lib/conceptObjectSpans.ts` exports only the first two display equations as `#math-object-1` and `#math-object-2`, and only the first fenced code block as `#code-witness-1`.
+- On this page, `#math-object-1` is a latency/TTFT/TPOT decomposition, and `#math-object-2` is the KV-cache memory scaling formula.
+- The first code witness is a toy KV-cache memory and paging-waste calculator.
+- The interactive demo has been softened to toy/local wording; it should not be treated as a production serving benchmark.
+
+Primary-source text is attached as extracted PDF text:
+- `/tmp/cf-llm-serving-source-check/orca-2022.txt`, from https://www.usenix.org/system/files/osdi22-yu.pdf
+- `/tmp/cf-llm-serving-source-check/pagedattention-2023.txt`, from https://arxiv.org/pdf/2309.06180v1
+
+Please act as a strict source-support reviewer. Decide whether this claim can be marked `evidence_review.state: substantive-reviewed` now.
+
+Review questions:
+1. Does Orca substantively support the scheduling part of the claim: generative transformer inference as multi-iteration autoregressive serving, each iteration generating one output token, request-level batching being too static, and the need for iteration-level scheduling plus selective batching?
+2. Does PagedAttention substantively support the memory/throughput part of the claim: high-throughput serving needing sufficiently large batches, KV cache memory being huge and dynamically growing/shrinking, fragmentation or duplication limiting batch size, and memory constraints limiting throughput?
+3. Do the local witnesses `#math-object-1`, `#math-object-2`, `#code-witness-1`, and `#interactive-demo` match the bounded claim as toy serving-mechanism witnesses, or is any witness mismatched/overclaimed?
+4. Is the proposed support/caveat wording narrow enough? It must not imply exact vendor latency, source support for the TTFT/TPOT/goodput formulas, prefill/decode disaggregation, scheduler optimality, hardware-specific bottlenecks, or production serving guarantees.
+
+Desired output:
+- Start with `Approved` or `Not approved as-is`.
+- If not approved, list only the smallest fixes needed.
+- If approved, provide the exact recommended `evidence_review.summary` and any support/caveat tweaks.
+- Be strict about source scope and witness scope; do not broaden into product strategy.

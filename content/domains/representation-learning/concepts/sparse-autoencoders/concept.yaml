@@ -1,0 +1,69 @@
+id: sparse-autoencoders
+title: "Sparse Autoencoders: Feature Dictionaries for Mechanistic Interpretability"
+domain: representation-learning
+slug: sparse-autoencoders
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - representations
+  - superposition
+  - probing
+  - induction-heads
+leads_to:
+  - circuit-discovery
+  - activation-steering
+related:
+  - attention-transformers
+  - rlhf
+tags:
+  - representation-learning
+  - sparse-autoencoders
+  - interpretability
+  - mechanistic-interpretability
+  - autoencoders
+  - feature-steering
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: bricken-2023-monosemanticity
+    kind: article
+    title: "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning"
+    authors: "Bricken et al."
+    year: 2023
+    url: "https://transformer-circuits.pub/2023/monosemantic-features/index.html"
+    note: "Grounds sparse autoencoders as dictionary-learning tools for decomposing activations into more interpretable features."
+  - id: gao-2024-scaling-sae
+    kind: paper
+    title: "Scaling and evaluating sparse autoencoders"
+    authors: "Gao et al."
+    year: 2024
+    url: "https://arxiv.org/abs/2406.04093"
+    note: "Grounds SAE scaling and evaluation tradeoffs for larger language-model activations."
+claim_checks:
+  - id: sae-sparse-dictionary-reconstruction
+    status: source-checked
+    claim: "Sparse autoencoders learn decoder dictionaries that reconstruct language-model activations from sparse latent codes, trading reconstruction error against sparsity so each activation uses a small set of active latents."
+    source_ids:
+      - bricken-2023-monosemanticity
+      - gao-2024-scaling-sae
+    support: "Bricken et al. ground SAEs as dictionary-learning tools for decomposing model activations into learned features. Gao et al. describe SAEs as reconstructing language-model activations from a sparse bottleneck and frame training around the reconstruction-sparsity tradeoff. Local math/code witness the bounded mechanism."
+    caveat: "Certifies only SAE reconstruction/sparsity: decoder dictionaries reconstruct LM activations from sparse latents under sparsity objectives. It does not certify universal monosemanticity, causal completeness, interpretability, steering/circuit usefulness, or TopK/gated dominance."
+    object_refs:
+      - "#source-span-bricken-2023-monosemanticity"
+      - "#source-span-gao-2024-scaling-sae"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Bricken et al. support SAE dictionary learning over transformer activations with a ReLU encoder, decoder/dictionary reconstruction, MSE plus L1 sparsity, and hidden activations as learned features. Gao et al. support language-model activation reconstruction from sparse bottlenecks, L0/MSE evaluation, and reconstruction-sparsity plus TopK direct sparsity control. Local math and code witness the bounded mechanism; the synthetic demo is intentionally outside claim refs."
+short_description: "Sparse autoencoders learn a reusable dictionary of feature directions so dense model activations can be explained by a small set of interpretable latent factors."
+author: codex
+created: "2026-04-21"
+updated: "2026-05-08"
+estimated_read_time: 16

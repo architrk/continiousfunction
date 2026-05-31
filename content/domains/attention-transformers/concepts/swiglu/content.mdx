@@ -1,0 +1,148 @@
+---
+title: "SwiGLU: Gated MLP Blocks in Transformers"
+---
+
+## Intuition
+
+Canonical sources: Shazeer, ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202), Chowdhery et al., ["PaLM: Scaling Language Modeling with Pathways"](https://arxiv.org/abs/2204.02311), Touvron et al., ["LLaMA: Open and Efficient Foundation Language Models"](https://arxiv.org/abs/2302.13971), and Vaswani et al., ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
+
+Attention is the token-mixing part of a transformer block: each token reads from other tokens. The MLP or feedforward sublayer is the token-local writing part: each token takes its own residual vector, expands it into hidden channels, applies a nonlinearity, and writes a correction back.
+
+A plain ReLU or GELU feedforward block asks each hidden channel one question: "how active is this feature?" SwiGLU asks two questions. One projection proposes a value. A second projection produces a gate. The final hidden channel is their product after passing the gate logit through SiLU.
+
+That small change matters conceptually. The MLP is no longer just "linear, activation, linear." It becomes a bank of conditional writes: feature channels can be suppressed, passed, or amplified depending on another learned view of the same token state.
+
+This page is only about the channel-level mechanism. It is not a benchmark claim that SwiGLU always beats GELU, and the common two-thirds hidden-width rule is a parameter-budget comparison, not a law of nature.
+
+## Math
+
+Use row-vector notation for one token. Let
+
+$$
+x \in \mathbb R^{d_{\text{model}}}
+$$
+
+be the residual stream vector for that token. A standard two-matrix feedforward block with hidden width $d_{\text{ff}}$ has roughly
+
+$$
+2d_{\text{model}}d_{\text{ff}}
+$$
+
+matrix parameters, ignoring biases.
+
+SwiGLU uses two input projections and one output projection. Choose a gated hidden width $d_{\text{ff}}^{\prime}$ and define
+
+$$
+W_v, W_g \in \mathbb R^{d_{\text{model}}\times d_{\text{ff}}^{\prime}},
+\qquad
+W_o \in \mathbb R^{d_{\text{ff}}^{\prime}\times d_{\text{model}}}.
+$$
+
+The value and gate logits are
+
+$$
+v=xW_v \in \mathbb R^{d_{\text{ff}}^{\prime}},
+\qquad
+g=xW_g \in \mathbb R^{d_{\text{ff}}^{\prime}}.
+$$
+
+SiLU, also called Swish, is
+
+$$
+\operatorname{SiLU}(z)=z\sigma(z),
+\qquad
+\sigma(z)=\frac{1}{1+e^{-z}}.
+$$
+
+The gated hidden vector is the elementwise product
+
+$$
+h=v\odot \operatorname{SiLU}(g).
+$$
+
+The token-local MLP write is
+
+$$
+y=hW_o
+=\bigl(v\odot \operatorname{SiLU}(g)\bigr)W_o
+=\bigl(xW_v\odot \operatorname{SiLU}(xW_g)\bigr)W_o.
+$$
+
+The parameter count is approximately
+
+$$
+3d_{\text{model}}d_{\text{ff}}^{\prime}.
+$$
+
+To compare it to a two-matrix block with expansion width $d_{\text{ff}}$, set
+
+$$
+d_{\text{ff}}^{\prime}\approx \frac{2}{3}d_{\text{ff}}.
+$$
+
+Then
+
+$$
+3d_{\text{model}}d_{\text{ff}}^{\prime}
+\approx
+3d_{\text{model}}\left(\frac{2}{3}d_{\text{ff}}\right)
+=2d_{\text{model}}d_{\text{ff}}.
+$$
+
+So the usual comparison is not "SwiGLU has a free extra matrix." It is "SwiGLU spends a similar budget differently: two narrower input projections create a learned multiplicative gate."
+
+## Code
+
+This witness mirrors the math exactly. It uses one token vector, two input projections, a SiLU gate, an elementwise product, and an output projection. The final assertion checks the common two-thirds budget comparison.
+
+```python
+import numpy as np
+
+def silu(z):
+    return z / (1.0 + np.exp(-z))
+
+d_model = 6
+d_ff = 12
+d_ff_prime = round((2.0 / 3.0) * d_ff)
+
+x = np.array([[0.7, -0.4, 0.2, 1.1, -0.3, 0.5]])  # shape: (1, d_model)
+
+rng = np.random.default_rng(7)
+W_v = rng.normal(0.0, 0.25, size=(d_model, d_ff_prime))
+W_g = rng.normal(0.0, 0.25, size=(d_model, d_ff_prime))
+W_o = rng.normal(0.0, 0.25, size=(d_ff_prime, d_model))
+
+v = x @ W_v                      # shape: (1, d_ff_prime)
+g = x @ W_g                      # shape: (1, d_ff_prime)
+gate = silu(g)                   # shape: (1, d_ff_prime)
+h = v * gate                     # elementwise product
+y = h @ W_o                      # shape: (1, d_model)
+
+relu_ffn_params = 2 * d_model * d_ff
+swiglu_params = 3 * d_model * d_ff_prime
+ratio = swiglu_params / relu_ffn_params
+
+assert v.shape == (1, d_ff_prime)
+assert g.shape == (1, d_ff_prime)
+assert gate.shape == (1, d_ff_prime)
+assert h.shape == (1, d_ff_prime)
+assert y.shape == (1, d_model)
+assert 0.95 <= ratio <= 1.05
+
+channel = 3
+print({
+    "v_i": float(v[0, channel]),
+    "g_i": float(g[0, channel]),
+    "SiLU(g_i)": float(gate[0, channel]),
+    "product": float(h[0, channel]),
+    "budget_ratio": ratio,
+})
+```
+
+The printed channel is the scalar version of the interactive demo. One number proposes a hidden-channel write, another number controls the gate, and their product decides what reaches the output projection.
+
+## Interactive Demo
+
+Use the Gated MLP Write demo to inspect one synthetic hidden channel. Before reveal, you can see the value projection $v_i$ and the gate logit $g_i$, but not $\operatorname{SiLU}(g_i)$ or the product.
+
+Predict whether the gate suppresses, passes, or amplifies the value. Then reveal the gate coefficient, the product $v_i\operatorname{SiLU}(g_i)$, and a small toy selected-channel contribution through the output projection. The full MLP write would sum many such channel contributions; this demo isolates one. The point is not to memorize a curve; it is to feel why modern transformer MLPs can act like conditional feature writers.

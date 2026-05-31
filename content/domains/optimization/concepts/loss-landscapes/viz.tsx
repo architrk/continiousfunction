@@ -1,151 +1,78 @@
-import { useId, useMemo, useState } from 'react'
-import type { KeyboardEvent } from 'react'
-
 import dynamic from 'next/dynamic'
+import VizShell from '@/components/viz/VizShell'
+import VizStageAdapter from '@/components/viz/VizStageAdapter'
 
-const LossLandscapeViz = dynamic(() => import('../../../../../components/foundations/LossLandscapeViz'), {
-  ssr: false,
-})
-const LossLandscape3DViz = dynamic(() => import('../../../../../components/foundations/LossLandscape3DViz'), {
-  ssr: false,
-})
-const EdgeOfStabilityViz = dynamic(() => import('../../../../../components/foundations/EdgeOfStabilityViz'), {
+const LossLandscapeViz = dynamic(() => import('@/components/foundations/LossLandscapeViz'), {
   ssr: false,
 })
 
-type TabId = 'slice' | 'surface' | 'stability'
+const EdgeOfStabilityViz = dynamic(() => import('@/components/foundations/EdgeOfStabilityViz'), {
+  ssr: false,
+})
 
 export default function LossLandscapesViz() {
-  const uid = useId()
-  const tabs = useMemo(
-    () =>
-      [
-        {
-          id: 'slice' as const,
-          label: '2D Slice',
-          note: 'A readable 2D slice: see valleys, saddles, and why some directions feel "sharp".',
-          Component: LossLandscapeViz,
-        },
-        {
-          id: 'surface' as const,
-          label: '3D View',
-          note: 'A more literal surface view: rotate to see curvature and basins.',
-          Component: LossLandscape3DViz,
-        },
-        {
-          id: 'stability' as const,
-          label: 'Edge Of Stability',
-          note: 'What happens as learning rate approaches the stability boundary.',
-          Component: EdgeOfStabilityViz,
-        },
-      ] as const,
-    []
-  )
-
-  const [active, setActive] = useState<TabId>('slice')
-  const current = tabs.find((t) => t.id === active) ?? tabs[0]
-  const Active = current.Component
-
-  const panelId = `${uid}-panel`
-  const tabId = (id: TabId) => `${uid}-tab-${id}`
-  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
-    const idx = tabs.findIndex((t) => t.id === active)
-    if (idx < 0) return
-    let next: TabId | null = null
-    if (e.key === 'ArrowRight') next = tabs[(idx + 1) % tabs.length].id
-    else if (e.key === 'ArrowLeft') next = tabs[(idx - 1 + tabs.length) % tabs.length].id
-    else if (e.key === 'Home') next = tabs[0].id
-    else if (e.key === 'End') next = tabs[tabs.length - 1].id
-    if (!next) return
-    e.preventDefault()
-    setActive(next)
-    requestAnimationFrame(() => document.getElementById(tabId(next))?.focus())
-  }
-
   return (
-    <div className="wrap">
-      <div className="tabs" role="tablist" aria-label="Loss landscape demos">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`tab ${t.id === active ? 'active' : ''}`}
-            role="tab"
-            id={tabId(t.id)}
-            aria-selected={t.id === active}
-            aria-controls={panelId}
-            tabIndex={t.id === active ? 0 : -1}
-            onClick={() => setActive(t.id)}
-            onKeyDown={onKeyDown}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="note">{current.note}</div>
-
-      <div className="panel" role="tabpanel" id={panelId} aria-labelledby={tabId(active)} tabIndex={0}>
-        <Active />
-      </div>
-
-      <style jsx>{`
-        .wrap {
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        .tabs {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          align-items: center;
-        }
-
-        .tab {
-          appearance: none;
-          border: 1px solid var(--border-subtle);
-          background: rgba(8, 12, 20, 0.35);
-          color: var(--text-secondary);
-          border-radius: 999px;
-          padding: 0.35rem 0.65rem;
-          font-size: 0.85rem;
-          cursor: pointer;
-          transition: border-color 120ms ease, transform 120ms ease, color 120ms ease;
-        }
-
-        .tab:hover {
-          border-color: rgba(59, 130, 246, 0.6);
-          color: var(--text-primary);
-          transform: translateY(-1px);
-        }
-
-        .tab:focus-visible {
-          outline: 2px solid rgba(148, 163, 184, 0.6);
-          outline-offset: 2px;
-        }
-
-        .tab.active {
-          border-color: rgba(59, 130, 246, 0.85);
-          background: rgba(59, 130, 246, 0.18);
-          color: rgba(191, 219, 254, 1);
-        }
-
-        .note {
-          font-size: 0.9rem;
-          color: var(--text-muted);
-          line-height: 1.5;
-        }
-
-        .panel {
-          border: 1px solid var(--border-subtle);
-          border-radius: var(--radius-lg);
-          background: rgba(8, 12, 20, 0.25);
-          padding: 0.75rem;
-        }
-      `}</style>
-    </div>
+    <>
+    <VizShell
+      eyebrow="Interactive demo"
+      title="A 2D slice exposes loss, curvature, and SAM's neighborhood check"
+      subtitle="Step SGD and SAM from the same point, then predict which trajectory ends with lower local sharpness under this toy Hessian proxy."
+      metrics={['2D toy slice', 'lambda-max sharpness proxy', 'SAM perturbation radius rho']}
+      notes={
+        <p>
+          A 2D slice is a diagnostic window, not the full high-dimensional
+          landscape. Here sharpness means a local Hessian lambda-max proxy in
+          this toy surface; in nonconvex regions curvature can be
+          direction-dependent and the Hessian can be indefinite.
+        </p>
+      }
+      challenge={
+        <p>
+          Before checking, predict which path ends with lower measured
+          sharpness after the fixed rollout: SAM, SGD, or neither.
+        </p>
+      }
+    >
+      <VizStageAdapter
+        padding="none"
+        overflowX
+        ariaLabel="Scrollable loss-landscape sharpness visualization"
+      >
+        <LossLandscapeViz chrome="notebook" conceptId="loss-landscapes" />
+      </VizStageAdapter>
+    </VizShell>
+    <VizShell
+      eyebrow="Interactive demo · stage 2"
+      title="Toy stability line: sharpness meets the learning-rate threshold"
+      subtitle="Choose a learning rate, then predict whether this toy trajectory stays safely below lambda-max < 2/eta, hovers near the toy threshold, or crosses into divergence."
+      metrics={['eta learning rate', '2/eta threshold', 'lambda-max edge ratio', 'toy loss trend']}
+      notes={
+        <p>
+          The red line is the local quadratic gradient-descent edge,
+          lambda-max = 2/eta. The teal curve is a toy sharpness trace, not a
+          measured neural-network Hessian. In real training, related
+          edge-of-stability behavior can involve short-term non-monotone loss
+          while long-term loss still decreases; this demo isolates the toy
+          threshold mechanism without making that behavior part of the checked
+          source claim.
+        </p>
+      }
+      challenge={
+        <p>
+          Before revealing the trace, predict the regime: safely below the line,
+          hovering near the toy threshold, or divergent after crossing. Then
+          compare your prediction to lambda-max/(2/eta) and the toy loss trend.
+        </p>
+      }
+    >
+      <VizStageAdapter
+        padding="none"
+        overflowX
+        ariaLabel="Scrollable edge-of-stability visualization"
+      >
+        <EdgeOfStabilityViz chrome="notebook" conceptId="loss-landscapes" />
+      </VizStageAdapter>
+    </VizShell>
+    </>
   )
 }
-

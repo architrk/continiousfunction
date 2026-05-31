@@ -1,0 +1,53 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. The user goal is not just coverage: learning should feel joyful enough to return to voluntarily, visually rich, interactive, deep, mathematically serious, and non-trivial. The site should grow slowly with refined concepts rather than bulk content.
+
+We are executing a "flagship demo shell rollout": port the highest-leverage interactive demos onto a coherent shared `VizShell` / `VizStageAdapter` system, with mechanism-first prediction checks and compact AI companion demo-state emission.
+
+Completed rollout slices:
+
+1. Speculative Decoding
+   - Notebook chrome via `VizStageAdapter`.
+   - Legacy foundation component kept by default.
+   - Mechanism-first prediction checks, deterministic trace, accepted-prefix semantics, residual-repair copy, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+2. Sparse Autoencoders
+   - Filesystem concept route uses `VizShell` + `VizStageAdapter`.
+   - Foundation component supports `chrome="legacy" | "notebook"`.
+   - Mechanism-first prediction checks, calibrated toy frontier claims, nonnegative TopK math/code, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+3. Mixture of Experts
+   - GPT Pro Oracle selected MoE as the next one-component target.
+   - Filesystem concept route uses `VizShell` + `VizStageAdapter`.
+   - Foundation component supports `chrome="legacy" | "notebook"`.
+   - Neutral synthetic-router copy, accessible expert buttons, prediction-check live feedback, softmax concentration wording, load-bar/count fixes, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+Remaining high-priority rollout candidates are attached:
+
+- Diffusion / score matching / flow matching
+- Loss landscapes / 3D surface / edge of stability
+
+Now choose the next concrete slice after MoE. This should be a small implementation pass, not a full multi-week redesign. Because both candidates are multi-demo bundles, you may choose a sub-slice within one concept if that is safer than patching all inner demos at once.
+
+Decision criteria:
+
+- Maximize learning joy and depth: the learner should want to manipulate the demo out of curiosity, and the interaction should expose the actual mechanism.
+- Maximize visual coherence with the new shell without creating nested-card clutter.
+- Avoid broad refactors and avoid breaking legacy `/foundations`.
+- Prefer the smallest slice that can be implemented, locally validated, and then sent back to GPT Pro Oracle for implementation review.
+- Static export must keep working.
+- Avoid backend/account/live-data dependencies.
+- Do not introduce unsupported empirical claims.
+- If a demo uses 3D/canvas/heavy animation, call out concrete verification needs.
+
+Please answer with:
+
+1. "TARGET" with the chosen next target or sub-slice and why it beats the other option now.
+2. "PATCH PLAN" with the exact smallest useful file set.
+3. "PEDAGOGY RISKS" with exact claims/interactions to avoid.
+4. "VISUAL/JOY OPPORTUNITY" with the best way to make this feel more compelling without decorative fluff.
+5. "IMPLEMENTATION NOTES" with concrete prop/CSS/state/copy changes.
+6. "VALIDATION" with exact local checks and route smoke checks.
+
+Assume I will implement one focused slice after your answer, then send it back to GPT Pro Oracle for implementation review.

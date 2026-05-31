@@ -1,0 +1,38 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning concepts. We are doing a source-quality sweep: each published concept should get a narrow `claim_checks` entry only when the page's structured sources and local object anchors actually support the claim. The validator accepts source ids from `concept.yaml` plus object refs like `#source-span-*`, `#math-object-1`, `#code-witness-1`, and `#interactive-demo`.
+
+Current concept: `content/domains/representation-learning/concepts/representations`
+
+Attached files:
+- `concept.yaml`: metadata and sources.
+- `content.mdx`: learner-facing prose, math, and code.
+- `viz.tsx`: prediction-first interactive route wrapper and local demo state.
+
+Current sources:
+- `bengio-2013-representation-learning`
+- `peters-2018-elmo`
+
+What I need from you:
+1. Decide whether the current sources are enough for an initial `source-checked` claim, or whether this page should add a separate contrastive-learning source before claiming InfoNCE/positive-negative training.
+2. If enough for a narrow first claim, propose a validator-safe `claim_checks` entry with:
+   - `id`
+   - `status: source-checked`
+   - claim text under 300 chars
+   - source_ids
+   - support text under 420 chars
+   - caveat text under 420 chars
+   - object_refs chosen only from anchors likely rendered by this page.
+3. Be strict: do not over-certify nearest-neighbor retrieval, linear steering, InfoNCE, anisotropy, task vectors, equivariance, or parallel transport unless the attached sources actually support them.
+4. Tell me whether any local prose should be softened before adding the claim.
+
+Candidate narrow claim:
+Representation learning trains encoders to transform raw inputs into internal features that make useful factors easier to extract; contextual word representations such as ELMo make token vectors depend on surrounding sentence context rather than using one fixed word embedding.
+
+Likely safe object refs if you agree:
+- `#source-span-bengio-2013-representation-learning`
+- `#source-span-peters-2018-elmo`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Return a clear verdict: Pass, Modify, or Block.

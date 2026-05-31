@@ -1,0 +1,40 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The broad objective is to make learning joyful enough to return to, rigorous enough for serious readers, deeply interactive, and expansive across important modern AI/math topics. We use GPT Pro/Oracle extensively as a design/review partner, then verify locally.
+
+Current repo state:
+- Source repo: `/Users/architkhare/Library/Mobile Documents/com~apple~CloudDocs/Repos/continiousfunction`.
+- Working tree is intentionally dirty from a long multi-slice session; choose a narrow next slice and do not request unrelated cleanup.
+- The last completed slice was the RAG notebook-shell rollout: coverage is not correctness. Oracle fix-review returned a ship verdict.
+- The shared demo-shell rollout has now covered Speculative Decoding, Sparse Autoencoders, MoE, Diffusion forward process, Loss Landscapes 2D sharpness, Score Matching, Flow Matching, Edge of Stability, Structured Decoding, SSM Hybrids, and RAG.
+- TODO now says continue with Loss Landscapes 3D, GQA/SwiGLU bridge work, or the next Oracle-selected flagship demo shell slice.
+
+Goal for this Oracle run:
+Pick exactly one next bounded implementation slice that best advances the broad objective without repeating completed work.
+
+Candidate directions:
+1. Grouped-Query Attention filesystem bridge / notebook slice
+   - Prior discovery notes ranked `grouped-query-attention` as a high-value missing filesystem concept after SwiGLU.
+   - Existing `components/foundations/GQAViz.tsx` and sequence visualization exist.
+   - Efficient Attention already mentions GQA broadly, but there is no dedicated filesystem concept.
+   - This would strengthen the attention-serving chain and make KV cache/memory-bandwidth constraints concrete.
+2. SwiGLU filesystem bridge / notebook slice
+   - Prior discovery notes ranked `swiglu` as the top missing transformer-internals concept.
+   - Existing `components/foundations/SwiGLUViz.tsx` and sequence visualization exist.
+   - This would teach multiplicative gating in transformer MLP blocks and connect residual/layernorm/MLP internals.
+3. Loss Landscapes 3D slice
+   - `LossLandscape3DViz` exists, and the loss-landscapes page says the 3D surface remains a separate legacy exploration for later.
+   - Risk: after 2D sharpness and Edge of Stability, it may become visual spectacle unless narrowed to one invariant.
+4. A product-level joy/continuity slice
+   - Home, graph, saved route, paper map, and object-attached discussion have recent work.
+   - Risk: too broad unless narrowed to one route and one learner action.
+
+Please select exactly one next slice.
+
+Return:
+1. The selected slice and why it beats the alternatives now.
+2. The central learner action in one sentence.
+3. Exact files/components likely to change.
+4. What to avoid.
+5. Whether image generation should be used for this slice, and if yes the precise asset brief; if no, say why.
+6. Implementation acceptance checklist and verification gates.
+
+Do not request a broad roadmap. Do not ask for many ideas. Choose one bounded next action that Codex can implement and then send back to Oracle for review.

@@ -1,0 +1,26 @@
+Project: Continuous Function, a Next.js mathematical atlas for deep learning. I implemented a new review-status filesystem concept for `ssm-hybrids` after a GPT Pro/Oracle scope review.
+
+Scope decision already accepted:
+- This should be `status: review`, not published yet.
+- Central mechanism: replace a growing explicit KV cache with a fixed recurrent state, then recover some lost expressivity with selectivity and local/hybrid attention.
+- Existing `SSMViz` and `MambaViz` are acceptable first demos only if framed as toy mechanism isolates.
+
+What I implemented:
+- `content/domains/attention-transformers/concepts/ssm-hybrids/concept.yaml`
+- `content/domains/attention-transformers/concepts/ssm-hybrids/content.mdx`
+- `content/domains/attention-transformers/concepts/ssm-hybrids/viz.tsx`
+- Product graph `ssm-hybrids` now has live status and href.
+
+Local checks already pass:
+- `npm run generate-content`
+- `npm run validate-content` reports 67 content concepts, 0 warnings, 0 errors.
+- `npm run typecheck`
+- `CF_NEXT_BUILD_CPUS=1 npm run build`, with only existing raw-img and KaTeX newline warnings.
+- Chrome CDP route check: `/domains/attention-transformers/ssm-hybrids/` returns 200, review status is visible, live demo mounts, toy selectivity framing is visible, and desktop/mobile document width stays in viewport.
+
+Please review the implemented concept:
+1. Any blocking correctness issues in the math, code witness, or systems-memory claims?
+2. Any pedagogy issues where the page still reads like a survey instead of one mechanism?
+3. Any overclaims around Mamba, Mamba-2/SSD, Jamba, Griffin/RecurrentGemma, selectivity, or fixed-state memory?
+4. Any metadata/link/status issue before keeping this as review-status?
+5. Return blocking fixes, important improvements, optional polish, and whether review-status is acceptable.

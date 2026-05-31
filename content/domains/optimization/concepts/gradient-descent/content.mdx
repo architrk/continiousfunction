@@ -1,0 +1,113 @@
+---
+title: "Gradient Descent"
+---
+
+## Intuition
+
+A model can receive one scalar complaint, the loss is high, while having thousands or millions of parameters. Which way should those parameters move?
+
+Gradient descent is the basic answer behind most neural-network training: measure which way the loss rises, then step the other way.
+
+Imagine standing on a landscape in fog. You cannot see the whole terrain, but you can feel the local slope under your feet. The gradient points in the steepest uphill direction. If your goal is to lower the loss, you walk against that direction.
+
+The method is deliberately local. It does not know whether a better valley exists far away, and it can move too slowly or overshoot if the step size is wrong. But it gives a reusable training loop: compute a loss, differentiate it, update parameters, repeat.
+
+This page assumes the gradient is already available. Backpropagation explains how computation graphs and reverse-mode autodiff produce that gradient for neural networks; gradient descent explains how an optimizer consumes it.
+
+## Math
+
+Let $L:\mathbb{R}^p\to\mathbb{R}$ be a loss function and let $\theta_t\in\mathbb{R}^p$ be the current parameter vector. Under the standard Euclidean inner product, the gradient
+
+$$
+\nabla_\theta L(\theta_t)
+$$
+
+points in the direction of steepest local increase. Gradient descent uses the update
+
+$$
+\theta_{t+1} = \theta_t - \eta \nabla_\theta L(\theta_t),
+$$
+
+where $\eta > 0$ is the learning rate.
+
+If $L$ is differentiable near $\theta$ and $\nabla L(\theta)\neq 0$, the first-order Taylor approximation says
+
+$$
+L(\theta-\eta\nabla L(\theta)) \approx L(\theta)-\eta\|\nabla L(\theta)\|^2.
+$$
+
+That is the local reason stepping against the gradient should reduce the loss. The learning rate controls how much you trust this local approximation. If $\eta$ is too small, training makes slow progress. If $\eta$ is too large, the update can jump across a valley or even increase the loss. On a quadratic loss, this tradeoff is governed by curvature: steep directions demand smaller stable steps than flat directions.
+
+At a stationary point, $\nabla L(\theta)=0$, so this first-order decrease argument disappears. In a nonconvex loss, such a point might be a minimum, a saddle, or a maximum.
+
+For the quadratic used below,
+
+$$
+L(\theta)=\frac12\theta^{\mathsf T}A\theta,
+$$
+
+with $A$ symmetric positive definite, the gradient is $\nabla L(\theta)=A\theta$. In an eigen-direction of $A$ with curvature $\lambda_i$, the update becomes
+
+$$
+z_{i,t+1}=(1-\eta\lambda_i)z_{i,t}.
+$$
+
+Fixed-step descent is stable only when $|1-\eta\lambda_i|<1$ for every direction, so
+
+$$
+0<\eta<\frac{2}{\lambda_{\max}}.
+$$
+
+This is the stability bound used by the code and the demo.
+
+In deep learning, the exact gradient over the whole dataset is often too expensive. For a training set of $n$ examples, define the empirical risk
+
+$$
+L_{\mathrm{emp}}(\theta)=\frac1n\sum_{i=1}^n \ell(f_\theta(x_i),y_i).
+$$
+
+For a mini-batch $B_t$, we instead compute
+
+$$
+g_t = \nabla_\theta\left(\frac{1}{|B_t|}\sum_{i\in B_t}\ell(f_\theta(x_i),y_i)\right).
+$$
+
+With uniform sampling, $g_t$ estimates $\nabla L_{\mathrm{emp}}(\theta_t)$. That turns gradient descent into stochastic gradient descent. The update is the same shape, but the direction is noisy:
+
+$$
+\theta_{t+1} = \theta_t - \eta g_t.
+$$
+
+## Code
+
+```python
+import numpy as np
+
+# Minimize L(theta) = 0.5 * theta^T A theta.
+# The second coordinate has much higher curvature.
+# Shapes: A is (2, 2), theta is (2,), grad(theta) is (2,).
+A = np.diag([1.0, 20.0])
+theta = np.array([5.0, 5.0])
+lr = 0.08
+
+def loss(theta):
+    return 0.5 * theta @ A @ theta
+
+def grad(theta):
+    return A @ theta
+
+for step in range(20):
+    theta = theta - lr * grad(theta)
+    if step in [0, 1, 2, 5, 19]:
+        print(step + 1, "theta=", np.round(theta, 3), "loss=", round(loss(theta), 3))
+```
+
+For this quadratic, $\lambda_{\max}=20$, so stable fixed-step descent needs $0<\eta<2/\lambda_{\max}=0.1$. Try `lr = 0.005`, `0.08`, and `0.12` to see slow movement, stable zig-zagging, and instability.
+
+## Interactive Demo
+
+Use the learning-rate slider on the stretched quadratic bowl. The contours show the loss, the blue path shows repeated gradient-descent updates, and the brown arrow shows the first local step.
+
+The presets start with the same high curvature as the code example, $\lambda_{\max}=20$, so $\eta=0.08$ is stable while $\eta=0.12$ is not. The key comparison is the learning rate against the stability bound $2/\lambda_{\max}$ for this quadratic. A tiny learning rate crawls. A large but stable learning rate zig-zags across the high-curvature direction while still reducing loss. A learning rate above the bound eventually escapes instead of descending.
+
+Change curvature while keeping the same learning rate. The gradient formula has not changed, but the safe step size has: steeper curvature makes the local slope become stale faster.

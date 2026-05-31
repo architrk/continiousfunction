@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { clearDemoState, emitDemoState } from '../../lib/demoState'
 import { MATH_COLORS, softmax, matmul } from '../../lib/mathObjects'
 
 const GEOM_WIDTH = 320
@@ -11,6 +12,12 @@ const MATRIX_HEIGHT = 260
 const MATRIX_PADDING = 40
 
 type Vec2 = [number, number]
+
+type AttentionGeometryDemoProps = {
+  conceptId?: string
+}
+
+export const TOP_KEY_TOLERANCE = 1e-6
 
 const D_K = 2
 const BASE_SCALE = Math.sqrt(D_K)
@@ -76,6 +83,18 @@ function weightedSum(weights: number[], vectors: Vec2[]): Vec2 {
   return acc
 }
 
+export function getTopKeyWinners(
+  weights: number[],
+  tolerance = TOP_KEY_TOLERANCE
+): number[] {
+  if (weights.length === 0) return []
+  const maxWeight = Math.max(...weights)
+  return weights
+    .map((weight, index) => ({ weight, index }))
+    .filter(({ weight }) => Math.abs(weight - maxWeight) <= tolerance)
+    .map(({ index }) => index)
+}
+
 // --- Toy sequence + projection matrices ---
 // 4 tokens in a 2D embedding space
 const TOKENS: { id: number; label: string; short: string; embed: Vec2 }[] = [
@@ -116,7 +135,7 @@ function scaleScores(scores: number[][], divisor: number): number[][] {
   return scores.map((row) => row.map((v) => v / divisor))
 }
 
-export default function AttentionGeometryDemo() {
+export default function AttentionGeometryDemo({ conceptId = 'attention-transformers' }: AttentionGeometryDemoProps) {
   // Temperature / scaling factor for logits
   const [temperature, setTemperature] = useState(BASE_SCALE)
   // Toggle between raw scores and softmax weights
@@ -124,13 +143,9 @@ export default function AttentionGeometryDemo() {
   // Focus on a single query row at a time
   const [activeTokenIndex, setActiveTokenIndex] = useState(0)
 
-  // Prediction game state
-  const [challengeMode, setChallengeMode] = useState(false)
+  // Local prediction gate: learners commit to a top key before seeing the row.
   const [prediction, setPrediction] = useState<number | null>(null)
   const [revealed, setRevealed] = useState(false)
-  const [score, setScore] = useState(0)
-  const [streak, setStreak] = useState(0)
-  const [totalAttempts, setTotalAttempts] = useState(0)
 
   const scaledScores = scaleScores(RAW_SCORES, temperature)
 
@@ -155,13 +170,12 @@ export default function AttentionGeometryDemo() {
     (Math.min(GEOM_WIDTH, GEOM_HEIGHT) / 2 - 30) / (valueExtent || 1)
 
   const activeWeights = attentionWeights[activeTokenIndex]
+  const activeScoreRow = scaledScores[activeTokenIndex]
   const activeOutput = outputs[activeTokenIndex]
 
   // Find the key with maximum attention for current query
-  const maxAttentionKeyIndex = activeWeights.reduce(
-    (maxIdx, weight, idx, arr) => (weight > arr[maxIdx] ? idx : maxIdx),
-    0
-  )
+  const topKeyWinnerIndices = getTopKeyWinners(activeWeights)
+  const maxAttentionKeyIndex = topKeyWinnerIndices[0] ?? 0
 
   // Compute entropy of attention distribution (Oracle suggestion: entropy gauge!)
   const entropy = -activeWeights.reduce((sum, p) => {
@@ -174,28 +188,38 @@ export default function AttentionGeometryDemo() {
   // Effective number of tokens attended (exp(entropy))
   const effectiveTokens = Math.pow(2, entropy)
 
-  // Handle prediction check
-  const checkPrediction = () => {
-    if (prediction === null) return
-    setRevealed(true)
-    setTotalAttempts((prev) => prev + 1)
-    if (prediction === maxAttentionKeyIndex) {
-      setScore((prev) => prev + 10 + streak * 2)
-      setStreak((prev) => prev + 1)
-    } else {
-      setStreak(0)
+  const resetReveal = () => {
+    setPrediction(null)
+    setRevealed(false)
+    clearDemoState(conceptId)
+  }
+
+  const choosePrediction = (keyIndex: number) => {
+    setPrediction(keyIndex)
+    if (revealed) {
+      setRevealed(false)
+      clearDemoState(conceptId)
     }
   }
 
-  // Reset for next round
-  const nextChallenge = () => {
-    // Randomize temperature for variety
-    const randomTemp = 0.5 + Math.random() * 3.5
-    setTemperature(randomTemp)
-    // Randomize active query
-    setActiveTokenIndex(Math.floor(Math.random() * TOKENS.length))
-    setPrediction(null)
-    setRevealed(false)
+  const revealDistribution = () => {
+    if (prediction === null) return
+    setRevealed(true)
+  }
+
+  const changeTemperature = (nextTemperature: number) => {
+    setTemperature(nextTemperature)
+    resetReveal()
+  }
+
+  const changeActiveToken = (nextIndex: number) => {
+    setActiveTokenIndex(nextIndex)
+    resetReveal()
+  }
+
+  const changeViewMode = (nextViewMode: 'scores' | 'weights') => {
+    setViewMode(nextViewMode)
+    resetReveal()
   }
 
   const focusToken = TOKENS[activeTokenIndex]
@@ -222,6 +246,100 @@ export default function AttentionGeometryDemo() {
   )
 
   const temperatureRatio = temperature / BASE_SCALE
+  const topToken = TOKENS[maxAttentionKeyIndex]
+  const topWeight = activeWeights[maxAttentionKeyIndex] ?? 0
+  const predictionCorrect =
+    prediction !== null && topKeyWinnerIndices.includes(prediction)
+  const predictedToken = prediction === null ? null : TOKENS[prediction]
+  const tiedTopKeyCopy = topKeyWinnerIndices
+    .map((index) => `K(${TOKENS[index].short})`)
+    .join(', ')
+  const geometryEvidenceSteps = [
+    {
+      step: '01',
+      label: 'Predict',
+      detail:
+        predictedToken === null
+          ? `Choose a key for query ${focusToken.short}.`
+          : `Committed to K(${predictedToken.short}).`,
+    },
+    {
+      step: '02',
+      label: 'Observe',
+      detail: revealed
+        ? `${tiedTopKeyCopy} at ${(topWeight * 100).toFixed(1)}% top weight.`
+        : 'The attention row stays locked until reveal.',
+    },
+    {
+      step: '03',
+      label: 'Ground',
+      detail: revealed
+        ? `Dot products became a softmax row with ${entropy.toFixed(2)} bits entropy.`
+        : `Compare Q(${focusToken.short}) against the K directions.`,
+    },
+    {
+      step: '04',
+      label: 'Carry',
+      detail: revealed
+        ? predictionCorrect
+          ? 'Matched. Save the row state for the next question.'
+          : `Compare your answer with ${tiedTopKeyCopy}.`
+        : 'Carry the row, entropy, and output vector after reveal.',
+    },
+  ]
+  const geometryActiveEvidenceIndex = revealed ? 3 : 0
+
+  useEffect(() => {
+    return () => clearDemoState(conceptId)
+  }, [conceptId])
+
+  useEffect(() => {
+    if (!revealed || prediction === null || predictedToken === null) return
+
+    emitDemoState({
+      conceptId,
+      label: 'Prediction-first attention top-key reveal',
+      summary: `Predicted K(${predictedToken.short}); actual top key K(${topToken.short}); query ${focusToken.short}, T=${temperature.toFixed(2)}, top weight ${(topWeight * 100).toFixed(1)}%, entropy ${entropy.toFixed(2)} bits.`,
+      values: [
+        `prediction: ${predictedToken.short}`,
+        `actual top key: ${topToken.short}`,
+        `prediction correct: ${predictionCorrect ? 'yes' : 'no'}`,
+        `active query: ${focusToken.short}`,
+        `temperature T: ${temperature.toFixed(2)} (${temperatureRatio.toFixed(2)}x sqrt(d_k))`,
+        `view mode: ${viewMode}`,
+        `score row: [${activeScoreRow.map((value) => value.toFixed(2)).join(', ')}]`,
+        `attention row: [${activeWeights.map((value) => value.toFixed(3)).join(', ')}]`,
+        `top attention weight: ${(topWeight * 100).toFixed(1)}%`,
+        `attention entropy: ${entropy.toFixed(3)} bits`,
+        `effective attended tokens: ${effectiveTokens.toFixed(2)}`,
+        `output vector: [${activeOutput[0].toFixed(3)}, ${activeOutput[1].toFixed(3)}]`,
+        `row probability sum: ${(rowsSum[activeTokenIndex] ?? 0).toFixed(4)}`,
+        `top-key winners: ${tiedTopKeyCopy}`,
+        'visible attention distribution: revealed',
+        'evidence loop: predict -> observe -> ground -> carry',
+      ],
+    })
+  }, [
+    activeScoreRow,
+    activeWeights,
+    activeOutput,
+    activeTokenIndex,
+    conceptId,
+    effectiveTokens,
+    entropy,
+    focusToken.short,
+    prediction,
+    predictedToken,
+    predictionCorrect,
+    revealed,
+    rowsSum,
+    temperature,
+    temperatureRatio,
+    topToken.short,
+    topWeight,
+    tiedTopKeyCopy,
+    viewMode,
+  ])
 
   const toGeomSvg = ([x, y]: Vec2): { x: number; y: number } => ({
     x: GEOM_CENTER_X + x * geomScale,
@@ -242,147 +360,184 @@ export default function AttentionGeometryDemo() {
         dictionary lookup: each query softly chooses which tokens to copy from.
       </p>
 
-      {/* Challenge Mode Toggle & Game UI */}
+      {/* Local prediction gate */}
       <div
+        data-child-demo-gate="attention-top-key"
         style={{
-          padding: '1rem',
+          padding: '0.85rem',
           marginBottom: '1rem',
-          borderRadius: '10px',
-          background: challengeMode
-            ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
-            : '#f9fafb',
-          border: challengeMode ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+          borderRadius: '8px',
+          background: '#fffaf0',
+          border: revealed ? '1px solid #f59e0b' : '1px solid #d6c7ad',
+          boxShadow: '0 16px 34px rgba(15, 23, 42, 0.08)',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: challengeMode ? '1rem' : 0 }}>
-          <button
-            type="button"
-            onClick={() => {
-              setChallengeMode(!challengeMode)
-              if (!challengeMode) nextChallenge()
-            }}
+        <div style={{ display: 'grid', gap: '0.35rem', marginBottom: '0.75rem' }}>
+          <span
             style={{
-              padding: '0.5rem 1rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: challengeMode
-                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-              color: 'white',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '0.9rem',
+              color: '#0f766e',
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              fontFamily:
+                'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
             }}
           >
-            {challengeMode ? '🛑 Exit Challenge' : '🎮 Start Challenge Mode'}
+            child prediction checkpoint
+          </span>
+          <strong style={{ color: '#111827', lineHeight: 1.25 }}>
+            Which key receives the highest attention weight for query {focusToken.short}?
+          </strong>
+          <p style={{ margin: 0, color: '#475569', lineHeight: 1.45 }}>
+            Commit before the row is revealed, then use the live geometry to explain why that key wins.
+          </p>
+        </div>
+
+        <div
+          role="group"
+          aria-label="Attention top-key prediction"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(92px, 1fr))',
+            gap: '0.5rem',
+            marginBottom: '0.75rem',
+          }}
+        >
+          {TOKENS.map((t, i) => (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={prediction === i}
+              onClick={() => choosePrediction(i)}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                minHeight: '2.7rem',
+                border: prediction === i
+                  ? '1px solid #2563eb'
+                  : revealed && topKeyWinnerIndices.includes(i)
+                  ? '1px solid #10b981'
+                  : '1px solid #d1d5db',
+                background: prediction === i
+                  ? '#dbeafe'
+                  : revealed && topKeyWinnerIndices.includes(i)
+                  ? '#d1fae5'
+                  : '#f8fafc',
+                cursor: 'pointer',
+                opacity: revealed && prediction !== i && !topKeyWinnerIndices.includes(i) ? 0.55 : 1,
+                fontWeight: prediction === i || (revealed && topKeyWinnerIndices.includes(i)) ? 800 : 700,
+                color: prediction === i ? '#1d4ed8' : '#1f2937',
+                overflowWrap: 'anywhere',
+              }}
+            >
+              K({t.short}) {revealed && topKeyWinnerIndices.includes(i) ? 'match' : ''}
+            </button>
+          ))}
+        </div>
+
+        <div
+          aria-label="Attention geometry evidence loop"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '0.5rem',
+            padding: '0.55rem',
+            marginBottom: '0.75rem',
+            borderRadius: '8px',
+            border: '1px solid rgba(148, 163, 184, 0.2)',
+            background:
+              'linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px), #0f172a',
+            backgroundSize: '22px 22px',
+          }}
+        >
+          {geometryEvidenceSteps.map((step, index) => (
+            <article
+              key={step.step}
+              style={{
+                display: 'grid',
+                alignContent: 'start',
+                gap: '0.2rem',
+                minHeight: '6.8rem',
+                padding: '0.6rem',
+                borderRadius: '8px',
+                border:
+                  index === geometryActiveEvidenceIndex
+                    ? '1px solid rgba(96, 165, 250, 0.76)'
+                    : '1px solid rgba(148, 163, 184, 0.18)',
+                background:
+                  index === geometryActiveEvidenceIndex
+                    ? 'rgba(37, 99, 235, 0.24)'
+                    : 'rgba(15, 23, 42, 0.86)',
+              }}
+            >
+              <span
+                style={{
+                  color: '#93c5fd',
+                  fontSize: '0.68rem',
+                  fontFamily:
+                    'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                }}
+              >
+                {step.step}
+              </span>
+              <strong style={{ color: '#f8fafc', lineHeight: 1.18 }}>{step.label}</strong>
+              <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.78rem', lineHeight: 1.35 }}>
+                {step.detail}
+              </p>
+            </article>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={revealDistribution}
+            disabled={prediction === null || revealed}
+            style={{
+              padding: '0.5rem 1.25rem',
+              borderRadius: '8px',
+              border: '1px solid rgba(180, 83, 9, 0.5)',
+              background: prediction !== null && !revealed
+                ? 'linear-gradient(135deg, #fde68a 0%, #f59e0b 100%)'
+                : '#d1d5db',
+              color: prediction !== null && !revealed ? '#1f2937' : '#6b7280',
+              fontWeight: 800,
+              cursor: prediction !== null && !revealed ? 'pointer' : 'not-allowed',
+            }}
+          >
+            Reveal attention distribution
           </button>
 
-          {challengeMode && (
-            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem', fontWeight: 600 }}>
-              <span>🏆 Score: {score}</span>
-              <span>🔥 Streak: {streak}</span>
-              <span>📊 {totalAttempts > 0 ? `${Math.round(((score > 0 ? (totalAttempts - (score / 10)) : 0) / totalAttempts) * 100)}% accuracy` : '0 attempts'}</span>
+          {revealed && predictedToken && (
+            <div
+              style={{
+                display: 'grid',
+                gap: '0.2rem',
+                flex: '1 1 280px',
+                padding: '0.6rem 0.75rem',
+                borderRadius: '8px',
+                border: predictionCorrect ? '1px solid #10b981' : '1px solid #f59e0b',
+                background: predictionCorrect ? '#ecfdf5' : '#fff7ed',
+              }}
+            >
+              <strong style={{ color: predictionCorrect ? '#065f46' : '#7c2d12', lineHeight: 1.25 }}>
+                {predictionCorrect
+                  ? topKeyWinnerIndices.length > 1
+                    ? `Prediction matched. Actual winners: ${tiedTopKeyCopy}.`
+                    : `Prediction matched. Actual: K(${topToken.short}).`
+                  : topKeyWinnerIndices.length > 1
+                  ? `Prediction missed. Actual winners: ${tiedTopKeyCopy}.`
+                  : `Prediction missed. Actual: K(${topToken.short}).`}
+              </strong>
+              <span style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.35 }}>
+                {topKeyWinnerIndices.length > 1
+                  ? `Within tolerance, top keys tie: ${tiedTopKeyCopy}.`
+                  : `Top attention weight ${(topWeight * 100).toFixed(1)}%. Carry this row into the demo state and Research Room.`}
+              </span>
             </div>
           )}
         </div>
-
-        {challengeMode && (
-          <div style={{ marginTop: '0.75rem' }}>
-            <p style={{ fontWeight: 500, marginBottom: '0.75rem' }}>
-              🤔 <strong>Challenge:</strong> For query {focusToken.short}, which key will receive the HIGHEST attention?
-              (Temperature is hidden: T = ???)
-            </p>
-
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-              {TOKENS.map((t, i) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => !revealed && setPrediction(i)}
-                  disabled={revealed}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    border: prediction === i
-                      ? '2px solid #3b82f6'
-                      : revealed && i === maxAttentionKeyIndex
-                      ? '2px solid #10b981'
-                      : '1px solid #d1d5db',
-                    background: prediction === i
-                      ? '#eff6ff'
-                      : revealed && i === maxAttentionKeyIndex
-                      ? '#d1fae5'
-                      : 'white',
-                    cursor: revealed ? 'default' : 'pointer',
-                    opacity: revealed && prediction !== i && i !== maxAttentionKeyIndex ? 0.5 : 1,
-                    fontWeight: prediction === i || (revealed && i === maxAttentionKeyIndex) ? 600 : 400,
-                  }}
-                >
-                  K({t.short}) {revealed && i === maxAttentionKeyIndex && '✓'}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {!revealed ? (
-                <button
-                  type="button"
-                  onClick={checkPrediction}
-                  disabled={prediction === null}
-                  style={{
-                    padding: '0.5rem 1.25rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: prediction !== null
-                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
-                      : '#d1d5db',
-                    color: prediction !== null ? 'white' : '#6b7280',
-                    fontWeight: 600,
-                    cursor: prediction !== null ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  🔍 Reveal Answer
-                </button>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '8px',
-                      background: prediction === maxAttentionKeyIndex
-                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                        : 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
-                      color: 'white',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {prediction === maxAttentionKeyIndex
-                      ? `🎉 Correct! +${10 + (streak - 1) * 2} pts`
-                      : `❌ Wrong! Answer was K(${TOKENS[maxAttentionKeyIndex].short})`}
-                  </span>
-                  <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-                    (T = {temperature.toFixed(2)}, weight = {(activeWeights[maxAttentionKeyIndex] * 100).toFixed(1)}%)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={nextChallenge}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                      color: 'white',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    ➡️ Next Challenge
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="attention-layout">
@@ -594,12 +749,17 @@ export default function AttentionGeometryDemo() {
                 TOKENS.map((colToken, j) => {
                   const score = scaledScores[i][j]
                   const weight = attentionWeights[i][j]
+                  const isActiveRow = i === activeTokenIndex
 
                   let fill: string
                   let fillOpacity: number
                   let displayValue: string
 
-                  if (isScoresView) {
+                  if (!revealed) {
+                    displayValue = '?'
+                    fill = MATH_COLORS.neutral
+                    fillOpacity = isActiveRow ? 0.16 : 0.08
+                  } else if (isScoresView) {
                     // Pre-softmax scaled scores
                     displayValue = score.toFixed(1)
                     if (score > 0 && maxPositive > 0) {
@@ -622,8 +782,6 @@ export default function AttentionGeometryDemo() {
                     fillOpacity = 0.1 + 0.9 * strength
                   }
 
-                  const isActiveRow = i === activeTokenIndex
-
                   return (
                     <g key={`cell-${i}-${j}`}>
                       <rect
@@ -635,7 +793,7 @@ export default function AttentionGeometryDemo() {
                         fillOpacity={fillOpacity}
                         stroke={isActiveRow ? '#111827' : '#e5e7eb'}
                         strokeWidth={isActiveRow ? 1.5 : 1}
-                        onClick={() => setActiveTokenIndex(i)}
+                        onClick={() => changeActiveToken(i)}
                         style={{ cursor: 'pointer' }}
                       />
                       <text
@@ -684,7 +842,11 @@ export default function AttentionGeometryDemo() {
             height={GEOM_HEIGHT}
             className="chart"
             role="img"
-            aria-label="Value vectors and attention-weighted output"
+            aria-label={
+              revealed
+                ? 'Value vectors and attention-weighted output'
+                : 'Value vectors with output locked until reveal'
+            }
           >
             <defs>
               <marker
@@ -723,7 +885,7 @@ export default function AttentionGeometryDemo() {
             {V_VECTORS.map((v, j) => {
               const point = toValueSvg(v)
               const weight = activeWeights[j]
-              const r = 4 + 12 * weight
+              const r = revealed ? 4 + 12 * weight : 7
               return (
                 <g key={`v-${j}`}>
                   <circle
@@ -731,7 +893,7 @@ export default function AttentionGeometryDemo() {
                     cy={point.y}
                     r={r}
                     fill={MATH_COLORS.secondary}
-                    opacity={0.7}
+                    opacity={revealed ? 0.7 : 0.45}
                   />
                   <text
                     x={point.x + 8}
@@ -739,14 +901,16 @@ export default function AttentionGeometryDemo() {
                     fontSize={11}
                     className="label"
                   >
-                    V({TOKENS[j].short}) · {weight.toFixed(2)}
+                    {revealed
+                      ? `V(${TOKENS[j].short}) · ${weight.toFixed(2)}`
+                      : `V(${TOKENS[j].short})`}
                   </text>
                 </g>
               )
             })}
 
             {/* Output vector for the active query */}
-            {activeOutput && (
+            {revealed && activeOutput && (
               <line
                 x1={GEOM_CENTER_X}
                 y1={GEOM_CENTER_Y}
@@ -779,7 +943,7 @@ export default function AttentionGeometryDemo() {
               <button
                 key={preset.name}
                 type="button"
-                onClick={() => setTemperature(preset.value)}
+                onClick={() => changeTemperature(preset.value)}
                 className={Math.abs(temperature - preset.value) < 0.1 ? 'preset-btn active' : 'preset-btn'}
                 title={preset.description}
                 style={{
@@ -811,14 +975,15 @@ export default function AttentionGeometryDemo() {
             max={3 * BASE_SCALE}
             step={0.05}
             value={temperature}
-            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+            onChange={(e) => changeTemperature(parseFloat(e.target.value))}
           />
         </label>
 
-        {/* Entropy Gauge - Oracle suggestion: makes temperature "feel meaningful" */}
+        {/* Distribution diagnostics unlock only after the top-key prediction. */}
         <div
           style={{
             display: 'flex',
+            flexWrap: 'wrap',
             gap: '1.5rem',
             marginTop: '0.75rem',
             padding: '0.75rem 1rem',
@@ -827,52 +992,60 @@ export default function AttentionGeometryDemo() {
             border: '1px solid #e5e7eb',
           }}
         >
-          {/* Entropy meter */}
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                {entropyRatio < 0.3 ? '🎯 Sharp' : entropyRatio < 0.7 ? '〰️ Balanced' : '🌊 Diffuse'}
-              </span>
-              <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                Entropy: {entropy.toFixed(2)} / {maxEntropy.toFixed(2)}
-              </span>
-            </div>
-            <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
-              <div
-                style={{
-                  height: '100%',
-                  width: `${entropyRatio * 100}%`,
-                  background: entropyRatio < 0.3
-                    ? 'linear-gradient(90deg, #10b981 0%, #34d399 100%)'
-                    : entropyRatio < 0.7
-                    ? 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
-                    : 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)',
-                  borderRadius: '4px',
-                  transition: 'width 0.2s ease, background 0.2s ease',
-                }}
-              />
-            </div>
-          </div>
+          {revealed ? (
+            <>
+              {/* Entropy meter */}
+              <div style={{ flex: '1 1 220px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
+                    {entropyRatio < 0.3 ? '🎯 Sharp' : entropyRatio < 0.7 ? '〰️ Balanced' : '🌊 Diffuse'}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                    Entropy: {entropy.toFixed(2)} / {maxEntropy.toFixed(2)}
+                  </span>
+                </div>
+                <div style={{ height: '8px', background: '#e5e7eb', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${entropyRatio * 100}%`,
+                      background: entropyRatio < 0.3
+                        ? 'linear-gradient(90deg, #10b981 0%, #34d399 100%)'
+                        : entropyRatio < 0.7
+                        ? 'linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%)'
+                        : 'linear-gradient(90deg, #ef4444 0%, #f87171 100%)',
+                      borderRadius: '4px',
+                      transition: 'width 0.2s ease, background 0.2s ease',
+                    }}
+                  />
+                </div>
+              </div>
 
-          {/* Effective tokens attended */}
-          <div style={{ textAlign: 'center', minWidth: '100px' }}>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
-              {effectiveTokens.toFixed(1)}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-              effective tokens
-            </div>
-          </div>
+              {/* Effective tokens attended */}
+              <div style={{ textAlign: 'center', minWidth: '100px' }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+                  {effectiveTokens.toFixed(1)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  effective tokens
+                </div>
+              </div>
 
-          {/* Top-1 probability */}
-          <div style={{ textAlign: 'center', minWidth: '80px' }}>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#3b82f6' }}>
-              {(activeWeights[maxAttentionKeyIndex] * 100).toFixed(0)}%
+              {/* Top-1 probability */}
+              <div style={{ textAlign: 'center', minWidth: '80px' }}>
+                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#3b82f6' }}>
+                  {(activeWeights[maxAttentionKeyIndex] * 100).toFixed(0)}%
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  top-1 weight
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, color: '#6b7280', fontSize: '0.9rem', fontWeight: 500 }}>
+              Distribution readout locked until reveal.
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-              top-1 weight
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Educational Insight */}
@@ -916,7 +1089,7 @@ export default function AttentionGeometryDemo() {
                     ? 'toggle-btn active'
                     : 'toggle-btn'
                 }
-                onClick={() => setViewMode('scores')}
+                onClick={() => changeViewMode('scores')}
               >
                 Pre-softmax scores
               </button>
@@ -927,7 +1100,7 @@ export default function AttentionGeometryDemo() {
                     ? 'toggle-btn active'
                     : 'toggle-btn'
                 }
-                onClick={() => setViewMode('weights')}
+                onClick={() => changeViewMode('weights')}
               >
                 Post-softmax weights
               </button>
@@ -942,7 +1115,7 @@ export default function AttentionGeometryDemo() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setActiveTokenIndex(i)}
+                  onClick={() => changeActiveToken(i)}
                   className={
                     i === activeTokenIndex
                       ? 'token-btn active'
@@ -957,14 +1130,20 @@ export default function AttentionGeometryDemo() {
         </div>
 
         <div className="gd-stats attention-stats">
-          <div>
-            <span className="label">Row sums (softmax):</span>{' '}
-            {rowsSum.map((s, i) => (
-              <span key={i} className={i === activeTokenIndex ? 'active-row' : ''}>
-                {i === 0 ? '' : ' · '}row {i + 1} ≈ {s.toFixed(2)}
-              </span>
-            ))}
-          </div>
+          {revealed ? (
+            <div>
+              <span className="label">Row sums (softmax):</span>{' '}
+              {rowsSum.map((s, i) => (
+                <span key={i} className={i === activeTokenIndex ? 'active-row' : ''}>
+                  {i === 0 ? '' : ' · '}row {i + 1} ≈ {s.toFixed(2)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <span className="label">Matrix totals:</span> locked until reveal
+            </div>
+          )}
         </div>
       </div>
 

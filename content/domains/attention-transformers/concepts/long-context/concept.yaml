@@ -26,9 +26,51 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: graduate
+sources:
+  - id: su-2021-roformer
+    kind: paper
+    title: "RoFormer: Enhanced Transformer with Rotary Position Embedding"
+    authors: "Su et al."
+    year: 2021
+    url: "https://arxiv.org/pdf/2104.09864v5"
+    note: "Direct PDF. Grounds RoPE as a rotary position mechanism whose query-key product can express relative offsets; not a RoPE-scaling recipe."
+  - id: press-2021-alibi
+    kind: paper
+    title: "Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation"
+    authors: "Press, Smith, and Lewis"
+    year: 2021
+    url: "https://arxiv.org/pdf/2108.12409v2"
+    note: "Direct PDF. Grounds input-length extrapolation as a position-representation problem via ALiBi; this is a contrasting route, not a RoPE variant."
+  - id: kwon-2023-pagedattention
+    kind: paper
+    title: "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+    authors: "Kwon et al."
+    year: 2023
+    url: "https://arxiv.org/pdf/2309.06180v1"
+    note: "Direct PDF. Grounds long-context serving feasibility as a KV-cache memory-management problem via paged KV-cache allocation."
+claim_checks:
+  - id: position-extrapolation-plus-kv-memory
+    status: source-checked
+    claim: "Long-context engineering has two separate constraints: positional extrapolation must keep attention usable beyond training lengths, and KV-cache memory management must keep long-context serving feasible."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "RoFormer supports rotary relative-position mechanics; ALiBi supports train-short/test-long extrapolation as a position-representation issue; PagedAttention supports KV-cache memory as a serving bottleneck. Local code/demo are toy witnesses for KV sizing and phase constraints, not serving-system proof."
+    source_ids:
+      - su-2021-roformer
+      - press-2021-alibi
+      - kwon-2023-pagedattention
+    support: "RoFormer grounds the rotary relative-position mechanism; ALiBi directly frames train-short/test-long length extrapolation as a position-representation problem; PagedAttention directly frames high-throughput serving as constrained by large, dynamic KV-cache memory."
+    caveat: "Checks two long-context constraints, not every bottleneck; RoFormer is not a RoPE-scaling recipe, ALiBi is not RoPE, and local code/demo are toy witnesses, not production guarantees."
+    object_refs:
+      - "#source-span-su-2021-roformer"
+      - "#source-span-press-2021-alibi"
+      - "#source-span-kwon-2023-pagedattention"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "How frontier LLMs stretch context windows: positional extrapolation (RoPE scaling) plus KV cache memory tricks (GQA, paging, quantization, compression)."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 22
-

@@ -3,8 +3,8 @@
 import { useEffect, useRef, Suspense, lazy } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
-import ExplorableSection from '../../components/ExplorableSection'
+import ExplorableLayout, { useExplorable } from '@/components/explorable/ExplorableLayout'
+import ExplorableSection from '@/components/explorable/ExplorableSection'
 import { Point2D, MATH_COLORS } from '../../lib/mathObjects'
 
 // Explore in depth link component
@@ -30,8 +30,8 @@ function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label
 }
 
 // Import visualization components from foundations (canonical source with gamification)
-const EquivarianceDemo = lazy(() => import('../../components/foundations/EquivarianceViz'))
-const ParallelTransport = lazy(() => import('../../components/foundations/ParallelTransportViz'))
+const EquivarianceDemo = lazy(() => import('@/components/foundations/EquivarianceViz'))
+const ParallelTransport = lazy(() => import('@/components/foundations/ParallelTransportViz'))
 
 function LoadingFallback() {
   return (

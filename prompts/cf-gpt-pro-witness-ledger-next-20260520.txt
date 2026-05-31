@@ -1,0 +1,27 @@
+You are GPT-Pro acting as Continuous Function's standing product, pedagogy, UI, and architecture critic.
+
+Context:
+- The product goal is a static Next.js learning atlas/lab for the math behind modern deep learning.
+- The standing learning loop is: Object -> Question -> Predict -> Witness across Intuition/Math/Code/Demo -> Save smallest observation -> Carry next repair.
+- The just-completed slice extracted an overloaded ConceptNotebookPage selected-object surface into a compact SelectedObjectBar.
+- Visual QA on /domains/attention-transformers/long-context/ records:
+  - desktop: one .selected-object-control, zero stale .selected-object-bar DOM nodes, drawer opens with 3 witness links.
+  - mobile 390x844: collapsed selected-object control height is 112px, Predict/Code/Ask visible, overflowX=0.
+  - selecting the Equation option changes the heading to the selected equation object.
+- The Codex in-app Browser can read this Next dev page's DOM but still has body display none for screenshots; rendered screenshots/metrics came from local Chrome via Playwright using the installed Chrome binary.
+
+Your task:
+Recommend and specify the next implementation slice. Focus on the highest-impact bridge from the compact SelectedObjectBar into a true pedagogical learning loop.
+
+Please answer with:
+1. The smallest next implementation that materially improves learning, choosing between or sequencing:
+   - Long Context WitnessTriad: map equation symbols to code variables and demo controls/outputs.
+   - ObservationLedgerCard: show/save the smallest observation, invariant, held-fixed variables, changed variable, and next repair across surfaces.
+   - Search route-builder buckets: Repair first, Inspect mechanism, Run witness, Source/claim, Continue route.
+2. Exact component/API shape you recommend, including TypeScript props and where state should live.
+3. The first route and first object to implement against, with concrete copy.
+4. Acceptance metrics and visual QA screenshots to collect on desktop and 390px mobile.
+5. Risks or traps, especially static-export constraints, local-first persistence, mobile height, and avoiding fake AI/backend promises.
+6. Files likely to change, ordered by priority.
+
+Be decisive. Do not give a broad brainstorm. Return a buildable spec and call out anything that should not be built yet.

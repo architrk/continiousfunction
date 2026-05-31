@@ -1,0 +1,38 @@
+We are continuing the Continuous Function VAE ELBO gap prediction-first retrofit.
+
+Previous Oracle/GPT Pro review returned no-publish for exactly two blockers:
+
+1. Post-reveal explanation could disagree with the emitted `actual diagnostic` because `claim` used separate thresholds from `expectedDiagnostic`.
+2. Pre-reveal plot scaling leaked hidden posterior geometry because `densityMax` included `posterior` even when the posterior path was hidden.
+
+Fixes applied:
+
+- `content/domains/generative-models/concepts/vaes/viz.tsx`
+  - The post-reveal `claim` now derives solely from `expectedDiagnostic`, with branches for `tight`, `family-mismatch`, and `shift-scale`.
+  - Added a small post-reveal diagnosis line that shows actual diagnosis, learner prediction, and correctness using the same labels as the emitted state.
+  - The plot now computes separate visible-only and revealed scales:
+    - hidden scale uses only prior + q + normalized likelihood
+    - revealed scale may include prior + posterior + q + normalized likelihood
+  - Rendered paths use `plotYMax` and `plotLikelihoodDisplay` selected by `isRevealed`.
+
+- `components/concepts/VAEsViz.test.tsx`
+  - Added regression for quadratic `x = 0.60`, where the emitted actual diagnosis must be `shift-scale` and the visible claim must not tell the separated-family-mismatch story.
+  - Added regression for a linear near-tight case (`q mean = 1`, `q std = 0.5`) where the emitted actual diagnosis must be `tight` and the visible claim must say the ELBO is nearly tight.
+
+Verification after fixes:
+
+- `npm test -- VAEsViz --runInBand` passed: 1 suite, 6 tests.
+
+Please do a fix review only. Do not broaden scope.
+
+Return:
+
+- Verdict: publish or no-publish.
+- If no-publish, list only remaining blockers tied to the two previous issues or any newly introduced severe regression in these exact files.
+- Non-blocking polish may be listed separately.
+
+Explicitly out of scope:
+
+- Auth/database/platform/deployment decisions.
+- Other concept pages.
+- Broad roadmap/design changes.

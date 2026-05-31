@@ -1,0 +1,147 @@
+---
+title: "Bayesian Inference"
+---
+
+## Intuition
+
+Maximum likelihood asks: which parameter makes the data look most probable?
+
+Bayesian inference asks a different question: after seeing the data, what should we believe about each possible parameter?
+
+That difference matters when data is scarce or uncertainty matters. The likelihood is a score of parameters by data fit. A prior is what you believed before the data. A posterior is the updated distribution after both forces are combined.
+
+For a coin with unknown head probability $\theta$, maximum likelihood might pick one number such as $\hat\theta=0.8$. Bayesian inference keeps a whole distribution over plausible $\theta$ values. With little data, the prior can still matter. With lots of data, and with a prior that gives nonzero density near the data-favored values, the likelihood usually concentrates the posterior near the parameters that explain the observations.
+
+The mental model is not "Bayes is MLE plus vibes." It is a different object: MLE returns an estimate, while Bayesian inference returns a distribution over the unknown quantity.
+
+## Math
+
+Let $\theta\in\Theta$ be an unknown parameter and let $D$ be observed data. Bayesian inference starts with a prior distribution or density $p(\theta)$ and a likelihood $p(D\mid\theta)$. Bayes' rule gives the posterior:
+
+$$
+p(\theta\mid D)=\frac{p(D\mid\theta)p(\theta)}{p(D)}.
+$$
+
+For a continuous parameter, the denominator
+
+$$
+p(D)=\int p(D\mid\theta)p(\theta)\,d\theta
+$$
+
+is the evidence or marginal likelihood. Its job is to normalize the posterior so it integrates to $1$.
+
+If $\theta$ lives in a discrete set, replace the integral with a sum. The job is the same: add up prior-weighted likelihood over all possible parameter values.
+
+For parameter comparison, the key proportional form is
+
+$$
+p(\theta\mid D)\propto p(D\mid\theta)p(\theta).
+$$
+
+This is the central contrast with maximum likelihood. The likelihood $p(D\mid\theta)$ is a function of $\theta$, but it is not automatically a probability distribution over $\theta$. Multiplying by a prior and normalizing turns it into the posterior distribution.
+
+For a coin with unknown head probability $\theta\in[0,1]$, suppose the data has $h$ heads and $t$ tails, with $n=h+t$. The likelihood shape is
+
+$$
+p(D\mid\theta)\propto \theta^h(1-\theta)^t.
+$$
+
+If $D$ records only the count of heads, the full binomial likelihood also has a factor $\binom{n}{h}$. That factor does not depend on $\theta$, so it disappears in proportional calculations.
+
+If the prior is a beta distribution with $\alpha,\beta>0$,
+
+$$
+\theta\sim\operatorname{Beta}(\alpha,\beta),
+$$
+
+then
+
+$$
+p(\theta)\propto \theta^{\alpha-1}(1-\theta)^{\beta-1}.
+$$
+
+Multiplying prior and likelihood gives
+
+$$
+p(\theta\mid D)\propto \theta^{\alpha+h-1}(1-\theta)^{\beta+t-1},
+$$
+
+so the posterior is
+
+$$
+\theta\mid D\sim\operatorname{Beta}(\alpha+h,\beta+t).
+$$
+
+The maximum-likelihood estimate is
+
+$$
+\hat\theta_{\mathrm{MLE}}=\frac{h}{h+t}
+$$
+
+when $h+t>0$. The posterior mean is
+
+$$
+\mathbb E[\theta\mid D]=\frac{\alpha+h}{\alpha+\beta+h+t}.
+$$
+
+When $n>0$, the posterior mean can also be written as
+
+$$
+\mathbb E[\theta\mid D]=\frac{\alpha+\beta}{\alpha+\beta+n}\cdot\frac{\alpha}{\alpha+\beta}+\frac{n}{\alpha+\beta+n}\cdot\frac{h}{n}.
+$$
+
+This is the clean bridge to maximum likelihood: the posterior mean is a weighted compromise between the prior mean and the MLE. The posterior distribution is the richer object; the mean is only one summary of it.
+
+It is safe to think of $\alpha+\beta$ as prior strength for this averaging formula. The density exponents are $\alpha-1$ and $\beta-1$, so pseudo-count language is only a mnemonic. The exact conjugate update is the parameter update $\operatorname{Beta}(\alpha,\beta)\to\operatorname{Beta}(\alpha+h,\beta+t)$.
+
+## Code
+
+```python
+import math
+import numpy as np
+
+def log_beta_fn(a, b):
+    return math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
+
+def log_beta_pdf(theta, a, b):
+    if theta <= 0 or theta >= 1:
+        return -math.inf
+    return (a - 1) * math.log(theta) + (b - 1) * math.log(1 - theta) - log_beta_fn(a, b)
+
+alpha, beta = 2.0, 2.0
+heads, tails = 8, 2
+
+post_alpha = alpha + heads
+post_beta = beta + tails
+n = heads + tails
+
+mle = None if n == 0 else heads / n
+prior_mean = alpha / (alpha + beta)
+posterior_mean = post_alpha / (post_alpha + post_beta)
+
+print("MLE:", "undefined" if mle is None else round(mle, 3))
+print("prior mean:", round(prior_mean, 3))
+print("posterior mean:", round(posterior_mean, 3))
+print("posterior:", f"Beta({post_alpha:.1f}, {post_beta:.1f})")
+
+# Grid approximation to show prior * likelihood -> posterior shape.
+grid = np.linspace(0.01, 0.99, 99)
+log_prior = np.array([log_beta_pdf(theta, alpha, beta) for theta in grid])
+log_likelihood = heads * np.log(grid) + tails * np.log(1 - grid)
+log_unnormalized_posterior = log_prior + log_likelihood
+
+# Normalize on the grid for inspection.
+weights = np.exp(log_unnormalized_posterior - log_unnormalized_posterior.max())
+weights = weights / weights.sum()
+grid_mean = float(np.sum(grid * weights))
+
+print("grid posterior mean approx:", round(grid_mean, 3))
+```
+
+The code mirrors the math: the prior is a density over $\theta$, the likelihood scores the observed heads and tails for each $\theta$, and the posterior beta parameters add the observed counts to the prior parameters.
+
+## Interactive Demo
+
+Use the sliders and presets to compare prior strength against observed data. The prior and posterior curves are densities over $\theta$. The likelihood curve is normalized only for display so its shape can be compared on the same plot.
+
+Try the "strong prior, little data" preset, then the "data wins" preset. The MLE only follows the observed fraction. The posterior mean moves between prior belief and data fit, and the full posterior curve shows how much uncertainty remains.

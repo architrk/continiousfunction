@@ -1,0 +1,44 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current state:
+
+- Repo branch: `private/research-learning-loop-20260505`.
+- Product goal: make the site deep, joyful, rigorous, interactive, and worth returning to, while growing slowly through review-gated concept slices.
+- We are continuing the P0 prediction-first demo retrofit pass.
+- Completed in-demo P0 slices now include Reverse-Mode Autodiff, Probability Basics, Random Variables, Variational Autoencoders, Tree Search Reasoning, Dot Product, Vector Spaces, Derivatives, Computation Graphs, Backpropagation, and Scaled Dot-Product Attention Geometry.
+- Latest shipped slice: `AttentionGeometryViz`, a local top-key attention reveal inside `/domains/attention-transformers/attention-transformers/`. Learners now predict which key receives the highest post-softmax attention weight before scores, weights, entropy, value mixing, and measured demo state are revealed. Oracle reviewed the implementation twice and returned publish; tests/build/browser checks passed and the private Vercel deployment succeeded.
+
+Constraints:
+
+- Keep the next slice mechanism-first and bounded.
+- Prefer one concept route or one child visualizer.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, broad platform work, or large curriculum rewrites.
+- Preserve static-export safety and the shared `emitDemoState` / `clearDemoState` checkpoint contract.
+- The result should hide answer-bearing mechanism/output until the learner makes a concrete prediction, then reveal compact measured state for the AI companion handoff.
+- The implementation must be practical for one Codex pass with tests, Oracle review, and desktop/mobile browser checks.
+
+Candidate context:
+
+- Strong candidate family: the remaining child demos inside `attention-transformers/attention-transformers`.
+- `SelfAttentionViz` already has challenge mode and emits row-level measured state, but likely leaks top-token/entropy/score/weight/value information before a local reveal.
+- `AttentionBackpropViz` has gradient-flow challenges and emits gradient-path state, but likely mixes game reveal with always-visible gradient magnitudes.
+- `TransformerArchitectureViz` is large and may be too broad for one pass; include it only if it is clearly the best bounded slice.
+- `AttentionGeometryViz` and its test are attached as the newly completed reference pattern. Do not repeat the same top-key geometry work.
+
+Question:
+
+Pick the next best P0 concept-specific retrofit after Scaled Dot-Product Attention Geometry.
+
+Return:
+
+1. The single recommended next concept/route/component.
+2. The exact prediction question learners should answer.
+3. What must remain visible before reveal.
+4. What must be hidden before reveal.
+5. The classifier or expected-answer logic.
+6. The compact measured demo state to emit after reveal.
+7. The stale-state clearing rules.
+8. The smallest tests and browser checks required.
+9. Any no-go warnings that would make this slice too broad.
+
+Keep it practical and specific enough that Codex can implement the next slice without asking another scoping question.

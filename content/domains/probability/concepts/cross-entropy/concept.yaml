@@ -1,0 +1,56 @@
+id: cross-entropy
+title: "Cross-Entropy"
+domain: probability
+slug: cross-entropy
+difficulty: 3
+status: published
+importance: critical
+prerequisites:
+  - maximum-likelihood
+leads_to:
+  - kl-divergence
+  - label-smoothing
+related:
+  - gradient-descent
+  - knowledge-distillation
+tags:
+  - probability
+  - losses
+  - classification
+  - information-theory
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: goodfellow-2016-deep-learning
+    kind: book
+    title: "Deep Learning"
+    authors: "Goodfellow, Bengio, and Courville"
+    year: 2016
+    url: "https://www.deeplearningbook.org/"
+    note: "Grounds cross-entropy, KL divergence, and maximum-likelihood loss notation for deep learning."
+claim_checks:
+  - id: target-weighted-surprise-nll
+    status: source-checked
+    claim: "Cross-entropy measures target-weighted surprise: the target distribution supplies averaging weights, the model distribution supplies scored probabilities, and for one-hot labels it becomes the negative log probability of the correct class."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-06"
+      reviewer: "codex+oracle"
+      summary: "Checked Goodfellow et al. chapters 3.13 and 5.5: chapter 3 defines entropy as an expectation under P and KL(P||Q) as an expectation under P of log P minus log Q. Chapter 5 derives MLE as minimizing -E_data log p_model, says minimizing KL from empirical data to the model is exactly minimizing cross-entropy, and names softmax negative log-likelihood as cross-entropy."
+    source_ids:
+      - goodfellow-2016-deep-learning
+    support: "Goodfellow et al. define cross-entropy as H(P,Q)=H(P)+KL(P||Q) and equivalently as expected negative log probability under the target distribution, tying it to maximum-likelihood training losses."
+    caveat: "This checks categorical cross-entropy as a probabilistic loss, not multi-label sigmoid BCE, calibration, or the correctness of any particular classifier."
+    object_refs:
+      - "#source-span-goodfellow-2016-deep-learning"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Cross-entropy is the target-weighted surprise of a model distribution; in deep learning it is the bridge from likelihood to a differentiable training loss."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-01"
+estimated_read_time: 16

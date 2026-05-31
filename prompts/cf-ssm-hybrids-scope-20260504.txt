@@ -1,0 +1,28 @@
+Project: Continuous Function, a Next.js mathematical atlas for deep learning. The quality bar is Intuition -> Math -> Code -> Interactive Demo, with slow-growth concepts that are rigorous, visual, and connected.
+
+Task:
+Create a new filesystem concept for `ssm-hybrids`, likely under `content/domains/attention-transformers/concepts/ssm-hybrids/`, because it is already a missing target in:
+- Long Context leads_to `ssm-hybrids`
+- product graph Mamba route
+- legacy foundations concept id `ssm-hybrids`
+- pending TODO: "Add a filesystem concept for state-space and hybrid sequence models (Mamba-2, Jamba, Griffin / RecurrentGemma) that contrasts fixed-state recurrence with KV-cache growth and explains why hybrids matter for long-context systems."
+
+Primary sources I checked:
+- Gu & Dao, "Mamba: Linear-Time Sequence Modeling with Selective State Spaces", arXiv:2312.00752
+- Dao & Gu, "Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality", arXiv:2405.21060
+- AI21 Labs, "Jamba: A Hybrid Transformer-Mamba Language Model", arXiv:2403.19887
+- DeepMind, "RecurrentGemma: Moving Past Transformers for Efficient Open Language Models", arXiv:2404.07839
+
+Existing repo assets:
+- `components/foundations/SSMViz.tsx`
+- `components/foundations/MambaViz.tsx`
+- `data/visualizationMappings.ts` maps `ssm-hybrids` to both visualizations.
+- Legacy `data/foundationsData.ts` has core math and misconceptions for `ssm-hybrids`.
+
+Please scope the concept before implementation:
+1. What should be the one central mechanism and one learner prediction checkpoint?
+2. What exact math should be included without overclaiming? Focus on SSM recurrence, convolution/kernel view, input-dependent selectivity, fixed state versus KV-cache growth, and hybrid local-attention + recurrence.
+3. How should the page connect to Long Context, Efficient Attention, LLM Serving, MoE, and Tree Search/RAG without becoming a survey?
+4. What should the code witness prove, and what should it avoid?
+5. Are the existing `SSMViz` and `MambaViz` acceptable as the first interactive demo, or should the page stay review status?
+6. Return a concise patch plan and any publish-blocking risks.

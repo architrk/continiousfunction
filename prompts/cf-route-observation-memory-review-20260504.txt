@@ -1,0 +1,32 @@
+Project: Continuous Function, a static-export Next.js learning atlas for deep learning and mathematics. Current product direction: make learning joyful and rigorous by preserving the learner's current question across paper mapping, graph routes, and interactive labs.
+
+Recent adjacent work:
+- Home can resume the saved route from localStorage.
+- The graph route and attention-serving module can save route snapshots.
+- The KV memory lab now has an active prediction checkpoint: choose the term GQA/MQA reduces, then compare full MHA with fewer KV heads.
+
+New change to review:
+I added a `lastObservation` field to `LearningRouteSnapshot`. When the learner uses the KV checkpoint experiment button, the attention-serving module saves a compact observation such as:
+`32 -> 8 KV heads: 4.0x smaller`
+with detail:
+`68.7 GB full MHA becomes 17.2 GB with B=4, T=32,768, N_layers=32, d_head=128, bytes=2.`
+and next question:
+`What quality risk would you test when heads share keys and values?`
+
+This observation is shown on the homepage resume panel and the graph carried-route banner.
+
+Question:
+Review this as GPT Pro / Oracle in the role of a rigorous product, pedagogy, and trust critic. Is this the right kind of memory to preserve for a joyful/deep learning loop, or does it risk noise/misleading persistence?
+
+Separate feedback into:
+1. Blocking correctness/trust issues.
+2. Important pedagogy/product improvements.
+3. UI/copy refinements.
+4. What should stay out of scope.
+
+Be concrete and reference the relevant files:
+- `lib/learningRouteSnapshot.ts`
+- `components/product/AttentionServingModule.tsx`
+- `components/home/HomeResumeRoutePanel.tsx`
+- `components/product/GraphProductNavigator.tsx`
+- `content/_agent/CONCEPT_QUALITY_BAR.md`

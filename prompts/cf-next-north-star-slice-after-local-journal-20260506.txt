@@ -1,0 +1,35 @@
+Project: Continuous Function, a private-branch Next.js/TypeScript learning platform for deep mathematical and AI concepts. The north-star goal is to make learning joyful enough to return to voluntarily, visually rich, interactive, mathematically serious, research-grounded, and capable of growing slowly into a learning/collaboration/research platform.
+
+Current branch: private/research-learning-loop-20260505.
+
+Recent shipped slices:
+- local-object-next-action-journal-v1: ResearchReadingRoom now has a browser-local, static/export-safe action journal keyed only by ContentObjectKey. A selected keyed object can save one bounded draft note plus one next action in localStorage, reload it in the same browser, clear only that object's draft, and include the matching draft in the grounded AI handoff prompt. Oracle first returned NO-PUBLISH twice and final fix review returned PUBLISH. No auth/database/API/live write/dynamic route was introduced.
+- structured-decoding-valid-token-mask-reveal-hardening: stricter reveal-state and compact demo-state contract, Oracle PUBLISH after fixes.
+- many prediction-first concept-specific reveal slices already shipped for core math/deep-learning concepts.
+
+Current audit says the north-star goal is still not achieved. The three explicit remaining gaps are:
+1. Source-panel metadata coverage is complete for published concepts, but claim-level source quality still needs per-page review before calling the atlas research-grade.
+2. Prediction-first checkpoints are visible across the demo shell, but many older demos still need concept-specific reveal states and compact state emission before calling prediction-first interaction fully complete.
+3. Research discussion and gradual AI are object-attached and locally resumable on concept pages, but not live, personalized across devices, or backed by database/permissions.
+
+Constraints:
+- Prefer one small bounded implementation slice that can be completed, locally validated, browser-smoked, Oracle-reviewed, committed, and pushed.
+- Do not choose Clerk/Neon/live account wiring yet unless absolutely necessary; external credentials and production setup are not assumed.
+- Keep static/export-safe public atlas behavior.
+- No API route, database writes, middleware, protected routes, live collaboration, account/profile/dashboard, or dynamic anonymous atlas reads unless you argue they are mandatory now.
+- Prefer a slice that compounds the object-key/local journal foundation or improves joy/depth/research rigor.
+- Avoid repeating the just-shipped local action journal.
+- Avoid another broad multi-concept sweep unless the file set is small and the behavior is crisp.
+- Avoid unsupported empirical claims or source over-certification.
+
+Please choose the best next concrete slice and return:
+1. RECOMMENDED SLICE NAME
+2. WHY THIS BEATS THE NEARBY ALTERNATIVES NOW
+3. EXACT BEHAVIOR CONTRACT
+4. FILES/MODULES TO INSPECT FIRST
+5. IMPLEMENTATION PLAN WITH A SMALL WRITE SCOPE
+6. TESTS/VALIDATORS/BROWSER CHECKS
+7. NO-GO BOUNDARIES
+8. WHAT COUNTS AS PUBLISH
+
+I will implement the chosen slice next and send it back to Oracle for implementation review.

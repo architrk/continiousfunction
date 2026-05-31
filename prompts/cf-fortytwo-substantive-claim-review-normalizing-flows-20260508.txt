@@ -1,0 +1,39 @@
+Project: Continuous Function, a static-exported Next.js/TypeScript learning atlas for mathematics and modern AI. The repo is source-grounded: structured `claim_checks[]` are not considered substantively reviewed until the exact source support, caveats, and local witness alignment are checked.
+
+Task: Review whether the next generated claim-evidence queue item may be marked `substantive-reviewed`.
+
+Target:
+- Concept: `generative-models/normalizing-flows`
+- Claim check id: `invertible-change-of-variables-logdet`
+- Current claim:
+  "Normalizing flows compose invertible maps to turn a simple initial density into a richer one; for a tractable finite flow, the log density at a point is computed exactly by evaluating the base log density at the corresponding preimage and adding the inverse-Jacobian log determinant."
+
+Current source:
+- Rezende and Mohamed, 2015, "Variational Inference with Normalizing Flows" (`https://arxiv.org/abs/1505.05770`)
+
+Source excerpts I found in the extracted paper text:
+- Abstract: "a simple initial density is transformed into a more complex one by applying a sequence of invertible transformations"
+- Section 3: "A normalizing flow describes the transformation of a probability density through a sequence of invertible mappings. By repeatedly applying the rule for change of variables, the initial density 'flows' through the sequence of invertible mappings."
+- Finite flows: for invertible smooth mapping `f` with inverse `f^-1`, the transformed density is written as `q(z') = q(z) |det df^-1/dz'| = q(z) |det df/dz|^-1`.
+- Finite composition: `z_K = f_K o ... o f_1(z_0)` and `ln q_K(z_K) = ln q_0(z_0) - sum_k ln |det df_k/dz_{k-1}|`.
+- Section 4.1: to make scalable finite flows, they require efficient determinant computation; planar/radial flows provide low-cost logdet-Jacobian terms.
+
+Local witnesses:
+- `content.mdx` math object 1 states `p_x(x)=p_z(f^{-1}(x)) |det df^{-1}/dx|` and the log form with the inverse-Jacobian log determinant.
+- `content.mdx` math object 2 states finite composition with a negative sum of forward log determinants.
+- `content.mdx` code witness implements a 2D affine flow `x = A z + b`, computes `z = A^{-1}(x-b)`, then `log_pz(z) + log(abs(det(Ainv)))`.
+- `viz.tsx` demo asks the learner to predict whether the Jacobian term raises/lowers/preserves density, then reveals `log p_z(z)`, `log |det A^-1|`, and `log p_x(x)`.
+
+Review questions:
+1. Does the source substantively support the claim as written?
+2. Do the source-span, math, code, and demo witnesses support the same bounded mechanism?
+3. Are there any blockers or wording changes needed before adding:
+   `evidence_review.state: substantive-reviewed`?
+4. Is the current caveat adequate, or should it be tightened?
+5. Provide a concise `evidence_review.summary` if approved.
+
+Please return:
+- Verdict: approve / no-publish
+- Blockers, if any
+- Needed edits, if any
+- Suggested bounded `evidence_review.summary`

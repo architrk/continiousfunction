@@ -1,0 +1,44 @@
+Project: Continuous Function, Next.js/React learning atlas.
+
+I asked for the next P0 prediction-first concept-specific retrofit after the Transformer Architecture residual-shape reveal. You selected `structured-decoding-valid-token-mask-reveal`.
+
+After inspecting the repo, that target is already materially implemented:
+- `content/domains/llm-systems/concepts/structured-decoding/viz.tsx` already wraps the component in a notebook shell titled "Schema masks turn logits into valid-token choices".
+- `components/foundations/StructuredDecodingViz.tsx` already has notebook prediction options for raw top wins, mask changes winner, or no valid token.
+- It already hides allowed/masked columns pre-reveal, reveals valid/invalid mask and masked probabilities, supports Run to EOS only after reveal, and emits demo state with raw top token, masked top token, outcome, rejection mass, next token/state, and prediction correctness.
+- `content/domains/llm-systems/concepts/structured-decoding/content.mdx` already explains masked softmax, valid-token masks, raw probability mass, semantic mismatch, and schema-valid-not-truth boundaries.
+
+Task:
+Choose a different next concrete P0 slice that is not already materially covered by an existing concept-specific reveal. Do not choose Structured Decoding.
+
+Current product objective:
+Make learning feel joyful, deep, interactive, rigorous, and worth returning to. Grow through high-quality mechanism slices rather than broad content dumps.
+
+Current recently completed slices:
+- Derivatives hidden tangent relation
+- Computation Graphs reused-node sensitivity
+- Backpropagation hidden learning signal
+- Attention Geometry top key
+- Self-Attention value mixing
+- Attention Backprop gradient credit
+- Transformer Architecture residual shape
+
+Constraints:
+- Pick exactly one target.
+- One invariant only.
+- Avoid attention/calculus/probability mechanisms just completed unless there is a very strong reason.
+- Prefer a route that is high-value for deep learning/frontier AI, memorable, and shippable in one focused commit.
+- The implementation should hide answer-bearing state until a prediction, then emit compact measured demo state.
+- No auth/database/API work.
+
+Return the same structure as before:
+1. Exact target route/component files to inspect first.
+2. Slice name.
+3. One-sentence invariant the learner should predict.
+4. Correct prediction option and 2-3 distractor options.
+5. Pre-reveal visible state.
+6. Pre-reveal hidden state.
+7. Post-reveal measured demo-state fields.
+8. Lifecycle/reset requirements.
+9. Focused tests to add.
+10. Why this is the best next step versus 2 plausible alternatives.

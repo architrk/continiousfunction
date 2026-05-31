@@ -1,0 +1,68 @@
+id: structured-decoding
+title: "Structured Decoding: Token Masks From Schema Automata"
+domain: llm-systems
+slug: structured-decoding
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - decoding-sampling
+  - tokenization-vocabulary
+leads_to:
+  - retrieval-augmented-generation
+related:
+  - llm-serving
+  - tree-search-reasoning
+  - speculative-decoding
+tags:
+  - llm-systems
+  - decoding
+  - constrained-generation
+  - structured-outputs
+  - automata
+  - json-schema
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: willard-2023-guided-generation
+    kind: paper
+    title: "Efficient Guided Generation for Large Language Models"
+    authors: "Willard and Louf"
+    year: 2023
+    url: "https://arxiv.org/pdf/2307.09702v4"
+    note: "Grounds guided generation as token-logit masking from finite-state or parser state, with vocabulary indexing for efficient valid-token lookup."
+  - id: geng-2025-jsonschemabench
+    kind: paper
+    title: "JSONSchemaBench: A Rigorous Benchmark of Structured Outputs for Language Models"
+    authors: "Geng et al."
+    year: 2025
+    url: "https://arxiv.org/pdf/2501.10868v3"
+    note: "Grounds the distinction between schema compliance, coverage, efficiency, and downstream output quality."
+claim_checks:
+  - id: schema-automaton-token-mask
+    status: source-checked
+    claim: "Structured decoding can turn a schema or grammar state into an allowed-token mask, forcing generation to stay inside the formal constraint while leaving semantic truth and task success outside the guarantee."
+    source_ids:
+      - willard-2023-guided-generation
+      - geng-2025-jsonschemabench
+    support: "Willard and Louf support FSM/parser state plus token-logit masks that zero invalid vocabulary continuations. Geng et al. support constrained decoding as invalid-token masking from constraints and prefix tokens, and evaluate schema compliance separately from coverage, efficiency, and output quality."
+    caveat: "Checks the formal constraint mechanism, not semantic correctness. Real JSON Schema guarantees depend on tokenizer handling, schema-feature coverage, implementation details, and validation semantics. Top-p-after-mask is a local implementation warning."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Willard and Louf support the mask mechanism: guided generation uses FSM/parser state to compute valid vocabulary continuations and zero invalid-token probability. Geng et al. support structured-output framing and the separation between schema compliance, coverage, efficiency, and output quality. Page math/code/demo are toy token-level witnesses; validity is formal, not truth/task success."
+    object_refs:
+      - "#source-span-willard-2023-guided-generation"
+      - "#source-span-geng-2025-jsonschemabench"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "How a schema automaton or parser state turns next-token logits into constraint-valid generation by masking invalid continuations, while leaving truth and task success outside the formal guarantee."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-07"
+estimated_read_time: 22

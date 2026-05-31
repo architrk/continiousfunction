@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
+import { emitDemoState } from '../../lib/demoState'
 import { MATH_COLORS } from '../../lib/mathObjects'
 
 const LANDSCAPE_WIDTH = 320
@@ -84,9 +85,9 @@ const RACE_PRESETS = [
   },
   {
     name: "Momentum's Revenge",
-    description: 'High momentum with moderate LR - momentum can outpace Adam here',
-    lr: 0.008,
-    beta1: 0.95,
+    description: 'Moderate momentum with a small global step - velocity can outpace Adam here',
+    lr: 0.001,
+    beta1: 0.9,
     beta2: 0.9,
     useAdamW: false,
     expectedWinner: 'Momentum' as OptimizerChoice,
@@ -144,6 +145,12 @@ const getCorrectPredictionFeedback = (winner: OptimizerChoice): string => {
     return `Correct! Momentum's exponential moving average of gradients gave it the consistent push needed to navigate this surface.`
   }
   return `Correct! Sometimes vanilla SGD wins - especially when adaptive methods get confused by noisy gradient estimates.`
+}
+
+const optimizerColor = (optimizer: OptimizerChoice): string => {
+  if (optimizer === 'Adam') return '#a855f7'
+  if (optimizer === 'Momentum') return '#0ea5e9'
+  return '#14b8a6'
 }
 
 // Educational insight based on current optimizer state
@@ -209,9 +216,21 @@ interface AdamState extends TrajectoryState {
   t: number
 }
 
+type AdamOptimizerDemoProps = {
+  conceptId?: string
+}
+
 // Rosenbrock loss
 function rosenbrock(x: number, y: number): number {
   return (1 - x) * (1 - x) + 100 * (y - x * x) * (y - x * x)
+}
+
+function safeLoss(value: number): number {
+  return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY
+}
+
+function formatRaceLoss(value: number): string {
+  return Number.isFinite(value) ? value.toFixed(4) : 'diverged'
 }
 
 // Gradient of Rosenbrock
@@ -332,7 +351,7 @@ function computeContourSegments(
   return segments
 }
 
-export default function AdamOptimizerDemo() {
+export default function AdamOptimizerDemo({ conceptId = 'adam' }: AdamOptimizerDemoProps) {
   // Shared hyperparameters
   const [learningRate, setLearningRate] = useState(0.01)
   const [beta1, setBeta1] = useState(0.9)
@@ -618,14 +637,14 @@ export default function AdamOptimizerDemo() {
     return { mHatX, mHatY, vHatX, vHatY, effLrX, effLrY }
   }, [adam, beta1, beta2, learningRate])
 
-  const currentLoss = rosenbrock(adam.x, adam.y)
+  const currentLoss = safeLoss(rosenbrock(adam.x, adam.y))
   const distanceToOptimum = Math.hypot(adam.x - OPT_X, adam.y - OPT_Y)
 
   // Compute losses for each optimizer at current step
   const currentLosses = useMemo(() => ({
-    SGD: rosenbrock(sgd.x, sgd.y),
-    Momentum: rosenbrock(momentum.x, momentum.y),
-    Adam: rosenbrock(adam.x, adam.y),
+    SGD: safeLoss(rosenbrock(sgd.x, sgd.y)),
+    Momentum: safeLoss(rosenbrock(momentum.x, momentum.y)),
+    Adam: safeLoss(rosenbrock(adam.x, adam.y)),
   }), [sgd.x, sgd.y, momentum.x, momentum.y, adam.x, adam.y])
 
   // Determine race winner (lowest loss)
@@ -635,6 +654,23 @@ export default function AdamOptimizerDemo() {
     if (lMom <= lAdam) return 'Momentum'
     return 'Adam'
   }, [currentLosses])
+
+  const sortedRaceLosses = useMemo(
+    () =>
+      (Object.entries(currentLosses) as Array<[OptimizerChoice, number]>).sort(
+        (a, b) => a[1] - b[1]
+      ),
+    [currentLosses]
+  )
+
+  const runnerUp = sortedRaceLosses[1]?.[0] ?? raceWinner
+  const winnerLoss = sortedRaceLosses[0]?.[1] ?? currentLosses[raceWinner]
+  const runnerUpLoss = sortedRaceLosses[1]?.[1] ?? winnerLoss
+  const winnerGap =
+    Number.isFinite(runnerUpLoss) && Number.isFinite(winnerLoss)
+      ? Math.max(0, runnerUpLoss - winnerLoss)
+      : Number.POSITIVE_INFINITY
+  const winnerGapRatio = winnerLoss > EPS ? runnerUpLoss / winnerLoss : Infinity
 
   // Apply a race preset
   const applyRacePreset = useCallback((preset: typeof RACE_PRESETS[number]) => {
@@ -703,6 +739,12 @@ export default function AdamOptimizerDemo() {
 
   // Check if prediction was correct
   const predictionCorrect = lockedPrediction === raceWinner
+  const raceOutcomeVisible = gamePhase === 'revealed'
+  const raceOutcomeLocked = Boolean(lockedPrediction) && !raceOutcomeVisible
+  const visibleLossSummary = raceOutcomeLocked
+    ? `hidden until reveal; learner locked ${lockedPrediction}`
+    : `SGD=${formatRaceLoss(currentLosses.SGD)}, Momentum=${formatRaceLoss(currentLosses.Momentum)}, Adam=${formatRaceLoss(currentLosses.Adam)}`
+  const visibleWinnerSummary = raceOutcomeLocked ? 'hidden until reveal' : raceWinner
 
   // Helpers for moment and variance bar charts
   const renderMomentBars = () => {
@@ -833,6 +875,70 @@ export default function AdamOptimizerDemo() {
   }
 
   const { effLrX, effLrY } = adamStats
+  const effLrRatio = Math.max(effLrX, effLrY) / Math.max(Math.min(effLrX, effLrY), EPS)
+
+  const winnerMechanism = useMemo(() => {
+    if (raceWinner === 'Adam') {
+      return `Adam won by adapting per-coordinate step sizes; the current effective LR ratio is ${effLrRatio.toFixed(2)}x, so the steep and flat directions are not forced to share one step scale.`
+    }
+    if (raceWinner === 'Momentum') {
+      return `Momentum won by turning repeated gradients into velocity; with beta1=${beta1.toFixed(2)}, the accumulated push beat Adam's more cautious RMS normalization.`
+    }
+    return `SGD won because the global step stayed conservative enough to avoid the extra momentum or adaptive overshoot used by the other optimizers.`
+  }, [beta1, effLrRatio, raceWinner])
+
+  useEffect(() => {
+    emitDemoState({
+      conceptId,
+      label: 'Adam optimizer race state',
+      summary: `${activeRacePreset ?? activeSetup ?? 'manual'} setup; ${gamePhase} phase at step ${steps}/${FINISH_STEP}; hyperparameters lr=${learningRate.toFixed(4)}, beta1=${beta1.toFixed(3)}, beta2=${beta2.toFixed(3)}, AdamW=${useAdamW ? 'on' : 'off'}; race losses ${visibleLossSummary}; winner ${visibleWinnerSummary}; Adam loss ${formatRaceLoss(currentLoss)} at (${adam.x.toFixed(3)}, ${adam.y.toFixed(3)}), effective LR ratio ${effLrRatio.toFixed(2)}x.${raceOutcomeVisible ? ` ${winnerMechanism}` : ''}`,
+      values: [
+        `race/setup: ${activeRacePreset ?? activeSetup ?? 'manual exploration'}`,
+        `prediction state: phase=${gamePhase}, selected=${prediction ?? 'none'}, locked=${lockedPrediction ?? 'none'}`,
+        `winner revealed: ${raceOutcomeVisible ? 'yes' : 'no'}`,
+        `prediction correct: ${raceOutcomeVisible && lockedPrediction ? (predictionCorrect ? 'yes' : 'no') : 'not checked'}`,
+        `steps: ${steps}/${FINISH_STEP}`,
+        `hyperparameters: lr=${learningRate.toFixed(4)}, beta1=${beta1.toFixed(3)}, beta2=${beta2.toFixed(3)}, AdamW=${useAdamW ? 'on' : 'off'}`,
+        `losses: ${visibleLossSummary}`,
+        `current winner: ${visibleWinnerSummary}`,
+        `winner gap: ${raceOutcomeVisible ? `${formatRaceLoss(winnerGap)} vs ${runnerUp}; ratio=${Number.isFinite(winnerGapRatio) ? `${winnerGapRatio.toFixed(2)}x` : 'infinite'}` : 'hidden until reveal'}`,
+        `winner mechanism: ${raceOutcomeVisible ? winnerMechanism : 'hidden until reveal'}`,
+        `Adam state: x=${adam.x.toFixed(3)}, y=${adam.y.toFixed(3)}, loss=${formatRaceLoss(currentLoss)}, distance=${distanceToOptimum.toFixed(4)}`,
+        `Adam effective learning rates: x=${effLrX.toExponential(2)}, y=${effLrY.toExponential(2)}, ratio=${effLrRatio.toFixed(2)}x`,
+      ],
+    })
+  }, [
+    activeRacePreset,
+    activeSetup,
+    adam.x,
+    adam.y,
+    beta1,
+    beta2,
+    conceptId,
+    currentLoss,
+    currentLosses.Adam,
+    currentLosses.Momentum,
+    currentLosses.SGD,
+    distanceToOptimum,
+    effLrRatio,
+    effLrX,
+    effLrY,
+    gamePhase,
+    learningRate,
+    lockedPrediction,
+    prediction,
+    predictionCorrect,
+    raceWinner,
+    raceOutcomeVisible,
+    runnerUp,
+    steps,
+    useAdamW,
+    visibleLossSummary,
+    visibleWinnerSummary,
+    winnerGap,
+    winnerGapRatio,
+    winnerMechanism,
+  ])
 
   return (
     <section className="card interactive-card">
@@ -974,9 +1080,10 @@ export default function AdamOptimizerDemo() {
               Your pick: <strong>{lockedPrediction}</strong>
             </div>
             <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-              Current leader: <strong style={{
-                color: raceWinner === 'Adam' ? '#a855f7' : raceWinner === 'Momentum' ? '#0ea5e9' : '#14b8a6'
-              }}>{raceWinner}</strong>
+              Winner hidden until step {FINISH_STEP}. Watch the paths, but do not use the scoreboard yet.
+            </div>
+            <div className="adam-race-progress" aria-hidden="true">
+              <i style={{ width: `${Math.max(4, (steps / FINISH_STEP) * 100)}%` }} />
             </div>
           </div>
         )}
@@ -1006,10 +1113,25 @@ export default function AdamOptimizerDemo() {
               </div>
               <div style={{ fontSize: '0.9rem', color: 'var(--text-primary, #f5f0e1)' }}>
                 Winner: <strong style={{
-                  color: raceWinner === 'Adam' ? '#a855f7' : raceWinner === 'Momentum' ? '#0ea5e9' : '#14b8a6'
+                  color: optimizerColor(raceWinner)
                 }}>{raceWinner}</strong>
-                {' '}with loss {currentLosses[raceWinner].toFixed(4)}
+                {' '}with loss {formatRaceLoss(currentLosses[raceWinner])}
               </div>
+              <div className="adam-winner-gap">
+                Gap to {runnerUp}: {formatRaceLoss(winnerGap)}
+                {' '}({Number.isFinite(winnerGapRatio) ? `${winnerGapRatio.toFixed(2)}x lower loss` : 'winner reached zero loss'})
+              </div>
+            </div>
+            <div className="adam-loss-table" aria-label="Final optimizer race losses">
+              {sortedRaceLosses.map(([optimizer, optimizerLoss], index) => (
+                <div key={optimizer} className={index === 0 ? 'winner' : ''}>
+                  <span>
+                    <i style={{ background: optimizerColor(optimizer) }} />
+                    {optimizer}
+                  </span>
+                  <strong>{formatRaceLoss(optimizerLoss)}</strong>
+                </div>
+              ))}
             </div>
             <div style={{
               padding: '12px',
@@ -1022,6 +1144,8 @@ export default function AdamOptimizerDemo() {
               💡 {predictionCorrect
                 ? getCorrectPredictionFeedback(raceWinner)
                 : getWrongPredictionFeedback(lockedPrediction!, raceWinner, { lr: learningRate, beta1, beta2 })}
+              {' '}
+              {winnerMechanism}
             </div>
             <button
               onClick={resetGame}
@@ -1277,7 +1401,7 @@ export default function AdamOptimizerDemo() {
           </div>
           <div className="metric-row">
             <span className="label">Adam loss f(x,y):</span>
-            <span>{currentLoss.toFixed(4)}</span>
+            <span>{formatRaceLoss(currentLoss)}</span>
           </div>
           <div className="metric-row">
             <span className="label">Distance to optimum:</span>
@@ -1384,6 +1508,67 @@ export default function AdamOptimizerDemo() {
           padding: 0.5rem;
           background: rgba(245, 158, 11, 0.05);
           border-radius: 6px;
+        }
+        .adam-race-progress {
+          width: min(360px, 100%);
+          height: 7px;
+          margin: 12px auto 0;
+          overflow: hidden;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .adam-race-progress i {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #14b8a6, #0ea5e9, #a855f7);
+          transition: width 120ms ease;
+        }
+        .adam-winner-gap {
+          margin-top: 0.35rem;
+          color: var(--text-secondary, #b8b0a0);
+          font-size: 0.78rem;
+        }
+        .adam-loss-table {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.5rem;
+          margin: 0 0 0.75rem;
+        }
+        .adam-loss-table div {
+          min-width: 0;
+          padding: 0.55rem 0.65rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.18);
+        }
+        .adam-loss-table div.winner {
+          border-color: rgba(34, 197, 94, 0.46);
+          background: rgba(34, 197, 94, 0.1);
+        }
+        .adam-loss-table span,
+        .adam-loss-table strong {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          min-width: 0;
+        }
+        .adam-loss-table span {
+          color: var(--text-secondary, #b8b0a0);
+          font-size: 0.74rem;
+        }
+        .adam-loss-table strong {
+          margin-top: 0.22rem;
+          color: var(--text-primary, #f5f0e1);
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+            monospace;
+          overflow-wrap: anywhere;
+        }
+        .adam-loss-table i {
+          width: 8px;
+          height: 8px;
+          flex: none;
+          border-radius: 999px;
         }
         .adam-layout {
           display: flex;
@@ -1553,6 +1738,14 @@ export default function AdamOptimizerDemo() {
         .axis-label {
           font-size: 10px;
           fill: var(--text-secondary, #b8b0a0);
+        }
+        @media (max-width: 640px) {
+          .interactive-card {
+            padding: 1rem;
+          }
+          .adam-loss-table {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </section>

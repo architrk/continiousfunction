@@ -1,0 +1,27 @@
+You are Oracle/GPT Pro performing a second strict review for Continuous Function.
+
+Context:
+- The previous Oracle review said the old DPO page should be demoted because it taught a fabricated DPO dynamic, got beta direction wrong, and used a broad RLHF-vs-DPO pipeline demo rather than the DPO mechanism.
+- I accepted that review, moved the concept to review, rewrote the page around Bradley-Terry cross-entropy on reference-relative log odds, and replaced the borrowed gamified demo with a co-located deterministic ratio-machine demo.
+- The rebuilt demo exposes beta, reference winner probability, soft preference target p*, current policy log-odds, target policy log-odds, predicted preference, loss, gradient, and KL(policy || reference). It has one-step, fit-target, and reset controls.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- A concept should be intuitive, precise, visual, executable, and connected.
+- Prefer one excellent mechanism over a broad survey.
+
+Question:
+Review the rebuilt DPO concept and decide whether it is now publishable, publishable after small fixes, should remain in review, or should return to draft.
+
+Return:
+1. Verdict.
+2. Remaining blocking correctness issues, if any.
+3. Remaining blocking pedagogy issues, if any.
+4. Important improvements that should be patched before publish.
+5. Demo-specific issues: math correctness, controls, labels, failure mode, and whether it honestly teaches beta and reference-relative log odds.
+6. Code witness issues: whether the finite-action witness proves the KL-regularized optimum / DPO equivalence.
+7. Graph/status audit: prerequisites, related, leads_to, and whether `status: review` is right until patched.
+8. Exact patch-style edits for any required fixes.
+9. Out-of-scope suggestions to ignore for this pass.
+
+Be strict. If it is not publishable, say exactly what remains.

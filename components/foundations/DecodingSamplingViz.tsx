@@ -42,7 +42,7 @@ const STRATEGY_CHALLENGES: StrategyChallenge[] = [
     topP: 1.0,
     repetitionPenalty: 1.0,
     answer: 'chaotic',
-    description: 'Temperature = 2.0 flattens the distribution... is it creative or chaotic?',
+    description: 'Temperature = 2.0 flattens the toy distribution... what samples appear?',
     steps: 6
   },
   {
@@ -58,7 +58,7 @@ const STRATEGY_CHALLENGES: StrategyChallenge[] = [
     steps: 6
   },
   {
-    name: '🎲 GPT-4 Style',
+    name: '🎲 Toy Balanced',
     scenario: 'long-tail',
     mode: 'sample',
     temperature: 0.8,
@@ -66,7 +66,7 @@ const STRATEGY_CHALLENGES: StrategyChallenge[] = [
     topP: 0.9,
     repetitionPenalty: 1.1,
     answer: 'diverse',
-    description: 'Balanced temp + top-p + light repetition penalty...',
+    description: 'Toy balanced temp + top-p + light local penalty...',
     steps: 8
   },
   {
@@ -78,7 +78,7 @@ const STRATEGY_CHALLENGES: StrategyChallenge[] = [
     topP: 0.8,
     repetitionPenalty: 1.5,
     answer: 'diverse',
-    description: 'Can top-p + repetition penalty save us from the trap?',
+    description: 'How does local reshaping change the trap?',
     steps: 8
   },
 ]
@@ -95,28 +95,28 @@ function getOutcomeFeedback(
 
   if (isCorrect) {
     if (challenge.answer === 'repetitive') {
-      return `✅ Correct! The model got stuck repeating tokens. Greedy decoding on repetition-prone distributions is a classic failure mode. The fix? Add repetition penalty, use sampling, or try nucleus sampling (top-p).`
+      return `✅ Correct! The toy model got stuck repeating tokens. In this lab, distribution shaping or the local penalty can change that loop.`
     }
     if (challenge.answer === 'chaotic') {
-      return `✅ Correct! At temperature = ${challenge.temperature}, the distribution becomes nearly uniform. This is great for brainstorming but terrible for coherent text. Notice how even unlikely tokens get sampled!`
+      return `✅ Correct! At temperature = ${challenge.temperature}, the toy distribution becomes nearly uniform, so unlikely tokens get sampled much more often.`
     }
     if (challenge.answer === 'deterministic') {
-      return `✅ Correct! Low temperature (${challenge.temperature}) sharpens the distribution so much it's almost greedy. The output is predictable but can lack creativity.`
+      return `✅ Correct! In this toy challenge, low temperature (${challenge.temperature}) sharpens the distribution until it behaves almost greedily.`
     }
-    return `✅ Correct! This balanced configuration produces diverse but coherent outputs. Temperature ${challenge.temperature} + top-p ${challenge.topP} is the "sweet spot" used by most production LLMs.`
+    return `✅ Correct! In this toy setup, temperature ${challenge.temperature} + top-p ${challenge.topP} keeps multiple candidates while still cutting the tail.`
   }
 
   // Wrong answers
   if (challenge.answer === 'repetitive') {
-    return `❌ It actually got repetitive! ${hasRepetition ? 'Look at the sequence - same tokens repeating.' : 'Without any diversity mechanism, greedy decoding on trap scenarios degenerates.'} The model has no way to escape the local maximum.`
+    return `❌ It actually got repetitive! ${hasRepetition ? 'Look at the sequence - same tokens repeating.' : 'Greedy decoding stayed inside this toy trap.'} The sampler never left the local maximum.`
   }
   if (challenge.answer === 'chaotic') {
-    return `❌ This was actually chaotic! At temp=${challenge.temperature}, the probability mass spreads too evenly. Even tokens with low base probability get sampled frequently.`
+    return `❌ In this toy run, temp=${challenge.temperature} spread probability mass widely enough that low-probability tokens appeared often.`
   }
   if (challenge.answer === 'deterministic') {
     return `❌ This was actually deterministic! Temperature ${challenge.temperature} is so low that even with sampling, we almost always pick the highest-probability token.`
   }
-  return `❌ This was actually diverse! The configuration (temp=${challenge.temperature}, top-p=${challenge.topP}, rep-pen=${challenge.repetitionPenalty}) strikes a balance between exploration and coherence.`
+  return `❌ This was actually multi-path in the toy setup. The configuration (temp=${challenge.temperature}, top-p=${challenge.topP}, rep-pen=${challenge.repetitionPenalty}) kept more than one plausible path alive.`
 }
 
 type ScenarioId = 'peaky' | 'long-tail' | 'repetition-trap'
@@ -167,11 +167,11 @@ const SCENARIOS: Array<{ id: ScenarioId; title: string; description: string }> =
 
 // Strategy presets for quick exploration
 const STRATEGY_PRESETS = [
-  { name: '🎯 Greedy', mode: 'greedy' as DecodeMode, temp: 1.0, topP: 1.0, topK: 10, useTopP: false, useTopK: false, repPen: 1.0, description: 'Always pick highest probability (deterministic, boring)' },
-  { name: '🎨 Creative', mode: 'sample' as DecodeMode, temp: 1.2, topP: 0.95, topK: 10, useTopP: true, useTopK: false, repPen: 1.1, description: 'Higher temperature + top-p for diverse outputs' },
-  { name: '📝 Balanced', mode: 'sample' as DecodeMode, temp: 0.8, topP: 0.9, topK: 10, useTopP: true, useTopK: false, repPen: 1.0, description: 'GPT-4 default-ish: reliable yet varied' },
-  { name: '🔒 Focused', mode: 'sample' as DecodeMode, temp: 0.3, topP: 0.5, topK: 5, useTopP: true, useTopK: true, repPen: 1.0, description: 'Low temp + aggressive filtering for precision' },
-  { name: '🌊 Chaos', mode: 'sample' as DecodeMode, temp: 2.0, topP: 1.0, topK: 10, useTopP: false, useTopK: false, repPen: 1.0, description: 'Flat distribution = pure randomness' },
+  { name: '🎯 Greedy', mode: 'greedy' as DecodeMode, temp: 1.0, topP: 1.0, topK: 10, useTopP: false, useTopK: false, repPen: 1.0, description: 'Toy greedy: always pick the highest-probability token' },
+  { name: '🎨 Toy Spread', mode: 'sample' as DecodeMode, temp: 1.2, topP: 0.95, topK: 10, useTopP: true, useTopK: false, repPen: 1.1, description: 'Toy spread: higher temperature + top-p keeps more candidates' },
+  { name: '📝 Balanced', mode: 'sample' as DecodeMode, temp: 0.8, topP: 0.9, topK: 10, useTopP: true, useTopK: false, repPen: 1.0, description: 'Toy balanced setting: concentrated yet varied' },
+  { name: '🔒 Focused', mode: 'sample' as DecodeMode, temp: 0.3, topP: 0.5, topK: 5, useTopP: true, useTopK: true, repPen: 1.0, description: 'Toy focused: low temp + filtering concentrates probability mass' },
+  { name: '🌊 Toy Flat', mode: 'sample' as DecodeMode, temp: 2.0, topP: 1.0, topK: 10, useTopP: false, useTopK: false, repPen: 1.0, description: 'Toy high-temp: flatter distribution, more low-probability samples' },
 ]
 
 // Dynamic educational insight based on current state
@@ -194,11 +194,11 @@ function getDecodingInsight(
     sequence[sequence.length - 2] === sequence[sequence.length - 3];
 
   if (hasRepetition && repetitionPenalty <= 1.05) {
-    return `⚠️ REPETITION DETECTED! The model is stuck in a loop. This is classic "degenerate" behavior. Try: (1) increase repetition penalty, (2) raise temperature, or (3) use top-p to add variety.`;
+    return `⚠️ REPETITION DETECTED! This toy sequence is stuck in a loop. In the lab, changing temperature, top-p, or the local penalty can alter the loop.`;
   }
 
   if (mode === 'greedy') {
-    return `🎯 Greedy mode: Always picking argmax. Entropy is ${hBase.toFixed(2)} nats, but you're only considering 1 token. Deterministic but predictable—great for math, bad for stories.`;
+    return `🎯 Greedy mode: Always picking argmax. Entropy is ${hBase.toFixed(2)} nats, but this lab only allows 1 token through.`;
   }
 
   if (mode === 'beam') {
@@ -207,11 +207,11 @@ function getDecodingInsight(
 
   // Sampling mode insights
   if (temperature > 1.5) {
-    return `🌡️ Very high temperature (${temperature.toFixed(2)})! The distribution is being flattened—rare tokens become much more likely. Output will be highly unpredictable. Good for brainstorming, bad for coherence.`;
+    return `🌡️ Very high temperature (${temperature.toFixed(2)})! The distribution is being flattened, so rare tokens become much more likely in this toy setup.`;
   }
 
   if (temperature < 0.3) {
-    return `❄️ Very low temperature (${temperature.toFixed(2)})! Distribution is sharpened—almost greedy behavior with a tiny bit of stochasticity. Good for deterministic-feeling outputs.`;
+    return `❄️ Very low temperature (${temperature.toFixed(2)})! In this toy setup, the distribution is sharpened until sampling behaves almost greedily.`;
   }
 
   if (useTopP && topP < 0.5) {
@@ -219,7 +219,7 @@ function getDecodingInsight(
   }
 
   if (useTopK && topK <= 3) {
-    return `🎰 Very restrictive top-k (k=${topK})! Sampling only from the ${topK} most likely tokens. Simple but ignores distribution shape—top-p is usually more adaptive.`;
+    return `🎰 Very restrictive top-k (k=${topK})! Sampling only from the ${topK} most likely tokens. In contrast, top-p adapts the kept set to cumulative probability mass.`;
   }
 
   if (hFiltered < 0.5 && hBase > 1.0) {
@@ -227,7 +227,7 @@ function getDecodingInsight(
   }
 
   if (hBase > 2.0) {
-    return `📊 High base entropy (${hBase.toFixed(2)} nats)! The model sees many plausible continuations. This is where sampling shines over greedy—you get diversity instead of repetition.`;
+    return `📊 High base entropy (${hBase.toFixed(2)} nats)! The toy model has many plausible continuations, so sampling exposes more paths than greedy decoding.`;
   }
 
   return `⚖️ Temperature ${temperature.toFixed(2)} × top-p ${useTopP ? topP.toFixed(2) : 'off'} × top-k ${useTopK ? topK : 'off'}. Base entropy: ${hBase.toFixed(2)} nats. Experiment with sliders to see how each changes the distribution!`;
@@ -636,7 +636,7 @@ export default function DecodingSamplingViz() {
       <p className="muted">
         Training gives you probabilities. Decoding chooses what world you actually sample from.
         Watch how temperature reshapes logits, how top‑p deletes the tail (then renormalizes),
-        and how these knobs can create or prevent degeneration.
+        and how these toy settings change repetition or tail-heavy samples.
       </p>
 
       {/* Strategy Presets */}
@@ -705,8 +705,8 @@ export default function DecodingSamplingViz() {
                 {[
                   { value: 'repetitive' as const, label: '🔄 Repetitive', desc: 'Stuck in a loop' },
                   { value: 'deterministic' as const, label: '🎯 Deterministic', desc: 'Same output every time' },
-                  { value: 'diverse' as const, label: '🌈 Diverse', desc: 'Varied but coherent' },
-                  { value: 'chaotic' as const, label: '🌪️ Chaotic', desc: 'Random gibberish' },
+                  { value: 'diverse' as const, label: '🌈 Multi-path', desc: 'Multiple toy paths survive' },
+                  { value: 'chaotic' as const, label: '🌪️ Tail-heavy', desc: 'Low-probability toy tokens appear often' },
                 ].map((option) => (
                   <button
                     key={option.value}
@@ -732,12 +732,12 @@ export default function DecodingSamplingViz() {
               <div className="game-comparison">
                 <span>
                   Your prediction: <span className={prediction === selectedChallenge.answer ? 'correct-text' : 'incorrect-text'}>
-                    {prediction === 'repetitive' ? '🔄 Repetitive' : prediction === 'deterministic' ? '🎯 Deterministic' : prediction === 'diverse' ? '🌈 Diverse' : '🌪️ Chaotic'}
+                    {prediction === 'repetitive' ? '🔄 Repetitive' : prediction === 'deterministic' ? '🎯 Deterministic' : prediction === 'diverse' ? '🌈 Multi-path' : '🌪️ Tail-heavy'}
                   </span>
                 </span>
                 <span>
                   Actual: <span className="actual-text">
-                    {selectedChallenge.answer === 'repetitive' ? '🔄 Repetitive' : selectedChallenge.answer === 'deterministic' ? '🎯 Deterministic' : selectedChallenge.answer === 'diverse' ? '🌈 Diverse' : '🌪️ Chaotic'}
+                    {selectedChallenge.answer === 'repetitive' ? '🔄 Repetitive' : selectedChallenge.answer === 'deterministic' ? '🎯 Deterministic' : selectedChallenge.answer === 'diverse' ? '🌈 Multi-path' : '🌪️ Tail-heavy'}
                   </span>
                 </span>
               </div>
@@ -916,7 +916,7 @@ export default function DecodingSamplingViz() {
                 </label>
               </div>
               <div className="subtle">
-                Beam search is deterministic best-first expansion; it often increases likelihood but can reduce diversity.
+                Beam search keeps multiple high-scoring partial sequences; this contrast panel is outside the checked top-p claim.
               </div>
             </div>
           ) : null}
@@ -1575,4 +1575,3 @@ export default function DecodingSamplingViz() {
     </section>
   )
 }
-

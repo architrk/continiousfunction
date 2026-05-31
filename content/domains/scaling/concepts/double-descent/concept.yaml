@@ -21,9 +21,40 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: belkin-2018-bias-variance
+    kind: paper
+    title: "Reconciling modern machine learning practice and the bias-variance trade-off"
+    authors: "Belkin et al."
+    year: 2018
+    url: "https://arxiv.org/abs/1812.11118"
+    note: "Grounds the modern double-descent framing beyond the classical bias-variance curve."
+  - id: nakkiran-2019-deep-double-descent
+    kind: paper
+    title: "Deep Double Descent: Where Bigger Models and More Data Hurt"
+    authors: "Nakkiran et al."
+    year: 2019
+    url: "https://arxiv.org/abs/1912.02292"
+    note: "Grounds model-size, data-size, and epoch-wise double descent in deep learning experiments."
+claim_checks:
+  - id: double-descent-interpolation-empirical-pattern
+    status: source-checked
+    claim: "Double descent is an empirical test-error pattern: error may peak near the interpolation threshold, then decline again in larger overparameterized models; Nakkiran et al. show model-wise, epoch-wise, and sample-count variants."
+    source_ids:
+      - belkin-2018-bias-variance
+      - nakkiran-2019-deep-double-descent
+    support: "Belkin et al. frame double descent as an empirical risk curve extending the classical U-shape beyond interpolation: near-threshold predictors can have high risk while more capacity beyond interpolation can lower risk. Nakkiran et al. report model-wise and epoch-wise double descent in deep-learning tasks plus sample-count regimes where more training data can hurt."
+    caveat: "Empirical and conditional; not guaranteed for every model, dataset, optimizer, length, regularization, or noise regime. Excludes grokking, optimizer implicit bias, minimum-norm theory, the synthetic demo as empirical evidence, and universal gains from overparameterization."
+    object_refs:
+      - "#source-span-belkin-2018-bias-variance"
+      - "#source-span-nakkiran-2019-deep-double-descent"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Belkin supports the interpolation-threshold pattern: risk can peak near interpolation and fall again past it. Nakkiran supports model-wise, epoch-wise, and sample-count/non-monotonic deep double descent. Oracle passed the bounded source claim; GPT-5.3 kept the synthetic demo and min-norm math/code outside reviewed evidence."
 short_description: "Test error can peak at the interpolation threshold then fall again as models get larger: why modern overparameterized nets still generalize."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 16
-

@@ -1,708 +1,369 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import * as d3 from 'd3'
+'use client'
 
-// ─────────────────────────────────────────────────────────────
-// Gamification: Behavior Prediction Challenge
-// ─────────────────────────────────────────────────────────────
-type GamePhase = 'setup' | 'countdown' | 'revealed';
-type BehaviorPrediction = 'cautious' | 'balanced' | 'aggressive' | 'extreme-averse' | null;
+import { useEffect, useMemo, useState } from 'react'
+import { emitDemoState } from '../../lib/demoState'
 
-interface BehaviorChallenge {
-  name: string;
-  beta: number;
-  lambdaD: number;
-  lambdaU: number;
-  hint: string;
-  correctBehavior: 'cautious' | 'balanced' | 'aggressive' | 'extreme-averse';
-  explanation: string;
+type FeedbackLabel = 'desirable' | 'undesirable'
+
+type KTOVizProps = {
+  conceptId?: string
+  emitState?: boolean
 }
 
-function _getBehaviorType(beta: number, lambdaD: number, lambdaU: number): 'cautious' | 'balanced' | 'aggressive' | 'extreme-averse' {
-  const lossRatio = lambdaU / lambdaD;
-  const isLossAverse = lossRatio > 1.3;
-  const isGainFocused = lossRatio < 0.7;
-  const isSharp = beta > 2.0;
-  const isSmooth = beta < 0.5;
+const CHART_WIDTH = 620
+const CHART_HEIGHT = 260
+const MARGIN = { top: 16, right: 24, bottom: 44, left: 54 }
+const INNER_WIDTH = CHART_WIDTH - MARGIN.left - MARGIN.right
+const INNER_HEIGHT = CHART_HEIGHT - MARGIN.top - MARGIN.bottom
+const REWARD_MIN = -3
+const REWARD_MAX = 3
+const BASELINE_MIN = 0
+const BASELINE_MAX = 3
+const DELTA_MIN = REWARD_MIN - BASELINE_MAX
+const DELTA_MAX = REWARD_MAX - BASELINE_MIN
 
-  if (isSharp && isLossAverse) return 'cautious';
-  if (isGainFocused || (beta > 1.5 && lossRatio < 1.0)) return 'aggressive';
-  if (isSmooth) return 'extreme-averse';
-  return 'balanced';
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
-const BEHAVIOR_CHALLENGES: BehaviorChallenge[] = [
-  {
-    name: '🎲 Mystery A',
-    beta: 2.5,
-    lambdaD: 0.8,
-    lambdaU: 1.6,
-    hint: 'This model was trained on safety-critical data where avoiding harm is paramount...',
-    correctBehavior: 'cautious',
-    explanation: '😰 Cautious! High β (2.5) means sharp saturation—only borderline examples matter. Combined with 2× loss aversion (λU/λD = 2.0), the model strongly avoids anything resembling "bad" outputs.'
-  },
-  {
-    name: '🎲 Mystery B',
-    beta: 1.0,
-    lambdaD: 1.0,
-    lambdaU: 1.0,
-    hint: 'The team used default parameters without tuning...',
-    correctBehavior: 'balanced',
-    explanation: '⚖️ Balanced! With β=1.0 and equal lambdas, the value function treats desirable and undesirable examples symmetrically. This is a good starting point before understanding your data distribution.'
-  },
-  {
-    name: '🎲 Mystery C',
-    beta: 1.8,
-    lambdaD: 1.5,
-    lambdaU: 0.7,
-    hint: 'The training data has high-quality "desirable" labels but noisy "undesirable" examples...',
-    correctBehavior: 'aggressive',
-    explanation: '🎯 Aggressive! With λD > λU (ratio 0.47), the model prioritizes finding excellent responses over avoiding bad ones. The high β focuses on borderline cases. Good when your positive labels are trustworthy.'
-  },
-  {
-    name: '🎲 Mystery D',
-    beta: 0.35,
-    lambdaD: 1.1,
-    lambdaU: 1.2,
-    hint: 'Preference labels in the dataset have high variance and some mislabeling...',
-    correctBehavior: 'extreme-averse',
-    explanation: '🌊 Extreme-averse! Very low β (0.35) means gradual saturation—even extreme examples contribute to learning. This helps when labels are noisy since it doesn\'t over-trust any single example.'
+function sigmoid(value: number) {
+  if (value >= 0) {
+    const z = Math.exp(-value)
+    return 1 / (1 + z)
   }
-];
-
-function getBehaviorFeedback(
-  prediction: BehaviorPrediction,
-  challenge: BehaviorChallenge
-): { correct: boolean; message: string } {
-  const isCorrect = prediction === challenge.correctBehavior;
-  const behaviorLabels = {
-    'cautious': 'Cautious/Loss-Averse',
-    'balanced': 'Balanced',
-    'aggressive': 'Aggressive/Gain-Focused',
-    'extreme-averse': 'Extreme-Averse (Smooth)'
-  };
-  return {
-    correct: isCorrect,
-    message: isCorrect
-      ? challenge.explanation
-      : `❌ Not quite! The behavior is "${behaviorLabels[challenge.correctBehavior]}". ${challenge.explanation}`
-  };
+  const z = Math.exp(value)
+  return z / (1 + z)
 }
 
-/**
- * KTO Utility Curve Visualization
- * Shows how KTO's prospect-theoretic value function saturates for extreme examples
- * Demonstrates loss aversion asymmetry between desirable/undesirable
- */
-
-const KTO_PRESETS = [
-  { name: '⚖️ Balanced', beta: 1.0, lambdaD: 1.0, lambdaU: 1.0, description: 'Equal weights - symmetric value function' },
-  { name: '😰 Loss Averse', beta: 1.0, lambdaD: 0.8, lambdaU: 1.5, description: 'Undesirable outputs weighted more (human-like)' },
-  { name: '🎯 Gain Focused', beta: 1.0, lambdaD: 1.5, lambdaU: 0.8, description: 'Prioritize finding good responses over avoiding bad' },
-  { name: '🔪 Sharp Cutoff', beta: 2.5, lambdaD: 1.0, lambdaU: 1.0, description: 'High β = rapid saturation near z=0' },
-  { name: '🌊 Smooth', beta: 0.4, lambdaD: 1.0, lambdaU: 1.0, description: 'Low β = gradual transition, learns from extreme examples' },
-]
-
-function getKTOInsight(beta: number, lambdaD: number, lambdaU: number): { text: string; color: string; emoji: string } {
-  const lossAversion = lambdaU / lambdaD
-  const isLossAverse = lossAversion > 1.2
-  const isGainFocused = lossAversion < 0.8
-  const isSharp = beta > 2.0
-  const isSmooth = beta < 0.6
-
-  if (isSharp && isLossAverse) {
-    return {
-      emoji: '⚠️',
-      color: '#ef4444',
-      text: 'Sharp loss-averse mode: The model strongly punishes any hint of undesirable outputs while quickly saturating on gains. This can lead to overly cautious behavior.'
-    }
-  }
-
-  if (isSmooth) {
-    return {
-      emoji: '📈',
-      color: '#3b82f6',
-      text: `Low β (${beta.toFixed(2)}) means gradual saturation—the model learns from extreme examples too. This can help when you have noisy preference labels.`
-    }
-  }
-
-  if (isLossAverse) {
-    return {
-      emoji: '😰',
-      color: '#f59e0b',
-      text: `Loss aversion ratio: ${lossAversion.toFixed(2)}x. Like Kahneman's prospect theory: "losses loom larger than gains." This models human preference asymmetry.`
-    }
-  }
-
-  if (isGainFocused) {
-    return {
-      emoji: '🎯',
-      color: '#22c55e',
-      text: `Gain-focused (ratio ${lossAversion.toFixed(2)}). The model prioritizes finding excellent responses over avoiding bad ones. Good when your "desirable" labels are high quality.`
-    }
-  }
-
-  if (isSharp) {
-    return {
-      emoji: '🔪',
-      color: '#a855f7',
-      text: `High β (${beta.toFixed(2)}) = sharp transition near z=0. Only borderline examples contribute to learning; extreme examples saturate the sigmoid.`
-    }
-  }
-
-  return {
-    emoji: '⚖️',
-    color: '#64748b',
-    text: 'Balanced configuration. The value function treats desirable and undesirable examples symmetrically. A good starting point before tuning.'
-  }
+function fmt(value: number) {
+  const clean = Math.abs(value) < 0.0005 ? 0 : value
+  return clean.toFixed(3)
 }
 
-interface KTOVizProps {
-  width?: number
-  height?: number
-}
+export default function KTOViz({ conceptId = 'kto', emitState = false }: KTOVizProps) {
+  const [label, setLabel] = useState<FeedbackLabel>('desirable')
+  const [reward, setReward] = useState(0.2)
+  const [baseline, setBaseline] = useState(0.4)
+  const [beta, setBeta] = useState(0.2)
+  const [lambdaD, setLambdaD] = useState(1)
+  const [lambdaU, setLambdaU] = useState(1)
 
-export default function KTOViz({ width = 600, height = 400 }: KTOVizProps) {
-  const [beta, setBeta] = useState(1.0)
-  const [lambdaD, setLambdaD] = useState(1.0)
-  const [lambdaU, setLambdaU] = useState(1.0)
-  const [activePreset, setActivePreset] = useState<string | null>('⚖️ Balanced')
-
-  // ─────────────────────────────────────────────────────────────
-  // Game State
-  // ─────────────────────────────────────────────────────────────
-  const [gameMode, setGameMode] = useState(false);
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup');
-  const [currentChallengeIdx, setCurrentChallengeIdx] = useState(0);
-  const [prediction, setPrediction] = useState<BehaviorPrediction>(null);
-  const [countdown, setCountdown] = useState(0);
-  const [score, setScore] = useState(0);
-  const [completedChallenges, setCompletedChallenges] = useState<Set<number>>(new Set());
-
-  const currentChallenge = BEHAVIOR_CHALLENGES[currentChallengeIdx];
-
-  // Game control functions
-  const startChallenge = (idx: number) => {
-    setCurrentChallengeIdx(idx);
-    setGamePhase('setup');
-    setPrediction(null);
-  };
-
-  const submitPrediction = () => {
-    if (!prediction) return;
-    setGamePhase('countdown');
-    setCountdown(3);
-  };
-
-  const resetGame = () => {
-    setGameMode(false);
-    setGamePhase('setup');
-    setPrediction(null);
-    setScore(0);
-    setCompletedChallenges(new Set());
-    setCurrentChallengeIdx(0);
-  };
-
-  // Countdown timer
-  useEffect(() => {
-    if (gamePhase !== 'countdown' || countdown <= 0) return;
-    const timer = setTimeout(() => {
-      if (countdown === 1) {
-        setGamePhase('revealed');
-        // Apply the mystery settings to show the actual curves
-        setBeta(currentChallenge.beta);
-        setLambdaD(currentChallenge.lambdaD);
-        setLambdaU(currentChallenge.lambdaU);
-        setActivePreset(null);
-        // Check answer
-        const feedback = getBehaviorFeedback(prediction, currentChallenge);
-        if (feedback.correct) {
-          setScore(s => s + 1);
-          setCompletedChallenges(prev => new Set([...prev, currentChallengeIdx]));
-        }
-      } else {
-        setCountdown(countdown - 1);
+  const data = useMemo(() => {
+    const delta = reward - baseline
+    const desirable = label === 'desirable'
+    const lambdaY = desirable ? lambdaD : lambdaU
+    const sharedSlope = sigmoid(beta * delta) * (1 - sigmoid(beta * delta))
+    const sigmaTerm = desirable ? sigmoid(beta * delta) : sigmoid(-beta * delta)
+    const value = lambdaY * sigmaTerm
+    const loss = lambdaY - value
+    const gradMagnitude = lambdaY * beta * sharedSlope
+    const gradient = desirable ? -gradMagnitude : gradMagnitude
+    const points = Array.from({ length: 161 }, (_, index) => {
+      const pointDelta = DELTA_MIN + index * ((DELTA_MAX - DELTA_MIN) / 160)
+      return {
+        delta: pointDelta,
+        desirableLoss: lambdaD * (1 - sigmoid(beta * pointDelta)),
+        undesirableLoss: lambdaU * (1 - sigmoid(-beta * pointDelta)),
       }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [gamePhase, countdown, prediction, currentChallenge, currentChallengeIdx]);
+    })
 
-  const currentInsight = useMemo(() => getKTOInsight(beta, lambdaD, lambdaU), [beta, lambdaD, lambdaU])
-
-  const handlePreset = useCallback((preset: typeof KTO_PRESETS[0]) => {
-    setBeta(preset.beta)
-    setLambdaD(preset.lambdaD)
-    setLambdaU(preset.lambdaU)
-    setActivePreset(preset.name)
-  }, [])
-
-  const clearActivePreset = () => setActivePreset(null)
-
-  const margin = { top: 20, right: 120, bottom: 60, left: 60 }
-  const w = width - margin.left - margin.right
-  const h = height - margin.top - margin.bottom
-
-  // Sigmoid function
-  const sigmoid = (x: number) => 1 / (1 + Math.exp(-x))
-
-  // KTO value functions
-  const valueDesirable = (z: number) => lambdaD * sigmoid(beta * z)
-  const valueUndesirable = (z: number) => lambdaU * sigmoid(beta * (-z))
-
-  // Generate curve data
-  const curveData = useMemo(() => {
-    const points = 200
-    const zRange = [-4, 4]
-    const zScale = d3.scaleLinear()
-      .domain([0, points - 1])
-      .range(zRange)
-
-    const desirable = []
-    const undesirable = []
-
-    for (let i = 0; i < points; i++) {
-      const z = zScale(i)
-      desirable.push({ z, v: valueDesirable(z) })
-      undesirable.push({ z, v: valueUndesirable(z) })
+    return {
+      delta,
+      desirable,
+      sigmaTerm,
+      value,
+      loss,
+      gradient,
+      gradMagnitude,
+      points,
     }
+  }, [label, reward, baseline, beta, lambdaD, lambdaU])
 
-    return { desirable, undesirable }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- valueDesirable/valueUndesirable are stable functions
-  }, [beta, lambdaD, lambdaU])
+  useEffect(() => {
+    if (!emitState) return
 
-  const xScale = d3.scaleLinear()
-    .domain([-4, 4])
-    .range([0, w])
+    const gradientDirection = data.gradient < 0 ? 'increase r_theta' : 'decrease r_theta'
+    const desiredSide = data.desirable ? 'positive delta' : 'negative delta'
+    const onCorrectSide = data.desirable ? data.delta > 0 : data.delta < 0
+    const boundaryStatus =
+      Math.abs(data.delta) < 0.15
+        ? 'near the KL reference boundary'
+        : onCorrectSide
+          ? `already on the ${desiredSide} side`
+          : `still on the wrong side for a ${label} label`
+    const lambdaY = data.desirable ? lambdaD : lambdaU
+    const maxGradient = Math.max(lambdaY * beta * 0.25, 0.0001)
+    const saturationRatio = data.gradMagnitude / maxGradient
+    const saturationStatus =
+      saturationRatio > 0.75
+        ? 'high-gradient'
+        : saturationRatio < 0.25
+          ? 'saturated'
+          : 'moderate-gradient'
 
-  const yScale = d3.scaleLinear()
-    .domain([0, Math.max(lambdaD, lambdaU) * 1.1])
-    .range([h, 0])
+    emitDemoState({
+      conceptId,
+      label: 'KTO state',
+      summary: `label=${label}; delta=${fmt(data.delta)}; gd=${gradientDirection}; ${boundaryStatus}.`,
+      values: [
+        `r_theta=${fmt(reward)}`,
+        `z0=${fmt(baseline)}`,
+        `target=${desiredSide}`,
+        `loss=${fmt(data.loss)}`,
+        `dL/dr=${fmt(data.gradient)}`,
+        `saturation=${saturationStatus}`,
+      ],
+    })
+  }, [baseline, beta, conceptId, data, emitState, label, lambdaD, lambdaU, reward])
 
-  const lineGen = d3.line<{ z: number; v: number }>()
-    .x(d => xScale(d.z))
-    .y(d => yScale(d.v))
+  const maxLoss = Math.max(lambdaD, lambdaU, 0.1)
+  const x = (delta: number) =>
+    MARGIN.left + ((delta - DELTA_MIN) / (DELTA_MAX - DELTA_MIN)) * INNER_WIDTH
+  const y = (loss: number) => MARGIN.top + (1 - loss / maxLoss) * INNER_HEIGHT
+  const currentX = x(data.delta)
+  const currentY = y(clamp(data.loss, 0, maxLoss))
+  const path = (key: 'desirableLoss' | 'undesirableLoss') =>
+    data.points
+      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.delta)} ${y(point[key])}`)
+      .join(' ')
 
   return (
-    <div className="kto-viz">
-      {/* Preset Buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-        {KTO_PRESETS.map((preset) => (
-          <button
-            key={preset.name}
-            onClick={() => handlePreset(preset)}
-            title={preset.description}
-            style={{
-              fontSize: '0.8rem',
-              padding: '0.4rem 0.8rem',
-              borderRadius: '999px',
-              border: activePreset === preset.name ? '1px solid rgba(245, 158, 11, 0.7)' : '1px solid rgba(148, 163, 184, 0.35)',
-              background: activePreset === preset.name ? 'rgba(245, 158, 11, 0.25)' : 'rgba(15, 23, 42, 0.8)',
-              color: activePreset === preset.name ? '#fbbf24' : '#d1d5db',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {preset.name}
-          </button>
-        ))}
+    <div className="demo">
+      <div className="controls" aria-label="KTO controls">
+        <fieldset>
+          <legend>binary label</legend>
+          <label>
+            <input
+              type="radio"
+              name="kto-label"
+              checked={label === 'desirable'}
+              onChange={() => setLabel('desirable')}
+            />
+            desirable
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="kto-label"
+              checked={label === 'undesirable'}
+              onChange={() => setLabel('undesirable')}
+            />
+            undesirable
+          </label>
+        </fieldset>
+        <Slider label="implied reward r_theta" value={reward} min={REWARD_MIN} max={REWARD_MAX} step={0.05} onChange={setReward} />
+        <Slider label="KL baseline z0" value={baseline} min={BASELINE_MIN} max={BASELINE_MAX} step={0.05} onChange={setBaseline} />
+        <Slider label="beta saturation" value={beta} min={0.01} max={1} step={0.01} onChange={setBeta} />
+        <Slider label="lambda_D" value={lambdaD} min={0.1} max={3} step={0.05} onChange={setLambdaD} />
+        <Slider label="lambda_U" value={lambdaU} min={0.1} max={3} step={0.05} onChange={setLambdaU} />
       </div>
 
-      {/* Dynamic Insight Box */}
-      <div
-        style={{
-          padding: '12px 16px',
-          marginBottom: '1rem',
-          borderRadius: '8px',
-          background: `linear-gradient(135deg, ${currentInsight.color}15 0%, ${currentInsight.color}08 100%)`,
-          border: `1px solid ${currentInsight.color}30`,
-        }}
-      >
-        <span style={{ fontSize: '1.2em', marginRight: '8px' }}>{currentInsight.emoji}</span>
-        <span style={{ color: currentInsight.color, fontWeight: 500 }}>Insight:</span>{' '}
-        <span style={{ color: '#d1d5db' }}>{currentInsight.text}</span>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────
-          Gamification: Behavior Prediction Challenge
-          ───────────────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(59, 130, 246, 0.05))',
-        border: '1px solid rgba(168, 85, 247, 0.3)',
-        borderRadius: '12px',
-        padding: '1.25rem',
-        marginBottom: '1rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#e5e7eb' }}>🎮 Behavior Prediction Challenge</h4>
-          {!gameMode ? (
-            <button
-              onClick={() => setGameMode(true)}
-              style={{
-                padding: '0.4rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(168, 85, 247, 0.5)',
-                background: 'rgba(168, 85, 247, 0.2)',
-                color: '#c4b5fd',
-                cursor: 'pointer',
-                fontSize: '0.85rem'
-              }}
-            >
-              Start Challenge
-            </button>
-          ) : (
-            <button
-              onClick={resetGame}
-              style={{
-                padding: '0.4rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(107, 114, 128, 0.5)',
-                background: 'rgba(107, 114, 128, 0.2)',
-                color: '#9ca3af',
-                cursor: 'pointer',
-                fontSize: '0.85rem'
-              }}
-            >
-              Exit Game
-            </button>
-          )}
-          {gameMode && (
-            <span style={{
-              marginLeft: 'auto',
-              background: 'rgba(52, 211, 153, 0.2)',
-              border: '1px solid rgba(52, 211, 153, 0.4)',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '999px',
-              fontSize: '0.8rem',
-              color: '#34d399'
-            }}>
-              Score: {score}/{BEHAVIOR_CHALLENGES.length}
-            </span>
-          )}
-        </div>
-
-        {gameMode && (
-          <div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              {BEHAVIOR_CHALLENGES.map((ch, idx) => (
-                <button
-                  key={ch.name}
-                  onClick={() => startChallenge(idx)}
-                  style={{
-                    padding: '0.4rem 0.8rem',
-                    borderRadius: '8px',
-                    border: currentChallengeIdx === idx
-                      ? '1px solid #a855f7'
-                      : completedChallenges.has(idx)
-                        ? '1px solid rgba(52, 211, 153, 0.4)'
-                        : '1px solid rgba(168, 85, 247, 0.3)',
-                    background: currentChallengeIdx === idx
-                      ? 'rgba(168, 85, 247, 0.25)'
-                      : completedChallenges.has(idx)
-                        ? 'rgba(52, 211, 153, 0.15)'
-                        : 'rgba(15, 23, 42, 0.6)',
-                    color: completedChallenges.has(idx) ? '#34d399' : '#e5e7eb',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  {completedChallenges.has(idx) ? '✅' : ch.name}
-                </button>
-              ))}
-            </div>
-
-            {gamePhase === 'setup' && (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                  {currentChallenge.hint}
-                </p>
-                <p style={{ fontWeight: 600, color: '#e5e7eb', marginBottom: '1rem' }}>
-                  What behavior will this model exhibit?
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                  {([
-                    { key: 'cautious', label: '😰 Cautious' },
-                    { key: 'balanced', label: '⚖️ Balanced' },
-                    { key: 'aggressive', label: '🎯 Aggressive' },
-                    { key: 'extreme-averse', label: '🌊 Smooth' }
-                  ] as { key: BehaviorPrediction; label: string }[]).map(opt => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setPrediction(opt.key)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        borderRadius: '8px',
-                        border: prediction === opt.key
-                          ? '2px solid #a855f7'
-                          : '2px solid rgba(168, 85, 247, 0.3)',
-                        background: prediction === opt.key
-                          ? 'rgba(168, 85, 247, 0.3)'
-                          : 'rgba(15, 23, 42, 0.8)',
-                        color: '#e5e7eb',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        fontWeight: 500
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={submitPrediction}
-                  disabled={!prediction}
-                  style={{
-                    padding: '0.6rem 1.5rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: prediction ? 'linear-gradient(135deg, #a855f7, #6366f1)' : 'rgba(107, 114, 128, 0.3)',
-                    color: 'white',
-                    cursor: prediction ? 'pointer' : 'not-allowed',
-                    fontWeight: 600,
-                    opacity: prediction ? 1 : 0.5
-                  }}
-                >
-                  Lock In Prediction
-                </button>
-              </div>
-            )}
-
-            {gamePhase === 'countdown' && (
-              <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-                <div style={{
-                  fontSize: '3rem',
-                  fontWeight: 'bold',
-                  color: '#a855f7',
-                  animation: 'pulse 1s ease-in-out infinite'
-                }}>
-                  {countdown}
-                </div>
-                <p style={{ color: 'rgba(255,255,255,0.7)' }}>Revealing value curves...</p>
-              </div>
-            )}
-
-            {gamePhase === 'revealed' && (
-              <div style={{ textAlign: 'center' }}>
-                {(() => {
-                  const feedback = getBehaviorFeedback(prediction, currentChallenge);
-                  return (
-                    <>
-                      <div style={{
-                        display: 'inline-block',
-                        padding: '0.5rem 1.5rem',
-                        borderRadius: '999px',
-                        fontWeight: 600,
-                        marginBottom: '1rem',
-                        background: feedback.correct ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                        border: feedback.correct ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(251, 191, 36, 0.4)',
-                        color: feedback.correct ? '#34d399' : '#fbbf24'
-                      }}>
-                        {feedback.correct ? '🎉 Correct!' : '💡 Learning opportunity!'}
-                      </div>
-                      <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '1rem' }}>
-                        {feedback.message}
-                      </p>
-                      <p style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: '1rem' }}>
-                        β: {currentChallenge.beta}, λ_D: {currentChallenge.lambdaD}, λ_U: {currentChallenge.lambdaU}
-                      </p>
-                      <button
-                        onClick={() => {
-                          const nextIdx = (currentChallengeIdx + 1) % BEHAVIOR_CHALLENGES.length;
-                          startChallenge(nextIdx);
-                        }}
-                        style={{
-                          padding: '0.6rem 1.5rem',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(168, 85, 247, 0.5)',
-                          background: 'rgba(168, 85, 247, 0.2)',
-                          color: '#c4b5fd',
-                          cursor: 'pointer',
-                          fontWeight: 500
-                        }}
-                      >
-                        {currentChallengeIdx < BEHAVIOR_CHALLENGES.length - 1 ? 'Next Challenge →' : 'Try Again'}
-                      </button>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
+      <div className="layout">
+        <div className="panel">
+          <h3>KTO state</h3>
+          <div className="metrics">
+            <Metric label="delta = r_theta - z0" value={data.delta} />
+            <Metric label="sigma term" value={data.sigmaTerm} />
+            <Metric label="value v(x,y)" value={data.value} />
+            <Metric label="loss lambda_y - v" value={data.loss} />
+            <Metric label="dL / d r_theta" value={data.gradient} />
+            <Metric label="gradient magnitude" value={data.gradMagnitude} />
           </div>
-        )}
-      </div>
+          <p className="claim">
+            Gradient descent {data.desirable ? 'increases' : 'decreases'} the policy/reference log-ratio for this {data.desirable ? 'desirable' : 'undesirable'} example.
+          </p>
+        </div>
 
-      <div className="controls">
-        <div className="control-group">
-          <label>
-            β (temperature): {beta.toFixed(2)}
-            <input
-              type="range"
-              min="0.1"
-              max="3"
-              step="0.1"
-              value={beta}
-              onChange={(e) => { setBeta(parseFloat(e.target.value)); clearActivePreset(); }}
-            />
-          </label>
-        </div>
-        <div className="control-group">
-          <label>
-            λ_D (desirable weight): {lambdaD.toFixed(2)}
-            <input
-              type="range"
-              min="0.1"
-              max="2"
-              step="0.1"
-              value={lambdaD}
-              onChange={(e) => { setLambdaD(parseFloat(e.target.value)); clearActivePreset(); }}
-            />
-          </label>
-        </div>
-        <div className="control-group">
-          <label>
-            λ_U (undesirable weight): {lambdaU.toFixed(2)}
-            <input
-              type="range"
-              min="0.1"
-              max="2"
-              step="0.1"
-              value={lambdaU}
-              onChange={(e) => { setLambdaU(parseFloat(e.target.value)); clearActivePreset(); }}
-            />
-          </label>
+        <div className="panel chartPanel">
+          <h3>loss as a function of delta</h3>
+          <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} role="img" aria-label="KTO desirable and undesirable loss curves">
+            <line x1={MARGIN.left} x2={MARGIN.left + INNER_WIDTH} y1={MARGIN.top + INNER_HEIGHT} y2={MARGIN.top + INNER_HEIGHT} stroke="currentColor" opacity="0.35" />
+            <line x1={MARGIN.left} x2={MARGIN.left} y1={MARGIN.top} y2={MARGIN.top + INNER_HEIGHT} stroke="currentColor" opacity="0.35" />
+            <line x1={x(0)} x2={x(0)} y1={MARGIN.top} y2={MARGIN.top + INNER_HEIGHT} stroke="currentColor" strokeDasharray="4 4" opacity="0.35" />
+            <path d={path('desirableLoss')} fill="none" stroke="currentColor" strokeWidth="2.5" opacity={label === 'desirable' ? 1 : 0.35} />
+            <path d={path('undesirableLoss')} fill="none" stroke="currentColor" strokeWidth="2.5" opacity={label === 'undesirable' ? 1 : 0.35} strokeDasharray="6 5" />
+            <circle cx={currentX} cy={currentY} r="5" fill="currentColor" />
+            <text x={MARGIN.left + INNER_WIDTH / 2} y={CHART_HEIGHT - 10} textAnchor="middle" fontSize="13" fill="currentColor">
+              delta = r_theta - z0
+            </text>
+            <text x="16" y={MARGIN.top + INNER_HEIGHT / 2} transform={`rotate(-90 16 ${MARGIN.top + INNER_HEIGHT / 2})`} textAnchor="middle" fontSize="13" fill="currentColor">
+              KTO loss
+            </text>
+            <text x={x(-3.6)} y={MARGIN.top + 18} fontSize="12" fill="currentColor">solid: desirable</text>
+            <text x={x(-3.6)} y={MARGIN.top + 36} fontSize="12" fill="currentColor">dashed: undesirable</text>
+          </svg>
+          <p className="caption">
+            Desirable examples have low loss when delta is positive. Undesirable examples have low loss when delta is negative.
+          </p>
         </div>
       </div>
-
-      <svg width={width} height={height} role="img" aria-label="KTO loss visualization showing how desirable and undesirable responses are weighted differently">
-        <g transform={`translate(${margin.left},${margin.top})`}>
-          {/* Axes */}
-          <g className="axis axis-x" transform={`translate(0,${h})`}>
-            {xScale.ticks(8).map(tick => (
-              <g key={tick} transform={`translate(${xScale(tick)},0)`}>
-                <line y2="6" stroke="currentColor" />
-                <text y="20" textAnchor="middle" fontSize="12" fill="currentColor">
-                  {tick.toFixed(1)}
-                </text>
-              </g>
-            ))}
-            <text x={w / 2} y="45" textAnchor="middle" fontSize="14" fill="currentColor">
-              z = r_θ(x,y) - z_0 (implied reward - baseline)
-            </text>
-          </g>
-
-          <g className="axis axis-y">
-            {yScale.ticks(5).map(tick => (
-              <g key={tick} transform={`translate(0,${yScale(tick)})`}>
-                <line x2="-6" stroke="currentColor" />
-                <text x="-10" textAnchor="end" alignmentBaseline="middle" fontSize="12" fill="currentColor">
-                  {tick.toFixed(2)}
-                </text>
-              </g>
-            ))}
-            <text
-              transform={`translate(-45,${h / 2}) rotate(-90)`}
-              textAnchor="middle"
-              fontSize="14"
-              fill="currentColor"
-            >
-              Value v(x,y)
-            </text>
-          </g>
-
-          {/* Zero line */}
-          <line
-            x1={xScale(0)}
-            x2={xScale(0)}
-            y1={0}
-            y2={h}
-            stroke="#666"
-            strokeDasharray="4,4"
-            opacity={0.5}
-          />
-
-          {/* Curves */}
-          <path
-            d={lineGen(curveData.desirable) || ''}
-            fill="none"
-            stroke="#22c55e"
-            strokeWidth={2.5}
-          />
-          <path
-            d={lineGen(curveData.undesirable) || ''}
-            fill="none"
-            stroke="#ef4444"
-            strokeWidth={2.5}
-          />
-
-          {/* Legend */}
-          <g transform={`translate(${w + 10},20)`}>
-            <g>
-              <line x1="0" x2="20" y1="0" y2="0" stroke="#22c55e" strokeWidth={2.5} />
-              <text x="25" y="5" fontSize="12" fill="currentColor">Desirable</text>
-            </g>
-            <g transform="translate(0,20)">
-              <line x1="0" x2="20" y1="0" y2="0" stroke="#ef4444" strokeWidth={2.5} />
-              <text x="25" y="5" fontSize="12" fill="currentColor">Undesirable</text>
-            </g>
-          </g>
-        </g>
-      </svg>
-
-      {/* Static insight removed - replaced by dynamic insight box above */}
 
       <style jsx>{`
-        .kto-viz {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.2);
+        .demo {
+          display: grid;
+          gap: 0.8rem;
+        }
+
+        .controls,
+        .panel {
+          min-width: 0;
+          border: 1px solid rgba(27, 36, 48, 0.1);
           border-radius: 8px;
-          padding: 1.5rem;
-          margin: 2rem 0;
+          background: rgba(255, 252, 246, 0.82);
         }
 
         .controls {
-          display: flex;
-          gap: 1.5rem;
-          margin-bottom: 1.5rem;
-          flex-wrap: wrap;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.65rem;
+          padding: 0.75rem;
         }
 
-        .control-group {
-          flex: 1;
-          min-width: 200px;
+        fieldset,
+        label {
+          min-width: 0;
         }
 
-        .control-group label {
+        fieldset {
+          display: grid;
+          gap: 0.35rem;
+          margin: 0;
+          border: 0;
+          padding: 0;
+          color: #4f5f6d;
+          font-size: 0.78rem;
+        }
+
+        legend {
+          margin-bottom: 0.2rem;
+          color: #65717d;
+          font-size: 0.72rem;
+        }
+
+        fieldset label {
           display: flex;
-          flex-direction: column;
+          align-items: center;
+          gap: 0.35rem;
+        }
+
+        .layout {
+          display: grid;
+          grid-template-columns: 0.9fr 1.1fr;
+          gap: 0.75rem;
+        }
+
+        .panel {
+          padding: 0.75rem;
+        }
+
+        h3 {
+          margin: 0 0 0.7rem;
+          color: #1b2430;
+          font-size: 0.95rem;
+        }
+
+        .metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 0.5rem;
-          font-size: 0.9rem;
-          color: var(--text-secondary);
         }
 
-        input[type="range"] {
-          width: 100%;
+        .claim,
+        .caption {
+          margin: 0.7rem 0 0;
+          color: #5b6875;
+          font-size: 0.8rem;
+          line-height: 1.45;
         }
 
         svg {
           display: block;
-          margin: 0 auto;
+          width: 100%;
+          height: auto;
+          color: #1b2430;
         }
 
-        .insight {
-          margin-top: 1rem;
-          padding: 1rem;
-          background: rgba(245, 158, 11, 0.1);
-          border-left: 3px solid var(--accent);
-          border-radius: 4px;
+        @media (max-width: 860px) {
+          .controls,
+          .layout {
+            grid-template-columns: 1fr;
+          }
         }
 
-        .insight p {
-          margin: 0;
-          font-size: 0.9rem;
-          line-height: 1.5;
-          color: var(--text-secondary);
+        @media (max-width: 520px) {
+          .metrics {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function Slider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="slider">
+      <span>{label}</span>
+      <input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} />
+      <strong>{fmt(value)}</strong>
+      <style jsx>{`
+        .slider {
+          display: grid;
+          gap: 0.35rem;
+          color: #4f5f6d;
+          font-size: 0.75rem;
         }
 
-        .insight strong {
-          color: var(--text-primary);
+        input {
+          width: 100%;
+        }
+
+        strong {
+          color: #17202a;
+          font-family: var(--font-mono);
+        }
+      `}</style>
+    </label>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{fmt(value)}</strong>
+      <style jsx>{`
+        .metric {
+          min-width: 0;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.58);
+          padding: 0.55rem;
+        }
+
+        span {
+          display: block;
+          color: #65717d;
+          font-size: 0.68rem;
+        }
+
+        strong {
+          color: #17202a;
+          font-family: var(--font-mono);
         }
       `}</style>
     </div>

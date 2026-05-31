@@ -239,6 +239,7 @@ export default function RLHFDPOAlignment() {
         border: '1px solid rgba(148, 163, 184, 0.35)',
         color: '#e5e7eb',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+        minWidth: 0,
       }}
     >
       <header
@@ -247,10 +248,11 @@ export default function RLHFDPOAlignment() {
           justifyContent: 'space-between',
           alignItems: 'flex-end',
           gap: 16,
+          flexWrap: 'wrap',
           marginBottom: 20,
         }}
       >
-        <div>
+        <div style={{ flex: '1 1 18rem', minWidth: 0 }}>
           <h2
             style={{
               fontSize: 22,
@@ -281,6 +283,9 @@ export default function RLHFDPOAlignment() {
             borderRadius: 999,
             padding: 4,
             border: '1px solid rgba(148, 163, 184, 0.35)',
+            flex: '0 1 auto',
+            flexWrap: 'wrap',
+            maxWidth: '100%',
           }}
           aria-label="Toggle alignment training pipeline"
         >
@@ -554,7 +559,7 @@ export default function RLHFDPOAlignment() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 20rem), 1fr))',
           gap: 20,
         }}
       >
@@ -564,6 +569,7 @@ export default function RLHFDPOAlignment() {
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
+            minWidth: 0,
           }}
         >
           {/* Pipelines diagram */}
@@ -705,6 +711,7 @@ export default function RLHFDPOAlignment() {
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
+            minWidth: 0,
           }}
         >
           {/* Preference pair card */}
@@ -913,6 +920,7 @@ function PipelineRow({ label, badge, color, steps, isActive }: PipelineRowProps)
           ? `0 0 0 1px ${color}44, 0 16px 40px rgba(15, 23, 42, 0.9)`
           : 'none',
         transition: 'background 0.15s ease, box-shadow 0.15s ease, border 0.15s ease',
+        minWidth: 0,
       }}
     >
       <div
@@ -922,6 +930,7 @@ function PipelineRow({ label, badge, color, steps, isActive }: PipelineRowProps)
           justifyContent: 'space-between',
           marginBottom: 8,
           gap: 8,
+          flexWrap: 'wrap',
         }}
       >
         <div
@@ -970,6 +979,8 @@ function PipelineRow({ label, badge, color, steps, isActive }: PipelineRowProps)
           alignItems: 'center',
           overflowX: 'auto',
           paddingBottom: 4,
+          maxWidth: '100%',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         {steps.map((step, index) => (

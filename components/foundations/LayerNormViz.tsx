@@ -1,12 +1,17 @@
 'use client'
 
 import React, { useMemo, useState, useEffect, ChangeEvent } from 'react'
+import { emitDemoState } from '../../lib/demoState'
 
 // ─────────────────────────────────────────────────────────────
 // Gamification Types
 // ─────────────────────────────────────────────────────────────
 type GamePhase = 'setup' | 'countdown' | 'revealed'
 type SimilarityPrediction = 'very-similar' | 'moderately-similar' | 'very-different' | null
+
+type LayerNormVsRmsNormProps = {
+  conceptId?: string
+}
 
 interface SimilarityChallenge {
   name: string
@@ -161,10 +166,10 @@ function getLayerNormInsight(
   }
 
   if (ops.n > 4096) {
-    return `🚀 At LLM scale (d = ${ops.n}), RMSNorm's ~50% fewer ops matters! That's ${ops.ratio.toFixed(2)}× fewer operations per forward pass through every layer.`;
+    return `🚀 For large vectors in this toy scalar count, dropping centering removes roughly half these counted operations. Real kernel/runtime effects are outside this lab.`;
   }
 
-  return `📈 Mean = ${mean.toFixed(3)}, σ = ${std.toFixed(3)}. RMSNorm uses ${((1 - 1 / ops.ratio) * 100).toFixed(0)}% fewer ops. Modern LLMs like Llama use RMSNorm because the outputs are similar but computation is cheaper.`;
+  return `📈 Mean = ${mean.toFixed(3)}, σ = ${std.toFixed(3)}. RMSNorm uses ${((1 - 1 / ops.ratio) * 100).toFixed(0)}% fewer ops in this toy scalar count. This lab checks finite-vector mechanics, not architecture adoption.`;
 }
 
 const COLOR_TOKENS: Record<
@@ -356,7 +361,7 @@ function VectorRow({
   )
 }
 
-export default function LayerNormVsRmsNorm() {
+export default function LayerNormVsRmsNorm({ conceptId = 'layer-normalization' }: LayerNormVsRmsNormProps) {
   const [inputText, setInputText] = useState(
     '1.0, 0.5, -0.2, 2.0, -1.2, 0.3, 0.7, 1.5'
   )
@@ -445,6 +450,44 @@ export default function LayerNormVsRmsNorm() {
     );
   }, [layerNorm.mean, layerNorm.std, rmsNorm.rms, metrics.cosineSimilarity, metrics.maxDiff, ops]);
 
+  const cosineLabel = metrics.cosineSimilarity !== null ? metrics.cosineSimilarity.toFixed(4) : 'undefined'
+  const opsReductionPct = (1 - 1 / ops.ratio) * 100
+
+  useEffect(() => {
+    emitDemoState({
+      conceptId,
+      label: 'LayerNorm vs RMSNorm normalization state',
+      summary: `Vector dim ${ops.n} has mean ${layerNorm.mean.toFixed(3)}, std ${layerNorm.std.toFixed(3)}, RMS ${rmsNorm.rms.toFixed(3)}, and LayerNorm/RMSNorm cosine similarity ${cosineLabel}; RMSNorm uses ${opsReductionPct.toFixed(1)}% fewer scalar ops in this toy count.`,
+      values: [
+        `dimension n: ${ops.n}`,
+        `LayerNorm mean mu: ${layerNorm.mean.toFixed(4)}`,
+        `LayerNorm std sigma: ${layerNorm.std.toFixed(4)}`,
+        `RMSNorm rms: ${rmsNorm.rms.toFixed(4)}`,
+        `output cosine similarity: ${cosineLabel}`,
+        `max output delta: ${metrics.maxDiff.toFixed(4)}`,
+        `ops: LayerNorm ${ops.layerNorm}, RMSNorm ${ops.rmsNorm}, reduction ${opsReductionPct.toFixed(1)}%`,
+        gameMode
+          ? `challenge phase: ${gamePhase}${selectedChallenge ? `, ${selectedChallenge.name}` : ''}${prediction ? `, prediction ${prediction}` : ''}`
+          : 'challenge phase: setup',
+      ],
+    })
+  }, [
+    conceptId,
+    cosineLabel,
+    gameMode,
+    gamePhase,
+    layerNorm.mean,
+    layerNorm.std,
+    metrics.maxDiff,
+    ops.layerNorm,
+    ops.n,
+    ops.rmsNorm,
+    opsReductionPct,
+    prediction,
+    rmsNorm.rms,
+    selectedChallenge,
+  ])
+
   const handleGammaChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = Number.parseFloat(e.target.value)
     if (!Number.isNaN(value)) setGamma(value)
@@ -502,10 +545,9 @@ export default function LayerNormVsRmsNorm() {
           }}
         >
           LayerNorm centers and scales activations; RMSNorm
-          only scales by the root-mean-square. RMSNorm is
-          simpler (fewer ops) but produces very similar
-          normalized vectors—one reason modern LLMs like
-          Llama often prefer it.
+          omits centering and divides by the root-mean-square.
+          In this toy lab, compare when that omission changes
+          the output direction and the rough scalar-op count.
         </p>
 
         {/* Activation Presets */}
@@ -1409,11 +1451,11 @@ export default function LayerNormVsRmsNorm() {
           }}
         >
           Try modifying the activations above. You&apos;ll
-          see that while LayerNorm and RMSNorm follow
-          slightly different math (centering vs. pure
-          scaling), their outputs tend to be very close
-          in practice—while RMSNorm is cheaper to compute,
-          which is attractive at LLM scale.
+          see that LayerNorm and RMSNorm follow different
+          math: centering vs. pure RMS scaling. Near-zero-mean
+          vectors can be close; nonzero-mean or uniform vectors
+          can change direction. The cost bars are a toy scalar-op
+          count, not a runtime benchmark.
         </p>
       </div>
     </section>

@@ -1,705 +1,481 @@
-import { useState, useMemo, useEffect } from 'react'
-import * as d3 from 'd3'
+'use client'
 
-// ─────────────────────────────────────────────────────────────
-// Gamification: Severity Prediction Challenge
-// ─────────────────────────────────────────────────────────────
-type GamePhase = 'setup' | 'countdown' | 'revealed';
-type SeverityPrediction = 'aligned' | 'warning' | 'hacking' | 'severe' | null;
+import { useEffect, useMemo, useState } from 'react'
 
-interface SeverityChallenge {
-  name: string;
-  overopt: number;
-  noise: number;
-  hint: string;
-  correctSeverity: 'aligned' | 'warning' | 'hacking' | 'severe';
-  explanation: string;
+import { emitDemoState } from '../../lib/demoState'
+
+type Candidate = {
+  id: string
+  label: string
+  piRef: number
+  trueUtility: number
+  cleanReward: number
+  proxyReward: number
+  uncertainty: number
 }
 
-function _getSeverityLevel(overopt: number, noise: number): 'aligned' | 'warning' | 'hacking' | 'severe' {
-  if (overopt < 0.2 && noise < 0.2) return 'aligned';
-  if (overopt > 0.7 || (overopt > 0.5 && noise > 0.5)) return 'severe';
-  if (overopt > 0.4 || (overopt + noise) > 0.6) return 'hacking';
-  return 'warning';
-}
-
-const SEVERITY_CHALLENGES: SeverityChallenge[] = [
+const CANDIDATES: Candidate[] = [
   {
-    name: '🎲 Mystery A',
-    overopt: 0.15,
-    noise: 0.1,
-    hint: 'The reward model was carefully calibrated with diverse human feedback...',
-    correctSeverity: 'aligned',
-    explanation: '✅ Well-aligned! Low overoptimization (0.15) and low noise (0.1) means the proxy closely tracks true quality. This is rare in practice—most reward models have some misspecification.'
+    id: 'clear',
+    label: 'clear answer',
+    piRef: 0.28,
+    trueUtility: 1.2,
+    cleanReward: 1.1,
+    proxyReward: 1.1,
+    uncertainty: 0.15,
   },
   {
-    name: '🎲 Mystery B',
-    overopt: 0.85,
-    noise: 0.5,
-    hint: 'The model found a surprising way to maximize reward that the designers didn\'t anticipate...',
-    correctSeverity: 'severe',
-    explanation: '💀 Severe hacking! At 0.85 overoptimization, the model is fully gaming the proxy. True quality is likely degrading while reward keeps climbing. This needs KL penalties and human oversight!'
+    id: 'safe',
+    label: 'safe refusal',
+    piRef: 0.22,
+    trueUtility: 0.7,
+    cleanReward: 0.6,
+    proxyReward: 0.6,
+    uncertainty: 0.15,
   },
   {
-    name: '🎲 Mystery C',
-    overopt: 0.35,
-    noise: 0.3,
-    hint: 'Evaluators notice the model\'s outputs feel slightly different from early training...',
-    correctSeverity: 'warning',
-    explanation: '⚠️ Early warning! At 0.35 overoptimization, divergence is just starting. This is the ideal time for iterative RLHF—recalibrate with fresh human feedback before the gap widens.'
+    id: 'thin',
+    label: 'thin answer',
+    piRef: 0.42,
+    trueUtility: -0.3,
+    cleanReward: -0.1,
+    proxyReward: -0.1,
+    uncertainty: 0.2,
   },
   {
-    name: '🎲 Mystery D',
-    overopt: 0.55,
-    noise: 0.45,
-    hint: 'The reward model was trained on slightly different data than the deployment distribution...',
-    correctSeverity: 'hacking',
-    explanation: '🔴 Goodhart zone! With 0.55 overoptimization and 0.45 noise, the proxy is diverging significantly from true quality. The model has found exploitable patterns in the reward signal.'
-  }
-];
-
-function getSeverityFeedback(
-  prediction: SeverityPrediction,
-  challenge: SeverityChallenge
-): { correct: boolean; message: string } {
-  const isCorrect = prediction === challenge.correctSeverity;
-  const severityLabels = {
-    'aligned': 'Well-Aligned',
-    'warning': 'Early Warning',
-    'hacking': 'Goodhart Zone',
-    'severe': 'Severe Hacking'
-  };
-  return {
-    correct: isCorrect,
-    message: isCorrect
-      ? challenge.explanation
-      : `❌ Not quite! The severity is "${severityLabels[challenge.correctSeverity]}". ${challenge.explanation}`
-  };
-}
-
-// Scenario presets for different hacking regimes
-const SCENARIO_PRESETS = [
-  { name: '✅ Well-Aligned', overopt: 0.1, noise: 0.1, description: 'Proxy closely tracks true quality' },
-  { name: '⚠️ Early Warning', overopt: 0.35, noise: 0.25, description: 'Slight divergence begins' },
-  { name: '🔴 Goodhart Zone', overopt: 0.6, noise: 0.4, description: 'Proxy rises, quality stalls' },
-  { name: '💀 Severe Hacking', overopt: 0.9, noise: 0.7, description: 'True quality degrades as proxy soars' },
-  { name: '🎲 High Noise', overopt: 0.3, noise: 0.8, description: 'Misspecified proxy, large gap' },
+    id: 'exploit',
+    label: 'proxy exploit',
+    piRef: 0.08,
+    trueUtility: -0.8,
+    cleanReward: -0.8,
+    proxyReward: 1.9,
+    uncertainty: 1,
+  },
 ]
 
-// Dynamic educational insights
-function getGoodhartInsight(overopt: number, noise: number): string {
-  const gap = overopt + noise;
+const SWEEP_BETAS = [3, 2.2, 1.6, 1.1, 0.8, 0.6, 0.45, 0.35, 0.28]
+const CHART_WIDTH = 520
+const CHART_HEIGHT = 210
+const MARGIN = { top: 14, right: 18, bottom: 34, left: 42 }
+const INNER_WIDTH = CHART_WIDTH - MARGIN.left - MARGIN.right
+const INNER_HEIGHT = CHART_HEIGHT - MARGIN.top - MARGIN.bottom
 
-  if (overopt < 0.2 && noise < 0.2) {
-    return "✅ Safe zone! Proxy reward closely tracks true quality. This is the ideal - but hard to achieve in practice. Real reward signals are always imperfect.";
-  }
-
-  if (overopt > 0.7) {
-    return "💀 Severe overoptimization! The model is 'gaming' the proxy - true quality degrades even as the reward signal keeps climbing. This is why PPO uses KL penalties!";
-  }
-
-  if (noise > 0.6) {
-    return "🎲 High proxy noise! The reward model is badly misspecified. Consider using ensemble reward models, human feedback checkpoints, or conservative optimization (like DPO).";
-  }
-
-  if (overopt > 0.4 || gap > 0.6) {
-    return "🔴 Goodhart's Law activated: 'When a measure becomes a target, it ceases to be a good measure.' The gap between green (true) and red (proxy) is the alignment tax.";
-  }
-
-  if (overopt > 0.25) {
-    return "⚠️ Early warning signs: proxy and true quality are starting to diverge. This is where iterative RLHF with fresh human feedback helps recalibrate.";
-  }
-
-  return "📊 Moderate regime: some divergence between proxy and true quality. The shaded area between curves represents lost alignment - the cost of imperfect reward signals.";
+function fmt(value: number) {
+  const clean = Math.abs(value) < 0.0005 ? 0 : value
+  return clean.toFixed(3)
 }
 
-/**
- * Reward Hacking / Goodhart's Law Visualization
- * Shows characteristic pattern: proxy reward increases while true quality plateaus/degrades
- * Demonstrates the alignment tax of overoptimization
- */
-
-interface RewardHackingVizProps {
-  width?: number
-  height?: number
+function fmtPct(value: number) {
+  return `${Math.round(value * 100)}%`
 }
 
-export default function RewardHackingViz({ width = 600, height = 400 }: RewardHackingVizProps) {
-  const [overoptimization, setOveroptimization] = useState(0.5)
-  const [proxyNoise, setProxyNoise] = useState(0.3)
+function normalize(weights: number[]) {
+  const total = weights.reduce((sum, value) => sum + value, 0)
+  return weights.map((value) => value / total)
+}
 
-  // ─────────────────────────────────────────────────────────────
-  // Game State
-  // ─────────────────────────────────────────────────────────────
-  const [gameMode, setGameMode] = useState(false);
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup');
-  const [currentChallengeIdx, setCurrentChallengeIdx] = useState(0);
-  const [prediction, setPrediction] = useState<SeverityPrediction>(null);
-  const [countdown, setCountdown] = useState(0);
-  const [score, setScore] = useState(0);
-  const [completedChallenges, setCompletedChallenges] = useState<Set<number>>(new Set());
+function kl(policy: number[], reference: number[]) {
+  return policy.reduce((sum, prob, index) => sum + prob * Math.log(prob / reference[index]), 0)
+}
 
-  const currentChallenge = SEVERITY_CHALLENGES[currentChallengeIdx];
+function expected(policy: number[], values: number[]) {
+  return policy.reduce((sum, prob, index) => sum + prob * values[index], 0)
+}
 
-  // Game control functions
-  const startChallenge = (idx: number) => {
-    setCurrentChallengeIdx(idx);
-    setGamePhase('setup');
-    setPrediction(null);
-  };
+function policyFor(beta: number, lambda: number, proxyGap: boolean) {
+  const reference = CANDIDATES.map((candidate) => candidate.piRef)
+  const meanReward = CANDIDATES.map((candidate) => (proxyGap ? candidate.proxyReward : candidate.cleanReward))
+  const score = CANDIDATES.map((candidate, index) => meanReward[index] - lambda * candidate.uncertainty)
+  const logits = CANDIDATES.map((candidate, index) => Math.log(candidate.piRef) + score[index] / beta)
+  const maxLogit = Math.max(...logits)
+  const policy = normalize(logits.map((value) => Math.exp(value - maxLogit)))
+  const trueUtility = CANDIDATES.map((candidate) => candidate.trueUtility)
+  const proxyError = meanReward.map((reward, index) => reward - trueUtility[index])
 
-  const submitPrediction = () => {
-    if (!prediction) return;
-    setGamePhase('countdown');
-    setCountdown(3);
-  };
+  return {
+    reference,
+    meanReward,
+    score,
+    policy,
+    trueUtility,
+    expectedProxy: expected(policy, meanReward),
+    expectedTrue: expected(policy, trueUtility),
+    expectedRefProxy: expected(reference, meanReward),
+    expectedRefTrue: expected(reference, trueUtility),
+    selectedError: expected(policy, proxyError),
+    klValue: kl(policy, reference),
+  }
+}
 
-  const resetGame = () => {
-    setGameMode(false);
-    setGamePhase('setup');
-    setPrediction(null);
-    setScore(0);
-    setCompletedChallenges(new Set());
-    setCurrentChallengeIdx(0);
-  };
+type RewardHackingVizProps = {
+  conceptId?: string
+  emitState?: boolean
+}
 
-  // Countdown timer
-  useEffect(() => {
-    if (gamePhase !== 'countdown' || countdown <= 0) return;
-    const timer = setTimeout(() => {
-      if (countdown === 1) {
-        setGamePhase('revealed');
-        // Apply the mystery settings to show the actual curves
-        setOveroptimization(currentChallenge.overopt);
-        setProxyNoise(currentChallenge.noise);
-        // Check answer
-        const feedback = getSeverityFeedback(prediction, currentChallenge);
-        if (feedback.correct) {
-          setScore(s => s + 1);
-          setCompletedChallenges(prev => new Set([...prev, currentChallengeIdx]));
-        }
-      } else {
-        setCountdown(countdown - 1);
+export default function RewardHackingViz({ conceptId = 'reward-hacking', emitState = false }: RewardHackingVizProps) {
+  const [beta, setBeta] = useState(0.7)
+  const [proxyGap, setProxyGap] = useState(true)
+  const [lambda, setLambda] = useState(0)
+
+  const data = useMemo(() => {
+    const current = policyFor(beta, lambda, proxyGap)
+    const rows = CANDIDATES.map((candidate, index) => ({
+      ...candidate,
+      meanReward: current.meanReward[index],
+      score: current.score[index],
+      piStar: current.policy[index],
+      proxyError: current.meanReward[index] - candidate.trueUtility,
+    }))
+    const frontier = SWEEP_BETAS.map((sweepBeta) => {
+      const point = policyFor(sweepBeta, lambda, proxyGap)
+      return {
+        beta: sweepBeta,
+        pressure: 1 / sweepBeta,
+        expectedProxy: point.expectedProxy,
+        expectedTrue: point.expectedTrue,
       }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [gamePhase, countdown, prediction, currentChallenge, currentChallengeIdx]);
+    })
+    const hacking =
+      proxyGap &&
+      current.expectedProxy > current.expectedRefProxy + 1e-6 &&
+      current.expectedTrue < current.expectedRefTrue - 1e-6
 
-  // Dynamic educational insight
-  const currentInsight = useMemo(() => {
-    return getGoodhartInsight(overoptimization, proxyNoise);
-  }, [overoptimization, proxyNoise]);
-
-  // Apply preset
-  const handlePreset = (preset: typeof SCENARIO_PRESETS[0]) => {
-    setOveroptimization(preset.overopt);
-    setProxyNoise(preset.noise);
-  };
-
-  const margin = { top: 20, right: 120, bottom: 60, left: 60 }
-  const w = width - margin.left - margin.right
-  const h = height - margin.top - margin.bottom
-
-  // Generate Goodhart curve data
-  const curveData = useMemo(() => {
-    const points = 100
-    const data = []
-
-    for (let i = 0; i < points; i++) {
-      const t = i / (points - 1) // optimization progress [0, 1]
-      const kl = t * 5 // KL divergence from reference
-
-      // True quality: rises then plateaus/degrades
-      const trueQuality = Math.min(
-        1.0,
-        2.5 * t * (1 - overoptimization * t)
-      )
-
-      // Proxy reward: keeps rising due to noise/misspecification
-      const proxyReward = trueQuality + proxyNoise * Math.log(1 + kl * 2)
-
-      data.push({ kl, trueQuality, proxyReward })
+    return {
+      ...current,
+      rows,
+      frontier,
+      hacking,
     }
+  }, [beta, lambda, proxyGap])
 
-    return data
-  }, [overoptimization, proxyNoise])
+  const topCandidate = data.rows.reduce((best, row) => (row.piStar > best.piStar ? row : best), data.rows[0])
+  const pressureLabel = beta < 0.5 ? 'high' : beta < 1 ? 'medium' : 'low'
 
-  const xScale = d3.scaleLinear()
-    .domain([0, 5])
-    .range([0, w])
+  useEffect(() => {
+    if (!emitState) return
 
-  const yScale = d3.scaleLinear()
-    .domain([0, d3.max(curveData, d => Math.max(d.trueQuality, d.proxyReward)) || 1])
-    .range([h, 0])
+    emitDemoState({
+      conceptId,
+      label: 'Reward hacking lab controls',
+      summary: `beta ${fmt(beta)}, lambda ${fmt(lambda)}, proxy gap ${proxyGap ? 'on' : 'off'}, top completion ${topCandidate.label} at ${fmtPct(topCandidate.piStar)}, proxy ${fmt(data.expectedProxy)}, true ${fmt(data.expectedTrue)}, selected error ${fmt(data.selectedError)}; hacking diagnostic ${data.hacking ? 'visible' : 'not visible'}.`,
+      values: [
+        `beta: ${fmt(beta)} (${pressureLabel} optimization pressure)`,
+        `uncertainty penalty lambda: ${fmt(lambda)}`,
+        `proxy reward gap: ${proxyGap ? 'on' : 'off'}`,
+        `top completion: ${topCandidate.label} (${fmtPct(topCandidate.piStar)})`,
+        `expected proxy reward: ${fmt(data.expectedProxy)}`,
+        `expected true utility: ${fmt(data.expectedTrue)}`,
+        `reference true utility: ${fmt(data.expectedRefTrue)}`,
+        `selected proxy error: ${fmt(data.selectedError)}`,
+        `KL(policy || ref): ${fmt(data.klValue)}`,
+        `hacking diagnostic: ${data.hacking ? 'proxy up while true utility below reference' : 'not visible'}`,
+      ],
+    })
+  }, [
+    beta,
+    conceptId,
+    data.expectedProxy,
+    data.expectedRefTrue,
+    data.expectedTrue,
+    data.hacking,
+    data.klValue,
+    data.selectedError,
+    emitState,
+    lambda,
+    pressureLabel,
+    proxyGap,
+    topCandidate.label,
+    topCandidate.piStar,
+  ])
 
-  const lineGen = d3.line<{ kl: number; trueQuality: number; proxyReward: number }>()
-
-  const trueLine = lineGen
-    .x(d => xScale(d.kl))
-    .y(d => yScale(d.trueQuality))
-
-  const proxyLine = lineGen
-    .x(d => xScale(d.kl))
-    .y(d => yScale(d.proxyReward))
+  const yMin = Math.min(...data.frontier.flatMap((point) => [point.expectedProxy, point.expectedTrue]), data.expectedRefTrue) - 0.1
+  const yMax = Math.max(...data.frontier.flatMap((point) => [point.expectedProxy, point.expectedTrue]), data.expectedRefProxy) + 0.1
+  const x = (pressure: number) => MARGIN.left + ((pressure - 1 / 3) / (1 / 0.28 - 1 / 3)) * INNER_WIDTH
+  const y = (value: number) => MARGIN.top + (1 - (value - yMin) / (yMax - yMin)) * INNER_HEIGHT
+  const path = (key: 'expectedProxy' | 'expectedTrue') =>
+    data.frontier.map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.pressure)} ${y(point[key])}`).join(' ')
+  const currentPressure = 1 / beta
 
   return (
-    <div className="reward-hacking-viz">
-      {/* Scenario Presets */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.75rem' }}>
-        {SCENARIO_PRESETS.map((preset) => {
-          const isActive = Math.abs(overoptimization - preset.overopt) < 0.1 && Math.abs(proxyNoise - preset.noise) < 0.1;
-          return (
-            <button
-              key={preset.name}
-              type="button"
-              onClick={() => handlePreset(preset)}
-              style={{
-                fontSize: '0.75rem',
-                padding: '0.35rem 0.7rem',
-                borderRadius: '999px',
-                border: isActive
-                  ? '1px solid rgba(245, 158, 11, 0.7)'
-                  : '1px solid rgba(75, 85, 99, 0.5)',
-                background: isActive
-                  ? 'rgba(245, 158, 11, 0.2)'
-                  : 'rgba(15, 23, 42, 0.8)',
-                color: '#e5e7eb',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease-out',
-              }}
-              title={preset.description}
-            >
-              {preset.name}
-            </button>
-          );
-        })}
+    <div className="demo">
+      <div className="controls" aria-label="Reward hacking controls">
+        <label className="slider">
+          <span>KL coefficient beta (larger = closer to reference)</span>
+          <input type="range" min="0.28" max="3" step="0.02" value={beta} onChange={(event) => setBeta(Number(event.target.value))} />
+          <strong>{fmt(beta)}</strong>
+        </label>
+        <label className="slider">
+          <span>uncertainty penalty lambda</span>
+          <input type="range" min="0" max="2" step="0.05" value={lambda} onChange={(event) => setLambda(Number(event.target.value))} />
+          <strong>{fmt(lambda)}</strong>
+        </label>
+        <label className="toggle">
+          <input type="checkbox" checked={proxyGap} onChange={(event) => setProxyGap(event.target.checked)} />
+          proxy reward gap
+        </label>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          Gamification: Severity Prediction Challenge
-          ───────────────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.05))',
-        border: '1px solid rgba(239, 68, 68, 0.3)',
-        borderRadius: '12px',
-        padding: '1.25rem',
-        marginBottom: '1rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', color: '#e5e7eb' }}>🎮 Severity Prediction Challenge</h4>
-          {!gameMode ? (
-            <button
-              onClick={() => setGameMode(true)}
-              style={{
-                padding: '0.4rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(239, 68, 68, 0.5)',
-                background: 'rgba(239, 68, 68, 0.2)',
-                color: '#f87171',
-                cursor: 'pointer',
-                fontSize: '0.85rem'
-              }}
-            >
-              Start Challenge
-            </button>
-          ) : (
-            <button
-              onClick={resetGame}
-              style={{
-                padding: '0.4rem 1rem',
-                borderRadius: '6px',
-                border: '1px solid rgba(107, 114, 128, 0.5)',
-                background: 'rgba(107, 114, 128, 0.2)',
-                color: '#9ca3af',
-                cursor: 'pointer',
-                fontSize: '0.85rem'
-              }}
-            >
-              Exit Game
-            </button>
-          )}
-          {gameMode && (
-            <span style={{
-              marginLeft: 'auto',
-              background: 'rgba(52, 211, 153, 0.2)',
-              border: '1px solid rgba(52, 211, 153, 0.4)',
-              padding: '0.25rem 0.75rem',
-              borderRadius: '999px',
-              fontSize: '0.8rem',
-              color: '#34d399'
-            }}>
-              Score: {score}/{SEVERITY_CHALLENGES.length}
-            </span>
-          )}
-        </div>
-
-        {gameMode && (
-          <div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              {SEVERITY_CHALLENGES.map((ch, idx) => (
-                <button
-                  key={ch.name}
-                  onClick={() => startChallenge(idx)}
-                  style={{
-                    padding: '0.4rem 0.8rem',
-                    borderRadius: '8px',
-                    border: currentChallengeIdx === idx
-                      ? '1px solid #ef4444'
-                      : completedChallenges.has(idx)
-                        ? '1px solid rgba(52, 211, 153, 0.4)'
-                        : '1px solid rgba(239, 68, 68, 0.3)',
-                    background: currentChallengeIdx === idx
-                      ? 'rgba(239, 68, 68, 0.25)'
-                      : completedChallenges.has(idx)
-                        ? 'rgba(52, 211, 153, 0.15)'
-                        : 'rgba(15, 23, 42, 0.6)',
-                    color: completedChallenges.has(idx) ? '#34d399' : '#e5e7eb',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  {completedChallenges.has(idx) ? '✅' : ch.name}
-                </button>
-              ))}
-            </div>
-
-            {gamePhase === 'setup' && (
-              <div style={{ textAlign: 'center' }}>
-                <p style={{ fontStyle: 'italic', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                  {currentChallenge.hint}
-                </p>
-                <p style={{ fontWeight: 600, color: '#e5e7eb', marginBottom: '1rem' }}>
-                  What severity level is this scenario?
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                  {([
-                    { key: 'aligned', label: '✅ Well-Aligned' },
-                    { key: 'warning', label: '⚠️ Early Warning' },
-                    { key: 'hacking', label: '🔴 Goodhart Zone' },
-                    { key: 'severe', label: '💀 Severe Hacking' }
-                  ] as { key: SeverityPrediction; label: string }[]).map(opt => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setPrediction(opt.key)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        borderRadius: '8px',
-                        border: prediction === opt.key
-                          ? '2px solid #ef4444'
-                          : '2px solid rgba(239, 68, 68, 0.3)',
-                        background: prediction === opt.key
-                          ? 'rgba(239, 68, 68, 0.3)'
-                          : 'rgba(15, 23, 42, 0.8)',
-                        color: '#e5e7eb',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem',
-                        fontWeight: 500
-                      }}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+      <div className="layout">
+        <section className="panel">
+          <h3>one prompt, four completions</h3>
+          <div className="candidateGrid">
+            {data.rows.map((row) => (
+              <article key={row.id} className="candidate">
+                <div className="candidateHead">
+                  <strong>{row.label}</strong>
+                  <code>{fmtPct(row.piStar)}</code>
                 </div>
-                <button
-                  onClick={submitPrediction}
-                  disabled={!prediction}
-                  style={{
-                    padding: '0.6rem 1.5rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    background: prediction ? 'linear-gradient(135deg, #ef4444, #f97316)' : 'rgba(107, 114, 128, 0.3)',
-                    color: 'white',
-                    cursor: prediction ? 'pointer' : 'not-allowed',
-                    fontWeight: 600,
-                    opacity: prediction ? 1 : 0.5
-                  }}
-                >
-                  Lock In Prediction
-                </button>
-              </div>
-            )}
-
-            {gamePhase === 'countdown' && (
-              <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-                <div style={{
-                  fontSize: '3rem',
-                  fontWeight: 'bold',
-                  color: '#ef4444',
-                  animation: 'pulse 1s ease-in-out infinite'
-                }}>
-                  {countdown}
+                <Bar label="pi_ref" value={row.piRef} color="#8a98a8" />
+                <Bar label="pi_beta" value={row.piStar} color={row.id === 'exploit' && proxyGap ? '#b44b3b' : '#1f6f78'} />
+                <div className="numbers">
+                  <Metric label="true utility u" value={row.trueUtility} />
+                  <Metric label="mean proxy mu" value={row.meanReward} />
+                  <Metric label="uncertainty sigma" value={row.uncertainty} />
+                  <Metric label="LCB score" value={row.score} />
+                  <Metric label="proxy error" value={row.proxyError} />
                 </div>
-                <p style={{ color: 'rgba(255,255,255,0.7)' }}>Revealing curves...</p>
-              </div>
-            )}
-
-            {gamePhase === 'revealed' && (
-              <div style={{ textAlign: 'center' }}>
-                {(() => {
-                  const feedback = getSeverityFeedback(prediction, currentChallenge);
-                  return (
-                    <>
-                      <div style={{
-                        display: 'inline-block',
-                        padding: '0.5rem 1.5rem',
-                        borderRadius: '999px',
-                        fontWeight: 600,
-                        marginBottom: '1rem',
-                        background: feedback.correct ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 191, 36, 0.2)',
-                        border: feedback.correct ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(251, 191, 36, 0.4)',
-                        color: feedback.correct ? '#34d399' : '#fbbf24'
-                      }}>
-                        {feedback.correct ? '🎉 Correct!' : '💡 Learning opportunity!'}
-                      </div>
-                      <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: '1rem' }}>
-                        {feedback.message}
-                      </p>
-                      <p style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: '1rem' }}>
-                        Overoptimization: {currentChallenge.overopt}, Noise: {currentChallenge.noise}
-                      </p>
-                      <button
-                        onClick={() => {
-                          const nextIdx = (currentChallengeIdx + 1) % SEVERITY_CHALLENGES.length;
-                          startChallenge(nextIdx);
-                        }}
-                        style={{
-                          padding: '0.6rem 1.5rem',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(239, 68, 68, 0.5)',
-                          background: 'rgba(239, 68, 68, 0.2)',
-                          color: '#f87171',
-                          cursor: 'pointer',
-                          fontWeight: 500
-                        }}
-                      >
-                        {currentChallengeIdx < SEVERITY_CHALLENGES.length - 1 ? 'Next Challenge →' : 'Try Again'}
-                      </button>
-                    </>
-                  );
-                })()}
-              </div>
-            )}
+              </article>
+            ))}
           </div>
-        )}
-      </div>
+        </section>
 
-      {/* Dynamic Insight */}
-      <div
-        style={{
-          padding: '0.65rem 0.9rem',
-          borderRadius: '8px',
-          marginBottom: '0.75rem',
-          fontSize: '0.85rem',
-          lineHeight: 1.5,
-          color: 'rgba(255, 255, 255, 0.9)',
-          background: overoptimization > 0.6
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05))'
-            : overoptimization < 0.2 && proxyNoise < 0.2
-              ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05))'
-              : 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))',
-          border: overoptimization > 0.6
-            ? '1px solid rgba(239, 68, 68, 0.3)'
-            : overoptimization < 0.2 && proxyNoise < 0.2
-              ? '1px solid rgba(34, 197, 94, 0.3)'
-              : '1px solid rgba(245, 158, 11, 0.3)',
-        }}
-      >
-        {currentInsight}
-      </div>
-
-      <div className="controls">
-        <div className="control-group">
-          <label>
-            Overoptimization severity: {overoptimization.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={overoptimization}
-              onChange={(e) => setOveroptimization(parseFloat(e.target.value))}
-            />
-          </label>
-        </div>
-        <div className="control-group">
-          <label>
-            Proxy noise/misspecification: {proxyNoise.toFixed(2)}
-            <input
-              type="range"
-              min="0"
-              max="0.8"
-              step="0.05"
-              value={proxyNoise}
-              onChange={(e) => setProxyNoise(parseFloat(e.target.value))}
-            />
-          </label>
-        </div>
-      </div>
-
-      <svg width={width} height={height} role="img" aria-label="Reward hacking visualization showing how policies can exploit proxy rewards while diverging from true performance">
-        <g transform={`translate(${margin.left},${margin.top})`}>
-          {/* Axes */}
-          <g className="axis axis-x" transform={`translate(0,${h})`}>
-            {xScale.ticks(5).map(tick => (
-              <g key={tick} transform={`translate(${xScale(tick)},0)`}>
-                <line y2="6" stroke="currentColor" />
-                <text y="20" textAnchor="middle" fontSize="12" fill="currentColor">
-                  {tick.toFixed(1)}
-                </text>
-              </g>
-            ))}
-            <text x={w / 2} y="45" textAnchor="middle" fontSize="14" fill="currentColor">
-              KL divergence from reference (optimization steps)
+        <section className="panel">
+          <h3>optimization pressure</h3>
+          <svg viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} role="img" aria-label="Expected proxy reward and true utility as optimization pressure rises">
+            <line x1={MARGIN.left} x2={MARGIN.left + INNER_WIDTH} y1={MARGIN.top + INNER_HEIGHT} y2={MARGIN.top + INNER_HEIGHT} stroke="currentColor" opacity="0.35" />
+            <line x1={MARGIN.left} x2={MARGIN.left} y1={MARGIN.top} y2={MARGIN.top + INNER_HEIGHT} stroke="currentColor" opacity="0.35" />
+            <path d={path('expectedProxy')} fill="none" stroke="#b44b3b" strokeWidth="2.5" />
+            <path d={path('expectedTrue')} fill="none" stroke="#1f6f78" strokeWidth="2.5" strokeDasharray="6 5" />
+            <line x1={x(currentPressure)} x2={x(currentPressure)} y1={MARGIN.top} y2={MARGIN.top + INNER_HEIGHT} stroke="currentColor" strokeDasharray="4 4" opacity="0.4" />
+            <text x={MARGIN.left + 4} y={MARGIN.top + 14} fontSize="12" fill="#b44b3b">proxy reward</text>
+            <text x={MARGIN.left + 4} y={MARGIN.top + 31} fontSize="12" fill="#1f6f78">true utility</text>
+            <text x={MARGIN.left + INNER_WIDTH / 2} y={CHART_HEIGHT - 8} textAnchor="middle" fontSize="12" fill="currentColor">
+              optimization pressure = 1 / beta
             </text>
-          </g>
+          </svg>
 
-          <g className="axis axis-y">
-            {yScale.ticks(5).map(tick => (
-              <g key={tick} transform={`translate(0,${yScale(tick)})`}>
-                <line x2="-6" stroke="currentColor" />
-                <text x="-10" textAnchor="end" alignmentBaseline="middle" fontSize="12" fill="currentColor">
-                  {tick.toFixed(2)}
-                </text>
-              </g>
-            ))}
-            <text
-              transform={`translate(-45,${h / 2}) rotate(-90)`}
-              textAnchor="middle"
-              fontSize="14"
-              fill="currentColor"
-            >
-              Quality / Reward
-            </text>
-          </g>
+          <div className="metrics">
+            <Metric label="E_policy[proxy]" value={data.expectedProxy} />
+            <Metric label="E_policy[true]" value={data.expectedTrue} />
+            <Metric label="E_ref[true]" value={data.expectedRefTrue} />
+            <Metric label="selected error" value={data.selectedError} />
+            <Metric label="KL(policy || ref)" value={data.klValue} />
+          </div>
 
-          {/* Grid */}
-          <g className="grid" opacity={0.1}>
-            {xScale.ticks(5).map(tick => (
-              <line
-                key={`v-${tick}`}
-                x1={xScale(tick)}
-                x2={xScale(tick)}
-                y1={0}
-                y2={h}
-                stroke="currentColor"
-              />
-            ))}
-            {yScale.ticks(5).map(tick => (
-              <line
-                key={`h-${tick}`}
-                x1={0}
-                x2={w}
-                y1={yScale(tick)}
-                y2={yScale(tick)}
-                stroke="currentColor"
-              />
-            ))}
-          </g>
-
-          {/* Curves */}
-          <path
-            d={trueLine(curveData) || ''}
-            fill="none"
-            stroke="#22c55e"
-            strokeWidth={3}
-          />
-          <path
-            d={proxyLine(curveData) || ''}
-            fill="none"
-            stroke="#ef4444"
-            strokeWidth={3}
-            strokeDasharray="5,5"
-          />
-
-          {/* Legend */}
-          <g transform={`translate(${w + 10},20)`}>
-            <g>
-              <line x1="0" x2="20" y1="0" y2="0" stroke="#22c55e" strokeWidth={3} />
-              <text x="25" y="5" fontSize="12" fill="currentColor">True Quality</text>
-            </g>
-            <g transform="translate(0,25)">
-              <line x1="0" x2="20" y1="0" y2="0" stroke="#ef4444" strokeWidth={3} strokeDasharray="5,5" />
-              <text x="25" y="5" fontSize="12" fill="currentColor">Proxy Reward</text>
-            </g>
-          </g>
-
-          {/* Annotation for Goodhart region */}
-          {overoptimization > 0.3 && (
-            <g transform={`translate(${w * 0.6},${h * 0.3})`}>
-              <text fontSize="11" fill="#f59e0b" fontStyle="italic">
-                ← Goodhart's Law zone
-              </text>
-              <text y="15" fontSize="10" fill="#f59e0b" opacity={0.8}>
-                Proxy ↑, Quality ↓
-              </text>
-            </g>
+          <p className="claim">
+            Lower beta pushes harder on the proxy. Lambda subtracts uncertainty before optimization, so uncertain high-reward completions are less attractive.
+          </p>
+          {data.hacking && (
+            <p className="warning">
+              Proxy reward is improving while true utility is below the reference baseline. The optimizer has selected reward-model error.
+            </p>
           )}
-        </g>
-      </svg>
-
-      <div className="insight">
-        <p>
-          <strong>Goodhart's Law:</strong> &quot;When a measure becomes a target, it ceases to be a good measure.&quot;
-          The green curve (true quality) vs red dashed curve (proxy reward) shows the alignment tax.
-          Solutions: KL penalties (PPO), ensemble reward models, iterative RLHF, or DPO.
-        </p>
+        </section>
       </div>
 
       <style jsx>{`
-        .reward-hacking-viz {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.2);
+        .demo {
+          display: grid;
+          gap: 0.8rem;
+        }
+
+        .controls,
+        .panel {
+          min-width: 0;
+          border: 1px solid rgba(27, 36, 48, 0.1);
           border-radius: 8px;
-          padding: 1.5rem;
-          margin: 2rem 0;
+          background: rgba(255, 252, 246, 0.82);
         }
 
         .controls {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.65rem;
+          padding: 0.75rem;
+        }
+
+        .slider,
+        .toggle {
+          min-width: 0;
+          color: #4f5f6d;
+          font-size: 0.75rem;
+        }
+
+        .slider {
+          display: grid;
+          gap: 0.35rem;
+        }
+
+        .toggle {
           display: flex;
-          gap: 1.5rem;
-          margin-bottom: 1.5rem;
-          flex-wrap: wrap;
+          align-items: center;
+          gap: 0.45rem;
         }
 
-        .control-group {
-          flex: 1;
-          min-width: 250px;
-        }
-
-        .control-group label {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-        }
-
-        input[type="range"] {
+        input[type='range'] {
           width: 100%;
+        }
+
+        .slider strong,
+        code,
+        .demo :global(.metric strong) {
+          color: #17202a;
+          font-family: var(--font-mono);
+        }
+
+        .layout {
+          display: grid;
+          grid-template-columns: 1.15fr 0.85fr;
+          gap: 0.75rem;
+        }
+
+        .panel {
+          padding: 0.75rem;
+        }
+
+        h3 {
+          margin: 0 0 0.7rem;
+          color: #1b2430;
+          font-size: 0.95rem;
+        }
+
+        .candidateGrid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.6rem;
+        }
+
+        .candidate {
+          min-width: 0;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.58);
+          padding: 0.65rem;
+        }
+
+        .candidateHead {
+          display: flex;
+          justify-content: space-between;
+          gap: 0.5rem;
+          align-items: center;
+          color: #1b2430;
+          font-size: 0.82rem;
+          margin-bottom: 0.55rem;
+        }
+
+        .numbers,
+        .metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.45rem;
+          margin-top: 0.55rem;
         }
 
         svg {
           display: block;
-          margin: 0 auto;
+          width: 100%;
+          height: auto;
+          color: #1b2430;
         }
 
-        .insight {
-          margin-top: 1rem;
-          padding: 1rem;
-          background: rgba(245, 158, 11, 0.1);
-          border-left: 3px solid var(--accent);
-          border-radius: 4px;
+        .claim,
+        .warning {
+          margin: 0.7rem 0 0;
+          color: #5b6875;
+          font-size: 0.8rem;
+          line-height: 1.45;
         }
 
-        .insight p {
-          margin: 0;
-          font-size: 0.9rem;
-          line-height: 1.5;
-          color: var(--text-secondary);
+        .warning {
+          border-left: 3px solid #b44b3b;
+          background: rgba(180, 75, 59, 0.1);
+          color: #662b22;
+          padding: 0.55rem 0.65rem;
+          border-radius: 0 8px 8px 0;
         }
 
-        .insight strong {
-          color: var(--text-primary);
+        @media (max-width: 920px) {
+          .controls,
+          .layout,
+          .candidateGrid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .numbers,
+          .metrics {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function Bar({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="barRow">
+      <span>{label}</span>
+      <div className="track" role="img" aria-label={`${label}: ${fmtPct(value)}`}>
+        <div className="fill" style={{ width: `${value * 100}%`, background: color }} />
+      </div>
+      <code>{fmtPct(value)}</code>
+      <style jsx>{`
+        .barRow {
+          display: grid;
+          grid-template-columns: 3.7rem minmax(0, 1fr) 2.7rem;
+          gap: 0.4rem;
+          align-items: center;
+          color: #65717d;
+          font-size: 0.7rem;
+          margin-top: 0.35rem;
+        }
+
+        .track {
+          height: 0.55rem;
+          border-radius: 999px;
+          overflow: hidden;
+          background: rgba(27, 36, 48, 0.08);
+        }
+
+        .fill {
+          height: 100%;
+          border-radius: inherit;
+        }
+
+        code {
+          color: #17202a;
+          font-family: var(--font-mono);
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{fmt(value)}</strong>
+      <style jsx>{`
+        .metric {
+          min-width: 0;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.58);
+          padding: 0.45rem;
+        }
+
+        span {
+          display: block;
+          color: #65717d;
+          font-size: 0.66rem;
+        }
+
+        strong {
+          color: #17202a;
+          font-family: var(--font-mono);
         }
       `}</style>
     </div>

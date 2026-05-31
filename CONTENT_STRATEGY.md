@@ -2,9 +2,15 @@
 
 ## Vision
 
-**Exploring the mathematical foundations of deep learning through interactive visualizations.**
+**Build Continuous Function into the most engaging, intuitive, rigorous, and worthwhile learning experience for the mathematics behind modern deep learning and frontier AI.**
 
-There's a gap between introductory tutorials and research papers—a space where concepts deserve deeper exploration through multiple lenses. We're trying to connect ideas by showing them from different angles: **Intuition → Math → Code → Interactive demo**.
+The site should feel like the premier one-stop destination for serious learners: a place where foundational math, model architectures, training dynamics, inference systems, papers, equations, and alignment ideas become understandable through connected, interactive, high-trust explanations.
+
+The core product is not more pages. The core product is durable mechanistic understanding.
+
+There's a gap between introductory tutorials and research papers: a space where concepts deserve deeper exploration through multiple lenses. Continuous Function fills that gap by connecting ideas through **Intuition → Math → Code → Interactive demo**, concept graphs, paper-to-concept mapping, saved learning routes, and gradually integrated context-aware AI.
+
+For the agent-facing north star, see `content/_agent/PRODUCT_NORTH_STAR.md`.
 
 ---
 
@@ -103,19 +109,15 @@ Show the same concept three ways:
 
 ## Technical Stack
 
-### Primary Stack: Svelte 5 + D3.js + GSAP
-
-**Why Svelte:**
-- Reactive by default (perfect for explorable explanations)
-- No virtual DOM overhead = better visualization performance
-- Built-in transitions/animations
-- Battle-tested: CNN Explainer and Transformer Explainer both use Svelte+D3
+### Current Stack: Next.js + React + D3.js + GSAP
 
 **D3.js:** Industry standard for data visualization, excellent scale/axis/shape utilities
 
 **GSAP:** Professional-grade animations, ScrollTrigger for scroll-driven effects
 
-**Observable notebooks:** Rapid prototyping before production components
+**React/Next.js:** Current production stack for concept pages, editorial shells, filesystem content, static export, and reusable visualization components.
+
+**Observable notebooks:** Useful for rapid prototyping before production components
 
 **Three.js:** Reserved for when 3D is essential (architecture viz, embedding spaces)
 
@@ -212,12 +214,16 @@ Each Concept Page:
 
 ### AI Workflow Integration
 
-**AI accelerates ~30-40% of the work**
+AI should support research learning, not replace the learning environment.
+
+It should be integrated gradually as object-attached help around concepts, equations, demos, code witnesses, paper sections, claims, misconceptions, and saved routes.
+
+**AI accelerates ~30-40% of production work**
 
 **Where AI helps:**
 - Research synthesis and paper summarization
 - First draft generation
-- Code boilerplate (D3/Svelte setup)
+- Code boilerplate (React/D3/Three setup)
 - Editing and refinement
 - CSS/styling
 

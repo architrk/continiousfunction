@@ -3,10 +3,10 @@ title: "Batch Normalization"
 domain: optimization
 slug: batch-normalization
 difficulty: 3
-status: published
+status: review
 importance: important
 prerequisites:
-  - backpropagation-autodiff
+  - backpropagation
 leads_to:
   - layer-normalization
 related:
@@ -23,6 +23,5 @@ math_level: undergraduate
 short_description: "Normalize activations using batch statistics to stabilize deep training (and understand the train vs inference mismatch)."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 14
-

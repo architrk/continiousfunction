@@ -14,21 +14,28 @@ Transformers almost always use **LayerNorm** (or **RMSNorm**) instead of BatchNo
 - we want behavior that does not depend on other examples in the batch,
 - decoding/inference should behave the same as training.
 
-RMSNorm is a popular simplification (used in LLaMA-like models): it drops the mean-centering step and normalizes only by the RMS.
+RMSNorm is a simplification introduced by Zhang and Sennrich: it drops the mean-centering step and normalizes by the root mean square.
 
 ## Math
 
-For a vector of activations $x\\in\\mathbb R^d$ (for one token / one example), LayerNorm is:
+For a vector of activations $x\in\mathbb R^d$ (for one token / one example), LayerNorm is:
 
-$$\\mathrm{LN}(x) = \\gamma \\odot \\frac{x - \\mu}{\\sigma + \\epsilon} + \\beta,$$
-
-where
-
-$$\\mu = \\frac{1}{d}\\sum_{i=1}^d x_i,\\qquad \\sigma = \\sqrt{\\frac{1}{d}\\sum_{i=1}^d (x_i - \\mu)^2}.$$
+$$
+\begin{aligned}
+\mu(x) &= \frac{1}{d}\sum_{i=1}^d x_i,\\
+\sigma_\epsilon(x) &= \sqrt{\frac{1}{d}\sum_{i=1}^d (x_i-\mu(x))^2 + \epsilon},\\
+\mathrm{LN}(x) &= \gamma \odot \frac{x-\mu(x)}{\sigma_\epsilon(x)} + \beta.
+\end{aligned}
+$$
 
 RMSNorm removes mean-centering and uses:
 
-$$\\mathrm{RMSNorm}(x) = \\gamma \\odot \\frac{x}{\\mathrm{RMS}(x) + \\epsilon},\\qquad \\mathrm{RMS}(x)=\\sqrt{\\frac{1}{d}\\sum_i x_i^2}.$$
+$$
+\begin{aligned}
+\mathrm{RMS}_\epsilon(x) &= \sqrt{\frac{1}{d}\sum_{i=1}^d x_i^2 + \epsilon},\\
+\mathrm{RMSNorm}(x) &= \gamma \odot \frac{x}{\mathrm{RMS}_\epsilon(x)}.
+\end{aligned}
+$$
 
 Two practical insights:
 
@@ -68,6 +75,5 @@ print("RMS mean/rms:", round(float(rn.mean()), 3), round(float(np.sqrt((rn ** 2)
 Use the demo to see:
 
 - how centering (LayerNorm) vs non-centering (RMSNorm) changes the direction of a vector,
-- how learned $\\gamma,\\beta$ let the network keep normalization while still representing useful scales,
+- how learned $\gamma,\beta$ let the network keep normalization while still representing useful scales,
 - why normalization is a core stability trick in transformer training.
-

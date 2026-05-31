@@ -1,0 +1,26 @@
+You are reviewing a narrow Continuous Function implementation slice.
+
+Project context:
+- Stack: Next.js pages router, React 18, TypeScript, MDX content under `content/domains/**/concepts/**`.
+- Concept pages follow the contract `Intuition -> Math -> Code -> Interactive Demo`.
+- New concept visualizations are wrapped with `VizShell` and `VizStageAdapter`.
+- Existing foundation demos must keep legacy behavior by default; notebook route behavior should be opt-in via `chrome="notebook"`.
+- Current validation already passed locally: `npm run generate-content`, `npm run validate-content`, `npm run typecheck`, and `npm run build`. The build only showed pre-existing `<img>` lint warnings and existing KaTeX display-newline warnings elsewhere.
+
+Implemented slice:
+- Added a dedicated `grouped-query-attention` filesystem concept route.
+- Added notebook-only behavior to `components/foundations/GQAViz.tsx`, preserving the legacy efficient-attention/foundations explorer as default.
+- Added a prediction-first demo: learner sees Hq, Hkv, context length T, head dimension, fixed batch/layers/bytes assumptions, Q head dots, KV placeholders, and selected query head. Before reveal it hides exact group size, selected Q-to-KV mapping, cache GB, ratio, architecture class, and feedback. After reveal it shows architecture class, group size, selected mapping, KV cache GB, ratio vs MHA, and reduction factor.
+- Updated visualization mappings/barrel export and lightly linked Efficient Attention to the dedicated route.
+
+Review goals:
+1. Identify any blocking correctness or pedagogy issues in the GQA math/content/demo.
+2. Check for pre-reveal leakage through visible text, aria labels, demo-state payload, chart rendering, or DOM text.
+3. Check whether the component preserves legacy behavior for existing imports.
+4. Check if the interactive controls and reveal reset behavior satisfy the slice brief.
+5. Call out mobile/layout risks that are likely to matter.
+
+Scope constraints:
+- Do not ask for a generated image.
+- Do not broaden this into a FlashAttention, general Efficient Attention, or long-context redesign.
+- Keep the output practical: list blockers first, then important improvements, then optional polish. If acceptable for `status: review`, say that clearly.

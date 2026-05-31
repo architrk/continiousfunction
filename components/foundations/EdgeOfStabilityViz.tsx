@@ -2,10 +2,18 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { scaleLinear, line as d3Line, curveMonotoneX } from 'd3';
+import { emitDemoState } from '../../lib/demoState';
 
 type Regime = 'low' | 'edge' | 'high';
 type PredictionChoice = 'stable' | 'diverge';
 type GamePhase = 'setup' | 'countdown' | 'running' | 'revealed';
+type NotebookRegimePrediction = 'safe' | 'edge' | 'diverge';
+type NotebookActualRegime = 'safe' | 'edge' | 'diverge';
+
+type EdgeOfStabilityVizProps = {
+  chrome?: 'legacy' | 'notebook';
+  conceptId?: string;
+};
 
 // Fun learning rate presets
 const LEARNING_RATE_PRESETS = [
@@ -199,7 +207,11 @@ const regimeDescriptions: Record<Regime, string> = {
   high: 'High η: instability, sharpness pushes past 2/η and the trajectory hits the valley walls.',
 };
 
-export default function EdgeOfStabilityExplorer() {
+export default function EdgeOfStabilityExplorer({
+  chrome = 'legacy',
+  conceptId = 'loss-landscapes',
+}: EdgeOfStabilityVizProps) {
+  const isNotebook = chrome === 'notebook';
   const [learningRate, setLearningRate] = useState(0.25);
   const { points, regime } = useMemo(
     () => simulateEdgeOfStability(learningRate),
@@ -215,6 +227,10 @@ export default function EdgeOfStabilityExplorer() {
   const [challengeEta, setChallengeEta] = useState<number | null>(null);
   const [countdown, setCountdown] = useState(0);
   const [activeChallenge, setActiveChallenge] = useState<string | null>(null);
+  const [notebookPrediction, setNotebookPrediction] = useState<NotebookRegimePrediction | null>(null);
+  const [notebookRevealed, setNotebookRevealed] = useState(false);
+  const [revealedEta, setRevealedEta] = useState<number | null>(null);
+  const [notebookPlaying, setNotebookPlaying] = useState(false);
 
   // Reset animation when η changes
   useEffect(() => {
@@ -225,6 +241,7 @@ export default function EdgeOfStabilityExplorer() {
 
   // Simple looping animation over the simulated trajectory
   useEffect(() => {
+    if (isNotebook) return;
     if (totalSteps <= 0) return;
 
     const id = window.setInterval(() => {
@@ -235,7 +252,32 @@ export default function EdgeOfStabilityExplorer() {
     }, 40);
 
     return () => window.clearInterval(id);
-  }, [totalSteps]);
+  }, [isNotebook, totalSteps]);
+
+  useEffect(() => {
+    if (!isNotebook) return;
+    if (!notebookRevealed || revealedEta !== learningRate || !notebookPlaying || totalSteps <= 0) return;
+
+    const id = window.setInterval(() => {
+      setCurrentStep((prev) => {
+        if (prev >= totalSteps - 1) {
+          setNotebookPlaying(false);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 55);
+
+    return () => window.clearInterval(id);
+  }, [isNotebook, learningRate, notebookPlaying, notebookRevealed, revealedEta, totalSteps]);
+
+  useEffect(() => {
+    if (!isNotebook) return;
+    setCurrentStep(0);
+    setNotebookRevealed(false);
+    setRevealedEta(null);
+    setNotebookPlaying(false);
+  }, [isNotebook, learningRate]);
 
   const visiblePoints = useMemo(
     () => points.slice(0, Math.min(currentStep + 1, totalSteps)),
@@ -257,6 +299,53 @@ export default function EdgeOfStabilityExplorer() {
     return (lockedPrediction === 'stable' && actualOutcome !== 'diverge') ||
            (lockedPrediction === 'diverge' && actualOutcome === 'diverge');
   }, [lockedPrediction, actualOutcome]);
+
+  const edgeDiagnostics = useMemo(() => {
+    const ratios = points.map((point) => point.sharpness / point.threshold);
+    const maxRatio = ratios.reduce((max, value) => Math.max(max, value), 0);
+    const finalWindow = ratios.slice(Math.max(0, ratios.length - 36));
+    const tailMeanRatio = finalWindow.length
+      ? finalWindow.reduce((sum, value) => sum + value, 0) / finalWindow.length
+      : 0;
+    const firstEdgeStep = points.find((point) => point.sharpness / point.threshold >= 0.9)?.step ?? null;
+    const firstCrossStep = points.find((point) => point.sharpness / point.threshold >= 1)?.step ?? null;
+    const firstDivergedStep = points.find((point) => point.diverged)?.step ?? null;
+    const losses = points.map((point) => point.loss);
+    const lossIncreases = losses.reduce((count, loss, index) => {
+      if (index === 0) return count;
+      return count + (loss > losses[index - 1] ? 1 : 0);
+    }, 0);
+    const lossTrend = firstDivergedStep !== null
+      ? 'clipped after divergence'
+      : lossIncreases > Math.max(8, losses.length * 0.08)
+        ? 'non-monotone bounded'
+        : 'decreasing';
+
+    let actualRegime: NotebookActualRegime = 'safe';
+    if (firstDivergedStep !== null || (firstCrossStep !== null && regime === 'high')) {
+      actualRegime = 'diverge';
+    } else if (firstEdgeStep !== null || tailMeanRatio >= 0.78) {
+      actualRegime = 'edge';
+    }
+
+    return {
+      ratios,
+      maxRatio,
+      tailMeanRatio,
+      firstEdgeStep,
+      firstCrossStep,
+      firstDivergedStep,
+      lossTrend,
+      actualRegime,
+    };
+  }, [points, regime]);
+
+  const traceIsRevealed = notebookRevealed && revealedEta === learningRate;
+
+  const notebookPredictionCorrect =
+    traceIsRevealed && notebookPrediction !== null
+      ? notebookPrediction === edgeDiagnostics.actualRegime
+      : null;
 
   // Apply a challenge scenario
   const applyChallenge = useCallback((scenario: typeof CHALLENGE_SCENARIOS[number]) => {
@@ -359,6 +448,628 @@ export default function EdgeOfStabilityExplorer() {
   const thresholdY = yScale(threshold);
   const currentX = xScale(current.step);
   const currentSharpnessY = yScale(current.sharpness);
+  const currentRatio = current.sharpness / current.threshold;
+
+  useEffect(() => {
+    if (!isNotebook) return;
+
+    const values = [
+      `eta: ${learningRate.toFixed(3)}`,
+      `threshold 2/eta: ${threshold.toFixed(2)}`,
+      `prediction: ${notebookPrediction ?? 'none'}`,
+      `revealed: ${traceIsRevealed ? 'yes' : 'no'}`,
+      'caveat: toy sharpness trace, not a measured neural-network Hessian',
+    ];
+
+    if (traceIsRevealed) {
+      values.push(
+        `actual regime: ${edgeDiagnostics.actualRegime}`,
+        `current step: ${current.step}`,
+        `current lambda_max: ${current.sharpness.toFixed(2)}`,
+        `current ratio: ${currentRatio.toFixed(2)}`,
+        `max ratio: ${edgeDiagnostics.maxRatio.toFixed(2)}`,
+        `tail mean ratio: ${edgeDiagnostics.tailMeanRatio.toFixed(2)}`,
+        `first edge step: ${edgeDiagnostics.firstEdgeStep ?? 'none'}`,
+        `first crossing step: ${edgeDiagnostics.firstCrossStep ?? 'none'}`,
+        `first divergence step: ${edgeDiagnostics.firstDivergedStep ?? 'none'}`,
+        `loss trend: ${edgeDiagnostics.lossTrend}`,
+        `prediction correct: ${notebookPredictionCorrect === null ? 'not checked' : notebookPredictionCorrect ? 'yes' : 'no'}`,
+      );
+    }
+
+    emitDemoState({
+      conceptId,
+      label: 'Edge-of-stability toy trace',
+      summary: traceIsRevealed
+        ? `Toy trace result: ${edgeDiagnostics.actualRegime} regime with ${edgeDiagnostics.lossTrend} loss trend.`
+        : 'Predict whether the toy sharpness trace will stay safe, hover near the edge, or diverge.',
+      values,
+    });
+  }, [
+    conceptId,
+    current.sharpness,
+    current.step,
+    currentRatio,
+    edgeDiagnostics.actualRegime,
+    edgeDiagnostics.firstCrossStep,
+    edgeDiagnostics.firstDivergedStep,
+    edgeDiagnostics.firstEdgeStep,
+    edgeDiagnostics.lossTrend,
+    edgeDiagnostics.maxRatio,
+    edgeDiagnostics.tailMeanRatio,
+    isNotebook,
+    learningRate,
+    notebookPrediction,
+    notebookPredictionCorrect,
+    notebookRevealed,
+    traceIsRevealed,
+    threshold,
+  ]);
+
+  if (isNotebook) {
+    const notebookVisiblePoints = traceIsRevealed ? visiblePoints : [];
+    const notebookValleyLine = d3Line<SimPoint>()
+      .x((d) => valleyX(d.x))
+      .y(() => valleyCenterY);
+    const notebookYScale = traceIsRevealed
+      ? yScale
+      : scaleLinear()
+          .domain([0, Math.max(1, threshold * 2.4)])
+          .range([chartHeight - chartPadding.bottom, chartPadding.top]);
+    const notebookSharpnessLine = d3Line<SimPoint>()
+      .x((d) => xScale(d.step))
+      .y((d) => notebookYScale(d.sharpness));
+    const notebookValleyPath = notebookVisiblePoints.length > 1
+      ? notebookValleyLine(notebookVisiblePoints) ?? undefined
+      : undefined;
+    const notebookSharpnessPath = notebookVisiblePoints.length > 1
+      ? notebookSharpnessLine(notebookVisiblePoints) ?? undefined
+      : undefined;
+    const notebookThresholdY = notebookYScale(threshold);
+    const notebookCurrentSharpnessY = notebookYScale(current.sharpness);
+    const actualLabel = edgeDiagnostics.actualRegime === 'safe'
+      ? 'safe'
+      : edgeDiagnostics.actualRegime === 'edge'
+        ? 'edge'
+        : 'divergent';
+
+    return (
+      <>
+        <section
+          className="edge-of-stability-demo notebook"
+          style={{
+            background: 'transparent',
+            border: 0,
+            boxShadow: 'none',
+            color: '#e5e7eb',
+            padding: 0,
+          }}
+        >
+          <div className="edge-prediction-panel">
+            <h3>Prediction check: compare sharpness with the learning-rate line</h3>
+            <p>
+              Choose a learning rate, then predict whether this toy sharpness
+              trace stays safely below the local quadratic GD edge, hovers near
+              it, or diverges after crossing.
+            </p>
+
+            <label className="edge-slider">
+              Learning rate eta ({learningRate.toFixed(3)})
+              <input
+                type="range"
+                min={0.03}
+                max={0.9}
+                step={0.01}
+                value={learningRate}
+                onChange={(event) => {
+                  setLearningRate(parseFloat(event.target.value));
+                  setNotebookRevealed(false);
+                  setRevealedEta(null);
+                  setNotebookPlaying(false);
+                  setCurrentStep(0);
+                }}
+              />
+            </label>
+
+            <div className="edge-threshold-readout">
+              <span>Local quadratic GD edge</span>
+              <strong>2 / eta = {threshold.toFixed(2)}</strong>
+            </div>
+
+            <div className="edge-choice-grid">
+              {([
+                ['safe', 'Safe', 'lambda_max stays well below 2/eta'],
+                ['edge', 'Edge', 'hovers near the line with bounded oscillations'],
+                ['diverge', 'Diverge', 'crosses and hits the clipping wall'],
+              ] as const).map(([choice, label, detail]) => (
+                <button
+                  key={choice}
+                  type="button"
+                  aria-pressed={notebookPrediction === choice}
+                  onClick={() => {
+                    setNotebookPrediction(choice);
+                    setNotebookRevealed(false);
+                    setRevealedEta(null);
+                    setNotebookPlaying(false);
+                    setCurrentStep(0);
+                  }}
+                >
+                  <span>{label}</span>
+                  <small>{detail}</small>
+                </button>
+              ))}
+            </div>
+
+            <div className="edge-actions">
+              <button
+                type="button"
+                disabled={!notebookPrediction}
+                onClick={() => {
+                  setNotebookRevealed(true);
+                  setRevealedEta(learningRate);
+                  setNotebookPlaying(true);
+                  setCurrentStep(0);
+                }}
+              >
+                Reveal trace
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                disabled={!traceIsRevealed}
+                onClick={() => {
+                  setNotebookPlaying((playing) => !playing);
+                }}
+              >
+                {notebookPlaying ? 'Pause trace' : 'Play trace'}
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => {
+                  setNotebookPrediction(null);
+                  setNotebookRevealed(false);
+                  setRevealedEta(null);
+                  setNotebookPlaying(false);
+                  setCurrentStep(0);
+                }}
+              >
+                Reset
+              </button>
+            </div>
+
+            {traceIsRevealed ? (
+              <p
+                className={`edge-result ${
+                  notebookPredictionCorrect
+                    ? 'correct'
+                    : edgeDiagnostics.actualRegime === 'diverge'
+                      ? 'diverge'
+                      : 'neutral'
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {notebookPredictionCorrect ? 'Correct: ' : 'Result: '}
+                the revealed regime is <strong>{actualLabel}</strong>. Max ratio
+                lambda_max / (2 / eta) reaches {edgeDiagnostics.maxRatio.toFixed(2)};
+                loss trend is {edgeDiagnostics.lossTrend}.
+              </p>
+            ) : (
+              <p className="edge-pre-reveal">
+                Before reveal, only eta and the threshold are shown. The trace,
+                regime, and ratio diagnostics stay hidden.
+              </p>
+            )}
+          </div>
+
+          <div className="edge-notebook-layout">
+            <div className="edge-panel">
+              <h3>Loss trajectory in the toy valley</h3>
+              <svg
+                width={landscapeWidth}
+                height={landscapeHeight}
+                viewBox={`0 0 ${landscapeWidth} ${landscapeHeight}`}
+                role="img"
+                aria-label="Toy loss-valley trajectory for the selected learning rate"
+                className="edge-chart"
+              >
+                <rect width={landscapeWidth} height={landscapeHeight} fill="#020617" />
+                {Array.from({ length: 7 }).map((_, index) => {
+                  const t = (index + 1) / 7;
+                  const rx = (landscapeWidth / 2 - valleyPadding) * (0.25 + 0.75 * t);
+                  const ry = (landscapeHeight / 2 - valleyPadding) * (0.15 + 0.65 * t);
+                  return (
+                    <ellipse
+                      key={index}
+                      cx={valleyX(0)}
+                      cy={valleyCenterY + 10}
+                      rx={rx}
+                      ry={ry}
+                      fill="none"
+                      stroke="#14b8a6"
+                      strokeWidth={1.2}
+                      strokeOpacity={0.18 + t * 0.32}
+                    />
+                  );
+                })}
+                <line
+                  x1={valleyX(-2)}
+                  y1={valleyCenterY}
+                  x2={valleyX(2)}
+                  y2={valleyCenterY}
+                  stroke="#14b8a6"
+                  strokeWidth={2.4}
+                  strokeLinecap="round"
+                />
+                {traceIsRevealed && edgeDiagnostics.firstDivergedStep !== null ? (
+                  <>
+                    <rect
+                      x={0}
+                      y={0}
+                      width={valleyX(-1.8)}
+                      height={landscapeHeight}
+                      fill="rgba(148, 27, 53, 0.18)"
+                    />
+                    <rect
+                      x={valleyX(1.8)}
+                      y={0}
+                      width={landscapeWidth - valleyX(1.8)}
+                      height={landscapeHeight}
+                      fill="rgba(148, 27, 53, 0.18)"
+                    />
+                  </>
+                ) : null}
+                {notebookValleyPath ? (
+                  <path
+                    d={notebookValleyPath}
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                ) : null}
+                {traceIsRevealed ? (
+                  <g>
+                    <circle cx={valleyX(current.x)} cy={valleyCenterY} r={8} fill="#f59e0b" />
+                    <circle
+                      cx={valleyX(current.x)}
+                      cy={valleyCenterY}
+                      r={14}
+                      fill="none"
+                      stroke="#f59e0b"
+                      strokeOpacity={0.4}
+                      strokeWidth={2}
+                    />
+                  </g>
+                ) : null}
+              </svg>
+              <p className="edge-caption">
+                This valley is a toy scalar path. Divergent traces are clipped at
+                the wall and labeled that way after reveal.
+              </p>
+            </div>
+
+            <div className="edge-panel">
+              <h3>Sharpness versus local quadratic GD edge</h3>
+              <svg
+                width={chartWidth}
+                height={chartHeight}
+                viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+                role="img"
+                aria-label="Toy sharpness trace compared with the local quadratic gradient-descent edge"
+                className="edge-chart"
+              >
+                <rect width={chartWidth} height={chartHeight} fill="#020617" />
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const y =
+                    chartPadding.top +
+                    ((chartHeight - chartPadding.top - chartPadding.bottom) * index) / 4;
+                  return (
+                    <line
+                      key={`h-${index}`}
+                      x1={chartPadding.left}
+                      y1={y}
+                      x2={chartWidth - chartPadding.right}
+                      y2={y}
+                      stroke="rgba(148, 163, 184, 0.15)"
+                      strokeWidth={1}
+                    />
+                  );
+                })}
+                <line
+                  x1={xScale(0)}
+                  y1={notebookThresholdY}
+                  x2={xScale(totalSteps - 1)}
+                  y2={notebookThresholdY}
+                  stroke="#ef4444"
+                  strokeWidth={1.7}
+                  strokeDasharray="6 4"
+                />
+                <text
+                  x={xScale(totalSteps - 1)}
+                  y={notebookThresholdY - 6}
+                  textAnchor="end"
+                  fill="#fecaca"
+                  fontSize={10}
+                >
+                  local edge 2 / eta
+                </text>
+                {notebookSharpnessPath ? (
+                  <path
+                    d={notebookSharpnessPath}
+                    fill="none"
+                    stroke="#14b8a6"
+                    strokeWidth={2.5}
+                  />
+                ) : null}
+                {traceIsRevealed ? (
+                  <>
+                    <line
+                      x1={currentX}
+                      y1={chartPadding.top}
+                      x2={currentX}
+                      y2={chartHeight - chartPadding.bottom}
+                      stroke="rgba(248, 250, 252, 0.35)"
+                      strokeWidth={1}
+                      strokeDasharray="4 4"
+                    />
+                    <circle
+                      cx={currentX}
+                      cy={notebookCurrentSharpnessY}
+                      r={5}
+                      fill="#f59e0b"
+                      stroke="#0f172a"
+                      strokeWidth={1.5}
+                    />
+                  </>
+                ) : null}
+                <line
+                  x1={chartPadding.left}
+                  y1={chartHeight - chartPadding.bottom}
+                  x2={chartWidth - chartPadding.right}
+                  y2={chartHeight - chartPadding.bottom}
+                  stroke="rgba(148, 163, 184, 0.9)"
+                  strokeWidth={1.2}
+                />
+                <line
+                  x1={chartPadding.left}
+                  y1={chartPadding.top}
+                  x2={chartPadding.left}
+                  y2={chartHeight - chartPadding.bottom}
+                  stroke="rgba(148, 163, 184, 0.9)"
+                  strokeWidth={1.2}
+                />
+              </svg>
+              <p className="edge-caption">
+                The red line is the one-step quadratic GD reference. The teal
+                curve is generated by the toy, not measured from a neural network.
+              </p>
+            </div>
+          </div>
+
+          <div className="edge-readout">
+            <div>
+              <span>eta</span>
+              <strong>{learningRate.toFixed(3)}</strong>
+            </div>
+            <div>
+              <span>2 / eta</span>
+              <strong>{threshold.toFixed(2)}</strong>
+            </div>
+            {traceIsRevealed ? (
+              <>
+                <div>
+                  <span>lambda ratio</span>
+                  <strong>{currentRatio.toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>max ratio</span>
+                  <strong>{edgeDiagnostics.maxRatio.toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>loss trend</span>
+                  <strong>{edgeDiagnostics.lossTrend}</strong>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </section>
+
+        <style jsx>{`
+          .edge-prediction-panel,
+          .edge-panel,
+          .edge-readout {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            border-radius: 12px;
+            padding: 0.95rem;
+          }
+
+          .edge-prediction-panel {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(245, 158, 11, 0.07));
+            border-color: rgba(14, 165, 233, 0.34);
+            margin-bottom: 1rem;
+          }
+
+          .edge-prediction-panel h3,
+          .edge-panel h3 {
+            color: #f8fafc;
+            font-size: 1rem;
+            line-height: 1.35;
+            margin: 0 0 0.55rem;
+          }
+
+          .edge-prediction-panel p,
+          .edge-caption,
+          .edge-pre-reveal {
+            color: #cbd5e1;
+            font-size: 0.84rem;
+            line-height: 1.55;
+            margin: 0.6rem 0 0;
+          }
+
+          .edge-slider {
+            color: #dbeafe;
+            display: grid;
+            font-size: 0.84rem;
+            gap: 0.45rem;
+            margin: 0.85rem 0;
+          }
+
+          .edge-slider input {
+            width: 100%;
+          }
+
+          .edge-threshold-readout {
+            align-items: center;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: space-between;
+            padding: 0.65rem 0.75rem;
+          }
+
+          .edge-threshold-readout span,
+          .edge-readout span {
+            color: #94a3b8;
+            font-size: 0.78rem;
+          }
+
+          .edge-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.55rem;
+            margin: 0.85rem 0;
+          }
+
+          .edge-choice-grid button,
+          .edge-actions button {
+            appearance: none;
+            background: rgba(15, 23, 42, 0.76);
+            border: 1px solid rgba(148, 163, 184, 0.32);
+            border-radius: 9px;
+            color: #e5e7eb;
+            cursor: pointer;
+            font-weight: 650;
+            padding: 0.58rem 0.7rem;
+          }
+
+          .edge-choice-grid button {
+            min-height: 78px;
+            text-align: left;
+          }
+
+          .edge-choice-grid button span,
+          .edge-choice-grid button small {
+            display: block;
+          }
+
+          .edge-choice-grid button small {
+            color: #94a3b8;
+            font-size: 0.74rem;
+            font-weight: 500;
+            margin-top: 0.3rem;
+          }
+
+          .edge-choice-grid button[aria-pressed='true'] {
+            background: rgba(14, 165, 233, 0.2);
+            border-color: rgba(14, 165, 233, 0.8);
+            color: #dbeafe;
+          }
+
+          .edge-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+          }
+
+          .edge-actions button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+          }
+
+          .edge-actions .ghost {
+            background: rgba(30, 41, 59, 0.82);
+          }
+
+          .edge-result {
+            background: rgba(51, 65, 85, 0.45);
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 10px;
+            color: #f8fafc;
+            margin-top: 0.75rem !important;
+            padding: 0.7rem 0.75rem;
+          }
+
+          .edge-result.correct {
+            background: rgba(34, 197, 94, 0.1);
+            border-color: rgba(34, 197, 94, 0.34);
+          }
+
+          .edge-result.diverge {
+            background: rgba(244, 63, 94, 0.1);
+            border-color: rgba(244, 63, 94, 0.34);
+          }
+
+          .edge-result.neutral {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.32);
+          }
+
+          .edge-notebook-layout {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+          }
+
+          .edge-chart {
+            background: #020617;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            border-radius: 12px;
+            display: block;
+            height: auto;
+            max-width: 100%;
+          }
+
+          .edge-readout {
+            display: grid;
+            gap: 0.6rem;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            margin-top: 1rem;
+          }
+
+          .edge-readout div {
+            display: grid;
+            gap: 0.2rem;
+          }
+
+          .edge-readout strong {
+            color: #f8fafc;
+            font-size: 0.9rem;
+          }
+
+          .edge-of-stability-demo button:focus-visible,
+          .edge-of-stability-demo input:focus-visible {
+            box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.35);
+            outline: 2px solid #f8fafc;
+            outline-offset: 2px;
+          }
+
+          @media (max-width: 860px) {
+            .edge-notebook-layout,
+            .edge-choice-grid,
+            .edge-readout {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
+      </>
+    );
+  }
 
   return (
     <section

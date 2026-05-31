@@ -1,0 +1,45 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The broad product objective is to make learning joyful enough to return to, but also rigorous, non-trivial, interactive, and expansive across important modern AI/math topics. We use GPT Pro/Oracle extensively as a design/review partner, then verify locally.
+
+Current repo state:
+- The source repo is `/Users/architkhare/Library/Mobile Documents/com~apple~CloudDocs/Repos/continiousfunction`.
+- The working tree is intentionally dirty from a long session; choose a narrow next slice and do not ask for unrelated cleanup.
+- The last completed slice was SSM Hybrids selective-gate memory prediction. Oracle selected it after Structured Decoding and the fix-review gave a ship verdict.
+- The shared demo-shell rollout has now covered Speculative Decoding, Sparse Autoencoders, Mixture of Experts, Diffusion forward process, Loss Landscapes 2D sharpness, Score Matching DSM target, Flow Matching velocity target, Edge of Stability, Structured Decoding token masks, and SSM Hybrids selective-gate memory.
+- `content/_agent/TODO.yaml` now says the demo-shell rollout should continue with Loss Landscapes 3D or the next Oracle-selected slice.
+
+Goal for this Oracle run:
+Pick the next concrete, bounded implementation slice that best advances the broad objective:
+- learning should feel joyful, deep, visual, rigorous, and worth returning to;
+- avoid broad ideation and avoid topic dumping;
+- prioritize one central learner action, one route/component boundary, and one verification path;
+- prefer compounding arcs and high-leverage missing bridges;
+- use generated images only if they materially help the selected slice; otherwise prefer code-native precise interactivity.
+
+Candidate directions already visible in the repo:
+1. Retrieval-Augmented Generation notebook shell
+   - Filesystem concept exists at `content/domains/llm-systems/concepts/retrieval-augmented-generation`.
+   - Current `viz.tsx` directly exports `RetrievalAugmentedGenerationViz`.
+   - Component already teaches finite evidence selection: top-k, evidence mass, freshness rerank, coverage vs correctness vs citation support.
+   - This may be a clean continuation from SSM Hybrids because both compare memory/context mechanisms: fixed recurrent memory, long context, and external retrieved evidence solve different problems.
+2. Loss Landscapes 3D
+   - `LossLandscape3DViz` exists and the loss-landscapes page explicitly says the 3D surface remains a separate legacy exploration for a later rollout.
+   - Risk: after 2D sharpness + Edge of Stability, another loss route stage may become spectacle unless narrowed.
+3. GQA or SwiGLU filesystem bridge
+   - Legacy foundation components exist for `GQAViz` and `SwiGLUViz`.
+   - Prior discovery notes said GQA deserves its own concept because it is now a de facto inference primitive.
+   - Efficient Attention already references grouped-query attention in a broader page.
+4. Product-level joy/continuity loop
+   - Home, graph route, paper map, saved route snapshots, and object-attached discussions have had work recently.
+   - Risk: too broad unless it becomes one concrete route-level interaction.
+
+Please select exactly one next slice.
+
+Return:
+1. The selected slice and why it beats the alternatives now.
+2. The central learner action in one sentence.
+3. Exact files/components likely to change.
+4. What to avoid.
+5. Whether image generation should be used for this slice, and if yes, the precise asset brief; if no, say why.
+6. Implementation acceptance checklist and verification gates.
+
+Do not request a broad roadmap. Do not ask for many ideas. Choose one bounded next action that Codex can implement and then send back to Oracle for review.

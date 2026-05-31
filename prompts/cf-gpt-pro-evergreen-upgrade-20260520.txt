@@ -1,0 +1,91 @@
+You are Oracle/GPT Pro acting as the standing second mind for Continuous Function.
+
+Take your time. Treat this as a serious product, pedagogy, UX, learning-science, code-architecture, and visual-design review, not a quick suggestion pass. Do not include private chain-of-thought; do include concrete rationale, tradeoffs, and implementation-ready recommendations.
+
+Context:
+- Continuous Function is a static-exported Next.js + TypeScript learning product for the mathematics behind modern deep learning and frontier AI.
+- It should feel like an atlas, notebook, and lab surface.
+- The learning contract is Intuition -> Math -> Code -> Interactive Demo.
+- The best user loop is: start with an object -> state the question -> predict before reveal -> inspect the invariant across intuition/math/code/demo -> run or compare a witness -> save the smallest observation -> carry the next repair.
+- The product supports Learner, Researcher, Experimenter, and Professor dynamics.
+- Recent work added a global route-state strip so non-home surfaces carry current question, current object, next repair, and route status.
+- Prior GPT-Pro Batch 01 critique is attached. Use it as context, but you should be willing to revise or sharpen it.
+
+Attached files include:
+- Product north star and concept quality bar.
+- Prior holistic GPT-Pro UX critique.
+- Current app shell, route-state strip, route continuity banner, learning route snapshot model.
+- Current concept notebook and concept section surfaces.
+- Current Search, Graph, Paper Mapper, and Attention Serving path surfaces.
+- Recent browser QA metrics for route-state strip and sitewide polish.
+
+Your job:
+Create an evergreen upgrade program for making this website substantially better without narrowing “better” to one axis. Consider:
+- pedagogy and learning science
+- conceptual depth and mathematical rigor
+- learner/researcher/experimenter/professor workflows
+- UI hierarchy and density
+- interaction quality and prediction-before-reveal
+- animation quality and mechanism visualization
+- route continuity and saved observations
+- paper-to-concept mapping
+- graph/search as learning tools rather than catalogs
+- accessibility, mobile ergonomics, performance, and maintainability
+- whether the visual direction helps or distracts
+- how to keep the product up to date and connected without becoming shallow
+
+Output structure:
+
+1. North Star Reframe
+Give a concise updated product principle for the next month of work. It should be more operational than “make it better.”
+
+2. What GPT-Pro Should Own Continually
+Define a repeatable Oracle/GPT-Pro operating loop: what prompts to run, what context to attach, when to ask for critique versus math audit versus visual design versus code review, and what evidence should be saved.
+
+3. Deep Product Diagnosis
+Name the top 10 gaps that prevent the site from feeling like an exceptional deep-learning experience. For each, give:
+- why it matters to learning,
+- what surface/code likely owns it,
+- the smallest implementation that proves progress,
+- the browser screenshot/metric that would prove it worked.
+
+4. Pedagogy System
+Design a sitewide pedagogy model with reusable primitives. Include prediction, retrieval, worked examples, fading/scaffolding, misconception repair, transfer, source-grounded checking, and spaced return. Map each primitive to likely components/files.
+
+5. UX System
+Design a coherent user experience model for Learner, Researcher, Experimenter, Professor without making four separate products. Explain how each role should see the same object differently.
+
+6. Visual And Animation System
+Give a practical art/animation doctrine for this site. Which visuals should remain generated/static? Which should become SVG/D3/canvas/React overlays? Where should motion be reduced? Where should animation be richer?
+
+7. Concept Notebook Redesign Slice
+The current highest-priority local TODO is simplifying Concept Object Flow into a compact SelectedObjectBar and designing the Long Context WitnessTriad. Review the attached concept notebook code and propose the exact component architecture, props, state flow, mobile behavior, and acceptance criteria.
+
+8. Search/Graph/Paper Mapper Redesign Slice
+Propose how search, graph, and paper mapper should become one route-building system instead of three separate tools. Keep it local-first/no-backend unless the current code already supports more.
+
+9. Ranked Backlog
+Give a ranked backlog of 40 improvements: P0/P1/P2, surface, user problem, implementation sketch, learning benefit, validation evidence.
+
+10. The First Change To Implement Now
+Pick exactly one change that should be implemented immediately by Codex in this repo after reading your answer. It must be:
+- high leverage,
+- feasible in one coding pass,
+- visually verifiable,
+- aligned with the current codebase,
+- likely to make multiple surfaces feel more coherent.
+
+For that first change, provide:
+- file-by-file plan,
+- component/API details,
+- CSS/interaction details,
+- risks,
+- tests/checks,
+- browser QA route list.
+
+Constraints:
+- Do not propose a generic marketing homepage.
+- Do not ask for a backend dependency for the first change.
+- Do not give broad idea soup. Be concrete enough that Codex can implement immediately.
+- Do not invent facts about files you cannot infer. If a claim depends on code, cite the attached file name and be explicit when it is an inference.
+- Prefer a product loop that can compound forever.

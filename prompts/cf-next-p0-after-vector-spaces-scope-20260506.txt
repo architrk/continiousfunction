@@ -1,0 +1,68 @@
+You are helping Continuous Function choose the next concrete product slice.
+
+Project:
+
+- Continuous Function is a Next.js Pages Router + TypeScript learning atlas for the mathematics behind modern deep learning and frontier AI.
+- The product goal is slow-growth, high-quality, mechanism-first learning: intuition, math, runnable code, interactive demos, source grounding, and object-attached research prompts.
+- The site must stay useful as a static export. For this slice, do not introduce auth, database, API routes, protected pages, dynamic atlas reads, external accounts, or broad platform work.
+- We use Oracle/GPT Pro as a scoping and review partner. I will implement one narrow slice, then send it back for publish/no-publish review.
+
+Current branch:
+
+- `private/research-learning-loop-20260505`
+
+Recent P0 prediction-first in-demo retrofits already shipped and pushed:
+
+- Reverse-Mode Autodiff: cotangent accumulation reveal.
+- Probability Basics: conditioning/posterior movement reveal.
+- Random Variables: pushforward/fiber reveal.
+- Variational Autoencoders: ELBO gap diagnostic reveal.
+- Tree Search Reasoning: visible max-backup root-branch reveal.
+- Dot Product: signed scalar projection reveal.
+- Vector Spaces: span-collapse reveal.
+
+The current audit still says the full north-star goal is not achieved. The active P0 remains:
+
+> For live demos that predate the demo-shell rollout, add explicit concept-specific "predict before reveal" states and compact demo-state emission. A global demo-shell checkpoint now gives every published live demo a baseline prediction prompt, so the remaining work should focus on deeper in-demo reveal states for critical prerequisites and flagship-adjacent pages.
+
+Current local scan after the Vector Spaces commit:
+
+1. `calculus/derivatives`
+   - Co-located `viz.tsx`.
+   - Critical prerequisite.
+   - Emits demo state immediately for function, x, x+h, h, f(x), f(x+h), secant slope, tangent slope, slope gap, convergence status, and visible secant/tangent layers.
+   - UI immediately exposes tangent slope, slope gap, and convergence status while the learner adjusts h.
+   - Likely local reveal candidate: learner inspects function/x/h/secant geometry and predicts the hidden tangent-slope relation before tangent line, derivative value, and gap are revealed.
+   - Needs care: do not ask a prediction that is ambiguous across all function choices, and do not reduce the derivative lesson to a scoreboard.
+
+2. `calculus/computation-graphs`
+   - Co-located `viz.tsx`.
+   - Critical prerequisite.
+   - Emits forward/backward graph state immediately.
+   - In Backward mode it immediately exposes direct/via-sine contributions, accumulated bar a, bar x, and bar y.
+   - Potential issue: Reverse-Mode Autodiff already got a related cotangent-accumulation reveal, so choose this only if it teaches a distinct computation-graph mechanism rather than duplicating direct-vs-sine-path accumulation.
+
+Decision needed:
+
+Choose the next concrete P0 slice after Vector Spaces. Do not design a broad roadmap. Pick one route/component and define a narrow, publishable implementation scope that improves joy/depth/rigor without introducing platform work.
+
+Please return:
+
+- The single best next slice and why it beats the other candidate now.
+- Exact file(s) to edit.
+- What should be visible before reveal.
+- What must stay hidden before reveal, including any demo-state leakage.
+- The learner prediction choices.
+- What measured demo state should be emitted after reveal.
+- Required stale-state clearing behavior.
+- Minimal tests and browser checks.
+- What is explicitly out of scope.
+- Any likely pre-reveal leak in the attached files.
+
+Important constraints:
+
+- Do not close the overall P0 unless this single slice truly completes it; assume it does not.
+- Prefer a bounded mechanism-first slice over broad platform work.
+- Prefer concept-specific prediction gates and compact measured-state handoff.
+- Avoid duplicating recently completed routes unless the mechanism is clearly distinct.
+- Keep final implementation static-export-safe.

@@ -1,0 +1,82 @@
+---
+title: "Weight Decay & AdamW: Decoupled Regularization"
+---
+
+## Intuition
+
+Regularization often starts with a simple preference: all else equal, prefer smaller weights.
+
+There are two closely related ways to express that idea:
+
+- add an $L_2$ penalty to the loss,
+- directly shrink parameters a little bit every step.
+
+For plain SGD, those are effectively the same update. That is why many people casually treat "L2 regularization" and "weight decay" as synonyms.
+
+For Adam, they are **not** the same. Adam rescales coordinates using running estimates of gradient magnitude, so an $L_2$ term added to the gradient gets rescaled too. That means different parameters can experience very different effective regularization strengths.
+
+AdamW fixes this by **decoupling** weight decay from the adaptive gradient step. First do the Adam update. Then shrink the parameters directly.
+
+## Math
+
+Let $L(\theta)$ be the task loss and $\lambda > 0$ the regularization strength.
+
+With an $L_2$ penalty, the regularized objective is
+
+$$
+L_{reg}(\theta) = L(\theta) + \frac{\lambda}{2} \lVert \theta \rVert_2^2,
+$$
+
+so the gradient becomes
+
+$$
+\nabla L_{reg}(\theta) = \nabla L(\theta) + \lambda \theta.
+$$
+
+For SGD, this leads to
+
+$$
+\theta_{t+1} = \theta_t - \eta \nabla L(\theta_t) - \eta \lambda \theta_t
+= (1 - \eta \lambda)\theta_t - \eta \nabla L(\theta_t),
+$$
+
+which is exactly a weight-decay step.
+
+For Adam, the adaptive preconditioner changes things. AdamW writes the update as
+
+$$
+m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t,
+$$
+$$
+v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2,
+$$
+$$
+\theta_{t+1} = \theta_t - \eta \frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon} - \eta \lambda \theta_t.
+$$
+
+The key point is that the shrinkage term $-\eta \lambda \theta_t$ is **not** divided by $\sqrt{\hat v_t} + \epsilon$. Regularization stays regularization instead of getting entangled with Adam's coordinatewise scaling.
+
+## Code
+
+```python
+import numpy as np
+
+theta = np.array([1.0, 1.0])
+g = np.array([0.1, 0.1])
+vhat = np.array([1e-4, 1.0])  # Adam sees very different curvature/noise
+lr = 1e-2
+wd = 0.1
+eps = 1e-8
+
+adam_with_l2 = theta - lr * ((g + wd * theta) / (np.sqrt(vhat) + eps))
+adamw = theta - lr * (g / (np.sqrt(vhat) + eps)) - lr * wd * theta
+
+print("Adam + L2 :", np.round(adam_with_l2, 4))
+print("AdamW     :", np.round(adamw, 4))
+```
+
+In the first coordinate, the effective shrinkage under "Adam + L2" becomes much larger because Adam divides by a tiny `sqrt(vhat)`. AdamW avoids that distortion.
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A useful next step would be a two-coordinate optimizer sandbox showing how Adam + L2 and AdamW diverge when one coordinate has much smaller running variance.

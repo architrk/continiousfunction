@@ -4,48 +4,171 @@ title: "Random Variables"
 
 ## Intuition
 
-A random variable is how we turn an uncertain situation into a number we can do math with.
+A tilted die produces one raw outcome, say $\omega=5$. What number did you actually measure: the face value $5$, the high-roll indicator $1$, the parity $1$, or the squared miss $(6-5)^2=1$?
 
-For example:
+The phrase "random variable" sounds as if the variable itself is a little random object. It is more useful to think of it as a measurement you decide to take from an uncertain situation.
+
+The world produces raw outcomes:
+
+- a sequence of coin flips
+- an image sampled from a dataset
+- a user clicking or not clicking
+- a training example with an input and label
+
+A random variable turns each raw outcome into a number:
 
 - $X$ = number of heads in 10 coin flips
-- $Y$ = pixel intensity at a location
-- $Z$ = model loss on a random training example
+- $Y$ = pixel intensity at one location
+- $L$ = model loss on a sampled training example
 
-Once you have a random variable, you can talk about its distribution, its average behavior (expectation), and how spread out it is (variance).
+Once the raw world has been measured numerically, probability can move from outcomes to values. That moved probability is the distribution of the random variable. From there we can talk about average behavior, spread, likelihood, and the noisy estimates that appear during training.
+
+The distinction is small but load-bearing: the outcome might be a whole image or sentence, while the random variable might be one scalar loss, one token count, or one feature activation.
+
+"Measurement" is a metaphor, not a requirement that there is a physical instrument. The important fact is that $X$ is a rule: once the raw outcome $\omega$ is known, the value $X(\omega)$ is determined.
 
 ## Math
 
-A **random variable** is a function
+Let $(\Omega,\mathcal F,P)$ be a probability space. The sample space $\Omega$ contains raw outcomes $\omega$, the event collection $\mathcal F$ says which subsets can be assigned probabilities, and $P$ assigns probability to those events.
 
-$$X: \Omega \to \mathbb{R}.$$
+A real-valued random variable is a measurable function
 
-For a discrete random variable, the distribution is a probability mass function $p(x)=P(X=x)$. The expectation is
+$$
+X:(\Omega,\mathcal F)\to(\mathbb R,\mathcal B(\mathbb R)).
+$$
 
-$$\mathbb{E}[X] = \sum_x x\, p(x).$$
+Measurable means that whenever $B$ is a Borel set of possible values, the set of raw outcomes that land in $B$ is an event:
 
-Variance measures spread:
+$$
+X^{-1}(B)=\{\omega\in\Omega:X(\omega)\in B\}\in\mathcal F.
+$$
 
-$$\operatorname{Var}(X) = \mathbb{E}[(X-\mathbb{E}[X])^2] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2.$$
+The distribution, or law, of $X$ is the pushforward of $P$ through $X$. For any Borel set $B\in\mathcal B(\mathbb R)$,
 
-For continuous variables with density $p(x)$, sums become integrals:
+$$
+P_X(B)=P(X \in B)=P(\{\omega \in \Omega : X(\omega) \in B\}).
+$$
 
-$$\mathbb{E}[X] = \int x\, p(x)\, dx.$$
+In the finite discrete case, write $P(\omega)$ as shorthand for the atomic mass $P(\{\omega\})$. Then all outcomes mapping to the same value get grouped together:
+
+$$
+p_X(x)=P(X=x)=\sum_{\omega : X(\omega)=x} P(\omega).
+$$
+
+The support of $X$ in this finite setting is
+
+$$
+\operatorname{supp}(X)=\{x:p_X(x)>0\}.
+$$
+
+The group of outcomes mapping to one value is the fiber over $x$:
+
+$$
+X^{-1}(\{x\})=\{\omega:X(\omega)=x\}.
+$$
+
+The probability mass of that fiber becomes the PMF value $p_X(x)$.
+
+This is the bridge to the next concept, distributions: the random variable is the map, and the distribution is the probability mass after the map.
+
+The expectation can be computed over raw outcomes or over the induced distribution:
+
+$$
+\mathbb{E}[X] = \sum_{\omega \in \Omega} X(\omega)P(\omega) = \sum_x x\,p_X(x).
+$$
+
+Variance measures squared spread around that expectation:
+
+$$
+\operatorname{Var}(X) = \mathbb{E}[(X-\mathbb{E}[X])^2] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2.
+$$
+
+When $X$ has a density $f_X$, probabilities and expectations are computed by integration:
+
+$$
+P(a\le X\le b)=\int_a^b f_X(x)\,dx.
+$$
+
+$$
+\mathbb{E}[X]=\int x\,f_X(x)\,dx.
+$$
+
+A density value is not itself a probability, and not every distribution has an ordinary density. The measure $P_X$ is the general object; PMFs and densities are common representations of it.
+
+In machine learning, a common random variable is the loss on a sampled example. If $Z$ is a random training example and $\theta$ are model parameters, then
+
+$$
+L=\ell(Z;\theta)
+$$
+
+is a random variable because the sampled example $Z$ is uncertain. Training tries to reduce $\mathbb{E}[L]$, while a mini-batch computes a noisy estimate:
+
+$$
+\hat L_m=\frac{1}{m}\sum_{i=1}^m \ell(Z_i;\theta).
+$$
+
+For independent sampled examples, $\mathbb E[\hat L_m]=\mathbb E[L]$ and $\operatorname{Var}(\hat L_m)=\operatorname{Var}(L)/m$. That is one reason batch size, learning rate, and optimization stability are connected.
+
+This is also the bridge to likelihood and Bayesian inference. Observed data are values of random variables under a model distribution; likelihood scores those observed values, cross-entropy averages their surprise, and Bayesian inference uses likelihoods to update distributions over unknowns.
 
 ## Code
 
 ```python
-import numpy as np
+from collections import defaultdict
+from math import exp
 
-# X = number of heads in 10 biased coin flips
-p = 0.3
-n = 200_000
-X = (np.random.rand(n, 10) < p).sum(axis=1)
+# Raw outcome space: a tilted six-sided die.
+omega = [1, 2, 3, 4, 5, 6]
 
-print("E[X] approx:", X.mean())
-print("Var[X] approx:", X.var())
+def tilted_die(tilt):
+    weights = {w: exp(tilt * (w - 3.5)) for w in omega}
+    total = sum(weights.values())
+    return {w: weight / total for w, weight in weights.items()}
+
+transforms = {
+    "face value": lambda w: w,
+    "high roll": lambda w: 1 if w >= 5 else 0,
+    "odd parity": lambda w: 1 if w % 2 == 1 else 0,
+    "squared miss": lambda w: (6 - w) ** 2,
+}
+
+def pushforward(P, X):
+    pmf = defaultdict(float)
+    groups = defaultdict(list)
+
+    for w, prob in P.items():
+        x = X(w)
+        pmf[x] += prob
+        groups[x].append(w)
+
+    pmf = dict(sorted(pmf.items()))
+    groups = {x: groups[x] for x in pmf}
+
+    mean_from_outcomes = sum(X(w) * prob for w, prob in P.items())
+    mean_from_pmf = sum(x * prob for x, prob in pmf.items())
+    variance = sum((x - mean_from_pmf) ** 2 * prob for x, prob in pmf.items())
+
+    assert abs(sum(P.values()) - 1.0) < 1e-12
+    assert abs(sum(pmf.values()) - 1.0) < 1e-12
+    assert abs(mean_from_outcomes - mean_from_pmf) < 1e-12
+
+    return pmf, groups, mean_from_pmf, variance
+
+P = tilted_die(0.35)
+
+for name, X in transforms.items():
+    pmf, groups, mean, variance = pushforward(P, X)
+    print(f"\n{name}")
+    print("support:", list(pmf))
+    print("groups:", groups)
+    print("pmf:", {x: round(p, 3) for x, p in pmf.items()})
+    print("E[X], Var(X):", round(mean, 3), round(variance, 3))
 ```
 
 ## Interactive Demo
 
-No interactive demo yet. A good demo: choose a distribution and watch samples, histogram, mean, and variance update.
+Change the probability tilt over raw die outcomes, then change what $X$ measures. Positive tilt favors larger die faces; negative tilt favors smaller die faces.
+
+Before revealing the grouped distribution, use the visible rule and raw probabilities to predict which measured value will collect the most probability mass. The demo hides the support, expectation, variance, and dominant fiber until you commit.
+
+After reveal, compare the winning fiber with the readouts: the same outcome space can produce very different distributions, expectations, and variances depending on the measurement rule.

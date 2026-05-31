@@ -1,0 +1,38 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for the Reward Hacking concept in Continuous Function.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- A published concept must be intuitive, precise, visual, executable, and connected.
+- Oracle is advisory; classify issues so Codex can patch and verify.
+
+Concept:
+- ID: `reward-hacking`
+- Domain: `alignment`
+- Current status in repo: `published`
+- Current concern: RLHF, DPO, and KTO were just rebuilt to a higher standard. Reward Hacking may now be the weak downstream alignment page; its current demo is broad/gamified and may not precisely match the math/code.
+
+Primary sources:
+- Gao et al., "Scaling Laws for Reward Model Overoptimization", arXiv:2210.10760: https://arxiv.org/abs/2210.10760
+- Manheim and Garrabrant, "Categorizing Variants of Goodhart's Law", arXiv:1803.04585: https://arxiv.org/abs/1803.04585
+- Ouyang et al., "Training language models to follow instructions with human feedback", arXiv:2203.02155: https://arxiv.org/abs/2203.02155
+
+Context:
+- Continuous Function is building alignment as probability shaping.
+- RLHF is now published as pairwise reward modeling + KL-regularized probability shaping.
+- DPO is now published as Bradley-Terry cross-entropy on reference-relative log odds.
+- KTO is now published as pointwise binary utility relative to a KL-derived baseline.
+- Reward Hacking should probably teach the failure mode downstream of these objectives: proxy reward is optimized harder than it was validated, distribution shift amplifies reward-model errors, KL/LCB/ensembles slow but do not solve it.
+
+Please review the attached `concept.yaml`, `content.mdx`, `viz.tsx`, current `RewardHackingViz.tsx`, the rebuilt RLHF page/demo for upstream comparison, and the quality bar.
+
+Return:
+1. Verdict: keep published, publish after fixes, demote to review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and missing P0 concepts.
+8. Exact patch-style edits or rebuild plan for the highest-impact fixes.
+
+Be strict. Do not say "looks good" unless the concept actually meets the quality bar.

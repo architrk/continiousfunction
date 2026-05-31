@@ -1,0 +1,72 @@
+We are continuing the Continuous Function north-star work in a Next.js learning platform repo.
+
+Current objective:
+
+- Make the site a deep, joyful, rigorous learning platform for modern deep learning math.
+- Prefer slow, high-quality, mechanism-first concept slices over broad idea dumps.
+- Use Oracle/GPT Pro as a review/scoping partner.
+- Keep each slice static-export-safe unless explicitly doing platform/account work.
+
+Current branch:
+
+- `private/research-learning-loop-20260505`
+
+Recent P0 prediction-first in-demo retrofits already shipped and pushed:
+
+- Reverse-Mode Autodiff: cotangent accumulation reveal.
+- Probability Basics: conditioning/posterior reveal.
+- Random Variables: pushforward/fiber reveal.
+- Variational Autoencoders: ELBO gap diagnostic reveal.
+- Tree Search Reasoning: visible max-backup root-branch reveal.
+
+The current audit still says the full north-star goal is not achieved. The P0 that remains is:
+
+> For live demos that predate the demo-shell rollout, add explicit concept-specific "predict before reveal" states and compact demo-state emission. A global demo-shell checkpoint now gives every published live demo a baseline prediction prompt, so the remaining work should focus on deeper in-demo reveal states for critical prerequisites and flagship-adjacent pages.
+
+Current scan after the Tree Search commit:
+
+1. `calculus/computation-graphs`
+   - Co-located `viz.tsx`.
+   - Emits demo state for forward/backward phase and values.
+   - Shows forward values; in Backward mode it immediately exposes `bar a`, direct/via-sine contributions, `bar x`, and `bar y`.
+   - It may need a local prediction gate for whether sensitivity into reused node `a` reinforces, stays mostly direct, or cancels before backward cotangents are shown. However Reverse-Mode Autodiff already received a similar cotangent-accumulation reveal, so avoid duplicating the exact same slice unless this route can teach a different prerequisite mechanism.
+
+2. `calculus/derivatives`
+   - Co-located `viz.tsx`.
+   - Emits demo state for function, x, x+h, h, secant slope, tangent slope, slope gap, convergence status, and visible layers.
+   - It immediately exposes tangent slope and slope gap while the learner adjusts h.
+   - It may need a local prediction gate around secant-to-tangent convergence: before revealing tangent slope/gap, predict whether shrinking h will make the secant slope rise, fall, or stay near the derivative, or predict the sign/magnitude class of the derivative.
+
+3. `linear-algebra/dot-product`
+   - Co-located `viz.tsx`.
+   - Emits demo state for vector coordinates, dot product, cosine, angle, projection coefficient/length, projection vector, residual, and alignment state.
+   - It immediately exposes `u·v`, angle/cos, projection length, and alignment classification.
+   - It may need a local prediction gate for alignment/projection sign before revealing dot/cos/projection: learner predicts positive alignment, orthogonal, or negative/opposite alignment from geometry.
+
+4. `linear-algebra/vector-spaces`
+   - Co-located `viz.tsx`.
+   - Emits demo state for u, v, a, b, au, bv, w, det, area, span status, |w|, and parallelogram visibility.
+   - It immediately exposes determinant/area/span status.
+   - It may need a local prediction gate for whether u and v span a plane or collapse to a line before revealing determinant/area/span classification.
+
+Decision needed:
+
+Choose the next concrete P0 slice after Tree Search. Do not design a broad roadmap. Pick one route/component and define a narrow, publishable implementation scope that improves joy/depth/rigor without introducing auth, database, API routes, dynamic atlas reads, or unrelated platform work.
+
+Please return:
+
+- The single best next slice and why.
+- Exact file(s) to edit.
+- What should be visible before reveal, what must stay hidden, and what learner prediction should be required.
+- What demo state should be emitted after reveal.
+- What stale-state clearing behavior is required.
+- Minimal tests and browser checks.
+- What should explicitly be out of scope.
+- Any likely pre-reveal leak in the attached files.
+
+Important constraints:
+
+- Do not close the overall P0 unless this single slice truly completes it; assume it does not.
+- Prefer a bounded mechanism-first slice over broad platform work.
+- Prefer concept-specific prediction gates and compact measured-state handoff.
+- Avoid duplicating recently completed routes unless the target teaches a clearly distinct mechanism.

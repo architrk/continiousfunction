@@ -1,0 +1,20 @@
+Final narrow review for the content-object manifest spine.
+
+Previous remaining blocker:
+- `validate-content.ts` still made malformed claim object refs warning-level, and a recognized-but-nonexistent ref could be added to `expectedKeys`, weakening stale-extra detection.
+
+Final fix:
+- Malformed `claim_checks[].object_refs` are now `error`.
+- Locally missing recognized refs are now `error`:
+  - `#math-object-N` beyond extracted math objects
+  - `#code-witness-N` beyond extracted code witnesses
+  - `#source-span-*` not backed by a structured source note span
+  - `#interactive-demo` without a real demo+viz
+- `validate-content.ts` now uses `objectRefResolvesLocally`; if local resolution fails, it continues before deriving/adding a manifest key. This prevents stale manifest objects from being treated as expected just because a bad claim ref named them.
+- Unsupported-but-well-formed refs still error through `CONCEPT_CLAIM_CHECK_OBJECT_REF_UNSUPPORTED`.
+
+Commands passed after this final fix:
+- `npm run validate-content` -> 0 warnings, 0 errors, 851 manifest objects
+- `npm run typecheck`
+
+Please review only the remaining blocker. Return publish / publish-after-fixes / no-publish, with must-fix items only.

@@ -1,0 +1,70 @@
+Project: Continuous Function, a slow-growth mathematical atlas for deep learning concepts.
+
+Concept under review:
+- Domain: scaling
+- Slug: test-time-compute
+- Title: Test-Time Compute: Spending Inference Budget on Search
+- Current status: review
+- It follows published Scaling Laws and Process Reward Models, and should lead to Tree Search Reasoning.
+
+Context:
+Oracle first scoped this page as a narrow bridge: complete-trace best-of-N with a verifier, not MCTS/tree search. I implemented the page to match that scope.
+
+The page teaches:
+- train-time scaling vs inference-time scaling
+- finite distribution over complete candidate traces
+- hidden true correctness u_i
+- verifier score s_i, optionally additive over PRM step scores
+- exact best-of-N selected-trace distribution using cumulative verifier-ranked mass
+- selected correctness A(N), selected score S(N), oracle coverage, and simple cost C(N)
+- the gap between coverage and selection
+- the caveat that more inference compute can amplify verifier errors
+
+Interactive demo:
+- fixed four-trace object:
+  - common wrong algebra: prior 0.50, correct 0, clean/noisy score -2.0
+  - plausible slip: prior 0.25, correct 0, clean/noisy score -0.3
+  - clean correct trace: prior 0.18, correct 1, clean/noisy score 1.8
+  - rare verifier exploit: prior 0.07, correct 0, clean score 0.2, noisy score 2.6
+- controls: clean/noisy verifier mode, sample budget N
+- chart: sampled-correct coverage, selected correctness, selected exploit probability in noisy mode
+- metrics: selected correctness, sampled correct, N=1 baseline, expected selected score, selected exploit, last-sample gain
+
+Local verification passed:
+- npm run generate-content
+- npm run validate-content
+- npm run typecheck
+- deterministic Python witness:
+  - clean N=32 improves over clean N=1
+  - noisy N=64 falls below noisy N=1
+  - noisy expected selected score increases despite true correctness falling
+- desktop Chrome route check at 1440px:
+  - no KaTeX errors
+  - no horizontal overflow
+  - required sources/math/demo/cost caveat present
+  - clean N=16 selected correctness = 0.958
+  - noisy N=64 selected correctness = 0.010
+  - noisy N=64 selected exploit = 0.990
+- mobile Chrome route check at 390px passed the same checks
+- npm run build passed; known existing KaTeX display-mode newline warnings still appear elsewhere in the content set
+
+Attached files:
+- Oracle scope response for this page
+- concept.yaml metadata
+- content.mdx lesson
+- viz.tsx route export
+- TestTimeComputeViz.tsx demo
+- adjacent Scaling Laws and Process Reward Models pages
+- Reward Hacking page because this page depends on the proxy-error caveat
+
+Please do a rigorous publish/no-publish review.
+
+Return:
+1. Verdict: "publish as is", "publish after fixes", or "keep in review".
+2. Blocking issues only, with exact file-level fixes.
+3. Check math-demo-code equivalence: do the content, code witness, and React demo implement the same finite object?
+4. Check whether the coverage-vs-selection distinction is precise and not overclaimed.
+5. Check whether the verifier-error caveat is precise enough and not overclaimed.
+6. Check atlas graph fit: prerequisites, leads_to, related, and whether this should publish after PRMs.
+
+Avoid broad roadmap suggestions. I need a release review for this exact page.

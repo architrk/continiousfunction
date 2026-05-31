@@ -1,0 +1,73 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. The user goal is not just coverage: learning should feel joyful enough to return to voluntarily, visually rich, interactive, deep, mathematically serious, and non-trivial. The site should grow slowly with refined concepts rather than bulk content.
+
+This is the implementation review for the fourth slice of the shared "flagship demo shell rollout": the Diffusion forward-process sub-slice.
+
+Prior GPT Pro Oracle scope review chose:
+
+> Diffusion, but only the "forward noising / alpha-bar schedule / structure-loss prediction" sub-slice.
+
+It explicitly said not to patch the whole Diffusion / Score Matching / Flow Matching bundle yet. The requested scope was:
+
+- Replace the existing three-tab diffusion route with a focused `VizShell` + `VizStageAdapter` wrapper around only `DiffusionProcessViz`.
+- Keep `DiffusionScoreViz` and `FlowMatchingViz` untouched for later slices.
+- Add `chrome?: 'legacy' | 'notebook'` and `conceptId?: string` to `DiffusionProcessViz`.
+- Hide the duplicated internal title/subtitle in notebook mode.
+- Replace the countdown/game challenge with a mechanism-first threshold prediction check.
+- Make particle generation deterministic.
+- Remove or fix distribution preset buttons. I removed the buttons because the current particle generator is only two blobs.
+- In notebook mode, hide exact-looking score arrows and treat the backward direction as replay of stored `(x0, epsilon)`, not a learned reverse sampler.
+- Add a live equation readout for `x_t = sqrt(alpha_bar) x0 + sqrt(1-alpha_bar) epsilon`.
+- Add compact demo-state emission.
+- Tighten MDX so the Interactive Demo says this first lab isolates the DDPM forward process, while score matching and flow matching are separate future labs.
+
+Implemented changes:
+
+- `content/domains/generative-models/concepts/diffusion/viz.tsx`
+  - Replaced the old `Process / Score Matching / Flow Matching` tab wrapper with a focused `VizShell`.
+  - Dynamically imports only `DiffusionProcessViz`.
+  - Passes `chrome="notebook"` and `conceptId="diffusion"`.
+  - Shell notes state that score matching and flow matching are separate mechanisms for later rollout passes.
+
+- `components/foundations/DiffusionProcessViz.tsx`
+  - Adds `chrome='legacy'` and `conceptId='diffusion'` defaults.
+  - Hides internal title/subtitle in notebook mode.
+  - Removes old `GamePhase`, countdown, challenge-list state, fake distribution preset buttons, and D3 randomNormal sampling.
+  - Adds deterministic RNG/sampleNormal with a resample button.
+  - Adds threshold prediction check for early/middle/late 50% structure-match crossing.
+  - Computes the crossing deterministically over all schedule steps, jumps the slider to the crossing, and explains alpha_bar.
+  - Adds faint clean x0 particles behind current xt particles.
+  - Adds equation readout `x_t = ... x_0 + ... epsilon`.
+  - Keeps legacy restoring-direction proxy arrows, but hides them in notebook mode.
+  - Reframes reverse direction as "Backward replay: noise -> stored data path" and caveats that real generation does not know x0.
+  - Emits compact demo state with alpha_bar, noise std, structure-match proxy, direction, and prediction result.
+
+- `content/domains/generative-models/concepts/diffusion/content.mdx`
+  - Interactive Demo now isolates the DDPM forward equation and says score/flow are separate future labs.
+
+Local validation after implementation:
+
+- `npm run validate-content`: passed with 0 warnings / 0 errors.
+- `npm run typecheck`: passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build`: passed. Existing unrelated warnings remain for raw `<img>` usage and KaTeX display-newline warnings.
+- After moving generated build output to the hidden parent stale-build stash and restarting only port 3001:
+  - `curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/domains/generative-models/diffusion/` returned `200`.
+  - `curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/foundations/diffusion/` returned `200`.
+  - `lsof` shows only port `3001` active for this repo app server.
+
+Please review the attached files as a strict implementation reviewer. I want blockers before this slice is considered complete, not a broad brainstorm.
+
+Questions:
+
+1. Are there any correctness, pedagogy, claim-calibration, accessibility, SSR/static-export, or UX blockers?
+2. Did the route avoid hiding score matching / flow matching debt inside a broad tab shell, while preserving legacy foundation behavior?
+3. Is the forward-process prediction check mechanism-first enough?
+4. Does the notebook mode avoid implying a learned reverse sampler or exact score field?
+5. Is the demo-state emission useful and safe for the AI companion context?
+6. Are there any exact copy/code changes required before continuing to the next demo?
+
+Please answer with:
+
+- "BLOCKERS" first, ordered by severity, with file/section references.
+- "REQUIRED PATCH" with exact text/code changes if blockers exist.
+- "ACCEPTABLE TO CONTINUE" if no blockers remain.
+- Keep optional polish separate from blockers.

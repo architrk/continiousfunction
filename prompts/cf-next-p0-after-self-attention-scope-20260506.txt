@@ -1,0 +1,44 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript static-learning atlas for modern deep learning math. The product north star is durable mechanistic understanding: intuition, math, code, and prediction-first interactive demos that carry compact measured state into the learning checkpoint and AI handoff.
+
+Current thread objective: keep growing the site into a deep, joyful, rigorous, non-trivial learning environment by doing slow high-quality improvements, not broad idea dumps. The current P0 audit gap is older demos that only emit state or have generic game modes, but do not yet force a learner to predict a concept-specific invariant before answer-bearing rows/diagnostics are revealed.
+
+Already completed in this P0 pass:
+- Reverse-Mode Autodiff: cotangent accumulation reveal.
+- Probability Basics: conditioning reveal.
+- Random Variables: pushforward/fiber reveal.
+- VAEs: ELBO gap reveal.
+- Tree Search Reasoning: max-backup reveal.
+- Dot Product: signed projection reveal.
+- Vector Spaces: span-collapse reveal.
+- Derivatives: secant-to-hidden-tangent reveal.
+- Computation Graphs: reused-node sensitivity reveal.
+- Backpropagation: hidden learning-signal reveal.
+- Scaled Dot-Product Attention Geometry: top-key attention reveal.
+- Self-Attention Mechanics: alpha_ij * V_j value-contribution reveal.
+
+Recent successful pattern:
+1. Keep pre-reveal visible state rich enough for reasoning.
+2. Hide answer-bearing values, labels, visual intensity, explanatory insights, and demo-state emission until reveal.
+3. Ask one precise prediction.
+4. Reveal the mechanism and emit compact measured state.
+5. Clear stale local/shared state when controls, tabs, predictions, conceptId, reset, or unmount change.
+6. Add focused regression tests and browser checks.
+
+Candidate next slices in the same flagship Attention/Transformers route:
+- TransformerArchitectureViz currently emits token-flow and architecture state, and includes a broad gamified scenario chooser. It may need a local prediction-first reveal centered on one architectural invariant.
+- AttentionBackpropViz currently emits gradient-flow state and has a gamified challenge around W_Q/W_K/W_V/softmax. It may need a local prediction-first reveal that hides gradient magnitudes and explanatory answer copy until reveal.
+
+Question:
+Choose the next single P0 slice after Self-Attention. Do not give a broad roadmap. Pick exactly one candidate and specify the smallest publishable concept-specific prediction-first retrofit.
+
+Return:
+1. chosen file/component and why it is higher leverage now;
+2. exact slice name;
+3. the one learner prediction prompt;
+4. visible pre-reveal state;
+5. values/copy/visual signals that must be hidden until reveal;
+6. compact demo-state fields to emit after reveal;
+7. test cases that would catch the likely stale-state or leakage bugs;
+8. any specific non-goals so the implementation stays bounded.
+
+Please be strict. If both candidates are too broad, choose the smallest bounded sub-slice anyway.

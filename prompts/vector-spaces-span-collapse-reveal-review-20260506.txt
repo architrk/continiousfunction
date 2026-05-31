@@ -1,0 +1,68 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current goal:
+
+- Continue the P0 prediction-first demo retrofit pass.
+- Use a mechanism-first, static-export-safe slice.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, or broad platform work.
+
+Earlier in this run, Oracle/GPT Pro selected this exact next slice:
+
+`linear-algebra/vector-spaces`: a prediction-first span-collapse reveal inside `VectorSpacesViz`.
+
+Requested mechanism:
+
+- Keep the closure playground visible: u, v, a, b, au, bv, and w = a u + b v.
+- Gate the span-collapse witness: determinant, parallelogram area, normalized area, span status, span dimension, and parallelogram area fill.
+- Ask the learner to predict whether the two generators sweep a 2D plane, nearly collapse, or collapse to a line/point.
+- Classify using normalized area, not raw parallelogram area, so tiny perpendicular vectors are not falsely labeled collapsed.
+- Emit compact measured demo state only after reveal.
+- Clear stale demo state when u/v or presets change.
+
+Implementation summary:
+
+- `VectorSpacesViz` now exports `classifySpan(u, v)`.
+- It computes determinant, raw area, normalized area `|det|/(|u||v|)`, outcome, and span dimension.
+- It hides determinant/area/status/parallelogram witness before reveal.
+- It uses neutral preset labels `Pair A`, `Pair B`, `Pair C`.
+- It adds a prediction panel and reveal button.
+- It emits `Vector-space span-collapse witness` demo state only after reveal.
+- Changing u/v or a preset clears prediction/reveal and clears shared demo state.
+- Changing a/b preserves reveal and re-emits updated closure vector state after reveal.
+- The MDX demo copy now asks the learner to predict the span witness before reveal.
+- Tests cover normalized-area classification, pre-reveal hiding/no measured event, post-reveal emission, stale clear, and MDX prediction-first copy.
+
+Validation already run:
+
+- `npm test -- VectorSpacesViz --runInBand` passed 5 tests. It showed the repo's known styled-jsx jsdom warning.
+- `npm run validate-content` passed with 0 warnings/errors.
+- `npm run typecheck` passed.
+
+Review request:
+
+Please review the attached implementation as GPT Pro / Oracle in a rigorous product, pedagogy, math, and frontend quality role.
+
+Return one of:
+
+- `publish` if there are no blocking correctness/pedagogy/static-export issues.
+- `no-publish` if any blocker must be fixed first.
+
+Classify findings as:
+
+- blocking correctness
+- blocking pedagogy
+- blocking UI/mobile/accessibility
+- important improvement
+- optional polish
+- out of scope
+
+Specifically check:
+
+1. Does the normalized-area classifier avoid the raw-area bug and handle zero/near-collinear cases defensibly?
+2. Is anything still leaking determinant, area, actual span status, correctness, or measured state before reveal?
+3. Does preserving w, au, and bv before reveal support the closure lesson without leaking the span answer?
+4. Is stale state cleared correctly for u/v/preset changes and preserved correctly for a/b changes?
+5. Is the UI likely to overflow or become awkward on mobile?
+6. Are there exact code/copy/test changes you would require before this is publishable?
+
+Keep the review narrow. Do not propose broad vector-space curriculum, basis/rank/nullspace expansion, platform work, or unrelated refactors.

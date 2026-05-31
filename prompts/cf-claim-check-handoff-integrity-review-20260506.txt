@@ -1,0 +1,44 @@
+Implementation review for `claim-check-handoff-integrity-validator-v1`.
+
+Project context:
+- Continuous Function is a Next.js/React concept atlas for deep learning/math learning.
+- Current branch: `private/research-learning-loop-20260505`.
+- This slice should remain repo-local and static/export-safe. No Clerk, Neon, DB runtime, API routes, protected pages, new storage schema, or account surfaces.
+
+Oracle previously recommended this slice after `claim-check-object-handoff-v1`:
+- turn the one-off all-concepts exact-field probe into a permanent guardrail;
+- verify every structured `claim_checks[]` entry preserves exact claim object key, exact `#claim-check-<id>` card href, exact claim-check discussion anchor, source IDs, claim/status/support/caveat/object refs in the prompt, and prompt length bound;
+- do not review whether the sources substantively support the claims.
+
+Implemented:
+- Added `lib/claimCheckHandoffIntegrity.ts`.
+  - It takes loaded concept records plus manifest objects.
+  - It rebuilds the actual concept Research Reading Room items through `buildConceptDiscussionItems`.
+  - It builds the actual grounded handoff through `buildResearchDiscussionRoomPacket`.
+  - For each `claim_checks[]` item, it checks exactly one matching claim object by `claim:<domain>/<concept>#<id>`, exact `/domains/<domain>/<slug>/#claim-check-<id>` href, exact `claim/concept-notebook/<domain>/<concept>/claim-check/<id>` anchor, ordered source IDs on the reading-room item, route-object object key, prompt fields, and `maxDiscussionSeedPromptLength`.
+  - It also checks the generated manifest object has type `claim`, exact href, exact discussionAnchorId, ordered source IDs, and object refs resolved to content object keys.
+- Added `lib/claimCheckHandoffIntegrity.test.ts`.
+  - Real current corpus must pass.
+  - Concepts without claim checks pass unchanged.
+  - Regressions fail when support/caveat/source/object-ref prompt fields disappear, href points only to `#claim-review`, object key and anchor disagree, manifest source/object refs are sliced, or manifest href/anchor diverge.
+- Wired `scripts/validate-content.ts` to load the validator through ts-node CommonJS registration and run it during normal content validation.
+- Fixed a real issue found by the guardrail: `scripts/generate-content-object-manifest.ts` was sorting `sourceIds`; it now preserves authored claim-check source order. Regenerated `content/_generated/content-object-manifest.json`.
+- Updated `content/_agent/TODO.yaml` and `PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md`.
+- Added this scope/review trail: `prompts/cf-next-north-star-after-claim-handoff-20260506.txt`, `responses/cf-next-north-star-after-claim-handoff-20260506.md`.
+
+Validation so far:
+- `npm run generate-object-manifest` passed and wrote 851 objects.
+- `npm test -- claimCheckHandoffIntegrity --runInBand` passed: 1 suite, 7 tests.
+- `npm test -- claimCheckHandoffIntegrity conceptNotebookDiscussion contentObjectManifest --runInBand` passed: 4 suites, 27 tests.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run validate:object-memory` passed.
+- `npm run typecheck` passed.
+
+Please review strictly for:
+1. Whether this actually satisfies `claim-check-handoff-integrity-validator-v1`.
+2. Any remaining must-fix blockers before publish.
+3. Whether preserving sourceIds order in the generated manifest is the right fix or creates a hidden compatibility problem.
+4. Whether the `validate-content.ts` ts-node loading approach is acceptable in this repo, or should be replaced.
+5. Missing tests/validators that are necessary for this slice.
+
+Do not broaden into source-quality review, UI redesign, auth/deployment/account setup, or another demo retrofit.

@@ -1,0 +1,57 @@
+You are GPT-Pro acting as a senior product, pedagogy, and UX reviewer for Continuous Function.
+
+Context:
+- Continuous Function is a static-exported Next.js + TypeScript learning atlas for deep learning math and frontier AI.
+- The product contract is Intuition -> Math -> Code -> Interactive Demo, with prediction-first demos and object-attached research discussion.
+- The current work is a small, high-impact bridge for /paper-map/.
+- The site already has browser-local LearningRouteSnapshot state in localStorage. It preserves:
+  - current question
+  - current object
+  - route concepts
+  - source objects
+  - lastObservation, e.g. a KV-memory formula-comparison checkpoint from the Long Context witness.
+- Search now has route-aware action buckets and an ObservationLedgerCard. Concept pages and the continuity banner can show the saved observation.
+- Paper Mapper currently creates a new LearningRouteSnapshot when a learner clicks "Remember on home", opens the mapped route, opens the lab, copies a study prompt, or focuses a discussion object.
+- Problem: Paper Mapper currently overwrites the route snapshot without intentionally preserving the previous lastObservation. The UX also does not clearly explain whether a saved lab observation will be carried into the mapped paper route or replaced by the new paper clue.
+
+Relevant existing behavior:
+- /paper-map/ has a LearningRouteContinuityBanner above the mapper.
+- PaperConceptMapper has input pane, source check, mapped result, Next Best Move, route steps, source/claim/equation panels, toy lab spec, and ResearchReadingRoom.
+- Existing save function roughly builds:
+  version: "cf-route-snapshot-v1",
+  source: "paper-map",
+  paperClueLabel,
+  mappingId,
+  mappingTitle,
+  routeLabels,
+  routeConceptIds,
+  routeConcepts,
+  nextRepair,
+  currentQuestion,
+  primaryEquation,
+  labGoal,
+  labStatus,
+  sourceObjects,
+  currentObject,
+  groundingStatus,
+  createdAt.
+- LearningRouteSourceObject supports type "thread" and status "route handoff history".
+- ObservationLedgerCard can render a snapshot.lastObservation in compact, detailed, or inline variants.
+
+Goal:
+Design the smallest V1 implementation that makes Paper Mapper feel like part of the same learner loop:
+1. A learner can see that a saved observation exists.
+2. They can decide whether to carry that observation into the paper mapping.
+3. The new paper route, when saved, preserves the observation only when that behavior is explicit and understandable.
+4. The mapper explains the pedagogical reason for carrying the observation: use the concrete witness result as a prior constraint while source-checking and mapping the paper clue.
+5. It avoids duplicate localStorage systems, fake accounts, or broad AI-chat promises.
+
+Please provide:
+- A buildable V1 spec in 8-12 bullets.
+- The exact UX language you would put on the bridge, including a title, short description, toggle label, and 2-3 fact labels.
+- A recommended save rule: when to preserve lastObservation, when not to, and how to represent prior route history in sourceObjects.
+- How this should behave on mobile.
+- 5 acceptance checks we can verify with local browser/Playwright metrics.
+- 3 things to avoid because they would make the app less intuitive or less rigorous.
+
+Bias toward a small, shippable improvement that can be implemented in PaperConceptMapper.tsx plus maybe one small helper component. Do not propose a database, login, generic chatbot, or broad redesign.

@@ -9,7 +9,7 @@ prerequisites:
   - derivatives
   - norms
 leads_to:
-  - adamw
+  - weight-decay-adamw
   - learning-rate-schedules
 related:
   - loss-landscapes
@@ -22,8 +22,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: kingma-2014-adam
+    kind: paper
+    title: "Adam: A Method for Stochastic Optimization"
+    authors: "Kingma and Ba"
+    year: 2014
+    url: "https://arxiv.org/abs/1412.6980"
+    note: "Grounds Adam's first- and second-moment estimates, bias correction, and adaptive step-size mechanics."
+claim_checks:
+  - id: adam-moment-bias-corrected-adaptive-step
+    status: source-checked
+    claim: "Adam maintains exponential moving averages of gradients and squared gradients, bias-corrects both from zero initialization, and takes elementwise adaptive steps by subtracting alpha*mhat_t/(sqrt(vhat_t)+epsilon)."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-06"
+      reviewer: "codex+oracle"
+      summary: "Checked Kingma and Ba Algorithm 1 plus sections 2 and 3: the paper initializes m0 and v0 as zero vectors, updates biased first and second raw moment estimates from gt and gt^2, divides by 1-beta1^t and 1-beta2^t for bias correction, states vector operations are element-wise, and updates theta with alpha*mhat/(sqrt(vhat)+epsilon). Scope is original Adam update mechanics only."
+    source_ids:
+      - kingma-2014-adam
+    support: "Kingma and Ba's Algorithm 1 initializes m0 and v0 to zero, updates biased first-moment and second raw-moment estimates from gt and gt^2, computes bias-corrected estimates, and updates parameters with alpha*mhat_t/(sqrt(vhat_t)+epsilon), with vector operations elementwise. The page's equations, code witness, and demo instantiate those mechanics and expose the per-coordinate effective step scaling."
+    caveat: "This checks Adam's original adaptive-moment update mechanics, not convergence guarantees, AdamW decoupled weight decay, AMSGrad, optimizer generalization debates, sparse-gradient variants, or framework-specific implementation details."
+    object_refs:
+      - "#source-span-kingma-2014-adam"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "Adam is an adaptive optimizer that combines momentum (EMA of gradients) with per-parameter RMS normalization (EMA of squared gradients)."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 16

@@ -3,9 +3,17 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import * as d3 from 'd3'
 import { MATH_COLORS } from '../../lib/mathObjects'
+import { emitDemoState } from '../../lib/demoState'
 
 type GamePhase = 'setup' | 'countdown' | 'reveal'
 type ActivationType = 'relu' | 'gelu' | 'silu' | 'swiglu'
+type GateRegime = 'suppress' | 'pass' | 'amplify'
+type NotebookPrediction = GateRegime | null
+
+type SwiGLUVizProps = {
+  chrome?: 'legacy' | 'notebook'
+  conceptId?: string
+}
 
 // Challenge scenarios for activation prediction
 const ACTIVATION_CHALLENGES = [
@@ -54,6 +62,57 @@ const COLORS = {
   silu: '#8b5cf6',
   swiglu: '#f59e0b',
 }
+
+const NOTEBOOK_PRESETS = [
+  {
+    id: 'token-a',
+    label: 'Token A',
+    prompt: 'Residual stream has a faint syntax feature and a strong local noun signal.',
+    channels: [
+      { id: 'c1', label: 'channel 1', feature: 'syntax feature', v: 1.12, g: -1.45 },
+      { id: 'c2', label: 'channel 2', feature: 'noun feature', v: 0.82, g: 0.95 },
+      { id: 'c3', label: 'channel 3', feature: 'rare pattern feature', v: 0.64, g: 1.82 },
+    ],
+  },
+  {
+    id: 'token-b',
+    label: 'Token B',
+    prompt: 'Residual stream carries a negation cue and a weak entity feature.',
+    channels: [
+      { id: 'c1', label: 'channel 1', feature: 'negation feature', v: -0.94, g: 0.18 },
+      { id: 'c2', label: 'channel 2', feature: 'entity feature', v: 0.76, g: 1.08 },
+      { id: 'c3', label: 'channel 3', feature: 'template feature', v: -0.58, g: 1.64 },
+    ],
+  },
+  {
+    id: 'token-c',
+    label: 'Token C',
+    prompt: 'Residual stream has an arithmetic feature competing with a discourse feature.',
+    channels: [
+      { id: 'c1', label: 'channel 1', feature: 'arithmetic feature', v: 1.26, g: 0.72 },
+      { id: 'c2', label: 'channel 2', feature: 'discourse feature', v: -0.72, g: -0.82 },
+      { id: 'c3', label: 'channel 3', feature: 'copy feature', v: 0.88, g: 1.46 },
+    ],
+  },
+] as const
+
+const GATE_CHOICES: Array<{ id: GateRegime; label: string; detail: string }> = [
+  {
+    id: 'suppress',
+    label: 'suppress',
+    detail: 'The multiplier is below 0.55x, or the gate is small or sign-flipping.',
+  },
+  {
+    id: 'pass',
+    label: 'pass',
+    detail: 'The multiplier stays in the 0.55x to 1.10x pass band.',
+  },
+  {
+    id: 'amplify',
+    label: 'amplify',
+    detail: 'The multiplier is above 1.10x, so the value proposal grows.',
+  },
+]
 
 // --- Activation functions ----------------------------------------------------
 
@@ -104,9 +163,53 @@ function formatNumber(n: number): string {
   return n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 }
 
+function fmtNotebook(n: number, digits = 3): string {
+  const clean = Math.abs(n) < 0.0005 ? 0 : n
+  return clean.toFixed(digits)
+}
+
+function fmtSigned(n: number, digits = 3): string {
+  const clean = Math.abs(n) < 0.0005 ? 0 : n
+  return `${clean > 0 ? '+' : ''}${clean.toFixed(digits)}`
+}
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function rangePercent(value: number, min: number, max: number): number {
+  return clamp01((value - min) / (max - min)) * 100
+}
+
+function classifyGateRegime(gateCoefficient: number): GateRegime {
+  if (gateCoefficient < 0.55) return 'suppress'
+  if (gateCoefficient > 1.1) return 'amplify'
+  return 'pass'
+}
+
+function gateRegimeSentence(regime: GateRegime): string {
+  if (regime === 'suppress') {
+    return 'The gate coefficient is small, so the product is damped before the output projection.'
+  }
+  if (regime === 'amplify') {
+    return 'The SiLU gate is above 1.10x, so the product is larger than the raw value proposal.'
+  }
+  return 'The gate coefficient sits near one, so the value proposal mostly passes through.'
+}
+
+function gateRegimeLabel(regime: GateRegime): string {
+  if (regime === 'suppress') return 'suppressed'
+  if (regime === 'amplify') return 'amplified'
+  return 'passed'
+}
+
 // --- Main component ---------------------------------------------------------
 
-export default function ActivationFunctionExplorer() {
+export default function ActivationFunctionExplorer({
+  chrome = 'legacy',
+  conceptId = 'swiglu',
+}: SwiGLUVizProps = {}) {
+  const isNotebook = chrome === 'notebook'
   const [hoverX, setHoverX] = useState(0)
   const [dModel, setDModel] = useState(1024)
 
@@ -117,6 +220,36 @@ export default function ActivationFunctionExplorer() {
   const [userPrediction, setUserPrediction] = useState<ActivationType | null>(null)
   const [countdown, setCountdown] = useState(3)
   const [feedback, setFeedback] = useState('')
+  const [notebookPresetId, setNotebookPresetId] = useState<string>(NOTEBOOK_PRESETS[0].id)
+  const [notebookChannelId, setNotebookChannelId] = useState<string>(NOTEBOOK_PRESETS[0].channels[0].id)
+  const [notebookPrediction, setNotebookPrediction] = useState<NotebookPrediction>(null)
+  const [revealedSelectionKey, setRevealedSelectionKey] = useState<string | null>(null)
+
+  const notebookPreset = useMemo(
+    () => NOTEBOOK_PRESETS.find((preset) => preset.id === notebookPresetId) ?? NOTEBOOK_PRESETS[0],
+    [notebookPresetId]
+  )
+  const notebookChannel = useMemo(
+    () => notebookPreset.channels.find((channel) => channel.id === notebookChannelId) ?? notebookPreset.channels[0],
+    [notebookChannelId, notebookPreset]
+  )
+
+  const resetNotebookReveal = useCallback((clearPrediction = true) => {
+    if (clearPrediction) setNotebookPrediction(null)
+    setRevealedSelectionKey(null)
+  }, [])
+
+  const applyNotebookPreset = useCallback((presetId: string) => {
+    const nextPreset = NOTEBOOK_PRESETS.find((preset) => preset.id === presetId) ?? NOTEBOOK_PRESETS[0]
+    setNotebookPresetId(nextPreset.id)
+    setNotebookChannelId(nextPreset.channels[0].id)
+    resetNotebookReveal()
+  }, [resetNotebookReveal])
+
+  const applyNotebookChannel = useCallback((channelId: string) => {
+    setNotebookChannelId(channelId)
+    resetNotebookReveal()
+  }, [resetNotebookReveal])
 
   // Determine which activation wins at a given x value
   const getWinningActivation = useCallback((x: number): ActivationType => {
@@ -298,6 +431,69 @@ export default function ActivationFunctionExplorer() {
   const dFFSwiGLU = Math.round((2 / 3) * dFFReLU)
   const paramsSwiGLU = 3 * dModel * dFFSwiGLU // Wv, Wg, Wo
   const paramRatio = paramsSwiGLU / paramsReLU
+  const notebookSelectionKey = `${notebookPreset.id}:${notebookChannel.id}:${dModel}`
+  const notebookRevealed = revealedSelectionKey === notebookSelectionKey
+  const notebookGateCoefficient = silu(notebookChannel.g)
+  const notebookProduct = notebookChannel.v * notebookGateCoefficient
+  const notebookRegime = classifyGateRegime(notebookGateCoefficient)
+  const notebookPredictionCorrect = notebookRevealed && notebookPrediction
+    ? notebookPrediction === notebookRegime
+    : null
+  const notebookWrite = useMemo(
+    () => [
+      notebookProduct * 0.58,
+      notebookProduct * -0.34,
+      notebookProduct * 0.22,
+    ],
+    [notebookProduct]
+  )
+  const notebookProductRatio = Math.abs(notebookProduct) / Math.max(0.01, Math.abs(notebookChannel.v))
+
+  useEffect(() => {
+    if (!isNotebook) return
+
+    const values = [
+      `preset: ${notebookPreset.label}`,
+      `channel: ${notebookChannel.label}`,
+      `visible value v_i: ${fmtSigned(notebookChannel.v)}`,
+      `visible gate logit g_i: ${fmtSigned(notebookChannel.g)}`,
+      `prediction: ${notebookPrediction ?? 'none'}`,
+      `revealed: ${notebookRevealed ? 'yes' : 'no'}`,
+    ]
+
+    if (notebookRevealed) {
+      values.push(
+        `actual gate regime: ${notebookRegime}`,
+        `SiLU(g_i): ${fmtNotebook(notebookGateCoefficient)}`,
+        `v_i * SiLU(g_i): ${fmtSigned(notebookProduct)}`,
+        `selected-channel contribution: [${notebookWrite.map((value) => fmtSigned(value)).join(', ')}]`,
+        `parameter-budget ratio: ${(paramRatio * 100).toFixed(1)}%`
+      )
+    }
+
+    emitDemoState({
+      conceptId,
+      label: 'SwiGLU gated-MLP prediction',
+      summary: notebookRevealed
+        ? `${notebookPreset.label} ${notebookChannel.label} was ${gateRegimeLabel(notebookRegime)}: product ${fmtSigned(notebookProduct)} after SiLU gate ${fmtNotebook(notebookGateCoefficient)}.`
+        : 'Predict whether the visible value proposal will be suppressed, passed, or amplified by the hidden SiLU gate.',
+      values,
+    })
+  }, [
+    conceptId,
+    isNotebook,
+    notebookChannel.g,
+    notebookChannel.label,
+    notebookChannel.v,
+    notebookGateCoefficient,
+    notebookPrediction,
+    notebookPreset.label,
+    notebookProduct,
+    notebookRegime,
+    notebookRevealed,
+    notebookWrite,
+    paramRatio,
+  ])
 
   const handleMouseMove = (event: React.MouseEvent<SVGRectElement, MouseEvent>) => {
     const rect = (event.currentTarget as SVGRectElement).getBoundingClientRect()
@@ -312,9 +508,681 @@ export default function ActivationFunctionExplorer() {
     setHoverX(0)
   }
 
+  if (isNotebook) {
+    const valuePercent = rangePercent(notebookChannel.v, -1.5, 1.5)
+    const gatePercent = rangePercent(notebookChannel.g, -2, 2)
+    const coeffPercent = rangePercent(notebookGateCoefficient, -0.35, 1.8)
+    const productPercent = rangePercent(notebookProduct, -1.4, 1.4)
+
+    return (
+      <div className="demo swiglu-notebook" data-swiglu-notebook="true">
+        <div className="preset-grid" role="group" aria-label="SwiGLU token presets">
+          {NOTEBOOK_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              aria-pressed={notebookPreset.id === preset.id}
+              onClick={() => applyNotebookPreset(preset.id)}
+            >
+              <span>{preset.label}</span>
+              <small>{preset.prompt}</small>
+            </button>
+          ))}
+        </div>
+
+        <div className="channel-strip" role="group" aria-label="Choose highlighted MLP channel">
+          {notebookPreset.channels.map((channel) => (
+            <button
+              key={channel.id}
+              type="button"
+              aria-pressed={notebookChannel.id === channel.id}
+              onClick={() => applyNotebookChannel(channel.id)}
+            >
+              <span>{channel.label}</span>
+              <small>{channel.feature}</small>
+            </button>
+          ))}
+        </div>
+
+        <div className="stage-grid">
+          <section className="panel branch-panel" aria-label="Visible value and gate branches">
+            <div className="panel-heading">
+              <p className="eyebrow">selected channel</p>
+              <h3>{notebookPreset.label} / {notebookChannel.label}</h3>
+              <p>{notebookChannel.feature}</p>
+            </div>
+
+            <div className="branch-row">
+              <div>
+                <span>value branch</span>
+                <strong>v_i = {fmtSigned(notebookChannel.v)}</strong>
+              </div>
+              <div className="axis-bar" aria-hidden="true">
+                <span className="zero" style={{ left: `${rangePercent(0, -1.5, 1.5)}%` }} />
+                <span className="marker value" style={{ left: `${valuePercent}%` }} />
+              </div>
+            </div>
+
+            <div className="branch-row">
+              <div>
+                <span>gate logit</span>
+                <strong>g_i = {fmtSigned(notebookChannel.g)}</strong>
+              </div>
+              <div className="axis-bar" aria-hidden="true">
+                <span className="zero" style={{ left: `${rangePercent(0, -2, 2)}%` }} />
+                <span className="marker gate" style={{ left: `${gatePercent}%` }} />
+              </div>
+            </div>
+
+            <div className="pipeline" aria-label="SwiGLU channel pipeline">
+              <svg viewBox="0 0 620 190" role="img" aria-label="Value and gate projections multiply before the output projection">
+                <defs>
+                  <marker id="swiglu-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                    <path d="M0,0 L8,4 L0,8 Z" fill="#536170" />
+                  </marker>
+                </defs>
+                <g className="pipe-lines" fill="none" stroke="#536170" strokeWidth="2" markerEnd="url(#swiglu-arrow)">
+                  <path d="M104 64 H170" />
+                  <path d="M104 126 H170" />
+                  <path d="M272 64 C338 64 390 82 440 92" />
+                  <path d="M272 126 H330" />
+                  <path d="M416 126 C434 126 440 110 444 101" />
+                  <path d="M484 96 H526" />
+                </g>
+                <g className="pipe-node input">
+                  <rect x="24" y="76" width="80" height="40" rx="8" />
+                  <text x="64" y="101">x</text>
+                </g>
+                <g className="pipe-node value">
+                  <rect x="170" y="42" width="102" height="44" rx="8" />
+                  <text x="221" y="61">xW_v</text>
+                  <text x="221" y="77">{fmtSigned(notebookChannel.v)}</text>
+                </g>
+                <g className="pipe-node gate">
+                  <rect x="170" y="104" width="102" height="44" rx="8" />
+                  <text x="221" y="123">xW_g</text>
+                  <text x="221" y="139">{fmtSigned(notebookChannel.g)}</text>
+                </g>
+                <g className={`pipe-node hidden ${notebookRevealed ? 'revealed' : ''}`}>
+                  <rect x="330" y="104" width="86" height="44" rx="8" />
+                  <text x="373" y="123">SiLU(g_i)</text>
+                  <text x="373" y="139">{notebookRevealed ? fmtNotebook(notebookGateCoefficient) : 'hidden'}</text>
+                </g>
+                <g className="pipe-node multiply">
+                  <circle cx="462" cy="96" r="22" />
+                  <text x="462" y="101">mul</text>
+                </g>
+                <g className={`pipe-node product ${notebookRevealed ? 'revealed' : ''}`}>
+                  <rect x="526" y="74" width="82" height="44" rx="8" />
+                  <text x="567" y="93">v_i * gate</text>
+                  <text x="567" y="110">{notebookRevealed ? fmtSigned(notebookProduct) : 'locked'}</text>
+                </g>
+              </svg>
+            </div>
+          </section>
+
+          <section className="panel predict-panel">
+            <p className="eyebrow">prediction check</p>
+            <h3>What will the gate do to the value?</h3>
+            <p className="rubric">
+              Judge by |v_i * SiLU(g_i)| / |v_i|: suppress below 0.55x,
+              pass from 0.55x to 1.10x, amplify above 1.10x. A negative
+              SiLU gate can flip sign and still counts as suppression here.
+            </p>
+            <div className="prediction-grid" role="group" aria-label="Predict SwiGLU gate regime">
+              {GATE_CHOICES.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  aria-pressed={notebookPrediction === choice.id}
+                  onClick={() => {
+                    setNotebookPrediction(choice.id)
+                    setRevealedSelectionKey(null)
+                  }}
+                >
+                  <span>{choice.label}</span>
+                  <small>{choice.detail}</small>
+                </button>
+              ))}
+            </div>
+            <div className="actions">
+              <button
+                type="button"
+                disabled={!notebookPrediction}
+                onClick={() => setRevealedSelectionKey(notebookSelectionKey)}
+              >
+                Reveal gate
+              </button>
+              <button type="button" className="ghost" onClick={() => resetNotebookReveal()}>
+                Reset
+              </button>
+            </div>
+
+            <div
+              className={`reveal-readout ${notebookRevealed ? 'shown' : ''}`}
+              role="status"
+              aria-live="polite"
+            >
+              {notebookRevealed ? (
+                <>
+                  <strong>
+                    {notebookPredictionCorrect ? 'Prediction matched: ' : 'Prediction missed: '}
+                    the channel was {gateRegimeLabel(notebookRegime)}.
+                  </strong>
+                  <p>{gateRegimeSentence(notebookRegime)}</p>
+                </>
+              ) : (
+                <p>SiLU(g_i), the product, and the selected-channel contribution are hidden until reveal.</p>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <div className="outcome-grid">
+          <section className="panel coefficient-panel">
+            <p className="eyebrow">hidden transform</p>
+            <h3>Gate coefficient and product</h3>
+            <div className="metric-row">
+              <span>SiLU(g_i)</span>
+              <strong>{notebookRevealed ? fmtNotebook(notebookGateCoefficient) : 'hidden'}</strong>
+            </div>
+            {notebookRevealed ? (
+              <div className="axis-bar outcome" aria-label={`SiLU coefficient ${fmtNotebook(notebookGateCoefficient)}`}>
+                <span className="zero" style={{ left: `${rangePercent(0, -0.35, 1.8)}%` }} />
+                <span className="marker gate" style={{ left: `${coeffPercent}%` }} />
+              </div>
+            ) : null}
+
+            <div className="metric-row">
+              <span>v_i * SiLU(g_i)</span>
+              <strong>{notebookRevealed ? fmtSigned(notebookProduct) : 'hidden'}</strong>
+            </div>
+            {notebookRevealed ? (
+              <div className="axis-bar outcome" aria-label={`SwiGLU product ${fmtSigned(notebookProduct)}`}>
+                <span className="zero" style={{ left: `${rangePercent(0, -1.4, 1.4)}%` }} />
+                <span className="marker product" style={{ left: `${productPercent}%` }} />
+              </div>
+            ) : null}
+
+            <p className="small-copy">
+              {notebookRevealed
+                ? `Magnitude ratio |product| / |value| = ${fmtNotebook(notebookProductRatio, 2)}.`
+                : 'Before reveal, the chart uses fixed public ranges and does not encode the hidden product.'}
+            </p>
+          </section>
+
+          <section className="panel write-panel">
+            <p className="eyebrow">selected-channel contribution</p>
+            <h3>This channel fans out through the output projection</h3>
+            {notebookRevealed ? (
+              <>
+                <div className="write-bars" aria-label="Toy selected-channel output-projection contribution vector">
+                  {notebookWrite.map((value, index) => (
+                    <div key={index} className="write-row">
+                      <span>delta h{index + 1}</span>
+                      <div className="track">
+                        <span className="zero" style={{ left: '50%' }} />
+                        <span
+                          className={`fill ${value >= 0 ? 'pos' : 'neg'}`}
+                          style={{
+                            left: value >= 0 ? '50%' : `${50 - Math.min(48, Math.abs(value) * 36)}%`,
+                            width: `${Math.min(48, Math.abs(value) * 36)}%`,
+                          }}
+                        />
+                      </div>
+                      <code>{fmtSigned(value)}</code>
+                    </div>
+                  ))}
+                </div>
+                <p className="small-copy">
+                  This is one selected channel's contribution. A full MLP write sums contributions from all hidden channels.
+                </p>
+              </>
+            ) : (
+              <p className="small-copy">
+                This is one selected channel's contribution. A full MLP write sums contributions from all hidden channels.
+              </p>
+            )}
+          </section>
+
+          <section className="panel budget-panel">
+            <p className="eyebrow">parameter budget</p>
+            <h3>Why the hidden width is often scaled down</h3>
+            <label>
+              <span>d_model: {formatNumber(dModel)}</span>
+              <input
+                type="range"
+                min={128}
+                max={4096}
+                step={64}
+                value={dModel}
+                onChange={(event) => {
+                  resetNotebookReveal(false)
+                  setDModel(parseInt(event.target.value, 10))
+                }}
+              />
+            </label>
+            <div className="budget-comparison">
+              <div>
+                <span>2-matrix FFN</span>
+                <strong>{formatNumber(paramsReLU)}</strong>
+                <small>2 * d_model * d_ff</small>
+              </div>
+              <div>
+                <span>SwiGLU FFN</span>
+                <strong>{formatNumber(paramsSwiGLU)}</strong>
+                <small>3 * d_model * d_ff'</small>
+              </div>
+            </div>
+            <p className="small-copy">
+              With d_ff' about two thirds of a 4x FFN, this toy budget is {(paramRatio * 100).toFixed(1)}% of the two-matrix block.
+            </p>
+          </section>
+        </div>
+
+        <style jsx>{`
+          .swiglu-notebook {
+            display: grid;
+            gap: 0.75rem;
+            min-width: 0;
+            padding: 0.75rem;
+            color: #17202a;
+          }
+
+          .preset-grid,
+          .channel-strip,
+          .prediction-grid {
+            display: grid;
+            gap: 0.55rem;
+          }
+
+          .preset-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .channel-strip,
+          .prediction-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          button {
+            min-width: 0;
+            border: 1px solid rgba(27, 36, 48, 0.12);
+            border-radius: 8px;
+            background: rgba(255, 252, 246, 0.9);
+            color: #1b2430;
+            cursor: pointer;
+            font: inherit;
+            padding: 0.6rem;
+            text-align: left;
+          }
+
+          button[aria-pressed='true'] {
+            border-color: rgba(31, 111, 120, 0.46);
+            background: rgba(31, 111, 120, 0.12);
+          }
+
+          button:disabled {
+            cursor: not-allowed;
+            opacity: 0.52;
+          }
+
+          button span {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 800;
+            line-height: 1.22;
+          }
+
+          button small {
+            display: block;
+            margin-top: 0.28rem;
+            color: #65717d;
+            font-size: 0.7rem;
+            line-height: 1.32;
+          }
+
+          .stage-grid,
+          .outcome-grid {
+            display: grid;
+            gap: 0.75rem;
+            min-width: 0;
+          }
+
+          .stage-grid {
+            grid-template-columns: minmax(0, 1.3fr) minmax(16rem, 0.7fr);
+          }
+
+          .outcome-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .panel {
+            min-width: 0;
+            border: 1px solid rgba(27, 36, 48, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 252, 246, 0.86);
+            padding: 0.75rem;
+            overflow-wrap: anywhere;
+          }
+
+          .panel-heading,
+          .predict-panel,
+          .coefficient-panel,
+          .write-panel,
+          .budget-panel {
+            display: grid;
+            gap: 0.58rem;
+          }
+
+          .eyebrow {
+            margin: 0;
+            color: #1f6f78;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+          }
+
+          h3,
+          p {
+            margin: 0;
+          }
+
+          h3 {
+            color: #17202a;
+            font-size: 0.96rem;
+            line-height: 1.25;
+          }
+
+          .panel-heading p:not(.eyebrow),
+          .rubric,
+          .small-copy,
+          .reveal-readout p {
+            color: #536170;
+            font-size: 0.78rem;
+            line-height: 1.45;
+          }
+
+          .branch-row,
+          .metric-row {
+            display: grid;
+            gap: 0.5rem;
+            grid-template-columns: minmax(8rem, 0.58fr) minmax(0, 1fr);
+            align-items: center;
+          }
+
+          .branch-row span,
+          .metric-row span,
+          label span,
+          .budget-comparison span {
+            display: block;
+            color: #65717d;
+            font-size: 0.7rem;
+          }
+
+          .branch-row strong,
+          .metric-row strong,
+          .budget-comparison strong {
+            display: block;
+            color: #17202a;
+            font-family: var(--font-mono);
+            font-size: 0.86rem;
+          }
+
+          .axis-bar {
+            position: relative;
+            min-width: 0;
+            height: 0.78rem;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(180, 75, 59, 0.14), rgba(31, 111, 120, 0.12), rgba(111, 95, 191, 0.16));
+            border: 1px solid rgba(27, 36, 48, 0.1);
+          }
+
+          .axis-bar.outcome {
+            margin-top: -0.18rem;
+          }
+
+          .axis-bar .zero,
+          .track .zero {
+            position: absolute;
+            top: -0.22rem;
+            bottom: -0.22rem;
+            width: 1px;
+            background: rgba(27, 36, 48, 0.24);
+          }
+
+          .marker {
+            position: absolute;
+            top: 50%;
+            width: 0.86rem;
+            height: 0.86rem;
+            border-radius: 999px;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 0 3px rgba(255, 252, 246, 0.95);
+          }
+
+          .marker.value {
+            background: #1f6f78;
+          }
+
+          .marker.gate {
+            background: #6f5fbf;
+          }
+
+          .marker.product {
+            background: #b44b3b;
+          }
+
+          .pipeline {
+            border: 1px solid rgba(27, 36, 48, 0.08);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.52);
+            padding: 0.3rem;
+          }
+
+          svg {
+            display: block;
+            width: 100%;
+            height: auto;
+          }
+
+          .pipe-node rect,
+          .pipe-node circle {
+            fill: #fffaf3;
+            stroke: rgba(27, 36, 48, 0.16);
+            stroke-width: 1.4;
+          }
+
+          .pipe-node.value rect {
+            stroke: rgba(31, 111, 120, 0.42);
+          }
+
+          .pipe-node.gate rect {
+            stroke: rgba(111, 95, 191, 0.42);
+          }
+
+          .pipe-node.hidden rect,
+          .pipe-node.product rect {
+            fill: rgba(243, 236, 223, 0.86);
+          }
+
+          .pipe-node.hidden.revealed rect {
+            fill: rgba(111, 95, 191, 0.12);
+          }
+
+          .pipe-node.product.revealed rect {
+            fill: rgba(180, 75, 59, 0.1);
+          }
+
+          .pipe-node.multiply circle {
+            fill: rgba(31, 111, 120, 0.1);
+            stroke: rgba(31, 111, 120, 0.4);
+          }
+
+          .pipe-node text {
+            fill: #17202a;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            text-anchor: middle;
+          }
+
+          .pipe-node text + text {
+            fill: #536170;
+            font-size: 12px;
+          }
+
+          .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+          }
+
+          .actions button {
+            width: auto;
+            background: #1f6f78;
+            color: white;
+            font-weight: 800;
+            text-align: center;
+          }
+
+          .actions .ghost {
+            background: white;
+            color: #334150;
+          }
+
+          .reveal-readout {
+            border-left: 3px solid #1f6f78;
+            border-radius: 0 8px 8px 0;
+            background: rgba(31, 111, 120, 0.08);
+            padding: 0.65rem 0.72rem;
+          }
+
+          .reveal-readout.shown {
+            background: rgba(255, 252, 246, 0.92);
+          }
+
+          .reveal-readout strong {
+            display: block;
+            color: #17202a;
+            font-size: 0.82rem;
+            line-height: 1.34;
+            margin-bottom: 0.25rem;
+          }
+
+          .write-bars,
+          .budget-comparison {
+            display: grid;
+            gap: 0.5rem;
+          }
+
+          .write-row {
+            display: grid;
+            grid-template-columns: 4.4rem minmax(0, 1fr) 4rem;
+            gap: 0.5rem;
+            align-items: center;
+            color: #536170;
+            font-size: 0.72rem;
+          }
+
+          .write-row code {
+            color: #17202a;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+          }
+
+          .track {
+            position: relative;
+            min-width: 0;
+            height: 0.62rem;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(27, 36, 48, 0.08);
+          }
+
+          .fill {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border-radius: inherit;
+          }
+
+          .fill.pos {
+            background: #1f6f78;
+          }
+
+          .fill.neg {
+            background: #b44b3b;
+          }
+
+          label {
+            display: grid;
+            gap: 0.35rem;
+          }
+
+          input {
+            min-width: 0;
+            width: 100%;
+          }
+
+          .budget-comparison {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .budget-comparison div {
+            min-width: 0;
+            border: 1px solid rgba(27, 36, 48, 0.08);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.56);
+            padding: 0.55rem;
+          }
+
+          .budget-comparison small {
+            display: block;
+            margin-top: 0.2rem;
+            color: #65717d;
+            font-family: var(--font-mono);
+            font-size: 0.64rem;
+          }
+
+          .swiglu-notebook button:focus-visible,
+          .swiglu-notebook input:focus-visible {
+            outline: 2px solid #1f6f78;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 4px rgba(31, 111, 120, 0.18);
+          }
+
+          @media (max-width: 980px) {
+            .stage-grid,
+            .outcome-grid,
+            .preset-grid,
+            .channel-strip,
+            .prediction-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+
+          @media (max-width: 560px) {
+            .swiglu-notebook {
+              padding: 0.62rem;
+            }
+
+            .branch-row,
+            .metric-row,
+            .write-row,
+            .budget-comparison {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
   return (
-    <section className="card interactive-card activation-functions-card" style={{ background: MATH_COLORS.surface }}>
-      <h2>Activation Functions: ReLU, GELU, SiLU &amp; SwiGLU</h2>
+    <section className="card interactive-card activation-functions-card" style={{ background: MATH_COLORS.surface, color: '#e5e7eb' }}>
+      <h2 style={{ color: '#f8fafc' }}>Activation Functions: ReLU, GELU, SiLU &amp; SwiGLU</h2>
       <p className="muted">
         Compare classic activations with SwiGLU, treating it not just as a new curve but as a
         <strong> learned gate</strong> where one projection modulates another.

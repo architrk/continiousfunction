@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { emitDemoState } from '../../lib/demoState'
 
 const MATH_COLORS = {
   primary: '#f59e0b',
@@ -8,6 +9,15 @@ const MATH_COLORS = {
 
 type Vec2 = { x: number; y: number }
 type Mode = 'diffusion' | 'flow'
+type GuessKind = 'full-displacement' | 'remaining-to-data' | 'back-to-noise' | 'unit-direction'
+
+type FlowMatchingVizProps = {
+  chrome?: 'legacy' | 'notebook'
+  conceptId?: string
+  initialSeed?: number
+  initialTime?: number
+  initialPairIndex?: number
+}
 
 interface ParticlePair {
   id: number
@@ -45,6 +55,10 @@ function length(v: Vec2): number {
   return Math.hypot(v.x, v.y)
 }
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
 function normalize(v: Vec2): Vec2 {
   const len = length(v) || 1
   return { x: v.x / len, y: v.y / len }
@@ -72,6 +86,18 @@ function vecToSvg(p: Vec2, width: number, height: number): { x: number; y: numbe
     x: xToSvg(p.x, width),
     y: yToSvg(p.y, height),
   }
+}
+
+function scaleVector(v: Vec2, scale: number): Vec2 {
+  return { x: v.x * scale, y: v.y * scale }
+}
+
+function addVec(a: Vec2, b: Vec2): Vec2 {
+  return { x: a.x + b.x, y: a.y + b.y }
+}
+
+function formatVec(v: Vec2): string {
+  return `(${v.x.toFixed(2)}, ${v.y.toFixed(2)})`
 }
 
 function buildPathD(points: Vec2[], width: number, height: number): string {
@@ -268,29 +294,85 @@ const FLOW_PRESETS = [
   { name: '🎲 Random', seed: -1, description: 'Random new samples' },
 ]
 
+const VELOCITY_CHOICES: { kind: GuessKind; label: string; description: string }[] = [
+  {
+    kind: 'full-displacement',
+    label: 'Full displacement',
+    description: 'u_t = x1 - x0',
+  },
+  {
+    kind: 'remaining-to-data',
+    label: 'Remaining displacement',
+    description: 'x1 - xt',
+  },
+  {
+    kind: 'back-to-noise',
+    label: 'Back toward noise',
+    description: 'x0 - xt',
+  },
+  {
+    kind: 'unit-direction',
+    label: 'Unit direction only',
+    description: 'direction without magnitude',
+  },
+]
+
+const FLOW_EVIDENCE_STEPS = [
+  {
+    label: 'Predict',
+    detail: 'Choose the supervised vector before seeing the arrow.',
+  },
+  {
+    label: 'Observe',
+    detail: 'Reveal the full displacement label for this pair.',
+  },
+  {
+    label: 'Ground',
+    detail: 'Compare it with the remaining displacement.',
+  },
+  {
+    label: 'Carry',
+    detail: 'Notice the same u_t stays fixed as t changes.',
+  },
+]
+
 // Educational insights based on current state
 const getFlowInsight = (mode: Mode, time: number, _rectifyLevel: number): string => {
   if (mode === 'diffusion') {
-    if (time < 0.2) return '🌀 Early diffusion: particles start from pure noise, wandering unpredictably'
-    if (time < 0.8) return '🔀 Mid-diffusion: particles slowly find their way, taking curved, stochastic paths'
-    return '✨ Late diffusion: particles settle into data distribution, but the journey was long!'
+    if (time < 0.2) return 'Early contrast path: particles start near the source distribution.'
+    if (time < 0.8) return 'Middle contrast path: the hand-built curved path bends away from the straight interpolation.'
+    return 'Late contrast path: particles approach the target distribution along this synthetic curve.'
   } else {
-    if (time < 0.2) return '🚀 Flow matching starts: straight paths from noise to data targets'
-    if (time < 0.8) return '📏 Direct trajectories: particles take the shortest (OT-optimal) route'
-    return '🎯 Arrival: minimal transport cost achieved via straight-line geodesics!'
+    if (time < 0.2) return 'Flow matching starts: the conditional path moves along a chosen straight interpolation.'
+    if (time < 0.8) return 'Flow matching target: the supervised velocity is the full pair displacement, not the remaining arrow.'
+    return 'Arrival: the current point is near data, but the conditional velocity label is still x1 - x0.'
   }
 }
 
 // ----- Component -----
 
-export default function FlowMatchingOTDemo() {
+export default function FlowMatchingOTDemo({
+  chrome = 'legacy',
+  conceptId = 'flow-matching',
+  initialSeed = 1,
+  initialTime = 0.35,
+  initialPairIndex = 0,
+}: FlowMatchingVizProps) {
+  const isNotebook = chrome === 'notebook'
+  const initialDisplayTime = isNotebook
+    ? Math.max(0.05, Math.min(0.95, initialTime))
+    : clamp01(initialTime)
   const [mode, setMode] = useState<Mode>('flow')
-  const [time, setTime] = useState(0.25)
+  const [time, setTime] = useState(initialDisplayTime)
   const [numSteps, setNumSteps] = useState(10)
   const [showCouplings, setShowCouplings] = useState(true)
-  const [particleSeed, setParticleSeed] = useState(1)
-  const [isPlaying, setIsPlaying] = useState(true)
+  const [particleSeed, setParticleSeed] = useState(initialSeed)
+  const [isPlaying, setIsPlaying] = useState(!isNotebook)
   const [rectifyLevel, setRectifyLevel] = useState(2)
+  const [selectedPairIndex, setSelectedPairIndex] = useState(initialPairIndex)
+  const [velocityGuess, setVelocityGuess] = useState<GuessKind | null>(null)
+  const [isTargetRevealed, setIsTargetRevealed] = useState(false)
+  const [showBackgroundPairs, setShowBackgroundPairs] = useState(true)
 
   // Prediction game state
   const [gameMode, setGameMode] = useState(false)
@@ -306,6 +388,34 @@ export default function FlowMatchingOTDemo() {
   )
 
   const representativePair = particlePairs[0]
+  const safeSelectedPairIndex = particlePairs.length
+    ? ((selectedPairIndex % particlePairs.length) + particlePairs.length) % particlePairs.length
+    : 0
+  const selectedPair = (particlePairs[safeSelectedPairIndex] ?? representativePair)!
+
+  const selectedXt = useMemo(
+    () => selectedPair
+      ? interpolate(selectedPair.src, selectedPair.tgt, time)
+      : { x: 0, y: 0 },
+    [selectedPair, time],
+  )
+  const velocityTarget = useMemo(
+    () => selectedPair
+      ? { x: selectedPair.tgt.x - selectedPair.src.x, y: selectedPair.tgt.y - selectedPair.src.y }
+      : { x: 0, y: 0 },
+    [selectedPair],
+  )
+  const remainingDisplacement = useMemo(
+    () => selectedPair
+      ? { x: selectedPair.tgt.x - selectedXt.x, y: selectedPair.tgt.y - selectedXt.y }
+      : { x: 0, y: 0 },
+    [selectedPair, selectedXt],
+  )
+  const remainingScale = 1 - time
+  const targetMagnitude = length(velocityTarget)
+  const remainingMagnitude = length(remainingDisplacement)
+  const flowEvidenceActiveIndex = isTargetRevealed ? 3 : velocityGuess ? 1 : 0
+  const flowEvidencePhase = FLOW_EVIDENCE_STEPS[flowEvidenceActiveIndex].label
 
   const otStats = useMemo(() => {
     if (particlePairs.length === 0) {
@@ -443,6 +553,62 @@ export default function FlowMatchingOTDemo() {
     }
   }, [isPlaying])
 
+  useEffect(() => {
+    if (!isNotebook || !selectedPair) return
+
+    const guessLabel = VELOCITY_CHOICES.find((choice) => choice.kind === velocityGuess)?.description
+      ?? 'none'
+    const values = [
+      `t: ${time.toFixed(2)}`,
+      `pair id: ${selectedPair.id}`,
+      `guess: ${guessLabel}`,
+      'evidence loop: predict -> observe -> ground -> carry',
+      `evidence phase: ${flowEvidencePhase}`,
+      `target visible: ${isTargetRevealed ? 'yes' : 'no'}`,
+      `background pairs: ${showBackgroundPairs ? 'shown' : 'hidden'}`,
+    ]
+
+    if (isTargetRevealed) {
+      values.push(
+        `x0: ${formatVec(selectedPair.src)}`,
+        `x1: ${formatVec(selectedPair.tgt)}`,
+        `xt: ${formatVec(selectedXt)}`,
+        `target velocity u_t: ${formatVec(velocityTarget)}`,
+        `remaining displacement: ${formatVec(remainingDisplacement)}`,
+        `remaining scale: ${remainingScale.toFixed(2)}`,
+        `target magnitude: ${targetMagnitude.toFixed(2)}`,
+        `remaining magnitude: ${remainingMagnitude.toFixed(2)}`,
+        `correct: ${velocityGuess === 'full-displacement' ? 'yes' : 'no'}`,
+      )
+    } else {
+      values.push('target velocity: hidden until reveal')
+    }
+
+    emitDemoState({
+      conceptId,
+      label: 'Flow matching conditional velocity target demo',
+      summary: isTargetRevealed
+        ? 'The revealed conditional velocity label is u_t = x1 - x0 for the highlighted straight interpolation.'
+        : 'Predict which candidate vector is the conditional velocity label for the highlighted straight interpolation.',
+      values,
+    })
+  }, [
+    conceptId,
+    flowEvidencePhase,
+    isNotebook,
+    isTargetRevealed,
+    remainingDisplacement,
+    remainingMagnitude,
+    remainingScale,
+    selectedPair,
+    selectedXt,
+    showBackgroundPairs,
+    targetMagnitude,
+    time,
+    velocityGuess,
+    velocityTarget,
+  ])
+
   if (!representativePair) {
     return null
   }
@@ -450,13 +616,107 @@ export default function FlowMatchingOTDemo() {
   const { avgSegmentLength, avgDiffusionLength } = otStats
 
   return (
-    <section className="card interactive-card">
-      <h2>Flow Matching, Diffusion, and Optimal Transport</h2>
-      <p className="muted">
-        Watch a cloud of Gaussian noise morph into a two-moons dataset. Toggle
-        between stochastic diffusion-style curved paths and deterministic flow
-        matching along straight, optimal-transport geodesics.
-      </p>
+    <>
+    <section className={isNotebook ? 'flow-matching-demo notebook' : 'card interactive-card flow-matching-demo legacy'}>
+      {!isNotebook ? (
+        <>
+          <h2>Flow Matching, Diffusion, and Pair Transport</h2>
+          <p className="muted">
+            Watch a cloud of Gaussian noise morph into a two-moons dataset. Toggle
+            between synthetic curved contrast paths and deterministic flow
+            matching along chosen straight conditional paths.
+          </p>
+        </>
+      ) : null}
+
+      {isNotebook ? (
+        <div
+          className="velocity-prediction-panel"
+          data-child-demo-gate="flow-matching-velocity-target"
+        >
+          <h3>Prediction check: which velocity is supervised?</h3>
+          <p>
+            The highlighted particle sits at <code>x_t = (1-t)x_0 + t x_1</code>.
+            Predict the conditional flow-matching label before revealing the
+            arrow anchored at the current point.
+          </p>
+          <div className="velocity-choice-grid">
+            {VELOCITY_CHOICES.map((choice) => (
+              <button
+                key={choice.kind}
+                type="button"
+                aria-pressed={velocityGuess === choice.kind}
+                onClick={() => {
+                  setVelocityGuess(choice.kind)
+                  setIsTargetRevealed(false)
+                }}
+              >
+                <span>{choice.label}</span>
+                <small>{choice.description}</small>
+              </button>
+            ))}
+          </div>
+          <div className="evidence-strip" aria-label="Flow matching evidence loop">
+            {FLOW_EVIDENCE_STEPS.map((step, index) => (
+              <div
+                key={step.label}
+                className="evidence-step"
+                data-active={index <= flowEvidenceActiveIndex ? 'true' : 'false'}
+              >
+                <span>{index + 1}</span>
+                <strong>{step.label}</strong>
+                <small>{step.detail}</small>
+              </div>
+            ))}
+          </div>
+          <div className="velocity-actions">
+            <button
+              type="button"
+              disabled={!velocityGuess}
+              onClick={() => setIsTargetRevealed(true)}
+            >
+              Reveal velocity target
+            </button>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setSelectedPairIndex((idx) => (idx + 17) % particlePairs.length)
+                setVelocityGuess(null)
+                setIsTargetRevealed(false)
+              }}
+            >
+              New pair
+            </button>
+          </div>
+          {isTargetRevealed ? (
+            <p className="velocity-result" role="status" aria-live="polite">
+              {velocityGuess === 'full-displacement'
+                ? 'Correct: '
+                : velocityGuess === 'remaining-to-data'
+                  ? 'Common trap: '
+                  : velocityGuess === 'unit-direction'
+                    ? 'Direction alone is not enough: '
+                    : 'Not the supervised direction: '}
+              the conditional label is the full displacement
+              {' '}<code>u_t = x_1 - x_0</code>. The remaining arrow
+              {' '}<code>x_1 - x_t</code> is shorter because only
+              {' '}<code>1 - t</code> units of integration time remain.
+            </p>
+          ) : null}
+          <p className="velocity-formula">
+            {isTargetRevealed ? (
+              <>
+                Because <code>u_t = x_1 - x_0</code>, the remaining displacement
+                satisfies <code>x_t + (1 - t) u_t = x_1</code>. The visual arrows
+                are scaled with a shared factor for readability.
+              </>
+            ) : (
+              'Choose a candidate, then reveal the target arrow and compare it with the remaining displacement.'
+            )}
+          </p>
+        </div>
+      ) : null}
 
       <div className="flow-layout">
         {/* Left: transport + vector field */}
@@ -464,14 +724,16 @@ export default function FlowMatchingOTDemo() {
           {/* Transport panel */}
           <div className="flow-panel">
             <div className="flow-panel-header">
-              <h3 className="flow-panel-title">Transport between noise and data</h3>
+              <h3 className="flow-panel-title">
+                {isNotebook ? 'Conditional velocity target' : 'Transport between noise and data'}
+              </h3>
               <div className="flow-legend">
                 <span className="dot noise" />
-                <span className="label">Noise samples</span>
+                <span className="label">{isNotebook ? 'x0 noise' : 'Noise samples'}</span>
                 <span className="dot data" />
-                <span className="label">Target data</span>
+                <span className="label">{isNotebook ? 'x1 data' : 'Target data'}</span>
                 <span className="dot current" />
-                <span className="label">Particles at time t</span>
+                <span className="label">{isNotebook ? 'xt current' : 'Particles at time t'}</span>
               </div>
             </div>
             <svg
@@ -481,6 +743,30 @@ export default function FlowMatchingOTDemo() {
               className="flow-chart transport-chart"
               aria-label="Particles moving from a Gaussian source distribution to a two-moons target distribution"
             >
+              <defs>
+                <marker
+                  id="flow-velocity-arrowhead"
+                  markerWidth="8"
+                  markerHeight="8"
+                  refX="7"
+                  refY="4"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M 0 0 L 8 4 L 0 8 z" fill="#22c55e" />
+                </marker>
+                <marker
+                  id="flow-remaining-arrowhead"
+                  markerWidth="8"
+                  markerHeight="8"
+                  refX="7"
+                  refY="4"
+                  orient="auto"
+                  markerUnits="strokeWidth"
+                >
+                  <path d="M 0 0 L 8 4 L 0 8 z" fill="#f59e0b" />
+                </marker>
+              </defs>
               {/* Axes */}
               <line
                 x1={xToSvg(WORLD_X_MIN, TRANSPORT_WIDTH)}
@@ -498,8 +784,9 @@ export default function FlowMatchingOTDemo() {
               />
 
               {/* Coupling lines = OT plan */}
-              {showCouplings &&
+              {(isNotebook || showCouplings) &&
                 particlePairs.map((pair) => {
+                  if (isNotebook && pair.id !== selectedPair.id && !showBackgroundPairs) return null
                   const srcSvg = vecToSvg(pair.src, TRANSPORT_WIDTH, TRANSPORT_HEIGHT)
                   const tgtSvg = vecToSvg(pair.tgt, TRANSPORT_WIDTH, TRANSPORT_HEIGHT)
                   return (
@@ -509,28 +796,34 @@ export default function FlowMatchingOTDemo() {
                       y1={srcSvg.y}
                       x2={tgtSvg.x}
                       y2={tgtSvg.y}
-                      className="ot-coupling-line"
+                      className={`ot-coupling-line ${isNotebook && pair.id === selectedPair.id ? 'selected' : ''}`}
                     />
                   )
                 })}
 
               {/* Static source & target clouds */}
               {particlePairs.map((pair) => {
+                if (isNotebook && pair.id !== selectedPair.id && !showBackgroundPairs) return null
                 const srcSvg = vecToSvg(pair.src, TRANSPORT_WIDTH, TRANSPORT_HEIGHT)
                 const tgtSvg = vecToSvg(pair.tgt, TRANSPORT_WIDTH, TRANSPORT_HEIGHT)
+                const particleClass = isNotebook && pair.id === selectedPair.id
+                  ? 'selected'
+                  : isNotebook
+                    ? 'context'
+                    : ''
                 return (
                   <g key={`s-${pair.id}`}>
                     <circle
                       cx={srcSvg.x}
                       cy={srcSvg.y}
                       r={3}
-                      className="particle-src"
+                      className={`particle-src ${particleClass}`}
                     />
                     <circle
                       cx={tgtSvg.x}
                       cy={tgtSvg.y}
                       r={3}
-                      className="particle-tgt"
+                      className={`particle-tgt ${particleClass}`}
                     />
                   </g>
                 )
@@ -538,34 +831,89 @@ export default function FlowMatchingOTDemo() {
 
               {/* Moving particles */}
               {particlePairs.map((pair) => {
-                const pos = getParticlePosition(pair, time, mode)
+                if (isNotebook && pair.id !== selectedPair.id && !showBackgroundPairs) return null
+                const pos = isNotebook
+                  ? getPathPosition(pair, time, 0)
+                  : getParticlePosition(pair, time, mode)
                 const pSvg = vecToSvg(pos, TRANSPORT_WIDTH, TRANSPORT_HEIGHT)
+                const currentClass = isNotebook && pair.id === selectedPair.id
+                  ? 'particle-current flow selected'
+                  : mode === 'diffusion'
+                    ? 'particle-current diffusion'
+                    : 'particle-current flow'
                 return (
                   <circle
                     key={`p-${pair.id}`}
                     cx={pSvg.x}
                     cy={pSvg.y}
                     r={4}
-                    className={
-                      mode === 'diffusion'
-                        ? 'particle-current diffusion'
-                        : 'particle-current flow'
-                    }
+                    className={currentClass}
                   />
                 )
               })}
+
+              {isNotebook && selectedPair ? (() => {
+                const anchor = vecToSvg(selectedXt, TRANSPORT_WIDTH, TRANSPORT_HEIGHT)
+                const maxArrowWorld = 1.25
+                const arrowScale = targetMagnitude > 0
+                  ? Math.min(1, maxArrowWorld / targetMagnitude)
+                  : 1
+                const targetEnd = vecToSvg(
+                  addVec(selectedXt, scaleVector(velocityTarget, arrowScale)),
+                  TRANSPORT_WIDTH,
+                  TRANSPORT_HEIGHT,
+                )
+                const remainingEnd = vecToSvg(
+                  addVec(selectedXt, scaleVector(remainingDisplacement, arrowScale)),
+                  TRANSPORT_WIDTH,
+                  TRANSPORT_HEIGHT,
+                )
+
+                return (
+                  <g className="velocity-target-layer">
+                    {isTargetRevealed ? (
+                      <>
+                        <line
+                          x1={anchor.x}
+                          y1={anchor.y}
+                          x2={remainingEnd.x}
+                          y2={remainingEnd.y}
+                          className="remaining-arrow"
+                          markerEnd="url(#flow-remaining-arrowhead)"
+                        />
+                        <line
+                          x1={anchor.x}
+                          y1={anchor.y}
+                          x2={targetEnd.x}
+                          y2={targetEnd.y}
+                          className="velocity-target-arrow"
+                          markerEnd="url(#flow-velocity-arrowhead)"
+                        />
+                      </>
+                    ) : null}
+                  </g>
+                )
+              })() : null}
             </svg>
 
             <div className="flow-stats">
               <div>
-                <span className="label">Average OT cost</span>
+                <span className="label">
+                  {isNotebook ? 'Average pair displacement' : 'Average pair distance'}
+                </span>
                 <span>{avgSegmentLength.toFixed(2)}</span>
               </div>
               <div>
-                <span className="label">Avg diffusion path length</span>
+                <span className="label">
+                  {isNotebook ? 'Target magnitude' : 'Avg curved contrast path'}
+                </span>
                 <span>
-                  {avgDiffusionLength.toFixed(2)}{' '}
-                  {avgSegmentLength > 0 && (
+                  {isNotebook
+                    ? isTargetRevealed
+                      ? targetMagnitude.toFixed(2)
+                      : 'hidden until reveal'
+                    : avgDiffusionLength.toFixed(2)}{' '}
+                  {!isNotebook && avgSegmentLength > 0 && (
                     <span className="muted-inline">
                       (
                       {(avgDiffusionLength / avgSegmentLength).toFixed(2)}
@@ -576,15 +924,17 @@ export default function FlowMatchingOTDemo() {
               </div>
             </div>
             <p className="caption">
-              Coupling lines show an optimal-transport plan: each noise sample is
-              matched to a target sample, and straight segments give the
-              displacement interpolation that minimizes average transport cost.
+              {isNotebook
+                ? 'Lines show synthetic training pairings used to define conditional targets in this toy. They are not a solved optimal-transport assignment.'
+                : 'Pairing lines show chosen source-target training examples. Straight segments define the conditional interpolation used by this toy; no OT assignment is solved here.'}
             </p>
           </div>
 
           {/* Vector field panel */}
           <div className="flow-panel">
-            <h3 className="flow-panel-title">Vector field v(x, t)</h3>
+            <h3 className="flow-panel-title">
+              {isNotebook ? 'Aggregate vector field sketch' : 'Vector field v(x, t)'}
+            </h3>
             <svg
               width={VECTOR_WIDTH}
               height={VECTOR_HEIGHT}
@@ -637,9 +987,11 @@ export default function FlowMatchingOTDemo() {
               })}
             </svg>
             <p className="caption">
-              Diffusion mode shows a noisy, swirling field; flow matching learns a
-              clean vector field whose streamlines are straight rays from noise to
-              data.
+              {isNotebook
+                ? isTargetRevealed
+                  ? 'For one conditional pair, the revealed supervised target is a constant arrow. A model trained on many pairs only sees (x_t, t), so nearby examples can average into a different marginal field.'
+                  : 'This sketch shows how many conditional examples can contribute nearby directions. After the reveal, compare the single-pair label with this aggregate field.'
+                : 'The flow view averages many conditional pair velocities into a toy vector field; the curved diffusion view is only contrast geometry, not a trained sampler.'}
             </p>
           </div>
         </div>
@@ -647,6 +999,7 @@ export default function FlowMatchingOTDemo() {
         {/* Right: controls + path comparison + sampling + rectified flow */}
         <div className="flow-column right">
           {/* Path Race Game */}
+          {!isNotebook ? (
           <div
             style={{
               padding: '1rem',
@@ -682,12 +1035,12 @@ export default function FlowMatchingOTDemo() {
                   fontSize: '0.9rem',
                 }}
               >
-                {gameMode ? '🛑 Exit Game' : '🎮 Path Race Challenge!'}
+                {gameMode ? 'Exit challenge' : 'Path length check'}
               </button>
 
               {(score > 0 || attempts > 0) && (
                 <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.9rem', fontWeight: 600 }}>
-                  <span>🏆 Score: {score}/{attempts}</span>
+                  <span>Score: {score}/{attempts}</span>
                 </div>
               )}
             </div>
@@ -703,7 +1056,7 @@ export default function FlowMatchingOTDemo() {
               return (
                 <div style={{ marginTop: '0.75rem' }}>
                   <p style={{ fontWeight: 500, marginBottom: '0.75rem' }}>
-                    🤔 For particle #{challengeParticleIdx}: Is the diffusion path <strong>longer</strong> or <strong>shorter</strong> than the flow path?
+                    For particle #{challengeParticleIdx}: Is the synthetic curved path <strong>longer</strong> or <strong>shorter</strong> than the straight interpolation?
                   </p>
 
                   {!revealed ? (
@@ -721,7 +1074,7 @@ export default function FlowMatchingOTDemo() {
                           fontWeight: userGuess === 'shorter' ? 600 : 400,
                         }}
                       >
-                        📉 Shorter
+                        Shorter
                       </button>
                       <button
                         type="button"
@@ -736,14 +1089,14 @@ export default function FlowMatchingOTDemo() {
                           fontWeight: userGuess === 'longer' ? 600 : 400,
                         }}
                       >
-                        📈 Longer
+                        Longer
                       </button>
                       <button
                         type="button"
                         onClick={() => {
                           setRevealed(true)
                           setAttempts((prev) => prev + 1)
-                          // Diffusion is always longer (curved), so "longer" is correct
+                          // This toy's curved contrast path is longer than its straight interpolation.
                           if (userGuess === 'longer') setScore((prev) => prev + 1)
                         }}
                         disabled={!userGuess}
@@ -759,7 +1112,7 @@ export default function FlowMatchingOTDemo() {
                           cursor: userGuess ? 'pointer' : 'not-allowed',
                         }}
                       >
-                        🔍 Check
+                        Check
                       </button>
                     </div>
                   ) : (
@@ -776,8 +1129,8 @@ export default function FlowMatchingOTDemo() {
                         }}
                       >
                         {userGuess === 'longer'
-                          ? '🎉 Correct! Diffusion paths are always longer (curved)'
-                          : '❌ Wrong! Diffusion curves are always longer than straight OT paths'}
+                          ? 'Correct: this synthetic curved path is longer.'
+                          : 'Not for this toy: the curved path is longer than the straight interpolation.'}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
                         (Diff: {diffLen.toFixed(2)} vs Flow: {flowLen.toFixed(2)} = {ratio.toFixed(2)}× longer)
@@ -799,7 +1152,7 @@ export default function FlowMatchingOTDemo() {
                           cursor: 'pointer',
                         }}
                       >
-                        ➡️ Next Particle
+                        Next particle
                       </button>
                     </div>
                   )}
@@ -807,12 +1160,14 @@ export default function FlowMatchingOTDemo() {
               )
             })()}
           </div>
+          ) : null}
 
           {/* Global controls */}
           <div className="flow-panel controls-panel">
-            <h3 className="flow-panel-title">Controls</h3>
+            <h3 className="flow-panel-title">{isNotebook ? 'Inspect the interpolation time' : 'Controls'}</h3>
 
             {/* Presets */}
+            {!isNotebook ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '0.85rem', color: '#9ca3af', marginRight: '0.25rem' }}>🎮 Presets:</span>
               {FLOW_PRESETS.map((preset) => (
@@ -846,6 +1201,7 @@ export default function FlowMatchingOTDemo() {
                 </button>
               ))}
             </div>
+            ) : null}
 
             {/* Insight box */}
             <div
@@ -860,7 +1216,11 @@ export default function FlowMatchingOTDemo() {
                 marginBottom: '0.75rem',
               }}
             >
-              {getFlowInsight(mode, time, rectifyLevel)}
+              {isNotebook
+                ? isTargetRevealed
+                  ? `At t=${time.toFixed(2)}, the remaining displacement is ${(1 - time).toFixed(2)} times the full velocity label. The supervised target u_t itself does not shrink as t changes.`
+                  : `At t=${time.toFixed(2)}, the current point x_t lies on the selected straight interpolation. Reveal the target to compare the supervised label with the remaining arrow.`
+                : getFlowInsight(mode, time, rectifyLevel)}
             </div>
 
             <div className="flow-controls">
@@ -868,13 +1228,14 @@ export default function FlowMatchingOTDemo() {
                 Time t ({time.toFixed(2)})
                 <input
                   type="range"
-                  min={0}
-                  max={1}
+                  min={isNotebook ? 0.05 : 0}
+                  max={isNotebook ? 0.95 : 1}
                   step={0.01}
                   value={time}
                   onChange={(e) => setTime(parseFloat(e.target.value))}
                 />
               </label>
+              {!isNotebook ? (
               <label className="slider-label">
                 Sampling steps ({numSteps})
                 <input
@@ -886,9 +1247,12 @@ export default function FlowMatchingOTDemo() {
                   onChange={(e) => setNumSteps(parseInt(e.target.value, 10))}
                 />
               </label>
+              ) : null}
+              {!isNotebook ? (
               <div className="flow-toggle-row">
                 <button
                   type="button"
+                  aria-pressed={mode === 'diffusion'}
                   onClick={() => setMode('diffusion')}
                   className={`toggle-btn ${mode === 'diffusion' ? 'active' : ''}`}
                 >
@@ -896,22 +1260,31 @@ export default function FlowMatchingOTDemo() {
                 </button>
                 <button
                   type="button"
+                  aria-pressed={mode === 'flow'}
                   onClick={() => setMode('flow')}
                   className={`toggle-btn ${mode === 'flow' ? 'active' : ''}`}
                 >
                   Flow matching (straight)
                 </button>
               </div>
+              ) : null}
               <div className="flow-toggle-row secondary">
                 <label className="toggle-label">
                   <input
                     type="checkbox"
-                    checked={showCouplings}
-                    onChange={(e) => setShowCouplings(e.target.checked)}
+                    checked={isNotebook ? showBackgroundPairs : showCouplings}
+                    onChange={(e) => {
+                      if (isNotebook) {
+                        setShowBackgroundPairs(e.target.checked)
+                      } else {
+                        setShowCouplings(e.target.checked)
+                      }
+                    }}
                   />{' '}
-                  Show OT coupling lines
+                  {isNotebook ? 'Show paired examples' : 'Show paired examples'}
                 </label>
               </div>
+              {!isNotebook ? (
               <div className="flow-buttons">
                 <button
                   type="button"
@@ -927,10 +1300,13 @@ export default function FlowMatchingOTDemo() {
                   {isPlaying ? 'Pause animation' : 'Play animation'}
                 </button>
               </div>
+              ) : null}
             </div>
           </div>
 
           {/* Path comparison */}
+          {!isNotebook ? (
+          <>
           <div className="flow-panel">
             <h3 className="flow-panel-title">Path comparison (single particle)</h3>
             <svg
@@ -940,7 +1316,7 @@ export default function FlowMatchingOTDemo() {
               className="flow-chart path-chart"
               aria-label="Curved diffusion path versus straight flow-matching path"
             >
-              {/* Straight line = OT displacement */}
+              {/* Straight line = conditional displacement */}
               <path
                 d={pathComparison.flowPathD}
                 className="path-flow"
@@ -983,7 +1359,7 @@ export default function FlowMatchingOTDemo() {
                 <span>{pathComparison.flowLength.toFixed(2)}</span>
               </div>
               <div>
-                <span className="label">Diffusion path length</span>
+                <span className="label">Curved path length</span>
                 <span>
                   {pathComparison.diffLength.toFixed(2)}{' '}
                   <span className="muted-inline">
@@ -997,21 +1373,20 @@ export default function FlowMatchingOTDemo() {
               </div>
             </div>
             <p className="caption">
-              OT theory says the shortest way to move mass between endpoints is a
-              straight line. Diffusion burns extra cost by wandering along
-              curved, noisy paths.
+              This panel compares a chosen straight interpolation with a
+              hand-built curved contrast path for the same endpoints.
             </p>
           </div>
 
           {/* Sampling speed panel */}
           <div className="flow-panel">
-            <h3 className="flow-panel-title">Sampling speed vs. steps</h3>
+            <h3 className="flow-panel-title">Toy step-response curves</h3>
             <svg
               width={SAMPLING_WIDTH}
               height={SAMPLING_HEIGHT}
               role="img"
               className="flow-chart sampling-chart"
-              aria-label="Quality versus number of sampling steps for diffusion, flow matching, and rectified flow"
+              aria-label="Toy response proxy versus number of sampling steps for diffusion, flow matching, and rectified flow"
             >
               <rect
                 x={PADDING}
@@ -1066,22 +1441,21 @@ export default function FlowMatchingOTDemo() {
             </svg>
             <div className="flow-stats sampling-stats">
               <div>
-                <span className="label">Diffusion quality</span>
+                <span className="label">Diffusion proxy</span>
                 <span>{Math.round(qDiff * 100)}%</span>
               </div>
               <div>
-                <span className="label">Flow matching quality</span>
+                <span className="label">Flow matching proxy</span>
                 <span>{Math.round(qFlow * 100)}%</span>
               </div>
               <div>
-                <span className="label">Rectified flow quality</span>
+                <span className="label">Rectified flow proxy</span>
                 <span>{Math.round(qRect * 100)}%</span>
               </div>
             </div>
             <p className="caption">
-              Curved diffusion paths need many tiny steps. Once paths are
-              straight (flow matching) or nearly straight everywhere (rectified
-              flow), far fewer steps are needed for the same sample quality.
+              These curves are a qualitative proxy for step response, not a
+              trained model evaluation or sample-quality measurement.
             </p>
           </div>
 
@@ -1140,20 +1514,477 @@ export default function FlowMatchingOTDemo() {
             <p className="caption">
               Start from a noisy diffusion path (level 0) and iteratively train
               flows that follow the average direction. Each rectification level
-              straightens the trajectory, converging to the optimal-transport
-              straight line used by fast modern models like SDXL Turbo and Stable
-              Diffusion 3.
+              straightens the trajectory toward the straight conditional path.
+              Full rectified-flow training and empirical speed comparisons belong
+              in a separate slice.
             </p>
           </div>
+          </>
+          ) : null}
         </div>
       </div>
 
+      {!isNotebook ? (
       <p className="caption">
         Takeaway: diffusion is like wandering through curved, stochastic
-        trajectories, while flow matching (and rectified flow) learns almost
-        straight, optimal-transport paths. Straighter paths mean fewer steps and
-        much faster generation — diffusion done right.
+        trajectories, while flow matching trains velocity labels along chosen
+        probability paths. Straighter conditional paths can make numerical
+        integration easier, but this toy does not measure sample quality.
       </p>
+      ) : null}
     </section>
+
+    <style jsx>{`
+      .flow-matching-demo {
+        background: #0f172a;
+        border-radius: 16px;
+        color: #e5e7eb;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+
+      .flow-matching-demo.notebook {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .velocity-prediction-panel,
+      .flow-panel {
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.72);
+        padding: 0.95rem;
+      }
+
+      .velocity-prediction-panel {
+        background:
+          radial-gradient(circle at 12% 0%, rgba(20, 184, 166, 0.18), transparent 34%),
+          linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(4, 47, 46, 0.9));
+        border-color: rgba(20, 184, 166, 0.42);
+        margin-bottom: 1rem;
+      }
+
+      .velocity-prediction-panel h3,
+      .flow-panel-title {
+        color: #f8fafc;
+        font-size: 1rem;
+        line-height: 1.3;
+        margin: 0 0 0.55rem;
+      }
+
+      .velocity-prediction-panel p {
+        color: #cbd5e1;
+        font-size: 0.86rem;
+        line-height: 1.55;
+        margin: 0 0 0.85rem;
+      }
+
+      .velocity-prediction-panel code,
+      .velocity-formula code,
+      .velocity-result code {
+        color: #dbeafe;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      .velocity-choice-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .evidence-strip {
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(4, 47, 46, 0.74));
+        border: 1px solid rgba(20, 184, 166, 0.26);
+        border-radius: 12px;
+        display: grid;
+        gap: 0.5rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin: 0 0 0.75rem;
+        padding: 0.55rem;
+      }
+
+      .evidence-step {
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        border-radius: 10px;
+        color: #94a3b8;
+        min-width: 0;
+        padding: 0.5rem 0.55rem;
+      }
+
+      .evidence-step[data-active='true'] {
+        background: rgba(20, 184, 166, 0.14);
+        border-color: rgba(20, 184, 166, 0.45);
+        color: #d1fae5;
+      }
+
+      .evidence-step span,
+      .evidence-step strong,
+      .evidence-step small {
+        display: block;
+      }
+
+      .evidence-step span {
+        align-items: center;
+        background: rgba(148, 163, 184, 0.18);
+        border-radius: 999px;
+        color: #f8fafc;
+        display: inline-flex;
+        font-size: 0.68rem;
+        font-weight: 750;
+        height: 1.25rem;
+        justify-content: center;
+        margin-bottom: 0.32rem;
+        width: 1.25rem;
+      }
+
+      .evidence-step strong {
+        color: #f8fafc;
+        font-size: 0.78rem;
+        line-height: 1.25;
+      }
+
+      .evidence-step small {
+        color: inherit;
+        font-size: 0.7rem;
+        font-weight: 520;
+        line-height: 1.35;
+        margin-top: 0.2rem;
+      }
+
+      .velocity-choice-grid button,
+      .velocity-actions button,
+      .toggle-btn,
+      .flow-buttons button {
+        appearance: none;
+        border: 1px solid rgba(148, 163, 184, 0.32);
+        border-radius: 9px;
+        background: rgba(15, 23, 42, 0.76);
+        color: #e5e7eb;
+        cursor: pointer;
+        font-weight: 650;
+        padding: 0.58rem 0.7rem;
+      }
+
+      .velocity-choice-grid button {
+        min-height: 70px;
+        text-align: left;
+      }
+
+      .velocity-choice-grid button span,
+      .velocity-choice-grid button small {
+        display: block;
+      }
+
+      .velocity-choice-grid button small {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-top: 0.28rem;
+      }
+
+      .velocity-choice-grid button[aria-pressed='true'],
+      .toggle-btn.active {
+        border-color: rgba(20, 184, 166, 0.78);
+        background: rgba(20, 184, 166, 0.2);
+        color: #ccfbf1;
+      }
+
+      .velocity-actions,
+      .flow-buttons,
+      .flow-toggle-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+      }
+
+      .velocity-actions button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .velocity-actions .ghost,
+      .flow-buttons .ghost {
+        background: rgba(30, 41, 59, 0.82);
+      }
+
+      .velocity-result {
+        border: 1px solid rgba(34, 197, 94, 0.44);
+        background: rgba(20, 83, 45, 0.62);
+        border-radius: 10px;
+        color: #f8fafc !important;
+        margin-top: 0.75rem !important;
+        padding: 0.7rem 0.75rem;
+      }
+
+      .velocity-formula {
+        color: #cbd5e1 !important;
+        margin-top: 0.75rem !important;
+      }
+
+      .flow-layout {
+        display: grid;
+        grid-template-columns: minmax(360px, 1.1fr) minmax(280px, 0.9fr);
+        gap: 1rem;
+        align-items: start;
+      }
+
+      .flow-column {
+        display: grid;
+        gap: 1rem;
+        min-width: 0;
+      }
+
+      .flow-panel-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+      }
+
+      .flow-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.38rem;
+        font-size: 0.75rem;
+      }
+
+      .dot {
+        border-radius: 999px;
+        display: inline-block;
+        height: 9px;
+        width: 9px;
+      }
+
+      .dot.noise {
+        background: #64748b;
+      }
+
+      .dot.data {
+        background: #f59e0b;
+      }
+
+      .dot.current {
+        background: #22c55e;
+      }
+
+      .flow-chart {
+        background: #020617;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 12px;
+        display: block;
+        height: auto;
+        max-width: 100%;
+      }
+
+      .axis-line {
+        stroke: rgba(226, 232, 240, 0.22);
+        stroke-width: 1;
+      }
+
+      .ot-coupling-line {
+        stroke: rgba(148, 163, 184, 0.18);
+        stroke-width: 1;
+      }
+
+      .ot-coupling-line.selected {
+        stroke: rgba(248, 250, 252, 0.86);
+        stroke-dasharray: 5 4;
+        stroke-width: 2;
+      }
+
+      .particle-src {
+        fill: #64748b;
+        opacity: 0.7;
+      }
+
+      .particle-tgt {
+        fill: #f59e0b;
+        opacity: 0.72;
+      }
+
+      .particle-src.context,
+      .particle-tgt.context,
+      .particle-current:not(.selected) {
+        opacity: 0.26;
+      }
+
+      .particle-src.selected,
+      .particle-tgt.selected,
+      .particle-current.selected {
+        stroke: #f8fafc;
+        stroke-width: 2;
+        opacity: 1;
+      }
+
+      .particle-current.flow {
+        fill: #22c55e;
+      }
+
+      .particle-current.diffusion {
+        fill: #14b8a6;
+      }
+
+      .velocity-target-arrow {
+        stroke: #22c55e;
+        stroke-linecap: round;
+        stroke-width: 3;
+      }
+
+      .remaining-arrow {
+        stroke: #f59e0b;
+        stroke-dasharray: 5 4;
+        stroke-linecap: round;
+        stroke-width: 2.4;
+      }
+
+      .vector-bg {
+        fill: rgba(15, 23, 42, 0.7);
+        stroke: rgba(148, 163, 184, 0.14);
+      }
+
+      .vector-arrow {
+        stroke-linecap: round;
+        stroke-width: 1.4;
+      }
+
+      .path-flow,
+      .path-diffusion,
+      .sampling-curve,
+      .rectified-path {
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2.4;
+      }
+
+      .path-diffusion,
+      .sampling-curve.diffusion {
+        stroke: #14b8a6;
+      }
+
+      .path-flow,
+      .sampling-curve.flow {
+        stroke: #f59e0b;
+      }
+
+      .sampling-curve.rectified {
+        stroke: #8b5cf6;
+      }
+
+      .sampling-steps-line {
+        stroke: rgba(248, 250, 252, 0.55);
+        stroke-dasharray: 4 4;
+      }
+
+      .marker-flow,
+      .sampling-marker.flow,
+      .rectified-marker.active {
+        fill: #f59e0b;
+      }
+
+      .marker-diffusion,
+      .sampling-marker.diffusion {
+        fill: #14b8a6;
+      }
+
+      .sampling-marker.rectified {
+        fill: #8b5cf6;
+      }
+
+      .rectified-path {
+        stroke: rgba(148, 163, 184, 0.35);
+      }
+
+      .rectified-path.active {
+        stroke: #f59e0b;
+        stroke-width: 3;
+      }
+
+      .flow-stats,
+      .sampling-stats {
+        display: grid;
+        gap: 0.45rem;
+        margin-top: 0.65rem;
+      }
+
+      .flow-stats > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.7rem;
+      }
+
+      .label,
+      .muted-inline,
+      .caption {
+        color: #94a3b8;
+      }
+
+      .caption {
+        font-size: 0.78rem;
+        line-height: 1.55;
+        margin: 0.65rem 0 0;
+      }
+
+      .controls-panel {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .flow-controls {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .slider-label,
+      .toggle-label {
+        color: #dbeafe;
+        display: grid;
+        font-size: 0.84rem;
+        gap: 0.45rem;
+      }
+
+      .slider-label input[type='range'] {
+        width: 100%;
+      }
+
+      .toggle-label {
+        align-items: center;
+        display: flex;
+      }
+
+      .flow-matching-demo button:focus-visible,
+      .flow-matching-demo input:focus-visible {
+        outline: 2px solid #f8fafc;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.35);
+      }
+
+      @media (max-width: 860px) {
+        .flow-layout,
+        .velocity-choice-grid,
+        .evidence-strip {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .velocity-prediction-panel,
+        .flow-panel {
+          padding: 0.8rem;
+        }
+
+        .flow-stats > div {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 0.15rem;
+        }
+      }
+    `}</style>
+    </>
   )
 }

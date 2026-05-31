@@ -17,36 +17,63 @@ There is always a tradeoff:
 
 Let the vocabulary be a set of strings (or byte sequences) $\mathcal V$. A tokenizer maps an input string $x$ into a sequence of tokens (where $n$ is the token count):
 
-$$x = \\mathrm{concat}(t_1,\\dots,t_n), \\qquad t_i \\in \\mathcal V.$$
+$$
+x = \mathrm{concat}(t_1,\dots,t_n), \qquad t_i \in \mathcal V.
+$$
 
-### Unigram tokenization (SentencePiece-style) as MAP segmentation
+### BPE and unigram tokenization are two different search stories
 
-Given token priors $p(t)$, pick the most likely segmentation:
+BPE learns vocabulary entries by merging frequent adjacent symbols. Unigram tokenization instead scores candidate segmentations with token priors $p(t)$ and picks the most likely path:
 
-$$\\hat t_{1:n} = \\arg\\max_{t:\\;\\mathrm{concat}(t)=x}\\;\\sum_{i=1}^n \\log p(t_i).$$
+$$
+(a,b)^* = \arg\max_{(a,b)}\;\mathrm{count}(ab) \Rightarrow a\,b \to ab, \qquad \hat t_{1:n} = \arg\max_{t:\;\mathrm{concat}(t)=x}\;\sum_{i=1}^n \log p(t_i).
+$$
 
-This can be solved by dynamic programming (a Viterbi-like shortest-path problem over string positions).
-
-### BPE (byte-pair encoding) builds a vocabulary by merges
-
-Starting from base symbols (characters or bytes), repeatedly merge the most frequent adjacent pair:
-
-$$ (a,b)^* = \\arg\\max_{(a,b)}\\;\\mathrm{count}(ab) \\qquad\\Rightarrow\\qquad a\\,b \\to ab.$$
+The unigram path can be solved by dynamic programming (a Viterbi-like shortest-path problem over string positions). The BPE merge sequence is learned greedily during tokenizer training, then applied as deterministic merge rules at encoding time.
 
 ### Vocabulary size affects parameter count
 
-If embeddings and output logits both use a $|\\mathcal V|\\times d$ matrix, then token-related parameters scale like:
+If embeddings and output logits both use a $|\mathcal V|\times d$ matrix, then token-related parameters scale like:
 
-$$\\mathrm{params}_{\\mathrm{token}} \\approx 2\\,|\\mathcal V|\\,d.$$
+$$
+\mathrm{params}_{\mathrm{token}} \approx 2\,|\mathcal V|\,d.
+$$
 
-If you **tie** input/output embeddings (common in LLMs), this is closer to $|\\mathcal V|\\,d$.
+If you **tie** input/output embeddings (common in LLMs), this is closer to $|\mathcal V|\,d$.
 
 So the tokenizer is not just preprocessing: it changes model size, latency, and what patterns become easy to represent.
 
 ## Code
 
 ```python
+from collections import Counter
 import math
+
+def learn_bpe_merges(corpus, num_merges=3):
+    vocab = {tuple(word): freq for word, freq in corpus.items()}
+    merges = []
+    for _ in range(num_merges):
+        counts = Counter()
+        for symbols, freq in vocab.items():
+            for pair in zip(symbols, symbols[1:]):
+                counts[pair] += freq
+        if not counts:
+            break
+        best = max(counts, key=counts.get)
+        merges.append(best)
+        merged_vocab = {}
+        for symbols, freq in vocab.items():
+            out, i = [], 0
+            while i < len(symbols):
+                if i + 1 < len(symbols) and (symbols[i], symbols[i + 1]) == best:
+                    out.append(symbols[i] + symbols[i + 1])
+                    i += 2
+                else:
+                    out.append(symbols[i])
+                    i += 1
+            merged_vocab[tuple(out)] = freq
+        vocab = merged_vocab
+    return merges, vocab
 
 def unigram_map(x, tok_logp):
     n, NEG = len(x), -1e30
@@ -71,6 +98,10 @@ def unigram_map(x, tok_logp):
         out.append(tok)
         j = i
     return out[::-1], dp[n]
+
+merges, vocab = learn_bpe_merges({"low": 5, "lower": 2, "new": 6, "newer": 3}, num_merges=4)
+print("bpe merges:", merges)
+print("bpe vocab:", vocab)
 
 probs = {"the": 0.08, "there": 0.02, "re": 0.05, "th": 0.06, "e": 0.07, "r": 0.03, "t": 0.02, "h": 0.02}
 tok_logp = {t: math.log(p) for t, p in probs.items()}

@@ -1,0 +1,40 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning/math concepts. We are doing a slow, review-gated claim-evidence sweep so published learner-facing claims are only marked "substantive-reviewed" after exact primary-source support and matching local witnesses.
+
+Current task: review the pending claim check for `attention-transformers/tokenization-vocabulary`.
+
+Claim:
+"Subword tokenizers map text to vocabulary items: BPE builds units by repeatedly merging the most frequent adjacent symbols; SentencePiece supports BPE and unigram language-model subword segmentation."
+
+Current source ids:
+- `sennrich-2015-bpe`
+- `kudo-2018-sentencepiece`
+
+Current local witness refs:
+- `#source-span-sennrich-2015-bpe`
+- `#source-span-kudo-2018-sentencepiece`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Important local extraction rule:
+- `lib/conceptObjectSpans.ts` exports only the first two display equations as `#math-object-1` and `#math-object-2`, and only the first fenced code block as `#code-witness-1`.
+- I already strengthened the Tokenization page so `#math-object-2` contains both the BPE most-frequent-pair merge rule and the unigram MAP segmentation rule, and the first code witness contains both a tiny BPE merge learner and a unigram dynamic-programming segmenter.
+
+Primary-source text is attached as extracted PDF text:
+- `/tmp/cf-tokenization-source-check/sennrich-2015-bpe.txt`, from https://arxiv.org/pdf/1508.07909v5
+- `/tmp/cf-tokenization-source-check/kudo-2018-sentencepiece.txt`, from https://arxiv.org/pdf/1808.06226v1
+
+Please act as a strict source-support reviewer. Decide whether this claim can be marked `evidence_review.state: substantive-reviewed` now.
+
+Review questions:
+1. Do Sennrich et al. substantively support the BPE part of the claim: initialized symbol vocabulary, adjacent symbol pair counts, repeated replacement/merge of the most frequent pair, and resulting vocabulary growth?
+2. Do Kudo/Richardson substantively support the SentencePiece part of the claim: language-independent tokenizer/detokenizer, vocabulary-id mapping, tokenization into subword sequences, and implementation/support for both BPE and unigram language-model segmentation?
+3. Do the local witnesses `#math-object-1`, `#math-object-2`, `#code-witness-1`, and `#interactive-demo` match the bounded claim, or is any witness mismatched/overclaimed?
+4. Is the proposed support/caveat wording narrow enough? It must not imply exact modern LLM tokenizer files, byte fallback guarantees, Unicode normalization edge-case coverage, merge-rank inference details, vocabulary-size scaling estimates, or downstream capability/cost proof.
+
+Desired output:
+- Start with `Approved` or `Not approved as-is`.
+- If not approved, list only the smallest fixes needed.
+- If approved, provide the exact recommended `evidence_review.summary` and any support/caveat tweaks.
+- Be strict about source scope and witness scope; do not broaden into product strategy.

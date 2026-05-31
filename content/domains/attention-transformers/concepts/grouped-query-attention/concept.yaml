@@ -1,0 +1,34 @@
+id: grouped-query-attention
+title: "Grouped-Query Attention: Sharing KV Heads"
+domain: attention-transformers
+slug: grouped-query-attention
+difficulty: 4
+status: review
+importance: important
+prerequisites:
+  - attention-transformers
+  - efficient-attention
+leads_to:
+  - llm-serving
+  - long-context
+  - speculative-decoding
+related:
+  - efficient-attention
+  - long-context
+  - rope
+tags:
+  - transformers
+  - attention
+  - efficient-attention
+  - kv-cache
+  - gqa
+  - mqa
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: graduate
+short_description: "How multi-head, grouped-query, and multi-query attention differ by the number of key/value heads, and why reducing H_kv shrinks the decoding KV cache by H_kv / H_q."
+author: codex
+created: "2026-05-04"
+updated: "2026-05-04"
+estimated_read_time: 15

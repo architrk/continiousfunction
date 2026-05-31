@@ -1,0 +1,37 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning/math concepts. We are doing a slow, review-gated claim-evidence sweep so published learner-facing claims are only marked "substantive-reviewed" after exact primary-source support and matching local witnesses.
+
+Current task: review the pending claim check for `llm-systems/decoding-sampling`.
+
+Claim:
+"Decoding settings reshape the next-token distribution at inference time: temperature rescales probabilities, while nucleus sampling truncates the unreliable tail and renormalizes the remaining dynamic token set."
+
+Current source id:
+- `holtzman-2019-nucleus`
+
+Current local witness refs:
+- `#source-span-holtzman-2019-nucleus`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Important local extraction rule:
+- `lib/conceptObjectSpans.ts` exports only the first two display equations as `#math-object-1` and `#math-object-2`, and only the first fenced code block as `#code-witness-1`.
+- I already strengthened the Decoding page so `#math-object-2` contains both the top-p candidate set and the truncated-renormalized distribution, rather than leaving renormalization as a third non-exported equation.
+
+Primary-source text is attached as extracted PDF text:
+- `/tmp/cf-decoding-source-check/holtzman-2019-nucleus.txt`, from https://arxiv.org/pdf/1904.09751v2
+
+Please act as a strict source-support reviewer. Decide whether this claim can be marked `evidence_review.state: substantive-reviewed` now.
+
+Review questions:
+1. Does Holtzman et al. support the nucleus-sampling part of the claim: probability-distribution shape determines the top-p token set, unreliable tail truncation, dynamic candidate-pool size, rescaling/renormalization, and sampling from the resulting distribution?
+2. Does Holtzman et al. support the temperature part of the claim: temperature re-estimates/rescales softmax probabilities from logits and changes distribution shape?
+3. Do the local witnesses `#math-object-1`, `#math-object-2`, `#code-witness-1`, and `#interactive-demo` match the bounded claim, or is any witness mismatched/overclaimed?
+4. Is the proposed support/caveat wording narrow enough? It must not imply one universal decoding setting is best, safety behavior, task optimality, top-k guarantees, repetition-penalty source support, or production sampler implementation details.
+
+Desired output:
+- Start with `Approved` or `Not approved as-is`.
+- If not approved, list only the smallest fixes needed.
+- If approved, provide the exact recommended `evidence_review.summary` and any support/caveat tweaks.
+- Be strict about source scope and witness scope; do not broaden into product strategy.

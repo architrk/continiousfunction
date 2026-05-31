@@ -1,0 +1,163 @@
+---
+title: "Cross-Entropy"
+---
+
+## Intuition
+
+A classifier gives many probabilities, but the training example usually gives one complaint: the right answer was not probable enough. How should that complaint become a number the optimizer can lower?
+
+Cross-entropy is the standard answer. It measures the average surprise you feel when data is drawn from a target distribution $p$, but you score it using a model distribution $q$.
+
+The phrase "average surprise" is literal. If the target puts mass on an outcome and the model assigns that outcome low probability, the term $-\log q(x)$ becomes large. If the target says an outcome never matters, that outcome contributes nothing to the loss for this example.
+
+For one-hot labels, cross-entropy is just the negative log probability of the correct class. For soft labels, label smoothing, or distillation targets, it becomes a weighted average over all classes. That is why it sits between maximum likelihood, KL divergence, and gradient descent: it turns probabilistic fit into a scalar loss whose gradient says which logits should move.
+
+## Math
+
+Let $X$ be a discrete label taking values in $\{1,\dots,K\}$. Let $p_k=P_{\mathrm{target}}(X=k)$ be the target distribution and let $q_k=P_{\theta}(X=k)$ be the model distribution. Assume $p_k\ge 0$, $q_k>0$, and $\sum_k p_k=\sum_k q_k=1$. All logarithms here are natural logarithms, so the units are nats.
+
+For supervised classification, read this as a per-input statement. For an input $x_i$, the target distribution is $p^{(i)}_k=P_{\mathrm{target}}(Y=k\mid x_i)$ and the model distribution is $q^{(i)}_k=P_\theta(Y=k\mid x_i)$. The dataset loss averages $H(p^{(i)},q^{(i)})$ over examples. The demo below shows one such example.
+
+The cross-entropy from $p$ to $q$ is
+
+$$
+H(p,q)=-\sum_{k=1}^K p_k \log q_k.
+$$
+
+Equivalently,
+
+$$
+H(p,q)=\mathbb E_{X\sim p}[-\log q_X].
+$$
+
+The direction matters: $p$ supplies the averaging weights, while $q$ supplies the probabilities being scored. If $p_k>0$ and $q_k$ is near zero, the penalty becomes very large. If $p_k>0$ and $q_k=0$, the mathematical loss is infinite. If $p_k=0$, that class does not contribute directly to this cross-entropy term.
+
+For a one-hot target $y$, where $p_y=1$ and all other $p_k=0$,
+
+$$
+H(p,q)=-\log q_y.
+$$
+
+This is exactly the per-example negative log-likelihood used for multiclass classification and next-token language modeling.
+
+The link to KL divergence is
+
+$$
+H(p,q)=H(p)+\mathrm{KL}(p\|q),
+$$
+
+where
+
+$$
+H(p)=-\sum_k p_k\log p_k,\qquad \mathrm{KL}(p\|q)=\sum_k p_k\log\frac{p_k}{q_k}.
+$$
+
+When the target distribution $p$ is fixed, $H(p)$ is constant with respect to the model. Minimizing cross-entropy over $q_\theta$ is therefore the same optimization problem as minimizing $\mathrm{KL}(p\|q_\theta)$. Maximum likelihood is the empirical version: the data distribution supplies $p$, and the model is trained to reduce the average $-\log q_\theta(x)$ assigned to observed data.
+
+For one-hot targets, the minimum possible cross-entropy is $0$. For soft targets, the minimum possible cross-entropy is usually not $0$; it is $H(p)$, achieved when $q=p$. In that setting, the KL term is the mismatch and $H(p)$ is the irreducible target uncertainty.
+
+For neural networks, the model usually produces logits $z\in\mathbb R^K$ and probabilities
+
+$$
+q_k=\mathrm{softmax}(z)_k=\frac{e^{z_k}}{\sum_j e^{z_j}}.
+$$
+
+For the soft-target loss
+
+$$
+\ell(z,p)=-\sum_k p_k\log(\mathrm{softmax}(z)_k),
+$$
+
+we can derive the logit gradient directly. Since
+
+$$
+\log(\mathrm{softmax}(z)_i)=z_i-\log\sum_j e^{z_j},
+$$
+
+and $\sum_i p_i=1$,
+
+$$
+\ell(z,p)=-\sum_i p_i z_i+\log\sum_j e^{z_j}.
+$$
+
+Therefore the gradient with respect to each logit is
+
+$$
+\frac{\partial \ell}{\partial z_k}=q_k-p_k.
+$$
+
+This compact gradient is one reason cross-entropy is so useful. Classes where $q_k<p_k$ get a negative gradient, so gradient descent increases their logits. Classes where $q_k>p_k$ get a positive gradient, so gradient descent lowers them.
+
+This is a gradient with respect to logits, not with respect to probabilities. If $q$ were treated as an unconstrained probability vector, then $\partial H(p,q)/\partial q_k=-p_k/q_k$. The formula $q-p$ appears after the loss is differentiated through the softmax. Its components sum to zero, reflecting that softmax logits redistribute probability mass across classes.
+
+This page is about categorical cross-entropy for mutually exclusive classes. Multi-label problems usually use sigmoid outputs and a sum of binary cross-entropies instead.
+
+## Code
+
+```python
+import numpy as np
+
+def softmax(logits):
+    shifted = logits - logits.max()
+    exp = np.exp(shifted)
+    return exp / exp.sum()
+
+def log_softmax(logits):
+    shifted = logits - logits.max()
+    return shifted - np.log(np.exp(shifted).sum())
+
+def entropy(p):
+    p = np.asarray(p, dtype=float)
+    mask = p > 0
+    return float(-np.sum(p[mask] * np.log(p[mask])))
+
+def cross_entropy_from_logits(p, logits):
+    p = np.asarray(p, dtype=float)
+    log_q = log_softmax(logits)
+    return float(-np.sum(p * log_q))
+
+def finite_difference_grad(loss_fn, logits, eps=1e-6):
+    logits = np.asarray(logits, dtype=float)
+    out = np.zeros_like(logits)
+    for k in range(logits.size):
+        plus = logits.copy()
+        minus = logits.copy()
+        plus[k] += eps
+        minus[k] -= eps
+        out[k] = (loss_fn(plus) - loss_fn(minus)) / (2 * eps)
+    return out
+
+# Shapes: p, logits, q, and grad_logits are all (K,).
+p = np.array([0.70, 0.20, 0.08, 0.02])
+logits = np.array([1.2, 0.4, -0.3, -1.1])
+
+log_q = log_softmax(logits)
+q = softmax(logits)
+ce = cross_entropy_from_logits(p, logits)
+h = entropy(p)
+kl = ce - h
+grad_logits = q - p
+numeric_grad = finite_difference_grad(lambda z: cross_entropy_from_logits(p, z), logits)
+
+print("q:", np.round(q, 3))
+print("H(p,q):", round(ce, 4))
+print("H(p):", round(h, 4))
+print("KL(p||q):", round(kl, 4))
+print("gradient wrt logits:", np.round(grad_logits, 3))
+print("finite-difference grad:", np.round(numeric_grad, 3))
+print("gradient check:", np.allclose(grad_logits, numeric_grad, atol=1e-6))
+
+# For a one-hot target y=0, the same formula becomes NLL.
+y = 0
+one_hot = np.eye(4)[y]
+print("one-hot CE:", round(cross_entropy_from_logits(one_hot, logits), 4))
+print("-log q_y:", round(float(-log_q[y]), 4))
+```
+
+The code mirrors the math: `p` is the target distribution, `q` is the softmax model distribution, `H(p,q)` decomposes into `H(p) + KL(p||q)`, and the finite-difference check confirms that the logit gradient is `q - p`.
+
+## Interactive Demo
+
+Use the presets to compare a matched soft target, a diffuse one-hot model, an overconfident wrong model, and a soft-target mismatch. Then move the logit sliders.
+
+The paired bars show the target distribution $p$ and model distribution $q$. The amber contribution row shows which target-weighted surprises make up $H(p,q)$. Those contribution bars are relative within the current example. The gradient row shows the signal backpropagation sends into the logits: negative values mean "raise this logit"; positive values mean "lower this logit."

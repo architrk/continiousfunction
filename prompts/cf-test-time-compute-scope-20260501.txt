@@ -1,0 +1,28 @@
+Project: Continuous Function, a slow-growth mathematical atlas for deep learning concepts.
+
+Current state:
+- Alignment branch has published RLHF, DPO, KTO, Reward Hacking, and Process Reward Models.
+- Scaling domain has published Scaling Laws, Double Descent, and NTK.
+- The next focus in TODO is to continue from PRMs into test-time compute and tree-search reasoning.
+
+Goal:
+Design one narrow, publishable concept page:
+
+`test-time-compute` — "Test-Time Compute: Spending Inference Budget on Search"
+
+Constraints:
+- This page should be a bridge from scaling laws and PRMs, not a broad survey of reasoning models.
+- It should be mathematically honest and demoable with a finite object.
+- It should not teach full tree search/MCTS yet; that should remain a downstream page.
+- It should not overclaim that inference compute always beats scaling model parameters.
+- It should connect back to PRM/verifier selection and forward to tree-search reasoning.
+
+Please return:
+1. Scope: what the page should teach and what it should explicitly avoid.
+2. The simplest finite mathematical model for the page.
+3. A concrete interactive demo design that is truthful and compact.
+4. Recommended graph metadata: prerequisites, leads_to, related.
+5. Primary-source anchors.
+6. Publish-quality blockers to watch for in review.
+
+Keep this rigorous and focused. Do not give a roadmap.

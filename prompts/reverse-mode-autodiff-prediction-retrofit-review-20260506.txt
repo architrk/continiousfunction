@@ -1,0 +1,34 @@
+You are reviewing a narrow Continuous Function learning-platform slice for publish/no-publish.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- The product direction is prediction-first, mechanism-first concept learning: learners should commit to a causal/mathematical prediction before a visualization reveals the measured result.
+- The shared `emitDemoState` event lets a demo carry compact measured values into the concept page's demo checkpoint, saved local route snapshot, research-room prompt, and future account-backed learner memory.
+- This slice must stay repo-only and static-export-safe. It must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+
+Slice under review:
+- Concept: `calculus/reverse-mode-autodiff`
+- Goal: retrofit the existing Reverse-Mode Autodiff visualizer with a concept-specific prediction reveal.
+- Learner should see forward values and tape order, predict how the two paths into `a` accumulate into `bar a`, then reveal the cotangent numbers and input gradient.
+- The implementation should hide `bar a`, `bar x`, `bar y`, and row-level reverse pullback numbers before reveal.
+- After reveal, it should emit compact measured state for `x`, `y`, `a`, `L`, accumulated `bar a`, `bar x`, `bar y`, and prediction correctness.
+
+Please review for:
+1. Publish/no-publish verdict.
+2. Any pre-reveal leakage of the answer through copy, labels, aria text, row text, metrics, registers, or emitted state.
+3. Mathematical correctness of the reverse-mode values for `L = a + sin(a)`, `a = x*y`, including local VJPs and `+=` cotangent accumulation.
+4. Whether the prediction classification (`reinforce`, `mostly direct`, `cancel`) is pedagogically fair and not misleading over the slider domain.
+5. Whether the emitted demo state is compact and useful for grounded AI/learner-memory handoff.
+6. Any UX/accessibility/responsiveness issue serious enough to block publish.
+7. Whether TODO/audit wording accurately marks this as one narrow completed slice without claiming the whole P0 is done.
+
+Commands already run locally:
+- `npm test -- ReverseModeAutodiffViz --runInBand` passed. It has the existing styled-jsx React warning seen across this repo.
+- `npm run validate-content` passed.
+- `npm run typecheck` passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed. The build sees an unrelated untracked iCloud duplicate `pages/pillars/index 2.tsx` as `/pillars/index 2`; that file is intentionally not part of this slice and must not be reviewed as a staged change.
+
+Return:
+- Start with `publish` or `no-publish`.
+- If no-publish, list blockers with exact file/path references and concrete fixes.
+- If publish, still list any non-blocking improvements separately.

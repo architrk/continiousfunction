@@ -1,0 +1,180 @@
+import { ReactNode, createContext, useContext, useState, useCallback, useMemo } from 'react'
+import Link from 'next/link'
+
+// Section title mapping for display
+const SECTION_TITLES: Record<string, string> = {
+  // Sequence Modeling
+  intro: 'Introduction',
+  attention: 'Self-Attention',
+  rope: 'RoPE Embeddings',
+  kvcache: 'KV Cache',
+  gqa: 'Grouped Query Attention',
+  swiglu: 'SwiGLU Activation',
+  moe: 'Mixture of Experts',
+  ssm: 'State Space Models',
+  mamba: 'Mamba',
+  // Optimization
+  landscape: 'Loss Landscape',
+  momentum: 'Momentum',
+  adaptive: 'Adam Optimizer',
+  muon: 'Muon Optimizer',
+  orthogonalization: 'Newton-Schulz',
+  edge: 'Edge of Stability',
+  stability: 'Edge of Stability',
+  grokking: 'Grokking',
+  dpo: 'DPO vs RLHF',
+  rlhf: 'DPO vs RLHF',
+  alignment: 'Alignment',
+  landscape3d: '3D Loss Landscape',
+  loss3d: '3D Loss Landscape',
+  backprop: 'Backprop Gradients',
+  gradients: 'Gradient Flow',
+  'task-vectors': 'Task Vectors',
+  'model-editing': 'Model Editing',
+  scaling: 'Scaling Laws',
+  'scaling-laws': 'Scaling Laws',
+  // Generative Physics
+  diffusion: 'Diffusion Process',
+  forward: 'Forward Diffusion',
+  reverse: 'Reverse Diffusion',
+  score: 'Score Function',
+  flow: 'Flow Matching',
+  ode: 'ODE Trajectories',
+  // Geometric DL
+  symmetry: 'Symmetry',
+  equivariance: 'Equivariance',
+  groups: 'Group Theory',
+  manifold: 'Manifolds',
+  transport: 'Parallel Transport',
+  // Mech Interp
+  superposition: 'Superposition',
+  polysemanticity: 'Polysemanticity',
+  sae: 'Sparse Autoencoders',
+  circuits: 'Circuits',
+  induction: 'Induction Heads',
+  features: 'Feature Analysis',
+}
+
+// Context for sharing state between sections and visualization
+interface ExplorableState {
+  activeSection: string | null
+  setActiveSection: (id: string | null) => void
+  params: Record<string, number | string | boolean>
+  setParam: (key: string, value: number | string | boolean) => void
+  resetParams: () => void
+  getSectionTitle: (id: string | null) => string
+}
+
+const ExplorableContext = createContext<ExplorableState | null>(null)
+
+export function useExplorable() {
+  const context = useContext(ExplorableContext)
+  if (!context) {
+    throw new Error('useExplorable must be used within ExplorableLayout')
+  }
+  return context
+}
+
+interface BreadcrumbItem {
+  label: string
+  href?: string
+}
+
+interface ExplorableLayoutProps {
+  children: ReactNode
+  visualPanel: ReactNode
+  title: string
+  subtitle?: string
+  initialParams?: Record<string, number | string | boolean>
+  breadcrumb?: BreadcrumbItem[]
+}
+
+export default function ExplorableLayout({
+  children,
+  visualPanel,
+  title,
+  subtitle,
+  initialParams = {},
+  breadcrumb,
+}: ExplorableLayoutProps) {
+  const [activeSection, setActiveSection] = useState<string | null>(null)
+  const [params, setParams] = useState<Record<string, number | string | boolean>>(initialParams)
+
+  const setParam = useCallback((key: string, value: number | string | boolean) => {
+    setParams(prev => ({ ...prev, [key]: value }))
+  }, [])
+
+  const resetParams = useCallback(() => {
+    setParams(initialParams)
+  }, [initialParams])
+
+  const getSectionTitle = useCallback((id: string | null): string => {
+    if (!id) return 'Scroll to begin'
+    return SECTION_TITLES[id] || id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  }, [])
+
+  const currentTitle = useMemo(() => getSectionTitle(activeSection), [activeSection, getSectionTitle])
+
+  return (
+    <ExplorableContext.Provider value={{ activeSection, setActiveSection, params, setParam, resetParams, getSectionTitle }}>
+      <div className="explorable-layout">
+        {breadcrumb && breadcrumb.length > 0 && (
+          <nav className="explorable-breadcrumb" style={{
+            fontSize: '0.85rem',
+            marginBottom: '1rem',
+            color: 'var(--text-muted)'
+          }}>
+            {breadcrumb.map((item, i) => (
+              <span key={i}>
+                {item.href ? (
+                  <Link href={item.href} style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span style={{ color: 'var(--text-primary)' }}>{item.label}</span>
+                )}
+                {i < breadcrumb.length - 1 && (
+                  <span style={{ margin: '0 0.5rem', opacity: 0.5 }}>/</span>
+                )}
+              </span>
+            ))}
+          </nav>
+        )}
+        <header className="explorable-header">
+          <div className="explorable-hero-copy">
+            <h1 className="explorable-title">{title}</h1>
+            {subtitle && <p className="explorable-subtitle">{subtitle}</p>}
+          </div>
+          <div className="explorable-hero-map" aria-hidden="true">
+            <div className="hero-map-card">
+              <span>Pillar route</span>
+              <strong>{title}</strong>
+              <p>scroll, predict, inspect</p>
+            </div>
+            <div className="hero-map-steps">
+              <span>01 intuition</span>
+              <span>02 mechanism</span>
+              <span>03 lab</span>
+              <span>04 route</span>
+            </div>
+          </div>
+        </header>
+
+        <div className="explorable-container">
+          <div className="explorable-prose">
+            {children}
+          </div>
+          <aside className="explorable-visual">
+            <div className="explorable-visual-sticky" data-section={activeSection || 'none'}>
+              <div className="explorable-section-indicator">
+                <span className="indicator-dot" />
+                <span className="indicator-label">{currentTitle}</span>
+              </div>
+              {visualPanel}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </ExplorableContext.Provider>
+  )
+}

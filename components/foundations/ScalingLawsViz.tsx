@@ -133,21 +133,21 @@ const GPT3_COMPUTE = GPT3_PARAMS * GPT3_TOKENS
 // Fun compute scale presets
 const COMPUTE_PRESETS = [
   { name: '🔬 GPT-2 Scale', logC: 20.7, description: '~1.5B params, 40B tokens - early decoder-only era' },
-  { name: '🚀 GPT-3 Scale', logC: 23.1, description: '~175B params, 300B tokens - emergent capabilities appear' },
+  { name: '🚀 GPT-3 Scale', logC: 23.1, description: '~175B params, 300B tokens - benchmark metrics can change sharply' },
   { name: '🐱 Chinchilla', logC: 23.5, description: '70B params, 1.4T tokens - compute-optimal frontier' },
-  { name: '🌟 GPT-4 Scale', logC: 25.0, description: '~500B+ params - reasoning capabilities emerge' },
+  { name: '🌟 GPT-4 Scale', logC: 25.0, description: '~500B+ params - schematic frontier-scale checkpoint' },
   { name: '🔮 Future', logC: 25.8, description: 'Hypothetical 10x GPT-4 compute budget' },
 ]
 
-// Challenge scenarios for prediction game - test emergence thresholds
+// Challenge scenarios for prediction game - test metric cutoffs
 const CHALLENGE_SCENARIOS = [
   { name: '🎲 Mystery 10^21.5', logC: 21.5, capability: 'arithmetic' as CapabilityKey, hint: 'Below GPT-3 scale...' },
   { name: '🎲 Mystery 10^22.5', logC: 22.5, capability: 'coding' as CapabilityKey, hint: 'Near the threshold...' },
-  { name: '🎲 Mystery 10^23.8', logC: 23.8, capability: 'reasoning' as CapabilityKey, hint: 'Just below reasoning emergence?' },
-  { name: '🎲 Mystery 10^24.2', logC: 24.2, capability: 'reasoning' as CapabilityKey, hint: 'Does reasoning emerge here?' },
+  { name: '🎲 Mystery 10^23.8', logC: 23.8, capability: 'reasoning' as CapabilityKey, hint: 'Just below the reasoning cutoff?' },
+  { name: '🎲 Mystery 10^24.2', logC: 24.2, capability: 'reasoning' as CapabilityKey, hint: 'Does the reasoning metric cross the cutoff here?' },
 ];
 
-// Educational feedback for emergence predictions
+// Educational feedback for metric-cutoff predictions
 function getPredictionFeedback(
   prediction: PredictionChoice,
   capability: CapabilityKey,
@@ -161,16 +161,16 @@ function getPredictionFeedback(
 
   if (wasCorrect) {
     if (emerged) {
-      return `Correct! At 10^${logC.toFixed(1)} FLOPS, ${cfg.label} has emerged (${actualAccuracy.toFixed(0)}% accuracy). The threshold is ~10^${cfg.thresholdLogC.toFixed(1)}, so you're ${Math.abs(distanceFromThreshold).toFixed(1)} orders of magnitude past it.`;
+      return `Correct! At 10^${logC.toFixed(1)} FLOPS, the toy ${cfg.label} metric crosses the >=50% cutoff (${actualAccuracy.toFixed(0)}% accuracy). The cutoff is ~10^${cfg.thresholdLogC.toFixed(1)}, so this point is ${Math.abs(distanceFromThreshold).toFixed(1)} orders of magnitude past it.`;
     }
-    return `Correct! At 10^${logC.toFixed(1)} FLOPS, ${cfg.label} hasn't emerged yet (${actualAccuracy.toFixed(0)}% accuracy). Need ~10^${cfg.thresholdLogC.toFixed(1)} FLOPS - that's ${Math.abs(distanceFromThreshold).toFixed(1)} more orders of magnitude!`;
+    return `Correct! At 10^${logC.toFixed(1)} FLOPS, the toy ${cfg.label} metric is below the >=50% cutoff (${actualAccuracy.toFixed(0)}% accuracy). The cutoff is ~10^${cfg.thresholdLogC.toFixed(1)}; this point is ${Math.abs(distanceFromThreshold).toFixed(1)} orders of magnitude below it.`;
   }
 
   // Wrong predictions
   if (emerged) {
-    return `Surprise - it DID emerge! At 10^${logC.toFixed(1)} FLOPS, ${cfg.label} shows ${actualAccuracy.toFixed(0)}% accuracy. The threshold is ~10^${cfg.thresholdLogC.toFixed(1)}, and these jumps happen fast once you cross it.`;
+    return `Surprise - the toy metric crossed the cutoff. At 10^${logC.toFixed(1)} FLOPS, ${cfg.label} shows ${actualAccuracy.toFixed(0)}% accuracy. The cutoff is ~10^${cfg.thresholdLogC.toFixed(1)}, and a thresholded display can change quickly near that point.`;
   }
-  return `Not yet! At 10^${logC.toFixed(1)} FLOPS, ${cfg.label} is still at ${actualAccuracy.toFixed(0)}% accuracy. The sigmoid "flips" around 10^${cfg.thresholdLogC.toFixed(1)} - you need ${Math.abs(distanceFromThreshold).toFixed(1)} more orders of magnitude.`;
+  return `Below cutoff. At 10^${logC.toFixed(1)} FLOPS, the toy ${cfg.label} metric is ${actualAccuracy.toFixed(0)}% accuracy. The smooth sigmoid crosses near 10^${cfg.thresholdLogC.toFixed(1)}; this point is ${Math.abs(distanceFromThreshold).toFixed(1)} orders of magnitude below it.`;
 }
 
 // Dynamic educational insight based on compute scale
@@ -182,7 +182,7 @@ function getScalingInsight(logC: number, metricMode: 'loss' | 'accuracy', select
     return {
       emoji: '📉',
       color: '#ef4444',
-      text: 'Very small scale! Loss is dominated by insufficient model capacity. Need ~100x more compute to see emergent capabilities.'
+      text: 'Very small scale! Loss is dominated by insufficient model capacity. These toy thresholded metrics remain below their cutoffs.'
     }
   }
 
@@ -190,7 +190,7 @@ function getScalingInsight(logC: number, metricMode: 'loss' | 'accuracy', select
     return {
       emoji: '🔍',
       color: '#f59e0b',
-      text: `Below ${cfg.label} threshold. Loss improves predictably but this capability hasn't "emerged" yet. Key insight: capabilities appear suddenly at specific compute scales!`
+      text: `Below the ${cfg.label} metric threshold. Loss can improve smoothly while a thresholded metric has not crossed its cutoff yet.`
     }
   }
 
@@ -198,7 +198,7 @@ function getScalingInsight(logC: number, metricMode: 'loss' | 'accuracy', select
     return {
       emoji: '⚡',
       color: '#8b5cf6',
-      text: `Near the ${cfg.label} emergence threshold! This is where the sigmoid flips - small increases in compute yield dramatic capability gains. The "S-curve" of emergence.`
+      text: `Near the ${cfg.label} metric threshold. A smooth sigmoid can produce a sharp-looking threshold crossing.`
     }
   }
 
@@ -206,7 +206,7 @@ function getScalingInsight(logC: number, metricMode: 'loss' | 'accuracy', select
     return {
       emoji: '🎯',
       color: '#22c55e',
-      text: `${cfg.label} capability has emerged! The Chinchilla insight: optimal allocation means ~20 tokens per parameter. Undertrained models waste compute.`
+      text: `${cfg.label} has crossed the toy metric cutoff. The Chinchilla insight: optimal allocation means ~20 tokens per parameter in this schematic.`
     }
   }
 
@@ -214,7 +214,7 @@ function getScalingInsight(logC: number, metricMode: 'loss' | 'accuracy', select
     return {
       emoji: '🌟',
       color: '#0ea5e9',
-      text: 'GPT-4+ scale: Multiple capabilities have emerged. The irreducible loss floor becomes visible. Further scaling shows diminishing returns per 10x compute.'
+      text: 'Frontier-scale schematic: multiple toy thresholded metrics are high. The irreducible loss floor becomes visible, and further scaling shows diminishing returns per 10x compute.'
     }
   }
 
@@ -757,10 +757,10 @@ export default function ScalingLawsDemo() {
 
   return (
     <section className="card interactive-card">
-      <h2>🎯 Scaling Laws & Emergent Abilities</h2>
+      <h2>🎯 Scaling Laws & Thresholded Metrics</h2>
       <p className="muted">
         Explore how loss falls as a power law with compute, how
-        emergent abilities appear at scale, and why Chinchilla-style
+        thresholded metrics can look abrupt at scale, and why Chinchilla-style
         training balances parameters and data.
       </p>
 
@@ -774,7 +774,7 @@ export default function ScalingLawsDemo() {
       }}>
         <div style={{ marginBottom: '12px' }}>
           <span style={{ fontSize: '0.85rem', color: '#9ca3af', marginRight: '8px' }}>
-            🧪 <strong>Emergence Challenge:</strong> Pick a mystery compute budget:
+            🧪 <strong>Metric-cutoff challenge:</strong> Pick a mystery compute budget:
           </span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '6px' }}>
             {CHALLENGE_SCENARIOS.map(scenario => (
@@ -809,7 +809,7 @@ export default function ScalingLawsDemo() {
               📊 Compute: <strong>10^{challengeLogC.toFixed(1)} FLOPS</strong> | Testing: <strong>{CAPABILITIES[challengeCapability].label}</strong>
             </p>
             <p style={{ fontSize: '0.95rem', marginBottom: '12px', color: '#e5e7eb' }}>
-              🎯 <strong>Will {CAPABILITIES[challengeCapability].label} EMERGE (≥50% accuracy)?</strong>
+              🎯 <strong>Will the toy {CAPABILITIES[challengeCapability].label} metric cross the cutoff (&ge;50% accuracy)?</strong>
             </p>
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '12px' }}>
               <button
@@ -825,7 +825,7 @@ export default function ScalingLawsDemo() {
                   cursor: 'pointer',
                 }}
               >
-                🚀 EMERGES (&ge;50%)
+                🚀 CROSSES CUTOFF (&ge;50%)
               </button>
               <button
                 onClick={() => setPrediction('not-yet')}
@@ -840,7 +840,7 @@ export default function ScalingLawsDemo() {
                   cursor: 'pointer',
                 }}
               >
-                ⏳ NOT YET (&lt;50%)
+                ⏳ BELOW CUTOFF (&lt;50%)
               </button>
             </div>
             <button
@@ -868,7 +868,7 @@ export default function ScalingLawsDemo() {
         {/* No challenge selected */}
         {gamePhase === 'setup' && !activeChallenge && (
           <p style={{ fontSize: '0.9rem', color: '#9ca3af', textAlign: 'center', padding: '12px' }}>
-            👆 Select a mystery compute budget above to test your intuition about emergence thresholds!
+            👆 Select a mystery compute budget above to test your intuition about metric cutoffs!
           </p>
         )}
 
@@ -885,7 +885,7 @@ export default function ScalingLawsDemo() {
             </div>
             <p style={{ fontSize: '0.9rem', color: '#9ca3af' }}>
               Your prediction: <strong style={{ color: lockedPrediction === 'emerges' ? '#22c55e' : '#ef4444' }}>
-                {lockedPrediction === 'emerges' ? '🚀 EMERGES' : '⏳ NOT YET'}
+                {lockedPrediction === 'emerges' ? '🚀 CROSSES CUTOFF' : '⏳ BELOW CUTOFF'}
               </strong>
             </p>
           </div>
@@ -918,7 +918,7 @@ export default function ScalingLawsDemo() {
               borderRadius: '20px',
               fontSize: '0.85rem',
             }}>
-              Your pick: <strong>{lockedPrediction === 'emerges' ? '🚀 EMERGES' : '⏳ NOT YET'}</strong>
+              Your pick: <strong>{lockedPrediction === 'emerges' ? '🚀 CROSSES CUTOFF' : '⏳ BELOW CUTOFF'}</strong>
             </div>
             <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#9ca3af' }}>
               {CAPABILITIES[challengeCapability].label} accuracy: {capabilityAccuracy(Math.pow(10, animatedLogC), challengeCapability).toFixed(0)}%
@@ -953,7 +953,7 @@ export default function ScalingLawsDemo() {
                 {CAPABILITIES[challengeCapability].label}: <strong style={{
                   color: actualAccuracy >= 50 ? '#22c55e' : '#ef4444'
                 }}>
-                  {actualAccuracy.toFixed(0)}% accuracy {actualAccuracy >= 50 ? '✅ EMERGED' : '⏳ NOT YET'}
+                  {actualAccuracy.toFixed(0)}% accuracy {actualAccuracy >= 50 ? '✅ CROSSED CUTOFF' : '⏳ BELOW CUTOFF'}
                 </strong>
               </div>
             </div>
@@ -1231,18 +1231,18 @@ export default function ScalingLawsDemo() {
           </p>
         </div>
 
-        {/* Emergent abilities panel + compute calculator column */}
+        {/* Thresholded metrics panel + compute calculator column */}
         <div className="panel right-column">
           <div className="subpanel emergent-panel">
             <h3 className="panel-title">
-              3. Emergent abilities: threshold behavior
+              3. Thresholded metrics: smooth curves, sharp display
             </h3>
             <svg
               width={EMERGENT_WIDTH}
               height={EMERGENT_HEIGHT}
               className="emergent-chart"
               role="img"
-              aria-label="Emergent task accuracies vs model scale"
+              aria-label="Thresholded task accuracies vs model scale"
             >
               {/* Axes */}
               <line
@@ -1337,7 +1337,7 @@ export default function ScalingLawsDemo() {
                       y={y - 6}
                       className="axis-label"
                     >
-                      Emergence threshold
+                      Metric cutoff
                     </text>
                   </>
                 )
@@ -1355,9 +1355,9 @@ export default function ScalingLawsDemo() {
               />
             </svg>
             <p className="caption">
-              Different tasks “turn on” at different scales. Accuracy
-              stays near zero, then suddenly climbs as you pass a
-              threshold in model scale — an emergent phase transition.
+              In this toy chart, thresholded task accuracy can stay low and then
+              climb quickly as scale changes. The visible jump is a metric effect,
+              not evidence of a literal discontinuity.
             </p>
           </div>
 

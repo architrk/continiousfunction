@@ -1,0 +1,30 @@
+id: gradient-clipping
+title: "Gradient Clipping & Explosion Prevention"
+domain: optimization
+slug: gradient-clipping
+difficulty: 3
+status: review
+importance: important
+prerequisites:
+  - backpropagation
+  - loss-landscapes
+leads_to:
+  - adam
+  - learning-rate-schedules
+related:
+  - weight-initialization
+  - batch-normalization
+tags:
+  - optimization
+  - gradient-clipping
+  - training-stability
+  - llm-training
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate
+short_description: "How to stop one extreme batch from blowing up training: clip the gradient norm, bound the update, and keep moving in roughly the same direction."
+author: codex
+created: "2026-04-21"
+updated: "2026-04-21"
+estimated_read_time: 13

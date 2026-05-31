@@ -3,11 +3,11 @@ import type { KeyboardEvent } from 'react'
 
 import dynamic from 'next/dynamic'
 
-const KVCacheDashboard = dynamic(() => import('../../../../../components/foundations/KVCacheDashboard'), {
+const KVCacheDashboard = dynamic(() => import('@/components/foundations/KVCacheDashboard'), {
   ssr: false,
 })
-const KVCacheViz = dynamic(() => import('../../../../../components/foundations/KVCacheViz'), { ssr: false })
-const GQAViz = dynamic(() => import('../../../../../components/foundations/GQAViz'), { ssr: false })
+const KVCacheViz = dynamic(() => import('@/components/foundations/KVCacheViz'), { ssr: false })
+const GQAViz = dynamic(() => import('@/components/foundations/GQAViz'), { ssr: false })
 
 type TabId = 'dashboard' | 'kvcache' | 'gqa'
 
@@ -20,19 +20,19 @@ export default function EfficientAttentionViz() {
           id: 'dashboard' as const,
           label: 'KV Cache Budget',
           note: 'How context length, layers, and head choices turn into GB and latency.',
-          Component: KVCacheDashboard,
+          render: () => <KVCacheDashboard conceptId="efficient-attention" />,
         },
         {
           id: 'kvcache' as const,
           label: 'KV Cache Mechanics',
           note: 'What gets cached during decoding and why this changes serving cost.',
-          Component: KVCacheViz,
+          render: () => <KVCacheViz conceptId="efficient-attention" />,
         },
         {
           id: 'gqa' as const,
           label: 'GQA',
           note: 'Share K/V heads across many query heads to reduce cache size and bandwidth.',
-          Component: GQAViz,
+          render: () => <GQAViz chrome="notebook" conceptId="efficient-attention" />,
         },
       ] as const,
     []
@@ -40,7 +40,6 @@ export default function EfficientAttentionViz() {
 
   const [active, setActive] = useState<TabId>('dashboard')
   const current = tabs.find((t) => t.id === active) ?? tabs[0]
-  const Active = current.Component
 
   const panelId = `${uid}-panel`
   const tabId = (id: TabId) => `${uid}-tab-${id}`
@@ -82,7 +81,7 @@ export default function EfficientAttentionViz() {
       <div className="note">{current.note}</div>
 
       <div className="panel" role="tabpanel" id={panelId} aria-labelledby={tabId(active)} tabIndex={0}>
-        <Active />
+        {current.render()}
       </div>
 
       <style jsx>{`

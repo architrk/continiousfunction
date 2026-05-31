@@ -21,37 +21,47 @@ A helpful mental model is "paying with different currencies." If you're bottlene
 
 Let the teacher define a distribution over outputs $y$ given input $x$, and let $T>0$ be a temperature:
 
-$$p_{\\theta}^{(T)}(y\\mid x) = \\mathrm{softmax}(z_\\theta(x)/T), \\qquad q_{\\psi}^{(T)}(y\\mid x) = \\mathrm{softmax}(z_\\psi(x)/T).$$
+$$
+p_{\theta}^{(T)}(y\mid x) = \mathrm{softmax}(z_\theta(x)/T), \qquad q_{\psi}^{(T)}(y\mid x) = \mathrm{softmax}(z_\psi(x)/T).
+$$
 
 A standard distillation objective is:
 
-$$\\mathcal L_{\\text{distill}} = T^2\\,\\mathrm{KL}\\!\\left(p_{\\theta}^{(T)}(\\cdot\\mid x)\\ \\|\\ q_{\\psi}^{(T)}(\\cdot\\mid x)\\right).$$
+$$
+\mathcal L_{\text{distill}} = T^2\,\mathrm{KL}\!\left(p_{\theta}^{(T)}(\cdot\mid x)\,\|\,q_{\psi}^{(T)}(\cdot\mid x)\right).
+$$
 
 The temperature $T$ "softens" probabilities so the student can learn *dark knowledge* (relative preferences among non-top classes/tokens). The $T^2$ factor keeps gradient magnitudes comparable as $T$ changes.
 
 ### Quantization (coarse numbers, cheaper memory)
 
-A simple uniform quantizer for a weight $w$ with step size $\\Delta$ is:
+A simple uniform quantizer for a weight $w$ with step size $\Delta$ is:
 
-$$\\tilde w = \\Delta\\cdot\\mathrm{round}(w/\\Delta).$$
+$$
+\tilde w = \Delta\cdot\mathrm{round}(w/\Delta).
+$$
 
 Quantization turns memory and bandwidth savings into speed. In practice you use per-channel scales, careful rounding, and sometimes quantization-aware training to keep error from amplifying.
 
 ### LoRA (low-rank weight updates)
 
-For a weight matrix $W\\in\\mathbb R^{d_{\\text{out}}\\times d_{\\text{in}}}$, LoRA parameterizes the adapted weight as:
+For a weight matrix $W\in\mathbb R^{d_{\text{out}}\times d_{\text{in}}}$, LoRA parameterizes the adapted weight as:
 
-$$W' = W + BA,$$
+$$
+W' = W + BA,
+$$
 
-where $B\\in\\mathbb R^{d_{\\text{out}}\\times r}$, $A\\in\\mathbb R^{r\\times d_{\\text{in}}}$, and $r\\ll\\min(d_{\\text{in}}, d_{\\text{out}})$.
+where $B\in\mathbb R^{d_{\text{out}}\times r}$, $A\in\mathbb R^{r\times d_{\text{in}}}$, and $r\ll\min(d_{\text{in}}, d_{\text{out}})$.
 
-Key fact: $\\mathrm{rank}(BA)\\le r$. You get an expressive update direction while training only $r(d_{\\text{in}}+d_{\\text{out}})$ parameters instead of $d_{\\text{in}}d_{\\text{out}}$.
+Key fact: $\mathrm{rank}(BA)\le r$. You get an expressive update direction while training only $r(d_{\text{in}}+d_{\text{out}})$ parameters instead of $d_{\text{in}}d_{\text{out}}$.
 
 ### Sparse MoE (sparsity buys capacity)
 
-Let $\\{f_e\\}_{e=1}^E$ be expert networks and let a router produce weights $g(x)\\in\\Delta^E$ (a probability simplex). A common MoE layer is:
+Let $\{f_e\}_{e=1}^E$ be expert networks and let a router produce weights $g(x)\in\Delta^E$ (a probability simplex). A common MoE layer is:
 
-$$\\mathrm{MoE}(x) = \\sum_{e\\in\\mathrm{TopK}(g(x))} g_e(x)\\, f_e(x).$$
+$$
+\mathrm{MoE}(x) = \sum_{e\in\mathrm{TopK}(g(x))} g_e(x)\, f_e(x).
+$$
 
 Only a few experts run per token, so *active compute* is small even if total parameter count is huge.
 

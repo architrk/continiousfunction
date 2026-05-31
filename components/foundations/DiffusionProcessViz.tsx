@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { scaleLinear, line as d3Line, curveMonotoneX, randomNormal } from 'd3'
+import { scaleLinear, line as d3Line, curveMonotoneX } from 'd3'
 import { MATH_COLORS } from '../../lib/mathObjects'
+import { emitDemoState } from '../../lib/demoState'
 
 type Particle = {
   id: number
@@ -14,101 +15,63 @@ type Particle = {
 
 type Direction = 'forward' | 'reverse'
 type SpeedPreset = 'slow' | 'normal' | 'fast'
-type GamePhase = 'setup' | 'countdown' | 'running' | 'revealed'
 type ThresholdChoice = 'early' | 'middle' | 'late'
 
-// Prediction game: When does structure disappear?
-const THRESHOLD_CHALLENGES = [
+type PredictionResult = {
+  predicted: ThresholdChoice
+  actualZone: ThresholdChoice
+  actualStep: number
+  targetMatch: number
+} | null
+
+const DIFFUSION_EVIDENCE_STEPS = [
   {
-    name: '🎯 50% Match',
-    targetMatch: 50,
-    description: 'When does structure become half-lost?',
-    hint: 'Watch the match meter as noise accumulates'
+    label: 'Predict',
+    detail: 'Choose the zone before the threshold is shown.',
   },
   {
-    name: '🌫️ 30% Match',
-    targetMatch: 30,
-    description: 'When is most structure destroyed?',
-    hint: 'The exponential noise schedule accelerates late'
+    label: 'Observe',
+    detail: 'Jump to the measured crossing step.',
   },
   {
-    name: '❓ Mystery Threshold',
-    targetMatch: 40,
-    description: 'Predict when match hits this hidden level',
-    hint: 'Somewhere between early blur and total chaos'
+    label: 'Ground',
+    detail: 'Read alpha_bar and the noise coefficient.',
+  },
+  {
+    label: 'Carry',
+    detail: 'Connect schedule shape to visual collapse.',
   },
 ]
 
-const getThresholdFeedback = (
-  predicted: ThresholdChoice,
-  actualStep: number,
-  totalSteps: number,
-  targetMatch: number
-): { correct: boolean; message: string } => {
-  const actualRatio = actualStep / totalSteps
-  const actualZone: ThresholdChoice = actualRatio < 0.33 ? 'early' : actualRatio < 0.66 ? 'middle' : 'late'
-  const correct = predicted === actualZone
-
-  if (correct) {
-    if (actualZone === 'early') {
-      return {
-        correct: true,
-        message: `Correct! The ${targetMatch}% threshold was crossed at step ${actualStep} (${(actualRatio * 100).toFixed(0)}% through). With this noise schedule, structure degrades quickly!`
-      }
-    }
-    if (actualZone === 'middle') {
-      return {
-        correct: true,
-        message: `Correct! Step ${actualStep} (${(actualRatio * 100).toFixed(0)}%) hit the ${targetMatch}% mark. The linear β schedule means noise accumulates steadily.`
-      }
-    }
-    return {
-      correct: true,
-      message: `Correct! It took until step ${actualStep} (${(actualRatio * 100).toFixed(0)}%) to reach ${targetMatch}%. The ᾱₜ product decays slowly at first, then plunges.`
-    }
-  }
-
-  // Wrong prediction feedback
-  if (actualZone === 'early') {
-    return {
-      correct: false,
-      message: `The ${targetMatch}% threshold was crossed at step ${actualStep} — earlier than expected! Remember: ᾱₜ = ∏ᵢ(1-βᵢ) compounds multiplicatively, so even small early noise has big effects.`
-    }
-  }
-  if (actualZone === 'middle') {
-    return {
-      correct: false,
-      message: `Step ${actualStep} hit ${targetMatch}% — in the middle zone. The linear schedule β_t = β_start + t(β_end - β_start) adds noise gradually before accelerating.`
-    }
-  }
-  return {
-    correct: false,
-    message: `It took until step ${actualStep} to reach ${targetMatch}%! Structure persists longer than intuition suggests because √ᾱₜ stays reasonably large until late timesteps.`
-  }
-}
-
-// Fun data distribution presets
-type DistributionPreset = 'blobs' | 'ring' | 'spiral' | 'smiley'
-
-const DISTRIBUTION_PRESETS: Record<DistributionPreset, { name: string; emoji: string; description: string }> = {
-  blobs: { name: 'Two Blobs', emoji: '🔵🔵', description: 'Classic Gaussian mixture' },
-  ring: { name: 'Ring', emoji: '⭕', description: 'Circular distribution' },
-  spiral: { name: 'Spiral', emoji: '🌀', description: 'Spiral pattern' },
-  smiley: { name: 'Smiley', emoji: '😊', description: 'Everyone loves a smiley!' },
-}
-
 // Speed presets
 const SPEED_PRESETS: Record<SpeedPreset, { name: string; interval: number }> = {
-  slow: { name: '🐢 Slow', interval: 160 },
-  normal: { name: '🚶 Normal', interval: 80 },
-  fast: { name: '🚀 Fast', interval: 30 },
+  slow: { name: 'Slow', interval: 160 },
+  normal: { name: 'Normal', interval: 80 },
+  fast: { name: 'Fast', interval: 30 },
 }
 
-// Compute similarity between current particle distribution and target (for Freeze Frame game)
+const MATCH_SIGMA = 0.9
+const MATCH_EPSILON = 1e-6
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+function positionsAtAlphaBar(particles: Particle[], alphaBar: number): { x: number; y: number }[] {
+  const sqrtA = Math.sqrt(alphaBar)
+  const sqrtNoise = Math.sqrt(1 - alphaBar)
+
+  return particles.map((p) => ({
+    x: sqrtA * p.x0 + sqrtNoise * p.epsX,
+    y: sqrtA * p.y0 + sqrtNoise * p.epsY,
+  }))
+}
+
+// Compute a toy overlap proxy between current particles and target centers.
 const computeDistributionMatch = (
   particles: { x: number; y: number }[],
   targetCenters: { x: number; y: number }[],
-  sigma: number = 0.6
+  sigma: number = MATCH_SIGMA
 ): number => {
   // For each particle, compute distance to nearest target center
   let totalScore = 0
@@ -127,15 +90,15 @@ const computeDistributionMatch = (
 // Educational insights for different stages
 const getStageInsight = (tNormalized: number, direction: Direction): string => {
   if (direction === 'forward') {
-    if (tNormalized < 0.2) return '💡 Early stage: Data structure still visible. Noise is subtle.'
-    if (tNormalized < 0.5) return '🌫️ Middle stage: Clusters starting to blur. Information being destroyed.'
-    if (tNormalized < 0.8) return '☁️ Late stage: Almost pure noise. Very hard to see original structure.'
-    return '🎲 Final stage: Pure Gaussian noise. No trace of original data!'
+    if (tNormalized < 0.2) return 'Early noising: the two-blob structure is still visually reliable.'
+    if (tNormalized < 0.5) return 'Middle noising: clusters blur as the clean coefficient shrinks.'
+    if (tNormalized < 0.8) return 'Late noising: Gaussian noise dominates most visible structure.'
+    return 'High-noise step: the sampled cloud is dominated by epsilon; the original two-blob structure is no longer visually reliable.'
   } else {
-    if (tNormalized > 0.8) return '🎲 Starting from noise: Score field begins guiding particles.'
-    if (tNormalized > 0.5) return '✨ Recovery begins: Faint structure emerging from chaos.'
-    if (tNormalized > 0.2) return '🔮 Structure forming: Clusters becoming visible again!'
-    return '🎯 Recovery complete: Data distribution restored from pure noise!'
+    if (tNormalized > 0.8) return 'Backward replay: using the stored clean sample and noise vector to walk the same toy path backward.'
+    if (tNormalized > 0.5) return 'Backward replay: the clean-data coefficient grows and the two-blob path becomes visible again.'
+    if (tNormalized > 0.2) return 'Backward replay: this is not a learned sampler; a real reverse model must infer denoising directions.'
+    return 'Backward replay reaches the stored clean sample. Real generation does not get to know x0.'
   }
 }
 
@@ -149,6 +112,8 @@ interface ScheduleStep {
 interface DiffusionProcessVisualizerProps {
   numParticles?: number
   numSteps?: number
+  chrome?: 'legacy' | 'notebook'
+  conceptId?: string
 }
 
 // --- Diffusion + visualization constants ---
@@ -161,9 +126,10 @@ const DATA_MEANS = [
 const GAUSS_SIGMA = 0.6
 const GAUSS_SIGMA2 = GAUSS_SIGMA * GAUSS_SIGMA
 
-// Simple linear beta schedule like classic DDPM
+// Compressed linear beta schedule for an 80-step teaching demo.
+// Real DDPM schedules usually use many more steps.
 const BETA_START = 0.0005
-const BETA_END = 0.03
+const BETA_END = 0.06
 
 const X_DOMAIN: [number, number] = [-3.5, 3.5]
 const Y_DOMAIN: [number, number] = [-3.5, 3.5]
@@ -215,6 +181,29 @@ function mixHexColors(a: string, b: string, t: number): string {
   )
 }
 
+function makeRng(seed: number): () => number {
+  let s = seed >>> 0
+  return () => {
+    s += 0x6d2b79f5
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function sampleNormal(rng: () => number, mean = 0, std = 1): number {
+  let u = 0
+  let v = 0
+  while (u === 0) u = rng()
+  while (v === 0) v = rng()
+  return mean + std * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v)
+}
+
+function getZoneFromStep(step: number, totalSteps: number): ThresholdChoice {
+  const ratio = step / Math.max(1, totalSteps)
+  return ratio < 0.33 ? 'early' : ratio < 0.66 ? 'middle' : 'late'
+}
+
 // Approximate score ∇ log p(x) for a 2‑component Gaussian mixture,
 // then scale by alphaStrength so it fades out as we add noise.
 function scoreVector(x: number, y: number, alphaStrength: number): [number, number] {
@@ -249,20 +238,18 @@ function scoreVector(x: number, y: number, alphaStrength: number): [number, numb
 export default function DiffusionProcessVisualizer({
   numParticles = 400,
   numSteps = 80,
+  chrome = 'legacy',
+  conceptId = 'diffusion',
 }: DiffusionProcessVisualizerProps) {
+  const isNotebook = chrome === 'notebook'
+  const showScoreProxy = chrome === 'legacy'
   const [step, setStep] = useState(0)
   const [direction, setDirection] = useState<Direction>('forward')
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<SpeedPreset>('normal')
-  const [distribution, setDistribution] = useState<DistributionPreset>('blobs')
-
-  // Prediction game state
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
-  const [activeChallenge, setActiveChallenge] = useState<typeof THRESHOLD_CHALLENGES[0] | null>(null)
+  const [sampleSeed, setSampleSeed] = useState(7)
   const [prediction, setPrediction] = useState<ThresholdChoice | null>(null)
-  const [lockedPrediction, setLockedPrediction] = useState<ThresholdChoice | null>(null)
-  const [countdown, setCountdown] = useState(0)
-  const [thresholdCrossedStep, setThresholdCrossedStep] = useState<number | null>(null)
+  const [predictionResult, setPredictionResult] = useState<PredictionResult>(null)
 
   const clampedSteps = Math.max(2, numSteps)
   const clampedParticles = Math.max(20, numParticles)
@@ -316,26 +303,47 @@ export default function DiffusionProcessVisualizer({
 
   const particles = useMemo<Particle[]>(() => {
     const pts: Particle[] = []
-
-    const clusterNormals = DATA_MEANS.map((mu) => ({
-      randX: randomNormal(mu.x, GAUSS_SIGMA),
-      randY: randomNormal(mu.y, GAUSS_SIGMA),
-    }))
-
-    const randNoiseX = randomNormal(0, 1)
-    const randNoiseY = randomNormal(0, 1)
+    const rng = makeRng(sampleSeed)
 
     for (let i = 0; i < clampedParticles; i++) {
       const clusterIndex = i % DATA_MEANS.length
-      const { randX, randY } = clusterNormals[clusterIndex]
-      const x0 = randX()
-      const y0 = randY()
-      const epsX = randNoiseX()
-      const epsY = randNoiseY()
+      const mu = DATA_MEANS[clusterIndex]
+      const x0 = sampleNormal(rng, mu.x, GAUSS_SIGMA)
+      const y0 = sampleNormal(rng, mu.y, GAUSS_SIGMA)
+      const epsX = sampleNormal(rng, 0, 1)
+      const epsY = sampleNormal(rng, 0, 1)
       pts.push({ id: i, x0, y0, epsX, epsY })
     }
     return pts
-  }, [clampedParticles])
+  }, [clampedParticles, sampleSeed])
+
+  const targetCenters = useMemo(
+    () => DATA_MEANS.map((m) => ({ x: m.x, y: m.y })),
+    []
+  )
+
+  const matchBaselines = useMemo(() => {
+    const clean = computeDistributionMatch(
+      particles.map((p) => ({ x: p.x0, y: p.y0 })),
+      targetCenters
+    )
+    const finalAlphaBar = schedule[clampedSteps - 1]?.alphaBar ?? 0
+    const final = computeDistributionMatch(
+      positionsAtAlphaBar(particles, finalAlphaBar),
+      targetCenters
+    )
+
+    return { clean, final }
+  }, [clampedSteps, particles, schedule, targetCenters])
+
+  const normalizeMatchScore = useMemo(() => {
+    const denom = matchBaselines.clean - matchBaselines.final
+
+    return (raw: number) =>
+      denom > MATCH_EPSILON
+        ? clamp01((raw - matchBaselines.final) / denom)
+        : clamp01(raw)
+  }, [matchBaselines])
 
   // Positions at time step t using DDPM forward equation:
   // x_t = sqrt(ᾱ_t) * x_0 + sqrt(1 - ᾱ_t) * ε
@@ -353,7 +361,7 @@ export default function DiffusionProcessVisualizer({
     [particles, sqrtAlphaBar, sqrtOneMinusAlphaBar, noiseLevel]
   )
 
-  // --- Score field grid (fixed grid in data space) ---
+  // --- Restoring-direction proxy grid (fixed grid in data space) ---
 
   const scoreGrid = useMemo(
     () => {
@@ -448,336 +456,242 @@ export default function DiffusionProcessVisualizer({
     return () => window.clearInterval(id)
   }, [isPlaying, direction, clampedSteps, speed])
 
-  // Countdown effect for prediction game
-  useEffect(() => {
-    if (gamePhase !== 'countdown') return
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(c => c - 1), 700)
-      return () => clearTimeout(timer)
-    } else {
-      setGamePhase('running')
-      setStep(0)
-      setDirection('forward')
-      setIsPlaying(true)
-      setThresholdCrossedStep(null)
-    }
-  }, [gamePhase, countdown])
-
-  // Game control functions
-  const selectChallenge = (challenge: typeof THRESHOLD_CHALLENGES[0]) => {
-    setActiveChallenge(challenge)
-    setPrediction(null)
-    setLockedPrediction(null)
-    setThresholdCrossedStep(null)
-    setGamePhase('setup')
-    setStep(0)
-    setIsPlaying(false)
-  }
-
-  const startChallenge = () => {
-    if (!prediction || !activeChallenge) return
-    setLockedPrediction(prediction)
-    setCountdown(3)
-    setGamePhase('countdown')
-  }
-
-  const resetGame = () => {
-    setGamePhase('setup')
-    setActiveChallenge(null)
-    setPrediction(null)
-    setLockedPrediction(null)
-    setThresholdCrossedStep(null)
-    setStep(0)
-    setIsPlaying(false)
-  }
-
   // Get current stage insight
   const stageInsight = getStageInsight(tNormalized, direction)
 
-  // Compute match score for Freeze Frame game
   const matchScore = useMemo(() => {
-    const positions = particlePositions.map(p => ({ x: p.x, y: p.y }))
-    const targets = DATA_MEANS.map(m => ({ x: m.x, y: m.y }))
-    return computeDistributionMatch(positions, targets)
-  }, [particlePositions])
+    const raw = computeDistributionMatch(
+      particlePositions.map(p => ({ x: p.x, y: p.y })),
+      targetCenters
+    )
+    return normalizeMatchScore(raw)
+  }, [normalizeMatchScore, particlePositions, targetCenters])
 
   const matchPercent = Math.round(matchScore * 100)
-  const matchLabel = matchPercent > 80 ? '🎯 Excellent!' : matchPercent > 60 ? '✨ Good' : matchPercent > 40 ? '👍 Getting there' : '🌫️ Noisy'
+  const matchLabel = matchPercent > 75 ? 'strong structure' : matchPercent > 50 ? 'visible structure' : matchPercent > 25 ? 'fading structure' : 'mostly noise'
 
-  // Track when threshold is crossed during game
-  // (Placed after matchPercent is computed to satisfy hook ordering)
+  const thresholdCrossing = useMemo(() => {
+    const targetMatch = 50
+
+    for (let candidateStep = 0; candidateStep < clampedSteps; candidateStep++) {
+      const scheduleStep = schedule[candidateStep]
+      const positions = positionsAtAlphaBar(particles, scheduleStep.alphaBar)
+      const rawMatch = computeDistributionMatch(
+        positions,
+        targetCenters
+      )
+      const match = normalizeMatchScore(rawMatch)
+
+      if (Math.round(match * 100) <= targetMatch) {
+        return {
+          actualStep: candidateStep,
+          actualZone: getZoneFromStep(candidateStep, clampedSteps - 1),
+          targetMatch,
+        }
+      }
+    }
+
+    return {
+      actualStep: clampedSteps - 1,
+      actualZone: 'late' as const,
+      targetMatch,
+    }
+  }, [clampedSteps, normalizeMatchScore, particles, schedule, targetCenters])
+
+  const predictionSummary = useMemo(() => {
+    if (!predictionResult) return null
+    if (predictionResult.predicted === predictionResult.actualZone) {
+      return `Matched: in this two-blob toy with this compressed beta schedule, the normalized ${predictionResult.targetMatch}% structure-match proxy crosses in the ${predictionResult.actualZone} zone at step ${predictionResult.actualStep}.`
+    }
+    return `The crossing happens in the ${predictionResult.actualZone} zone at step ${predictionResult.actualStep}, not the ${predictionResult.predicted} zone. The proxy is normalized between the clean cloud and the final high-noise cloud; alpha_bar_t controls how much of x0 remains.`
+  }, [predictionResult])
+  const diffusionEvidenceActiveIndex = predictionResult ? 3 : prediction ? 1 : 0
+  const diffusionEvidencePhase = DIFFUSION_EVIDENCE_STEPS[diffusionEvidenceActiveIndex].label.toLowerCase()
+
+  const checkPrediction = () => {
+    if (!prediction) return
+    setPredictionResult({
+      predicted: prediction,
+      actualZone: thresholdCrossing.actualZone,
+      actualStep: thresholdCrossing.actualStep,
+      targetMatch: thresholdCrossing.targetMatch,
+    })
+    setStep(thresholdCrossing.actualStep)
+    setIsPlaying(false)
+    setDirection('forward')
+  }
+
+  const resetPredictionCheck = () => {
+    setPrediction(null)
+    setPredictionResult(null)
+  }
+
   useEffect(() => {
-    if (gamePhase !== 'running' || !activeChallenge) return
-
-    // Check if we've crossed the threshold
-    if (thresholdCrossedStep === null && matchPercent <= activeChallenge.targetMatch) {
-      setThresholdCrossedStep(safeStep)
-      setIsPlaying(false)
-      setGamePhase('revealed')
-    }
-
-    // If we reach the end without crossing, reveal anyway
-    if (safeStep >= clampedSteps - 1 && thresholdCrossedStep === null) {
-      setThresholdCrossedStep(clampedSteps - 1)
-      setIsPlaying(false)
-      setGamePhase('revealed')
-    }
-  }, [gamePhase, activeChallenge, matchPercent, safeStep, clampedSteps, thresholdCrossedStep])
+    emitDemoState({
+      conceptId,
+      label: 'Diffusion forward-process demo',
+      summary: `Two-blob toy at step ${safeStep}/${clampedSteps - 1}: x_t mixes clean data with Gaussian noise through alpha_bar_t.`,
+      values: [
+        'evidence loop: predict -> observe -> ground -> carry',
+        `evidence phase: ${diffusionEvidencePhase}`,
+        `alpha_bar: ${alphaBar.toFixed(3)}`,
+        `noise std sqrt(1-alpha_bar): ${noiseLevel.toFixed(3)}`,
+        `structure-match proxy: ${matchPercent}% of clean-to-final diagnostic`,
+        `direction: ${direction === 'forward' ? 'forward noising' : 'backward replay'}`,
+        predictionResult
+          ? `prediction check: ${predictionResult.predicted} guess, actual ${predictionResult.actualZone} at step ${predictionResult.actualStep}`
+          : 'prediction check: not run',
+      ],
+    })
+  }, [
+    alphaBar,
+    clampedSteps,
+    conceptId,
+    direction,
+    diffusionEvidencePhase,
+    matchPercent,
+    noiseLevel,
+    predictionResult,
+    safeStep,
+  ])
 
   return (
     <section
-      className="card interactive-card diffusion-card"
+      className={`card interactive-card diffusion-card ${chrome}`}
       style={{
         background: BG_COLOR,
-        borderRadius: '16px',
-        padding: '18px 20px 20px',
+        borderRadius: isNotebook ? '18px' : '16px',
+        padding: isNotebook ? '16px' : '18px 20px 20px',
         color: '#e5e7eb',
+        border: isNotebook ? '0' : undefined,
+        boxShadow: isNotebook ? 'none' : undefined,
       }}
     >
-      <h2 style={{ marginBottom: '0.25rem' }}>🌊 Diffusion Process Explorer</h2>
-      <p className="muted" style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-        Drag <code>t</code> from 0 (clean data) to 1 (pure noise). The forward
-        process gradually adds Gaussian noise; the reverse process learns a
-        score field that nudges samples back toward the data manifold.
-      </p>
+      {!isNotebook ? (
+        <>
+          <h2 style={{ marginBottom: '0.25rem' }}>Diffusion Process Explorer</h2>
+          <p className="muted" style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            Drag <code>t</code> from 0 (clean data) to 1 (noise). The forward
+            process adds Gaussian noise; backward replay follows the stored
+            clean sample and noise path rather than a learned sampler.
+          </p>
+        </>
+      ) : null}
 
-      {/* Prediction Game Section */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(59, 130, 246, 0.05))',
-        border: '1px solid rgba(20, 184, 166, 0.3)',
-        borderRadius: '12px',
-        padding: '16px',
-        marginBottom: '16px',
-      }}>
+      <div
+        className="diffusionPredictionPanel"
+        data-child-demo-gate="diffusion-structure-threshold"
+        style={{
+          background: 'linear-gradient(135deg, rgba(20, 184, 166, 0.1), rgba(59, 130, 246, 0.05))',
+          border: '1px solid rgba(20, 184, 166, 0.3)',
+          borderRadius: '12px',
+          padding: '16px',
+          marginBottom: '16px',
+        }}
+      >
         <h3 style={{ fontSize: '1rem', marginBottom: '8px', color: '#e5e7eb' }}>
-          🎮 Noise Threshold Challenge
+          Prediction check: when does structure fade?
         </h3>
         <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginBottom: '12px' }}>
-          Predict when the data structure will degrade to a target match level.
+          Before checking, predict whether the 50% structure-match proxy crosses early, in the middle, or late.
         </p>
 
-        {/* Challenge selection */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-          {THRESHOLD_CHALLENGES.map((challenge) => (
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          {(['early', 'middle', 'late'] as ThresholdChoice[]).map((choice) => (
             <button
-              key={challenge.name}
-              onClick={() => selectChallenge(challenge)}
-              disabled={gamePhase === 'running' || gamePhase === 'countdown'}
-              style={{
-                padding: '6px 12px',
-                background: activeChallenge?.name === challenge.name
-                  ? 'rgba(20, 184, 166, 0.3)'
-                  : 'rgba(20, 184, 166, 0.1)',
-                border: `1px solid ${activeChallenge?.name === challenge.name ? '#14b8a6' : 'rgba(20, 184, 166, 0.3)'}`,
-                borderRadius: '6px',
-                color: '#e5e7eb',
-                fontSize: '0.8rem',
-                cursor: gamePhase === 'running' || gamePhase === 'countdown' ? 'not-allowed' : 'pointer',
-                opacity: gamePhase === 'running' || gamePhase === 'countdown' ? 0.5 : 1,
+              key={choice}
+              type="button"
+              onClick={() => {
+                setPrediction(choice)
+                setPredictionResult(null)
               }}
-              title={challenge.description}
+              aria-pressed={prediction === choice}
+              style={{
+                padding: '10px 18px',
+                background: prediction === choice
+                  ? 'rgba(20, 184, 166, 0.22)'
+                  : 'rgba(255, 255, 255, 0.05)',
+                border: `2px solid ${prediction === choice ? '#14b8a6' : 'rgba(255, 255, 255, 0.1)'}`,
+                borderRadius: '8px',
+                color: '#e5e7eb',
+                fontSize: '0.92rem',
+                fontWeight: prediction === choice ? 650 : 450,
+                cursor: 'pointer',
+              }}
             >
-              {challenge.name}
+              {choice === 'early' ? 'Early (0-33%)' : choice === 'middle' ? 'Middle (33-66%)' : 'Late (66-100%)'}
             </button>
           ))}
         </div>
-
-        {/* Setup phase */}
-        {gamePhase === 'setup' && activeChallenge && (
-          <div>
-            <p style={{ fontSize: '0.9rem', marginBottom: '10px', color: '#e5e7eb' }}>
-              🎯 <strong>When will the match drop to {activeChallenge.targetMatch}%?</strong>
-            </p>
-            <p style={{ fontSize: '0.8rem', color: '#9ca3af', marginBottom: '10px' }}>
-              {activeChallenge.hint}
-            </p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
-              {(['early', 'middle', 'late'] as ThresholdChoice[]).map((choice) => (
-                <button
-                  key={choice}
-                  onClick={() => setPrediction(choice)}
-                  style={{
-                    padding: '10px 20px',
-                    background: prediction === choice
-                      ? choice === 'early' ? 'rgba(239, 68, 68, 0.4)'
-                        : choice === 'middle' ? 'rgba(250, 204, 21, 0.4)'
-                        : 'rgba(34, 197, 94, 0.4)'
-                      : 'rgba(255, 255, 255, 0.05)',
-                    border: `2px solid ${prediction === choice
-                      ? choice === 'early' ? '#ef4444' : choice === 'middle' ? '#facc15' : '#22c55e'
-                      : 'rgba(255, 255, 255, 0.1)'}`,
-                    borderRadius: '8px',
-                    color: '#e5e7eb',
-                    fontSize: '0.95rem',
-                    fontWeight: prediction === choice ? 600 : 400,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {choice === 'early' ? '🔴 Early (0-33%)' : choice === 'middle' ? '🟡 Middle (33-66%)' : '🟢 Late (66-100%)'}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={startChallenge}
-              disabled={!prediction}
-              style={{
-                padding: '12px 24px',
-                background: prediction
-                  ? 'linear-gradient(135deg, #14b8a6, #0ea5e9)'
-                  : 'rgba(20, 184, 166, 0.2)',
-                border: 'none',
-                borderRadius: '8px',
-                color: prediction ? '#fff' : '#9ca3af',
-                fontSize: '1rem',
-                fontWeight: 600,
-                cursor: prediction ? 'pointer' : 'not-allowed',
-                opacity: prediction ? 1 : 0.5,
-              }}
+        <div className="evidenceStrip" aria-label="Diffusion evidence loop">
+          {DIFFUSION_EVIDENCE_STEPS.map((step, index) => (
+            <div
+              key={step.label}
+              className={`evidenceStep ${index === diffusionEvidenceActiveIndex ? 'active' : ''} ${
+                index < diffusionEvidenceActiveIndex ? 'complete' : ''
+              }`}
             >
-              🌊 Start Forward Diffusion
-            </button>
-          </div>
-        )}
-
-        {/* Countdown phase */}
-        {gamePhase === 'countdown' && (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{
-              fontSize: '4rem',
-              fontWeight: 'bold',
-              color: '#14b8a6',
-              textShadow: '0 0 30px rgba(20, 184, 166, 0.5)',
-            }}>
-              {countdown === 0 ? 'GO!' : countdown}
+              <span>{index + 1}</span>
+              <strong>{step.label}</strong>
+              <small>{step.detail}</small>
             </div>
-            <p style={{ fontSize: '0.9rem', color: '#9ca3af' }}>
-              Your prediction: <strong style={{
-                color: lockedPrediction === 'early' ? '#ef4444' : lockedPrediction === 'middle' ? '#facc15' : '#22c55e'
-              }}>
-                {lockedPrediction === 'early' ? 'Early' : lockedPrediction === 'middle' ? 'Middle' : 'Late'}
-              </strong>
-            </p>
-          </div>
-        )}
-
-        {/* Running phase */}
-        {gamePhase === 'running' && activeChallenge && (
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '1rem', color: '#e5e7eb', marginBottom: '8px' }}>
-              ⚡ Diffusing... Step {safeStep}/{clampedSteps - 1}
-            </p>
-            <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
-              Target: {activeChallenge.targetMatch}% | Current Match: {matchPercent}%
-            </p>
-            <div style={{
-              display: 'inline-block',
-              padding: '6px 14px',
-              background: lockedPrediction === 'early' ? 'rgba(239, 68, 68, 0.2)'
-                : lockedPrediction === 'middle' ? 'rgba(250, 204, 21, 0.2)'
-                : 'rgba(34, 197, 94, 0.2)',
-              borderRadius: '20px',
-              fontSize: '0.85rem',
-              marginTop: '8px',
-            }}>
-              Your prediction: <strong>{lockedPrediction}</strong>
-            </div>
-          </div>
-        )}
-
-        {/* Revealed phase */}
-        {gamePhase === 'revealed' && activeChallenge && lockedPrediction && thresholdCrossedStep !== null && (
-          <div>
-            {(() => {
-              const feedback = getThresholdFeedback(lockedPrediction, thresholdCrossedStep, clampedSteps - 1, activeChallenge.targetMatch)
-              return (
-                <>
-                  <div style={{
-                    textAlign: 'center',
-                    padding: '16px',
-                    background: feedback.correct
-                      ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.05))'
-                      : 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.05))',
-                    borderRadius: '10px',
-                    marginBottom: '12px',
-                  }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '8px' }}>
-                      {feedback.correct ? '🎉' : '🤔'}
-                    </div>
-                    <div style={{
-                      fontSize: '1.2rem',
-                      fontWeight: 'bold',
-                      color: feedback.correct ? '#22c55e' : '#ef4444',
-                      marginBottom: '8px',
-                    }}>
-                      {feedback.correct ? 'Correct!' : 'Not quite!'}
-                    </div>
-                    <div style={{ fontSize: '0.9rem', color: '#e5e7eb' }}>
-                      Threshold crossed at step <strong>{thresholdCrossedStep}</strong>
-                    </div>
-                  </div>
-                  <div style={{
-                    padding: '12px',
-                    background: 'rgba(0, 0, 0, 0.2)',
-                    borderRadius: '8px',
-                    fontSize: '0.85rem',
-                    lineHeight: 1.6,
-                    color: '#9ca3af',
-                  }}>
-                    💡 {feedback.message}
-                  </div>
-                  <button
-                    onClick={resetGame}
-                    style={{
-                      marginTop: '12px',
-                      padding: '10px 20px',
-                      background: 'rgba(20, 184, 166, 0.2)',
-                      border: '1px solid rgba(20, 184, 166, 0.4)',
-                      borderRadius: '8px',
-                      color: '#e5e7eb',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    🔄 Try Another Challenge
-                  </button>
-                </>
-              )
-            })()}
-          </div>
-        )}
-
-        {/* No challenge selected */}
-        {!activeChallenge && gamePhase === 'setup' && (
-          <p style={{ fontSize: '0.85rem', color: '#6b7280', fontStyle: 'italic' }}>
-            Select a challenge above to test your intuition about diffusion dynamics!
-          </p>
-        )}
-      </div>
-
-      {/* Distribution presets */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.8rem', color: '#9ca3af', marginRight: '4px' }}>Distribution:</span>
-        {(Object.entries(DISTRIBUTION_PRESETS) as [DistributionPreset, typeof DISTRIBUTION_PRESETS[DistributionPreset]][]).map(([id, preset]) => (
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           <button
-            key={id}
             type="button"
-            onClick={() => setDistribution(id)}
+            onClick={checkPrediction}
+            disabled={!prediction}
             style={{
-              padding: '4px 10px',
-              borderRadius: '999px',
-              border: distribution === id ? '1px solid #14b8a6' : '1px solid rgba(148, 163, 184, 0.4)',
-              background: distribution === id ? 'rgba(20, 184, 166, 0.15)' : 'rgba(15, 23, 42, 0.8)',
-              color: '#e5e7eb',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              border: 'none',
+              background: prediction ? 'linear-gradient(135deg, #14b8a6, #0ea5e9)' : 'rgba(20, 184, 166, 0.2)',
+              color: prediction ? '#fff' : '#9ca3af',
+              cursor: prediction ? 'pointer' : 'not-allowed',
+              fontWeight: 650,
             }}
-            title={preset.description}
           >
-            {preset.emoji} {preset.name}
+            Check threshold
           </button>
-        ))}
+          <button
+            type="button"
+            className="ghost"
+            onClick={resetPredictionCheck}
+          >
+            Reset check
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              setSampleSeed((seed) => seed + 1)
+              setPredictionResult(null)
+              setStep(0)
+              setIsPlaying(false)
+              setDirection('forward')
+            }}
+          >
+            Resample particles
+          </button>
+        </div>
+        {predictionSummary ? (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              marginTop: '12px',
+              padding: '12px',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px',
+              fontSize: '0.86rem',
+              lineHeight: 1.6,
+              color: '#cbd5e1',
+            }}
+          >
+            {predictionSummary}
+          </div>
+        ) : null}
       </div>
 
       {/* Stage insight box */}
@@ -792,7 +706,18 @@ export default function DiffusionProcessVisualizer({
         {stageInsight}
       </div>
 
-      {/* Match score meter - Freeze Frame game */}
+      <div style={{
+        padding: '10px 14px',
+        background: 'rgba(15, 23, 42, 0.8)',
+        borderRadius: '8px',
+        marginBottom: '0.75rem',
+        fontSize: '0.9rem',
+        fontFamily: 'var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
+        color: '#cbd5e1',
+      }}>
+        x_t = {sqrtAlphaBar.toFixed(2)} x_0 + {sqrtOneMinusAlphaBar.toFixed(2)} epsilon
+      </div>
+
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -803,7 +728,7 @@ export default function DiffusionProcessVisualizer({
         marginBottom: '1rem',
       }}>
         <span style={{ fontSize: '0.85rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>
-          🎯 Match:
+          Structure-match proxy:
         </span>
         <div style={{
           flex: 1,
@@ -850,7 +775,7 @@ export default function DiffusionProcessVisualizer({
           width={MAIN_WIDTH}
           height={MAIN_HEIGHT}
           role="img"
-          aria-label="2D diffusion process with particles and score vectors"
+          aria-label={showScoreProxy ? '2D diffusion process with particles and score proxy vectors' : '2D diffusion process with clean and noised particles'}
           style={{
             borderRadius: '12px',
             background:
@@ -882,19 +807,33 @@ export default function DiffusionProcessVisualizer({
             strokeWidth={1}
           />
 
-          {/* Score vectors (∇ log p_t(x)) */}
-          <g aria-label="score field vectors">
-            {scoreVectors.map((v) => (
-              <line
-                key={v.id}
-                x1={v.x1}
-                y1={v.y1}
-                x2={v.x2}
-                y2={v.y2}
-                stroke={SCORE_ORANGE}
-                strokeWidth={1.2}
-                strokeOpacity={0.35 + 0.35 * Math.min(v.mag, 1)}
-                markerEnd="url(#score-arrow-head)"
+          {showScoreProxy ? (
+            <g aria-label="restoring-direction proxy vectors">
+              {scoreVectors.map((v) => (
+                <line
+                  key={v.id}
+                  x1={v.x1}
+                  y1={v.y1}
+                  x2={v.x2}
+                  y2={v.y2}
+                  stroke={SCORE_ORANGE}
+                  strokeWidth={1.2}
+                  strokeOpacity={0.35 + 0.35 * Math.min(v.mag, 1)}
+                  markerEnd="url(#score-arrow-head)"
+                />
+              ))}
+            </g>
+          ) : null}
+
+          <g aria-label="faint clean particle positions">
+            {particles.map((p) => (
+              <circle
+                key={`clean-${p.id}`}
+                cx={xScale(p.x0)}
+                cy={yScale(p.y0)}
+                r={2}
+                fill={TEAL}
+                fillOpacity={0.18}
               />
             ))}
           </g>
@@ -942,24 +881,28 @@ export default function DiffusionProcessVisualizer({
               data sample x_t
             </text>
 
-            <line
-              x1={0}
-              y1={15}
-              x2={14}
-              y2={15}
-              stroke={SCORE_ORANGE}
-              strokeWidth={1.2}
-              markerEnd="url(#score-arrow-head)"
-            />
-            <text
-              x={18}
-              y={18}
-              fontSize={10}
-              fill="#e5e7eb"
-              style={{ fontFamily: 'system-ui, sans-serif' }}
-            >
-              score ∇ log p_t(x)
-            </text>
+            {showScoreProxy ? (
+              <>
+                <line
+                  x1={0}
+                  y1={15}
+                  x2={14}
+                  y2={15}
+                  stroke={SCORE_ORANGE}
+                  strokeWidth={1.2}
+                  markerEnd="url(#score-arrow-head)"
+                />
+                <text
+                  x={18}
+                  y={18}
+                  fontSize={10}
+                  fill="#e5e7eb"
+                  style={{ fontFamily: 'system-ui, sans-serif' }}
+                >
+                  restoring-direction proxy
+                </text>
+              </>
+            ) : null}
           </g>
         </svg>
 
@@ -1153,7 +1096,7 @@ export default function DiffusionProcessVisualizer({
             type="button"
             onClick={() => setIsPlaying((prev) => !prev)}
           >
-            {isPlaying ? '⏸ Pause' : '▶ Play'}
+            {isPlaying ? 'Pause' : 'Play'}
           </button>
           <button
             type="button"
@@ -1164,7 +1107,7 @@ export default function DiffusionProcessVisualizer({
           >
             {direction === 'forward'
               ? 'Forward: data → noise'
-              : 'Reverse: noise → data'}
+              : 'Backward replay: noise → stored data path'}
           </button>
           <button
             type="button"
@@ -1196,11 +1139,118 @@ export default function DiffusionProcessVisualizer({
                 cursor: 'pointer',
               }}
             >
-              {preset.name}
+            {preset.name}
             </button>
           ))}
         </div>
       </div>
+      <style jsx>{`
+        .evidenceStrip {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 0.45rem;
+          margin: 0 0 0.85rem;
+          padding: 0.5rem;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 10px;
+          background: rgba(2, 6, 23, 0.42);
+        }
+
+        .evidenceStep {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 0.16rem 0.38rem;
+          min-width: 0;
+          padding: 0.5rem;
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          border-radius: 8px;
+          background: rgba(15, 23, 42, 0.64);
+          color: #cbd5e1;
+        }
+
+        .evidenceStep span {
+          display: inline-grid;
+          width: 1.25rem;
+          height: 1.25rem;
+          place-items: center;
+          border-radius: 999px;
+          background: rgba(148, 163, 184, 0.16);
+          color: #cbd5e1;
+          font-size: 0.7rem;
+          font-weight: 800;
+        }
+
+        .evidenceStep strong,
+        .evidenceStep small {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        .evidenceStep strong {
+          color: #f8fafc;
+          font-size: 0.78rem;
+          line-height: 1.2;
+        }
+
+        .evidenceStep small {
+          grid-column: 1 / -1;
+          color: #9fb0c4;
+          font-size: 0.7rem;
+          line-height: 1.35;
+        }
+
+        .evidenceStep.active {
+          border-color: rgba(20, 184, 166, 0.54);
+          background: rgba(20, 184, 166, 0.14);
+        }
+
+        .evidenceStep.active span,
+        .evidenceStep.complete span {
+          background: #14b8a6;
+          color: #022c2a;
+        }
+
+        .diffusionPredictionPanel .ghost {
+          min-height: 2.5rem;
+          padding: 0.55rem 0.85rem;
+          border: 1px solid rgba(148, 163, 184, 0.28);
+          border-radius: 8px;
+          background: rgba(15, 23, 42, 0.72);
+          color: #e5e7eb;
+          font: inherit;
+          font-weight: 650;
+          cursor: pointer;
+        }
+
+        .diffusionPredictionPanel .ghost:hover,
+        .diffusionPredictionPanel .ghost:focus-visible {
+          border-color: rgba(20, 184, 166, 0.6);
+          background: rgba(20, 184, 166, 0.14);
+        }
+
+        @media (max-width: 640px) {
+          .diffusion-card.notebook {
+            padding: 12px !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .evidenceStrip {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 430px) {
+          .evidenceStrip {
+            grid-template-columns: 1fr;
+          }
+
+          .diffusionPredictionPanel .ghost {
+            width: 100%;
+            text-align: center;
+          }
+        }
+      `}</style>
     </section>
   )
 }

@@ -1,0 +1,43 @@
+You are reviewing a concrete implementation in Continuous Function, a Next.js/TypeScript learning platform for deeply visual, source-grounded deep learning concepts.
+
+Project direction:
+- Public atlas pages must remain static/cacheable and must not require credentials.
+- Account/database work is planned later with Vercel + Clerk + Neon/Postgres + Drizzle.
+- Before Drizzle, the repo needs a canonical typed object-key manifest so future notes, route snapshots, research threads, evidence refs, and AI runs attach to stable content objects instead of URLs.
+- Existing UI discussion anchors should remain UI/resume anchors; canonical durable identity should be `objectKey`.
+
+Implementation under review:
+- Added typed content object keys in `lib/contentObjectKeys.ts`.
+- Added manifest types/validator in `lib/contentObjectManifest.ts`.
+- Added `npm run generate-object-manifest` via `scripts/generate-content-object-manifest.ts`.
+- Generated `content/_generated/content-object-manifest.json` with 851 deterministic objects:
+  - 70 concepts
+  - 73 routes
+  - 56 demos
+  - 137 equation spans
+  - 70 code witnesses
+  - 162 source objects
+  - 92 source-span objects
+  - 121 claim objects
+  - 70 misconception objects
+- Extended `scripts/validate-content.ts` so content validation checks the manifest, catches stale/missing generated concept/source/demo/equation/code/claim keys, and resolves `claim_checks[].object_refs` through the manifest.
+- Added optional `objectKey` to discussion anchors and local learning-route source objects.
+- Threaded object keys through concept notebook discussion items and research-room route objects.
+- Preserved legacy local snapshots without object keys.
+- Did not add Clerk, Neon, Drizzle, API routes, auth checks, dynamic page reads, or database code.
+
+Commands already passed:
+- `npm run generate-content`
+- `npm run generate-object-manifest`
+- `npm run validate-content` -> 0 warnings, 0 errors, 851 manifest objects
+- `npm test -- contentObject discussionAnchors conceptNotebookDiscussion researchDiscussionRoom learningRouteSnapshot` -> 6 suites, 46 tests passed
+- `npm run typecheck`
+- `CF_NEXT_BUILD_CPUS=1 npm run build` -> passed with existing raw-img and KaTeX warnings. The local build also saw an untracked iCloud duplicate `pages/pillars/index 2.tsx`; that file is known workspace noise and is not part of this branch.
+
+Please return:
+1. Verdict: publish / publish-after-fixes / no-publish.
+2. Must-fix blockers only, grounded in exact files or behaviors.
+3. Whether the key stability labels are honest enough, especially for ordinal-generated `math-object-*` and `code-witness-*`.
+4. Whether manifest validation is strong enough before Drizzle.
+5. Whether any implementation accidentally introduces URL identity, dynamic atlas behavior, auth/db coupling, browser bundle bloat, source-review overclaiming, or migration hazards.
+6. A short list of optional follow-ups that should not block this slice.

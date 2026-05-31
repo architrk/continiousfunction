@@ -18,13 +18,39 @@ tags:
   - distillation
   - teachers
   - temperature
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: hinton-2015-distillation
+    kind: paper
+    title: "Distilling the Knowledge in a Neural Network"
+    authors: "Hinton, Vinyals, and Dean"
+    year: 2015
+    url: "https://arxiv.org/abs/1503.02531"
+    note: "Grounds temperature-softened soft targets and the incorrect-class probability-ratio/similarity-structure intuition used by the page."
+claim_checks:
+  - id: softened-teacher-kl-dark-knowledge
+    status: source-checked
+    claim: "Knowledge distillation trains a student to match a teacher's temperature-softened soft targets, not just hard labels: non-target probability ratios carry similarity structure, and a KL-equivalent soft-target loss can be mixed with supervised loss."
+    source_ids:
+      - hinton-2015-distillation
+    support: "Hinton et al. define softened class probabilities with temperature, train the distilled model to match teacher soft targets, say incorrect-answer probability ratios encode rich similarity structure, and mix soft-target cross-entropy with label cross-entropy. The page instantiates the equivalent teacher-student KL term plus temperature, gaps, and hard/KD mixing."
+    caveat: "This checks Hinton-style finite-class soft-target distillation. It does not check sequence-level LLM distillation recipes, speculative-decoding correctness, teacher quality, capacity matching, data filtering, or universal compression gains."
+    object_refs:
+      - "#source-span-hinton-2015-distillation"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Hinton et al. support high-temperature soft targets, matching the teacher at the same temperature, incorrect-class probability ratios as similarity structure, and weighted soft-target plus hard-label cross-entropy with T^2 scaling. Oracle accepted the page's fixed-teacher KL form as cross-entropy-equivalent and the toy math/code/demo as witnesses for tau-softmax, tau^2 KL, non-label pull, and hard/KD mixing."
 short_description: "Train a smaller student to mimic a stronger teacher by matching soft probability distributions (often with temperature), transferring 'dark knowledge' beyond hard labels."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 16
-

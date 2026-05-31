@@ -1,0 +1,18 @@
+Final narrow fix review for the DPO prediction-first wrapper.
+
+Previous Oracle fix review reported one remaining blocker: pre-reveal "ratio lab" leakage in:
+- `VizStageAdapter ariaLabel`
+- pre-reveal emitted route-state summary and values
+
+Current applied fixes:
+- `ariaLabel` now says "Scrollable DPO comparator prediction and lab".
+- pre-reveal route-state summary now says "before the lab is mounted".
+- route-state values now say `DPO lab: ...`.
+- revealed parent route-state uses `conceptId: 'dpo-prediction-checkpoint'`, and there is no delayed parent re-emit, so `DPORatioViz conceptId="dpo" emitState` remains the latest measured `dpo` state after mount.
+- `'use client'` is present.
+
+Please review only these current files and answer with either:
+- "acceptable, no remaining must-fix blockers", or
+- the exact remaining must-fix blocker.
+
+Do not expand into broad redesign advice.

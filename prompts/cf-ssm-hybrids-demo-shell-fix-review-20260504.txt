@@ -1,0 +1,41 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. This is the GPT Pro/Oracle fix-review for the SSM Hybrids / Mamba bridge demo-shell slice.
+
+The prior Oracle implementation review found three blockers:
+1. Leaky / LTI-like ties were answer-forced by copying `ltiSelected` into `mambaSelected` for low gate contrast instead of being derived from the trace/readout mechanics.
+2. Pre-reveal copy leaked the answer by saying the tie option applied when gates are “too uniform or leaky,” and the LTI-like preset said “defeats the purpose.”
+3. The notebook reveal/export exposed the internal label `mamba` instead of learner-facing “selective-gate toy.”
+
+Fixes applied:
+- Removed the `hasLowGateContrast` short-circuit entirely.
+- Added `selectiveToyInput(token)` so distractors and markers have real toy scalar inputs in the same selective recurrence used by the trace:
+  - marked/password token: `1`
+  - marker token: `0.15`
+  - distractor/noise token: `0.7`
+- Leaky and LTI-like now tie because their larger/uniform gates let distractors create false positives in the selective readout. The tie comes from the same `simulateSelective` trace and `computeSelections` scoring, not from copying the LTI readout.
+- Changed Leaky preset description to “Noise receives larger updates, so marked signal is copied less cleanly.”
+- Changed LTI-like preset description to “Same scalar gate on every token; no token-dependent selectivity.”
+- Changed tie prediction detail to “Neither recurrence gives a meaningfully cleaner marked-token readout in this toy.”
+- Added `getOutcomeLabel` / `getPredictionLabel` and now use learner-facing labels in visible readout and emitted demo state:
+  - `mamba` -> `selective-gate toy`
+  - `lti` -> `fixed-update LTI`
+  - `tie` -> `tie / no meaningful edge`
+
+Local checks after fixes:
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- `npm run typecheck` passed.
+- Headless Chrome DevTools checks against `/domains/attention-transformers/ssm-hybrids/` passed:
+  - exactly one notebook root.
+  - no nested legacy card/deck.
+  - no notebook game/countdown/score/challenge/emoji framing.
+  - no pre-reveal leakage of winner, clean/false positives, final states, traces, or old answer-hint wording.
+  - reveal disabled before prediction.
+  - Balanced + Selective gate reveals winner `selective-gate toy` with selective clean/false positives `4/0` and LTI `3/2`.
+  - LTI-like + Tie reveals winner `tie / no meaningful edge` with selective `4/3` and LTI `3/2`.
+  - Leaky + Tie reveals winner `tie / no meaningful edge` with selective `4/2` and LTI `3/2`.
+  - raw internal `mamba` label is not visible in the notebook.
+  - mobile 390px has no document overflow and the token strip scrolls locally.
+
+Please review whether the three blockers are closed. Return only:
+- remaining must-fix blockers, if any;
+- optional polish, if useful;
+- explicit ship verdict for this SSM Hybrids demo-shell slice.

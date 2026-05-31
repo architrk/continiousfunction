@@ -1,0 +1,46 @@
+Project: Continuous Function, a static-exported Next.js/TypeScript learning atlas for mathematics and modern AI. The repo is source-grounded: structured `claim_checks[]` are not considered substantively reviewed until exact source support, caveats, and local witness alignment are checked.
+
+Task: Review whether the next generated claim-evidence queue item may be marked `substantive-reviewed`.
+
+Target:
+- Concept: `generative-models/score-matching`
+- Claim check id: `score-field-denoising-reverse-dynamics`
+- Current claim:
+  "Score matching fits a model score grad_x log p_theta(x) while avoiding the normalizing constant; under Gaussian corruption x_tilde=x+sigma epsilon, the conditional denoising target is -(x_tilde-x)/sigma^2=-epsilon/sigma; estimated time-dependent scores can drive reverse-time SDE/ODE sampling dynamics."
+
+Current sources:
+- Hyvarinen, 2005, "Estimation of Non-Normalized Statistical Models by Score Matching" (`https://jmlr.csail.mit.edu/beta/papers/v6/hyvarinen05a.html`)
+- Vincent, 2011, "A Connection Between Score Matching and Denoising Autoencoders" (`https://www-labs.iro.umontreal.ca/~vincentp/Publications/DenoisingScoreMatching_NeuralComp2011.pdf`; publisher DOI `10.1162/NECO_a_00142`)
+- Song et al., 2020, "Score-Based Generative Modeling through Stochastic Differential Equations" (`https://arxiv.org/abs/2011.13456`)
+
+Source excerpts I found in extracted paper text:
+- Hyvarinen abstract: models may be known only up to a multiplicative normalization constant, and the proposed method minimizes expected squared distance between the model log-density gradient and observed-data log-density gradient; the resulting formula does not require the observed-data density.
+- Hyvarinen section 2: for `p(x;theta)=q(x;theta)/Z(theta)`, the data-gradient score is `nabla_x log p(x;theta)=nabla_x log q(x;theta)`, so it does not depend on `Z(theta)`.
+- Hyvarinen theorem/objective: the score matching objective can be written as an expectation of `1/2 ||score||^2` plus coordinate derivatives/divergence of the model score.
+- Vincent section 3: score matching learns parameters of density models with intractable partition function, calls the score the gradient of log density with respect to the data, and notes this score does not depend on troublesome `Z(theta)`.
+- Vincent section 4.2: DSM defines `J_DSM = E || psi(tilde x;theta) - partial log q_sigma(tilde x | x) / partial tilde x ||^2 / 2`; for the Gaussian kernel, `partial log q_sigma(tilde x|x)/partial tilde x = (x - tilde x)/sigma^2`, which moves from corrupted `tilde x` back toward clean `x`; the DSM objective is equivalent to explicit score matching on the smoothed density.
+- Song et al. abstract/introduction: the reverse-time SDE transforms prior noise back into data by removing noise and depends on the time-dependent gradient field/score of perturbed data distributions; a time-dependent neural network can estimate these scores and numerical SDE solvers can generate samples.
+- Song et al. section 2.1/2.2: denoising score matching objectives train a noise-conditional score network, and DDPM-style training can be written as weighted DSM where the optimum matches perturbed-data scores.
+- Song et al. section 3.2/3.3: the reverse-time SDE is `dx=[f(x,t)-g(t)^2 nabla_x log p_t(x)]dt+g(t)d wbar`; once marginal scores are known for all `t`, one can simulate it to sample from `p_0`; scores are estimated by a time-dependent score-based model.
+- Song et al. section 4.3: the corresponding probability flow ODE has drift `f(x,t)-1/2 g(t)^2 nabla_x log p_t(x)` and can be replaced by the time-dependent score model.
+
+Local witnesses after a small pre-review patch:
+- `content.mdx` math object 1 now states `s_theta(x)=nabla_x log p_theta(x)=nabla_x log q_theta(x)` for non-normalized `p_theta=q_theta/Z(theta)`, plus the classical implicit score matching objective `E[1/2 ||s_theta||^2 + tr(nabla_x s_theta)]`.
+- `content.mdx` math object 2 now states `tilde x=x+sigma epsilon`, the Gaussian conditional DSM target `nabla_tilde_x log q_sigma(tilde x|x)=-(tilde x-x)/sigma^2=-epsilon/sigma`, the noise-prediction scale `s_theta approx -epsilon_theta/sigma`, the reverse-time SDE drift using `s_theta(x,t)`, and the probability-flow ODE drift using the same time-dependent score.
+- `content.mdx` code witness samples `xt=x+sigma*eps`, computes `score_from_eps=-eps/sigma` and `score_from_xt=-(xt-x)/sigma**2`, and prints their max absolute difference.
+- `components/foundations/DiffusionScoreViz.tsx` demo asks learners to predict the conditional DSM target direction for one noisy sample before reveal; after reveal it shows the target points against the injected noise residual, while keeping the marginal score field as an analytic two-blob comparison.
+- I added a regression test so notebook demo state before reveal emits only visible setup/prediction/revealed=no fields, not `actual: against-noise`, `conditional target magnitude`, or `marginal score at probe`; the signed conditional-target formula is also hidden until reveal. After reveal, the demo emits prediction, actual, correctness, target magnitude, and marginal score.
+
+Review questions:
+1. Do these sources substantively support the claim as written?
+2. Do the source-span, math, code, and demo witnesses support the same bounded mechanism?
+3. Are there any blockers or wording changes needed before adding:
+   `evidence_review.state: substantive-reviewed`?
+4. Is the current caveat adequate, or should it be tightened?
+5. Provide a concise `evidence_review.summary` if approved.
+
+Please return:
+- Verdict: approve / no-publish
+- Blockers, if any
+- Needed edits, if any
+- Suggested bounded `evidence_review.summary`

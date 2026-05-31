@@ -1,0 +1,28 @@
+Project: Continuous Function, a Next.js/TypeScript learning platform for deep, joyful, mechanism-first learning. This repo is intentionally staying static/export-safe until auth/database setup is real. The private branch is private/research-learning-loop-20260505.
+
+Prior Oracle/GPT Pro scope selected the next bounded slice: local-object-next-action-journal-v1. The intended behavior is:
+- In ResearchReadingRoom, a selected object with a valid anchor.objectKey can save one bounded browser-local draft note and one bounded next action.
+- The draft is keyed only by ContentObjectKey, never by href, title, discussionAnchorId, slug, or list index.
+- The draft persists in localStorage under cf:object-action-journal, refreshes via storage/custom events, reappears only for the same selected object, and can be cleared without touching other object drafts.
+- The selected object's grounded AI handoff prompt includes the matching local draft.
+- Objects without objectKey show a disabled state and cannot save.
+- The copy must not imply account sync; it should say local browser only.
+- No Clerk, Neon, API route, middleware, dynamic server behavior, database writes, AI provider calls, account/profile/dashboard, or live collaboration should be introduced.
+
+Implementation summary:
+- Added lib/localObjectActionJournal.ts with validators, size limits, draft count limits, safe localStorage parsing, save/get/clear helpers, and cf:object-action-journal-change.
+- Extended lib/researchDiscussionRoom.ts to optionally include a selected local draft in the grounded AI prompt.
+- Updated components/discussion/ResearchReadingRoom.tsx with Local action draft UI, save/clear, selected object-key loading, storage/custom-event refresh, and prompt handoff integration.
+- Added/updated focused tests for storage helper, prompt builder, and React component behavior.
+
+Validation already run before this review:
+- npm test -- localObjectActionJournal researchDiscussionRoom ResearchReadingRoom --runInBand
+- npm run typecheck
+- npm run validate-content
+- npm run validate:object-memory
+
+Please review as a release gate. Return one of:
+- PUBLISH
+- NO-PUBLISH
+
+If NO-PUBLISH, list only concrete blockers that must be fixed in this slice. Please focus on correctness, data identity, stale-state leaks, static/export safety, copy honesty, and whether tests actually cover the behavior. Avoid proposing large future features unless they are required to safely publish this exact slice.

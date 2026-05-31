@@ -1,0 +1,29 @@
+This is a fix review for Continuous Function's object-memory-contract-v1 slice.
+
+Previous Oracle verdict was publish-after-fixes with blockers:
+1. content_object_refs.object_key SQL check accepted URL-shaped values and did not enforce key prefix/type consistency.
+2. learning_route_snapshots could be durable without a stable object anchor.
+3. uploaded_documents/document_spans were not fully object-attached.
+4. organization visibility could be set with null organization_id.
+
+Applied fixes:
+- content_object_refs.object_key SQL check now uses an allowed-prefix regex, rejects ://, and enforces split_part(object_key, ':', 1) = object_type::text.
+- learning_route_snapshots now has route_object_key text NOT NULL, FK to content_object_refs, index, and mapper derivation from concept currentObject keys into route:domains/<domain>/<concept>. Objectless snapshots are rejected unless an explicit routeObjectKey is supplied.
+- uploaded_documents now has object_key text NOT NULL, FK, index, and paper:% check. document_spans.object_key is NOT NULL with source-span:% check.
+- visibility-scoped tables now check visibility='private' OR organization_id IS NOT NULL.
+- Added JSONB size checks for snapshot_json, measured_state, evidence locator, and document span bbox.
+- Added evidence source key shape checks for source:% and source-span:%.
+- Updated validator/tests/README accordingly.
+
+Please review only whether the blockers were resolved cleanly and whether any new must-fix issue was introduced.
+
+Return:
+1. Verdict: publish, publish-after-fixes, or no-publish.
+2. Remaining blockers, if any.
+3. Should-fix follow-ups that can wait.
+4. Explicitly say whether schema-only/no-runtime boundary is still intact.
+
+Local focused checks after fixes:
+- npm run validate:object-memory
+- npm test -- contentObjectManifestDbContract objectMemory --runInBand
+- npm run typecheck

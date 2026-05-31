@@ -1,0 +1,28 @@
+You are reviewing a narrow Continuous Function implementation slice.
+
+Project context:
+- Next.js/React learning atlas for deep-learning math concepts.
+- Product north star: make concepts intuitive, prediction-first, visually inspectable, source-grounded, and resumable for future AI tutoring.
+- Current pattern for older demos: route-level `VizShell` + `VizStageAdapter`, ask the learner to predict before reveal, hide the old lab until reveal, emit compact `emitDemoState(...)` before/after reveal, and verify desktop/mobile hydration.
+- DPO is a published alignment concept. Its source-checked claim is narrow: Rafailov et al. derive the DPO objective by reparameterizing the KL-regularized RLHF reward as beta times the policy/reference log-ratio up to a prompt-only constant, then fitting preference pairs with BCE on the beta-scaled winner-loser reference-relative log-odds margin.
+
+What changed:
+- `content/domains/alignment/concepts/dpo/viz.tsx` was changed from a direct `DPORatioViz` export into a prediction-first route wrapper.
+- Learners now choose the DPO comparator before the ratio lab mounts.
+- The expected answer is "Policy move vs reference"; pre-reveal route state should not leak the answer except as one of several choices.
+- `components/foundations/DPORatioViz.tsx` now has optional `conceptId` and `emitState` props. It emits compact measured state only when mounted by the route wrapper with `emitState`.
+
+Local checks already passed before this review:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+
+Please review only this slice. I need a publish/no-publish verdict with concrete must-fix blockers and nice-to-have improvements.
+
+Review questions:
+1. Does the prediction checkpoint teach the right DPO invariant, or does the copy mislead by over-simplifying DPO into "move vs reference" without enough winner-loser log-odds precision?
+2. Is there any pre-reveal answer leakage in the wrapper title, metrics, notes, challenge, preview, result placeholder, or emitted state?
+3. Is the post-reveal handoff to the ratio lab conceptually correct and scoped to the source-checked claim?
+4. Is the optional measured demo-state emission in `DPORatioViz` compact, non-leaking by default, and useful for future AI/learning-route handoff?
+5. Are there implementation, accessibility, mobile/layout, or hydration hazards in the wrapper or prop change?
+6. If you recommend edits, keep them minimal and local to these files unless there is a hard reason to touch shared components.

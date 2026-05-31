@@ -19,7 +19,9 @@ Modern serving is mostly a game of managing *memory bandwidth* and *cache size*:
 
 With a KV cache, the attention output for the new token at time $t$ is:
 
-$$o_t = \\mathrm{softmax}\\!\\left(\\frac{q_t K_{1:t}^{\\top}}{\\sqrt{d_k}}\\right) V_{1:t},$$
+$$
+o_t = \mathrm{softmax}\!\left(\frac{q_t K_{1:t}^{\top}}{\sqrt{d_k}}\right) V_{1:t},
+$$
 
 where $(K_{1:t},V_{1:t})$ are cached.
 
@@ -27,7 +29,9 @@ where $(K_{1:t},V_{1:t})$ are cached.
 
 Across a batch of $B$ sequences and $L$ layers, the KV cache stores keys and values for all $T$ positions:
 
-$$\\mathrm{Mem}_{KV} \\approx B\\cdot L\\cdot T\\cdot H_{kv}\\cdot d_{\\mathrm{head}}\\cdot 2 \\cdot \\mathrm{bytes}.$$
+$$
+\mathrm{Mem}_{KV} \approx B\cdot L\cdot T\cdot H_{kv}\cdot d_{\mathrm{head}}\cdot 2 \cdot \mathrm{bytes}.
+$$
 
 The factor of 2 is for storing both $K$ and $V$.
 
@@ -35,10 +39,14 @@ The factor of 2 is for storing both $K$ and $V$.
 
 Let there be $H_q$ query heads but only $H_{kv}$ key/value heads, with a mapping $g(h)$ from query head $h$ to a KV head:
 
-$$o_h = \\mathrm{softmax}\\!\\left(\\frac{Q_h K_{g(h)}^{\\top}}{\\sqrt{d_k}}\\right) V_{g(h)}.$$
+$$
+o_h = \mathrm{softmax}\!\left(\frac{Q_h K_{g(h)}^{\top}}{\sqrt{d_k}}\right) V_{g(h)}.
+$$
 
-This reduces KV cache memory roughly by a factor of $H_{kv}/H_q$ compared to full multi-head attention.
-Equivalently: the KV cache becomes about $(H_{kv}/H_q)$ of full multi-head attention (so it’s reduced by roughly $H_q/H_{kv}\\times$ when $H_{kv} < H_q$).
+This reduces the KV cache to roughly $H_{kv}/H_q$ of full multi-head attention.
+Equivalently: the KV cache becomes about $(H_{kv}/H_q)$ of full multi-head attention (so it’s reduced by roughly $H_q/H_{kv}\times$ when $H_{kv} < H_q$).
+
+For the dedicated head-sharing invariant, selected Q-to-KV mapping, and cache-ratio prediction exercise, see [Grouped-Query Attention](/domains/attention-transformers/grouped-query-attention/).
 
 ## Code
 

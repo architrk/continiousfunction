@@ -24,9 +24,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "The production mental model for LLM inference: prefill vs decode, TTFT vs TPOT, batching/scheduling, and why KV cache memory dominates."
+sources:
+  - id: yu-2022-orca
+    kind: paper
+    title: "Orca: A Distributed Serving System for Transformer-Based Generative Models"
+    authors: "Yu et al."
+    year: 2022
+    url: "https://www.usenix.org/system/files/osdi22-yu.pdf"
+    note: "Primary serving-scheduler source. Orca frames generative transformer inference as multi-iteration autoregressive serving, where each iteration generates one output token, and proposes iteration-level scheduling plus selective batching."
+  - id: kwon-2023-pagedattention
+    kind: paper
+    title: "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+    authors: "Kwon et al."
+    year: 2023
+    url: "https://arxiv.org/pdf/2309.06180v1"
+    note: "Primary KV-cache serving source. PagedAttention frames high-throughput LLM serving as constrained by huge dynamically growing KV caches, fragmentation, batch-size limits, and paged block allocation."
+claim_checks:
+  - id: iteration-scheduling-kv-cache-memory
+    status: source-checked
+    claim: "LLM serving is a multi-iteration scheduling and memory-management problem: autoregressive decode advances one token at a time, batching must adapt between iterations, and KV cache memory can limit throughput."
+    source_ids:
+      - yu-2022-orca
+      - kwon-2023-pagedattention
+    support: "Orca supports the scheduling part: generative Transformer serving is multi-iteration autoregressive inference with one output token per iteration, and fixed request-level batches motivate iteration-level scheduling plus selective batching. PagedAttention supports the memory/throughput part: large dynamic KV caches and fragmentation can limit batch size and throughput. Local math/code/demo are toy witnesses."
+    caveat: "Checks the serving mechanism only. TTFT/TPOT, goodput, KV formula, code, and demo are toy witnesses, not source-derived formulas or production benchmarks. Does not certify vendor latency, scheduler optimality, hardware bottlenecks, throughput gains, or production guarantees."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Orca and PagedAttention: Orca supports autoregressive generative Transformer serving as multi-iteration inference where each iteration emits one token, motivating iteration-level scheduling and selective batching because fixed request-level batches waste capacity. PagedAttention supports KV cache memory as large, dynamic, fragmentation-prone state that can limit batch size and throughput. Local latency/KV math, code, and demo are toy serving witnesses only."
+    object_refs:
+      - "#source-span-yu-2022-orca"
+      - "#source-span-kwon-2023-pagedattention"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "A systems mental model for LLM inference: prefill vs decode, TTFT vs TPOT, batching/scheduling, and why KV cache memory dominates."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 22
-

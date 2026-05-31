@@ -1,0 +1,205 @@
+---
+title: "Pretraining Data Mixtures: Designing the Token Distribution"
+---
+
+## Intuition
+
+Grounding examples: Hoffmann et al., ["Training Compute-Optimal Large Language Models"](https://arxiv.org/abs/2203.15556), the [FineWeb](https://huggingface.co/datasets/HuggingFaceFW/fineweb) and [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu) dataset cards, the [Dolma](https://allenai.github.io/dolma/) corpus and toolkit, the [DCLM / DataComp-LM](https://proceedings.neurips.cc/paper_files/paper/2024/file/19e4ea30dded58259665db375885e412-Paper-Datasets_and_Benchmarks_Track.pdf) benchmark, Ye et al., ["Data Mixing Laws"](https://arxiv.org/abs/2403.16952), and Meta's ["The Llama 3 Herd of Models"](https://arxiv.org/abs/2407.21783).
+
+Scaling laws teach that model size $N$, training tokens $D$, and compute $C$ have to be balanced. But $D$ is not a bag of identical units. A token from a deduplicated math solution, a noisy web page, a code file, a translated document, and a benchmark near-duplicate do not train the same distribution.
+
+Pretraining data mixtures make the token budget concrete. Before a model sees a token, raw corpora pass through filters, deduplication, quality classifiers, source weights, and sometimes a late training schedule. Those choices create the effective distribution the optimizer samples from.
+
+FineWeb is a useful public example because it exposes web-data curation as a process rather than a mystery bucket. FineWeb-Edu is useful because its dataset card makes the quality-threshold tradeoff visible: stricter educational filtering can leave far fewer tokens. Dolma and DCLM show the same attitude at system scale: pretraining data is an experimental object, not just a download.
+
+The central question is:
+
+When a run says it trained on $D$ tokens, which filtered, deduplicated, weighted, scheduled distribution did those tokens come from?
+
+## Math
+
+Let there be $m$ raw sources indexed by $i\in\{1,\dots,m\}$, with documents $x\sim P_i$. Here $x$ is a document or sequence from a source such as web, code, math, books, multilingual text, or academic text. A tokenizer turns a retained document into next-token examples $T(x)=((c_1,y_1),\dots,(c_{\ell(x)},y_{\ell(x)}))$, where $c_k$ is a context and $y_k$ is the next token.
+
+Now define a retention function $r_i(x;\eta_i)=h_i(x)d_i(x;\delta_i)\mathbf 1\{s_i(x)\ge\tau_i\}$, with $r_i(x;\eta_i)\in[0,1]$.
+
+The factors are deliberately plain:
+
+- $h_i(x)$ is a language, safety, format, or heuristic filter.
+- $d_i(x;\delta_i)$ is deduplication or near-dedup retention under strictness $\delta_i$.
+- $s_i(x)$ is a proxy quality or domain score.
+- $\tau_i$ is the score threshold.
+
+For compact notation, $d_i$ is written as a document-level retention factor, though near-dedup decisions can depend on other documents in the retained corpus.
+
+The retained mass is $R_i=\mathbb E_{x\sim P_i}[r_i(x;\eta_i)]$. The curated source distribution is $\widetilde P_i(x)=r_i(x;\eta_i)P_i(x)/R_i$.
+
+For token-position sampling, document-level retention must be length-weighted. Let `C_i(c,y)` be the retained count or mass of token-position pair `(c,y)` from source `i` after filtering and deduplication. For an active source with nonzero retained token mass, define `P_i^tok(c,y) = C_i(c,y) / sum_{c',y'} C_i(c',y')`.
+
+If source $i$ had $D_i^{\mathrm{raw}}$ raw token positions, a rough retained-token proxy is $U_i\approx R_iD_i^{\mathrm{raw}}$.
+
+At training step $t$, choose a source mixture vector $w(t)\in\Delta^{m-1}$, with $w_i(t)\ge 0$ and $\sum_i w_i(t)=1$.
+
+In practice, weights are normalized over active sources with $U_i>0$. If all retained mass is zero, $Q_t$ is undefined rather than merely low quality.
+
+The effective token-position distribution is
+
+$$
+Q_t(c,y)
+=
+\sum_{i=1}^m
+w_i(t)P_i^{\mathrm{tok}}(c,y).
+$$
+
+This is the central object. A pretraining update samples $(c_t,y_t)\sim Q_t$ and applies a next-token gradient step on $-\log p_\theta(y_t\mid c_t)$.
+
+If $w(t)$ changes late in training, the run is nonstationary. In a deep model, that is not merely the same as averaging all tokens, because optimizer state, learning rate, finite training time, and forgetting can matter.
+
+For a total token budget $D$, define average exposure $\bar w_i=(1/D)\sum_{t=1}^D w_i(t)$ and expected sampled tokens $n_i=D\bar w_i$. A simple repetition-pressure diagnostic is $\rho_i=n_i/U_i$.
+
+If $\rho_i>1$, the run samples source $i$ more times than its retained unique-token proxy. Upsampling is sometimes useful, but it is not free.
+
+A toy unique-token approximation, assuming sampling with replacement from $U_i$ retained token positions, is $U_i^{\mathrm{seen}}\approx U_i(1-\exp(-n_i/U_i))$.
+
+Deduplication is a tradeoff: it can reduce memorization, leakage, and repeated boilerplate, but overly strict dedup can also remove useful templates or common domain structure.
+
+For held-out evaluation distributions $E_j$, define domain losses as `L_j(theta_T) = E_{(c,y) in E_j}[-log p_theta_T(y|c)]`.
+
+A reported validation objective might combine them as $\mathcal V(\theta_T)=\sum_j \alpha_j L_j(\theta_T)$ with $\alpha_j\ge 0$. The weights $\alpha_j$ are a product choice. They are not a law of nature.
+
+Keep contamination separate from token loss. Since near-duplicate checks operate on documents or sequences, define a scheduled document-level mixture $\Pi_t(x)=\sum_{i=1}^m w_i(t)\widetilde P_i(x)$ and average $\bar\Pi=(1/D)\sum_{t=1}^{D}\Pi_t$. For benchmark or evaluation set $E_j$, a near-duplicate diagnostic can be written as $\kappa_j=\Pr_{x\sim \bar\Pi}[\exists e\in E_j:\operatorname{sim}(x,e)\ge \lambda]$.
+
+The demo's contamination mass is a scalar toy proxy: the average-weighted token share of retained documents flagged as eval-like. Lower validation loss is not automatically better if $\kappa_j$ or the toy proxy rises.
+
+## Code
+
+This witness is a toy unigram language model. It is faithful to the central mixture-and-loss equations because the learned distribution is exactly the curated mixture distribution, and validation loss is exact cross-entropy under held-out toy distributions. It is not a transformer simulation.
+
+```python
+from math import log
+from collections import defaultdict
+
+VOCAB = ["story", "fact", "proof", "equation", "def", "loop", "bug", "clickbait"]
+DOCS = [
+    ("web_a",  "web",  0.65, "w1", False, {"story": 8, "fact": 5, "clickbait": 2}),
+    ("web_b",  "web",  0.35, "w2", False, {"story": 7, "clickbait": 7, "fact": 1}),
+    ("web_c",  "web",  0.70, "w1", False, {"story": 8, "fact": 5, "clickbait": 2}),
+    ("edu_a",  "edu",  0.92, "e1", False, {"proof": 5, "equation": 5, "fact": 3}),
+    ("edu_b",  "edu",  0.58, "e2", True,  {"proof": 6, "equation": 5, "fact": 1}),
+    ("code_a", "code", 0.86, "c1", False, {"def": 5, "loop": 5, "bug": 1}),
+    ("code_b", "code", 0.40, "c2", False, {"def": 2, "bug": 7, "loop": 1}),
+]
+
+EVALS = {
+    "general": {"story": 0.45, "fact": 0.45, "clickbait": 0.10},
+    "math": {"proof": 0.45, "equation": 0.45, "fact": 0.10},
+    "code": {"def": 0.45, "loop": 0.45, "bug": 0.10},
+}
+
+def curate(thresholds, dedup=True):
+    kept, seen = [], set()
+    for doc_id, src, quality, group, leak, counts in DOCS:
+        if quality < thresholds.get(src, 0.0):
+            continue
+        if dedup and group in seen:
+            continue
+        seen.add(group)
+        kept.append((doc_id, src, quality, group, leak, counts))
+    return kept
+
+def normalize(counts, eps=1e-9):
+    total = sum(counts.values()) + eps * len(VOCAB)
+    return {tok: (counts.get(tok, 0.0) + eps) / total for tok in VOCAB}
+
+def source_stats(kept):
+    counts_by_src = defaultdict(lambda: defaultdict(float))
+    tokens_by_src = defaultdict(float)
+    leaks_by_src = defaultdict(float)
+    for _, src, _, _, leak, counts in kept:
+        n = sum(counts.values())
+        tokens_by_src[src] += n
+        if leak:
+            leaks_by_src[src] += n
+        for tok, n in counts.items():
+            counts_by_src[src][tok] += n
+    return counts_by_src, tokens_by_src, leaks_by_src
+
+def normalize_weights(weights, active_sources):
+    active_sources = list(active_sources)
+    if not active_sources:
+        return {}
+    total = sum(weights.get(src, 0.0) for src in active_sources)
+    if total <= 0:
+        return {src: 1.0 / len(active_sources) for src in active_sources}
+    return {src: weights.get(src, 0.0) / total for src in active_sources}
+
+def mix(source_distributions, weights):
+    return {
+        tok: sum(weights.get(src, 0.0) * dist[tok] for src, dist in source_distributions.items())
+        for tok in VOCAB
+    }
+
+def evaluate(thresholds, early_mix, late_mix=None, late_fraction=0.0, dedup=True):
+    kept = curate(thresholds, dedup=dedup)
+    counts_by_src, tokens_by_src, leaks_by_src = source_stats(kept)
+    source_distributions = {src: normalize(counts) for src, counts in counts_by_src.items()}
+    active = list(source_distributions.keys())
+    w_early = normalize_weights(early_mix, active)
+    q_early = mix(source_distributions, w_early)
+
+    if late_mix and late_fraction > 0:
+        w_late = normalize_weights(late_mix, active)
+        q_late = mix(source_distributions, w_late)
+        q = {tok: (1 - late_fraction) * q_early[tok] + late_fraction * q_late[tok] for tok in VOCAB}
+        avg_w = {src: (1 - late_fraction) * w_early.get(src, 0.0) + late_fraction * w_late.get(src, 0.0) for src in active}
+    else:
+        q = q_early
+        avg_w = w_early
+
+    losses = {
+        name: -sum(p * log(max(q.get(tok, 0.0), 1e-12)) for tok, p in p_eval.items())
+        for name, p_eval in EVALS.items()
+    }
+    contamination = sum(avg_w[src] * leaks_by_src[src] / tokens_by_src[src] for src in active)
+    repetition = {src: 180 * avg_w[src] / tokens_by_src[src] for src in active}
+
+    return {
+        "kept_docs": [doc[0] for doc in kept],
+        "losses": {k: round(v, 3) for k, v in losses.items()},
+        "contamination_mass": round(contamination, 3),
+        "repetition_pressure": {k: round(v, 2) for k, v in repetition.items()},
+    }
+
+baseline = evaluate(
+    thresholds={"web": 0.0, "edu": 0.0, "code": 0.0},
+    early_mix={"web": 0.70, "edu": 0.15, "code": 0.15},
+    dedup=False,
+)
+
+curated_late = evaluate(
+    thresholds={"web": 0.55, "edu": 0.60, "code": 0.60},
+    early_mix={"web": 0.50, "edu": 0.25, "code": 0.25},
+    late_mix={"web": 0.35, "edu": 0.35, "code": 0.30},
+    late_fraction=0.20,
+    dedup=True,
+)
+
+print("baseline:", baseline)
+print("curated + late:", curated_late)
+
+assert curated_late["losses"]["math"] < baseline["losses"]["math"]
+assert curated_late["losses"]["code"] < baseline["losses"]["code"]
+assert curated_late["losses"]["general"] > baseline["losses"]["general"]
+assert curated_late["contamination_mass"] < baseline["contamination_mass"]
+```
+
+## Interactive Demo
+
+Use the Effective Token Distribution Explorer to change mixture weights, filter threshold, deduplication, and a late math/code anneal. Watch three quantities separately:
+
+- validation losses for general, math, and code toy distributions,
+- repetition pressure and retained token mass by source,
+- leakage and diversity diagnostics.
+
+The demo uses a tiny embedded corpus. It is a toy unigram/proxy-loss model, not predicted LLM performance. In the toy, late annealing changes the time-averaged unigram distribution used for proxy loss; it does not show optimizer-state, learning-rate, forgetting, or ordering effects that make real curricula nontrivial. Its job is to make the object $Q_t$ and its time average visible.
+
+{/* viz.tsx component renders here if it exists */}

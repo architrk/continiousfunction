@@ -1,21 +1,61 @@
 import Link from 'next/link'
 import Head from 'next/head'
+import ExperienceBridge from '@/components/editorial/ExperienceBridge'
+import NotebookLayout from '@/components/editorial/NotebookLayout'
+import { VisionHeroFigure } from '@/components/editorial/EditorialFigures'
 
 <Head>
   <title>Vision — Continuous Function</title>
 </Head>
 
-<nav className="breadcrumb" style={{ fontSize: '0.85rem', marginBottom: '1.5rem', color: '#7a7468' }}>
-  <Link href="/" style={{ color: 'var(--converge-teal)', textDecoration: 'none' }}>Home</Link>
-  <span style={{ margin: '0 0.5rem', color: '#5a5448' }}>/</span>
-  <span style={{ color: '#b8b0a0' }}>Vision</span>
-</nav>
+<NotebookLayout
+  eyebrow="Product Vision"
+  title="The Mathematical Foundations of Modern Intelligence"
+  lede="A blueprint for making deep learning mathematics feel explorable: every idea should move from intuition to math to code to an interactive object the learner can test."
+  breadcrumb={[
+    { label: 'Home', href: '/' },
+    { label: 'Vision' },
+  ]}
+  meta={['atlas', 'notebook', 'lab', 'AI companion']}
+  actions={[
+    { href: '/pillars/', label: 'Explore Pillars' },
+    { href: '/domains/', label: 'Browse Domains', variant: 'secondary' },
+  ]}
+  heroVisual={<VisionHeroFigure />}
+  rail={(
+    <ExperienceBridge
+      compact
+      eyebrow="Vision Route"
+      title="Keep the abstract close to the usable."
+      intro="This document should hand readers into the atlas, not leave them in philosophy."
+      items={[
+        {
+          label: 'Why',
+          title: 'Make invisible mechanisms visible.',
+          body: 'Probability flows, optimization curvature, and attention patterns become things a learner can manipulate.',
+          href: '/pillars/',
+          cta: 'See pillars',
+        },
+        {
+          label: 'How',
+          title: 'Use one repeatable lesson loop.',
+          body: 'Intuition, math, code, demo, and companion prompts should reinforce the same mechanism.',
+          href: '/domains/linear-algebra/dot-product/',
+          cta: 'Open a notebook',
+        },
+        {
+          label: 'Next',
+          title: 'Let the graph reveal the bridges.',
+          body: 'When ideas cross fields, the route should feel earned by prerequisites and shared structure.',
+          href: '/graph/',
+          cta: 'Trace edges',
+        },
+      ]}
+    />
+  )}
+>
 
-# The Mathematical Foundations of Modern Intelligence
-
-*A Blueprint for Continuous Function*
-
----
+<div className="vision-article">
 
 ## 1. Vision: Exploring the Mathematics of Deep Learning
 
@@ -366,3 +406,86 @@ These systems aren't black boxes. They're mathematical patterns we can explore, 
 ---
 
 <Link href="/">← Back to Home</Link>
+
+</div>
+
+<style jsx global>{`
+  .vision-article {
+    display: grid;
+    gap: 1rem;
+    max-width: 82ch;
+    color: #27313d;
+  }
+
+  .vision-article h2,
+  .vision-article h3 {
+    margin: 0;
+    color: #151d27;
+    font-family: var(--font-display);
+    letter-spacing: 0;
+  }
+
+  .vision-article h2 {
+    margin-top: 1rem;
+    font-size: clamp(1.55rem, 3vw, 2.25rem);
+    line-height: 1.08;
+  }
+
+  .vision-article h3 {
+    margin-top: 0.55rem;
+    font-size: clamp(1.15rem, 2vw, 1.45rem);
+    line-height: 1.18;
+  }
+
+  .vision-article p,
+  .vision-article li {
+    color: #455361;
+    line-height: 1.72;
+  }
+
+  .vision-article blockquote {
+    margin: 0;
+    padding: 1rem;
+    border-left: 4px solid rgba(31, 111, 120, 0.38);
+    border-radius: 0 8px 8px 0;
+    background: rgba(239, 247, 245, 0.68);
+  }
+
+  .vision-article table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+    border-radius: 8px;
+    border: 1px solid rgba(27, 36, 48, 0.08);
+    background: rgba(255, 251, 245, 0.78);
+  }
+
+  .vision-article th,
+  .vision-article td {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(27, 36, 48, 0.08);
+    color: #455361;
+    vertical-align: top;
+    min-width: 9rem;
+  }
+
+  .vision-article th {
+    color: #17202a;
+    text-align: left;
+    background: rgba(239, 232, 219, 0.64);
+  }
+
+  .vision-article a {
+    color: #1f4b99;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .vision-article a:hover {
+    color: #17202a;
+    text-shadow: none;
+  }
+`}</style>
+
+</NotebookLayout>

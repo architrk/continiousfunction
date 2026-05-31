@@ -1,0 +1,45 @@
+Project: Continuous Function, a Next.js learning atlas for deep learning/math concepts. We are doing a slow, review-gated claim-evidence sweep so published learner-facing claims are only marked "substantive-reviewed" after exact primary-source support and matching local witnesses.
+
+Current task: review the pending claim check for `efficiency/mixture-of-experts`.
+
+Claim:
+"Sparse MoE layers use a learned router to choose top-k experts per token, so total expert parameters can grow while active expert compute stays bounded by k; in the cited MoE/Switch designs, load-balancing losses and expert-capacity mechanisms manage skew, overload, dropped tokens, and dispatch/communication costs."
+
+Current source ids:
+- `shazeer-2017-sparsely-gated-moe`
+- `fedus-2021-switch-transformers`
+
+Current local witness refs:
+- `#source-span-shazeer-2017-sparsely-gated-moe`
+- `#source-span-fedus-2021-switch-transformers`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Important local extraction rule:
+- `lib/conceptObjectSpans.ts` exports only the first two display equations as `#math-object-1` and `#math-object-2`, and only the first fenced code block as `#code-witness-1`.
+- On this page, `#math-object-1` is the router logits/probabilities equation `z = W_r h, p(e|h)=softmax(z)_e`.
+- `#math-object-2` is the sparse top-k MoE output equation with renormalized selected expert weights.
+- The load-balancing and expert-capacity equations appear later in the Math section but are not exported as `#math-object-1` or `#math-object-2`.
+- The first code witness is a toy top-1 router that computes expert frequency `f_i`, average gate probability `P_i`, and `N_E * sum_i f_i P_i`.
+- The interactive demo is a toy batch-order dispatch/capacity reveal, not a production expert-parallel simulator.
+
+Primary-source text is attached as extracted PDF text:
+- `/tmp/cf-moe-source-check/shazeer-2017-moe.txt`, from https://arxiv.org/pdf/1701.06538
+- `/tmp/cf-moe-source-check/fedus-2021-switch.txt`, from https://www.jmlr.org/papers/volume23/21-0998/21-0998.pdf
+
+Please act as a strict source-support reviewer. Decide whether this claim can be marked `evidence_review.state: substantive-reviewed` now.
+
+Review questions:
+1. Does Shazeer et al. substantively support the sparse MoE part of the claim: a trainable gating network, sparse/top-k expert selection, only a handful/k experts evaluated per example, increased total expert parameters/model capacity without proportional active computation, and importance/load-balancing losses for skew?
+2. Does Fedus et al. substantively support the Switch part of the claim: top-1 routing as a simplification of top-k MoE, constant computational cost despite many parameters, expert capacity, overflow/dropped tokens when capacity is exceeded, capacity-factor tradeoffs, auxiliary load-balancing loss using `f_i` and `P_i`, and reduced but still real dispatch/communication costs?
+3. Do the local witnesses `#math-object-1`, `#math-object-2`, `#code-witness-1`, and `#interactive-demo` match the bounded claim as toy routing/load/capacity witnesses, or is any witness mismatched/overclaimed?
+4. Is the current support/caveat wording narrow enough? It must not imply exact throughput, quality gains, specialization, production all-to-all behavior, expert-parallel implementation details, scheduler optimality, or any claim that MoE always improves wall-clock latency or serving cost.
+
+Desired output:
+- Start with `Approved` or `Not approved as-is`.
+- If not approved, list only the smallest fixes needed.
+- If approved, provide the exact recommended `evidence_review.summary` and any support/caveat tweaks.
+- Keep `evidence_review.summary` under 520 characters and caveat under 280 characters if you propose exact YAML.
+- Be strict about source scope and witness scope; do not broaden into product strategy.

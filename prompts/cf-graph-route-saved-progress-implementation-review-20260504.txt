@@ -1,0 +1,26 @@
+We are building Continuous Function, a Next.js learning platform for deep learning and mathematical concepts. This checkpoint is about saved learning-route continuity.
+
+Goal:
+- Persist computed graph-route state into the existing browser-local `cf:last-learning-route` snapshot.
+- Keep the current preview-vs-save distinction: changing known chips or target should not overwrite localStorage until the user explicitly clicks save.
+- Preserve old/static route snapshots and do not add cloud sync, accounts, route history, IndexedDB, backend persistence, or tutor API calls.
+
+Implementation summary:
+- `lib/learningRouteSnapshot.ts` now has `sourceObjects` and `graphRoute` optional blocks, a 24000-char raw cap, internal-only href validation, source-object bounds, route-node bounds, edge-witness bounds, and finite route-cost bounds.
+- `components/product/GraphRouteEngine.tsx` now accepts the parent saved snapshot, hydrates controls once from a saved computed route, and has an explicit "Save computed route" button that writes known ids, target id, ordered nodes, edge witnesses, total weight, next repair id, route labels, linkable route concepts, and source objects.
+- `components/product/GraphProductNavigator.tsx` remains the owner of save/clear state, preserves matching observations, passes the save callback into the engine, and adds `sourceObjects` to static curated route snapshots without adding `graphRoute` to them.
+- `components/home/HomeResumeRoutePanel.tsx` recognizes computed graph-route snapshots, links back to `/graph/?from=home#learning-route`, and displays known concepts, target, ordered route, first edge witness, first repair, and route cost.
+- `lib/learningRouteSnapshot.test.ts` adds focused unit tests for old snapshot compatibility, computed route acceptance, unsafe href rejection, oversize rejection, and non-finite route-cost rejection.
+
+Validation already run:
+- `npm test -- --selectProjects unit --runTestsByPath lib/learningRouteSnapshot.test.ts` passed.
+- `npm run typecheck` passed.
+
+Please review for:
+1. Any correctness bugs or type/snapshot-shape problems that could break old route continuation.
+2. Any accidental autosave or static-vs-computed route authority confusion.
+3. Any localStorage poisoning gaps left in validation.
+4. Any UI/UX copy issue that makes the saved computed route feel more authoritative than it is.
+5. Whether additional focused tests or browser checks are needed before marking this TODO done.
+
+Return concrete findings first, ordered by severity, with file references and exact patch suggestions where possible. If no blocking issues, say what residual manual/browser checks remain.

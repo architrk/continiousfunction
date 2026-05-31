@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import TimeSeriesPlot from '../../TimeSeriesPlot'
+import TimeSeriesPlot from '@/components/charts/TimeSeriesPlot'
 import { TimeSeries, MATH_COLORS } from '../../../lib/mathObjects'
 
 // ----- Gamification types -----

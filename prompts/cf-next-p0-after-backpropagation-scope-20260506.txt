@@ -1,0 +1,41 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current state:
+
+- Repo branch: `private/research-learning-loop-20260505`.
+- Product goal: make the site deep, joyful, rigorous, interactive, and worth returning to, while growing slowly through review-gated concept slices.
+- We are continuing the P0 prediction-first demo retrofit pass.
+- Recently completed in-demo P0 slices include Reverse-Mode Autodiff, Probability Basics, Random Variables, Variational Autoencoders, Tree Search Reasoning, Dot Product, Vector Spaces, Derivatives, Computation Graphs, and Backpropagation.
+- Latest shipped slice: `calculus/backpropagation`, a hidden learning-signal reveal. Oracle selected hidden-signal routing over a loss-down optimizer question; implementation review returned no-publish twice; after mobile 390px production-browser evidence, the final Oracle review returned publish and the private Vercel preview deployed successfully.
+
+Constraints:
+
+- Keep the next slice mechanism-first and bounded.
+- Prefer one concept route or visualizer.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, broad platform work, or large curriculum rewrites.
+- Preserve static-export safety and the existing shared `emitDemoState` checkpoint.
+- The result should hide answer-bearing mechanism/output until the learner makes a concrete prediction, then reveal compact measured state for the AI companion handoff.
+- The implementation must be practical for one Codex pass with tests, Oracle review, and desktop/mobile browser checks.
+
+Candidate context:
+
+- Strong candidate family: `attention-transformers/attention-transformers` and its child demos. This route is critical and currently has a route-level mechanism router plus child demos that emit measured state. The audit language suggests several child visualizers emit state but may not yet have the same local prediction-before-reveal answer-hiding rigor as the just-completed calculus/linear-algebra chain.
+- Comparison candidates attached: Cross-Entropy, Distributions, Bayesian Inference, Maximum Likelihood, KL Divergence, Adam, and Gradient Descent. Some of these already have concept-specific prediction checkpoints; include them to avoid repeating solved slices.
+
+Question:
+
+Pick the next best P0 concept-specific retrofit after Backpropagation.
+
+Return:
+
+1. The single recommended next concept/route/component.
+2. The exact prediction question learners should answer.
+3. What must remain visible before reveal.
+4. What must be hidden before reveal.
+5. The classifier or expected-answer logic.
+6. The compact measured demo state to emit after reveal.
+7. The stale-state clearing rules.
+8. The smallest tests and browser checks required.
+9. Any no-go warnings that would make this slice too broad.
+
+Keep it practical and specific enough that Codex can implement the next slice without asking another scoping question.

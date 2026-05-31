@@ -1,17 +1,22 @@
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { MATH_COLORS } from '../../lib/mathObjects';
+import { emitDemoState } from '../../lib/demoState';
+
+type TokenStatus = 'accepted' | 'rejected' | 'discarded';
 
 interface TokenProposal {
   token: string;
   draftProb: number;
   targetProb: number;
-  accepted: boolean;
+  acceptanceProb: number;
+  status: TokenStatus;
 }
 
-// ─────────────────────────────────────────────────────────────
-// Gamification: Speedup Prediction Challenge
-// ─────────────────────────────────────────────────────────────
+type SpeculativeDecodingVizProps = {
+  chrome?: 'legacy' | 'notebook';
+};
+
 type GamePhase = 'setup' | 'countdown' | 'revealed';
 type SpeedupPrediction = '<1×' | '1-2×' | '2-3×' | '>3×' | null;
 
@@ -26,7 +31,7 @@ interface SpeedupChallenge {
 
 // Calculate expected speedup from quality and k
 function calculateExpectedSpeedup(quality: number, k: number): number {
-  // Approximate acceptance rate ≈ quality (simplified model)
+  // Approximate acceptance rate follows quality in this simplified model.
   const alpha = quality;
   return (alpha * k) / (1 + (1 - alpha) * k);
 }
@@ -40,36 +45,36 @@ function _getSpeedupRange(speedup: number): '<1×' | '1-2×' | '2-3×' | '>3×' 
 
 const SPEEDUP_CHALLENGES: SpeedupChallenge[] = [
   {
-    name: '🎲 Mystery A',
+    name: 'Trial A',
     quality: 0.95,
     k: 6,
     hint: 'An excellent draft model proposes 6 tokens...',
     correctRange: '>3×',
-    explanation: '🚀 >3× speedup! With 95% acceptance and k=6, almost every draft token is accepted. The speedup formula gives (0.95×6)/(1+(0.05)×6) ≈ 4.4×. This is the ideal scenario!'
+    explanation: '>3× speedup. With 95% acceptance and k=6, almost every draft token is accepted. The speedup formula gives (0.95×6)/(1+(0.05)×6) ≈ 4.4×.'
   },
   {
-    name: '🎲 Mystery B',
+    name: 'Trial B',
     quality: 0.3,
     k: 5,
     hint: 'A poor draft model tries to speculate 5 tokens...',
     correctRange: '<1×',
-    explanation: '💔 <1× speedup (actually slower)! With only 30% acceptance, most tokens are rejected. We waste time running the draft model only to reject its proposals. The formula gives ~0.6×—worse than no speculation!'
+    explanation: '<1× speedup, so the proxy is slower than no speculation. With only 30% acceptance, most tokens are rejected. The formula gives about 0.33×.'
   },
   {
-    name: '🎲 Mystery C',
+    name: 'Trial C',
     quality: 0.7,
     k: 4,
     hint: 'A decent draft model with moderate speculation length...',
     correctRange: '1-2×',
-    explanation: '⚖️ 1-2× speedup! At 70% acceptance with k=4, we get (0.7×4)/(1+(0.3)×4) ≈ 1.27×. Modest improvement—better draft alignment or lower k might help.'
+    explanation: '1-2× speedup. At 70% acceptance with k=4, we get (0.7×4)/(1+(0.3)×4) ≈ 1.27×. Better draft alignment or a smaller k may be more useful.'
   },
   {
-    name: '🎲 Mystery D',
+    name: 'Trial D',
     quality: 0.85,
-    k: 8,
+    k: 7,
     hint: 'A good draft model with aggressive speculation...',
     correctRange: '2-3×',
-    explanation: '💪 2-3× speedup! With 85% acceptance and k=8, we get (0.85×8)/(1+(0.15)×8) ≈ 2.8×. High k works because acceptance is strong enough to offset the occasional rejections.'
+    explanation: '2-3× speedup. With 85% acceptance and k=7, we get (0.85×7)/(1+(0.15)×7) ≈ 2.9×. High k works because acceptance is strong enough to offset occasional rejections.'
   }
 ];
 
@@ -82,16 +87,16 @@ function getSpeedupFeedback(
     correct: isCorrect,
     message: isCorrect
       ? challenge.explanation
-      : `❌ Not quite! The speedup is actually ${challenge.correctRange}. ${challenge.explanation}`
+      : `Prediction missed. The speedup is actually ${challenge.correctRange}. ${challenge.explanation}`
   };
 }
 
 // Quality presets
 const QUALITY_PRESETS = [
-  { name: '🐢 Poor Draft', quality: 0.3, k: 3, description: 'Mismatched distributions (high rejection)' },
-  { name: '⚖️ Moderate', quality: 0.6, k: 4, description: 'Decent alignment (mixed results)' },
-  { name: '🎯 Good', quality: 0.8, k: 5, description: 'Well-aligned draft model' },
-  { name: '🚀 Excellent', quality: 0.95, k: 6, description: 'Near-identical to target (max speedup)' },
+  { name: 'Poor draft', quality: 0.3, k: 3, description: 'Mismatched distributions (high rejection)' },
+  { name: 'Moderate match', quality: 0.6, k: 4, description: 'Decent alignment (mixed results)' },
+  { name: 'Good match', quality: 0.8, k: 5, description: 'Well-aligned draft model' },
+  { name: 'Near-target draft', quality: 0.95, k: 6, description: 'Near-identical to target (max speedup)' },
 ];
 
 // Dynamic educational insight
@@ -103,21 +108,28 @@ function getSpeculativeInsight(
   accepted: number
 ): string {
   if (acceptanceRate > 0.9) {
-    return `🚀 EXCELLENT! ${(acceptanceRate * 100).toFixed(0)}% acceptance rate → ${speedup.toFixed(2)}× speedup! When draft ≈ target, almost all tokens are accepted. This is the ideal scenario for speculative decoding.`;
+    return `High draft-target match: ${(acceptanceRate * 100).toFixed(0)}% of proposed tokens survived verification, giving a ${speedup.toFixed(2)}× toy speedup proxy. When draft is close to target, one target pass can confirm several draft tokens.`;
   }
   if (acceptanceRate < 0.3) {
-    return `⚠️ Low acceptance (${(acceptanceRate * 100).toFixed(0)}%)! Too many rejections mean we're doing extra work. Either improve the draft model or reduce k. Current speedup is only ${speedup.toFixed(2)}×.`;
+    return `Low acceptance (${(acceptanceRate * 100).toFixed(0)}%): the verifier rejects too often, so a larger draft chunk adds work without much progress. Try improving draft-target match before increasing k.`;
   }
   if (speedup > 2) {
-    return `💪 ${speedup.toFixed(2)}× speedup! We're generating ${accepted} tokens in the time of ~1 target forward pass. The ${(acceptanceRate * 100).toFixed(0)}% acceptance rate is solid.`;
+    return `${speedup.toFixed(2)}× toy speedup proxy: ${accepted} draft tokens were accepted from one verification step. The key condition is still high acceptance, not merely a large k.`;
   }
   if (numTokens > 5 && acceptanceRate < 0.5) {
-    return `📉 High k (${numTokens}) with low acceptance (${(acceptanceRate * 100).toFixed(0)}%) is suboptimal. Try reducing draft length to improve expected speedup.`;
+    return `High k (${numTokens}) with low acceptance (${(acceptanceRate * 100).toFixed(0)}%) is a weak tradeoff. Longer drafts help only when the accepted prefix usually stays long.`;
   }
-  return `📊 Acceptance rate: ${(acceptanceRate * 100).toFixed(0)}%. Speedup: ${speedup.toFixed(2)}×. The key trade-off: longer drafts = more potential speedup, but only if acceptance stays high.`;
+  return `Acceptance rate: ${(acceptanceRate * 100).toFixed(0)}%. Toy speedup proxy: ${speedup.toFixed(2)}×. Longer drafts create more upside, but only when acceptance stays high.`;
 }
 
-export default function SpeculativeDecodingViz() {
+function pseudoRandom(seed: number, index: number, salt = 0): number {
+  const x = Math.sin(seed * 997 + index * 37 + salt * 101) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+export default function SpeculativeDecodingViz({
+  chrome = 'legacy',
+}: SpeculativeDecodingVizProps) {
   const [draftQuality, setDraftQuality] = useState(0.7); // How similar draft is to target
   const [numTokens, setNumTokens] = useState(4);
   const [seed, setSeed] = useState(0);
@@ -130,10 +142,10 @@ export default function SpeculativeDecodingViz() {
   const [currentChallengeIdx, setCurrentChallengeIdx] = useState(0);
   const [prediction, setPrediction] = useState<SpeedupPrediction>(null);
   const [countdown, setCountdown] = useState(0);
-  const [score, setScore] = useState(0);
   const [completedChallenges, setCompletedChallenges] = useState<Set<number>>(new Set());
 
   const currentChallenge = SPEEDUP_CHALLENGES[currentChallengeIdx];
+  const score = completedChallenges.size;
 
   // Game control functions
   const startChallenge = (idx: number) => {
@@ -153,7 +165,6 @@ export default function SpeculativeDecodingViz() {
     setGameMode(false);
     setGamePhase('setup');
     setPrediction(null);
-    setScore(0);
     setCompletedChallenges(new Set());
     setCurrentChallengeIdx(0);
   };
@@ -167,12 +178,13 @@ export default function SpeculativeDecodingViz() {
         // Apply the mystery settings to show the actual simulation
         setDraftQuality(currentChallenge.quality);
         setNumTokens(currentChallenge.k);
-        setSeed(s => s + 1);
         // Check answer
         const feedback = getSpeedupFeedback(prediction, currentChallenge);
         if (feedback.correct) {
-          setScore(s => s + 1);
-          setCompletedChallenges(prev => new Set([...prev, currentChallengeIdx]));
+          setCompletedChallenges((prev) => {
+            if (prev.has(currentChallengeIdx)) return prev;
+            return new Set([...prev, currentChallengeIdx]);
+          });
         }
       } else {
         setCountdown(countdown - 1);
@@ -185,33 +197,44 @@ export default function SpeculativeDecodingViz() {
   const simulation = useMemo(() => {
     const tokens = ['the', 'cat', 'sat', 'on', 'the', 'mat', 'and', 'purred'];
     const proposals: TokenProposal[] = [];
+    const visibleTokens = Math.min(numTokens, tokens.length);
 
-    let accepted = 0;
-    for (let i = 0; i < numTokens && i < tokens.length; i++) {
-      // Simulate draft probability (with some randomness)
-      const baseProb = 0.3 + Math.random() * 0.4;
+    let acceptedPrefix = 0;
+    let prefixAlive = true;
+    for (let i = 0; i < visibleTokens; i++) {
+      // Simulate draft probability with a stable trace until the learner resamples.
+      const baseProb = 0.3 + pseudoRandom(seed, i, 1) * 0.4;
       const draftProb = baseProb;
 
-      // Target probability varies based on draft quality
-      // High draft quality = target prob close to draft prob
-      const variation = (1 - draftQuality) * (Math.random() - 0.5) * 0.4;
-      const targetProb = Math.max(0.1, Math.min(0.9, draftProb + variation));
+      // The toy makes acceptance explicit so lower draft-target match behaves visibly worse.
+      const acceptanceProb = Math.max(
+        0.05,
+        Math.min(1, draftQuality + (pseudoRandom(seed, i, 2) - 0.5) * 0.18)
+      );
+      const targetProb = draftProb * acceptanceProb;
 
       // Acceptance: α_i = min(1, p_i / q_i)
-      const acceptanceProb = Math.min(1, targetProb / draftProb);
-      const isAccepted = Math.random() < acceptanceProb;
+      const isAccepted = pseudoRandom(seed, i, 3) < acceptanceProb;
+      let status: TokenStatus = 'discarded';
 
-      if (isAccepted) accepted++;
+      if (prefixAlive && isAccepted) {
+        status = 'accepted';
+        acceptedPrefix += 1;
+      } else if (prefixAlive) {
+        status = 'rejected';
+        prefixAlive = false;
+      }
 
       proposals.push({
         token: tokens[i],
         draftProb,
         targetProb,
-        accepted: isAccepted
+        acceptanceProb,
+        status,
       });
     }
 
-    return { proposals, acceptanceRate: accepted / numTokens };
+    return { proposals, acceptanceRate: acceptedPrefix / visibleTokens };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- seed is used for reproducible randomization
   }, [draftQuality, numTokens, seed]);
 
@@ -224,7 +247,7 @@ export default function SpeculativeDecodingViz() {
 
   // Dynamic educational insight
   const currentInsight = useMemo(() => {
-    const accepted = simulation.proposals.filter(p => p.accepted).length;
+    const accepted = simulation.proposals.filter((proposal) => proposal.status === 'accepted').length;
     return getSpeculativeInsight(
       simulation.acceptanceRate,
       speedup,
@@ -234,19 +257,38 @@ export default function SpeculativeDecodingViz() {
     );
   }, [simulation.acceptanceRate, speedup, draftQuality, numTokens, simulation.proposals]);
 
+  useEffect(() => {
+    const accepted = simulation.proposals.filter((proposal) => proposal.status === 'accepted').length;
+
+    emitDemoState({
+      conceptId: 'speculative-decoding',
+      label: 'Speculative decoding trace',
+      summary: `Draft-target match ${draftQuality.toFixed(2)}, k=${numTokens}: ${accepted}/${numTokens} draft tokens accepted; toy speedup proxy ${speedup.toFixed(2)}x.`,
+      values: [
+        `acceptance rate ${(simulation.acceptanceRate * 100).toFixed(1)}%`,
+        'invariant: full speculative decoding preserves the target distribution with accept/reject plus residual sampling',
+        'demo scope: toy accepted-prefix and speedup witness; the residual repair proof lives in the math/code section',
+        'next test: lower draft-target match before raising k',
+      ],
+    });
+  }, [draftQuality, numTokens, simulation.acceptanceRate, simulation.proposals, speedup]);
+
   // Handle preset selection
   const handlePreset = (preset: typeof QUALITY_PRESETS[0]) => {
     setDraftQuality(preset.quality);
     setNumTokens(preset.k);
-    setSeed(s => s + 1);
   };
 
   return (
-    <div className="speculative-decoding-viz">
+    <div className={`speculative-decoding-viz ${chrome}`}>
+      <div className="predict-first">
+        <strong>Predict first:</strong> With <code>k</code> high but draft-target match low, does speculation become useful, or does it stay below the no-speculation baseline?
+      </div>
+
       <div className="controls">
         <div className="control-group">
           <label>
-            <span style={{ color: MATH_COLORS.primary }}>Draft Model Quality</span>
+            <span style={{ color: MATH_COLORS.primary }}>Draft-target match, toy q ~ p</span>
             <input
               type="range"
               min="0"
@@ -257,12 +299,12 @@ export default function SpeculativeDecodingViz() {
             />
             <span className="value">{draftQuality.toFixed(2)}</span>
           </label>
-          <p className="hint">How similar is the draft model to the target?</p>
+          <p className="hint">How close is the fast draft distribution to the target model?</p>
         </div>
 
         <div className="control-group">
           <label>
-            <span style={{ color: MATH_COLORS.secondary }}>Draft Length (k)</span>
+            <span style={{ color: MATH_COLORS.secondary }}>Draft length k</span>
             <input
               type="range"
               min="2"
@@ -273,7 +315,7 @@ export default function SpeculativeDecodingViz() {
             />
             <span className="value">{numTokens}</span>
           </label>
-          <p className="hint">How many tokens does draft model propose?</p>
+          <p className="hint">How many tokens does the draft model propose before target verification?</p>
         </div>
 
         <button
@@ -298,22 +340,19 @@ export default function SpeculativeDecodingViz() {
         ))}
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────
-          Gamification: Speedup Prediction Challenge
-          ───────────────────────────────────────────────────────────── */}
       <div className="game-panel">
         <div className="game-header">
-          <h3>🎮 Speedup Prediction Challenge</h3>
+          <h3>Speedup prediction check</h3>
           {!gameMode ? (
             <button className="game-toggle" onClick={() => setGameMode(true)}>
-              Start Challenge
+              Start prediction check
             </button>
           ) : (
             <button className="game-toggle exit" onClick={resetGame}>
-              Exit Game
+              Close prediction check
             </button>
           )}
-          {gameMode && <span className="score-badge">Score: {score}/{SPEEDUP_CHALLENGES.length}</span>}
+          {gameMode && <span className="score-badge">Matched trials: {score}/{SPEEDUP_CHALLENGES.length}</span>}
         </div>
 
         {gameMode && (
@@ -325,7 +364,7 @@ export default function SpeculativeDecodingViz() {
                   onClick={() => startChallenge(idx)}
                   className={`challenge-btn ${currentChallengeIdx === idx ? 'active' : ''} ${completedChallenges.has(idx) ? 'completed' : ''}`}
                 >
-                  {completedChallenges.has(idx) ? '✅' : ch.name}
+                  {completedChallenges.has(idx) ? 'Matched' : ch.name}
                 </button>
               ))}
             </div>
@@ -350,7 +389,7 @@ export default function SpeculativeDecodingViz() {
                   onClick={submitPrediction}
                   disabled={!prediction}
                 >
-                  Lock In Prediction
+                  Record prediction
                 </button>
               </div>
             )}
@@ -369,11 +408,11 @@ export default function SpeculativeDecodingViz() {
                   return (
                     <>
                       <div className={`result-badge ${feedback.correct ? 'correct' : 'incorrect'}`}>
-                        {feedback.correct ? '🎉 Correct!' : '💡 Learning opportunity!'}
+                        {feedback.correct ? 'Prediction matched' : 'Prediction missed'}
                       </div>
                       <p className="result-message">{feedback.message}</p>
                       <p className="revealed-params">
-                        Quality: {currentChallenge.quality}, k: {currentChallenge.k} →
+                        Quality: {currentChallenge.quality}, k: {currentChallenge.k} -&gt;
                         Speedup: {calculateExpectedSpeedup(currentChallenge.quality, currentChallenge.k).toFixed(2)}×
                       </p>
                       <button
@@ -383,7 +422,7 @@ export default function SpeculativeDecodingViz() {
                           startChallenge(nextIdx);
                         }}
                       >
-                        {currentChallengeIdx < SPEEDUP_CHALLENGES.length - 1 ? 'Next Challenge →' : 'Try Again'}
+                        {currentChallengeIdx < SPEEDUP_CHALLENGES.length - 1 ? 'Next trial' : 'Try again'}
                       </button>
                     </>
                   );
@@ -419,7 +458,7 @@ export default function SpeculativeDecodingViz() {
           {simulation.proposals.map((proposal, i) => (
             <div
               key={i}
-              className={`token-card ${proposal.accepted ? 'accepted' : 'rejected'}`}
+              className={`token-card ${proposal.status}`}
             >
               <div className="token-text">"{proposal.token}"</div>
               <div className="probabilities">
@@ -434,12 +473,16 @@ export default function SpeculativeDecodingViz() {
                 <div className="prob-row acceptance">
                   <span className="label">α = p/q:</span>
                   <span className="value">
-                    {Math.min(1, proposal.targetProb / proposal.draftProb).toFixed(3)}
+                    {proposal.acceptanceProb.toFixed(3)}
                   </span>
                 </div>
               </div>
-              <div className={`status ${proposal.accepted ? 'accepted' : 'rejected'}`}>
-                {proposal.accepted ? '✓ Accepted' : '✗ Rejected'}
+              <div className={`status ${proposal.status}`}>
+                {proposal.status === 'accepted'
+                  ? 'Accepted prefix'
+                  : proposal.status === 'rejected'
+                    ? 'First rejected'
+                    : 'Discarded after rejection'}
               </div>
             </div>
           ))}
@@ -448,31 +491,30 @@ export default function SpeculativeDecodingViz() {
 
       <div className="metrics">
         <div className="metric-card">
-          <div className="metric-label">Acceptance Rate</div>
+          <div className="metric-label">Accepted prefix rate</div>
           <div className="metric-value" style={{ color: MATH_COLORS.primary }}>
             {(simulation.acceptanceRate * 100).toFixed(1)}%
           </div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">Theoretical Speedup</div>
+          <div className="metric-label">Toy speedup proxy</div>
           <div className="metric-value" style={{ color: MATH_COLORS.accent }}>
             {speedup.toFixed(2)}×
           </div>
         </div>
         <div className="metric-card">
-          <div className="metric-label">Tokens Generated</div>
+          <div className="metric-label">Accepted draft tokens</div>
           <div className="metric-value" style={{ color: MATH_COLORS.secondary }}>
-            {simulation.proposals.filter(p => p.accepted).length} / {numTokens}
+            {simulation.proposals.filter((proposal) => proposal.status === 'accepted').length} / {numTokens}
           </div>
         </div>
       </div>
 
       <div className="insight-box">
-        <strong>★ Key Insight:</strong> The acceptance probability α = min(1, p/q) ensures
-        output distribution matches the target model <em>exactly</em>—this is not an approximation.
-        When draft quality is high (draft probabilities ≈ target probabilities), most tokens are
-        accepted and we get speedup. When rejected, we use residual sampling from max(0, p - q)
-        to maintain the lossless property.
+        <strong>Mechanism invariant:</strong> In full speculative decoding, accept/reject plus
+        residual sampling preserves the target model&apos;s distribution. This toy trace visualizes
+        accepted-prefix and speedup behavior; it does not simulate the residual repair step. The
+        math and code section above carry that distribution check.
       </div>
 
       <style jsx>{`
@@ -484,11 +526,41 @@ export default function SpeculativeDecodingViz() {
           margin: 2rem 0;
         }
 
+        .speculative-decoding-viz.notebook {
+          margin: 0;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          color: #17202a;
+        }
+
+        .predict-first {
+          margin-bottom: 1rem;
+          padding: 0.85rem 1rem;
+          border-radius: 14px;
+          border: 1px solid rgba(31, 111, 120, 0.18);
+          background: rgba(255, 251, 245, 0.78);
+          color: #2f3c48;
+          font-size: 0.92rem;
+          line-height: 1.55;
+        }
+
+        .predict-first strong {
+          color: #1f6f78;
+        }
+
+        .predict-first code {
+          font-family: var(--font-mono);
+          color: #8a4b16;
+        }
+
         .controls {
           display: flex;
           gap: 2rem;
           margin-bottom: 2rem;
           flex-wrap: wrap;
+          min-width: 0;
         }
 
         .control-group {
@@ -501,6 +573,13 @@ export default function SpeculativeDecodingViz() {
           align-items: center;
           gap: 0.75rem;
           margin-bottom: 0.25rem;
+        }
+
+        .control-group label > span:first-child {
+          min-width: 9rem;
+          line-height: 1.35;
+          overflow-wrap: normal;
+          word-break: normal;
         }
 
         .control-group input[type="range"] {
@@ -588,6 +667,10 @@ export default function SpeculativeDecodingViz() {
           color: rgba(255, 255, 255, 0.9);
         }
 
+        .speculative-decoding-viz.notebook .dynamic-insight {
+          color: #2f3c48;
+        }
+
         .token-sequence h3 {
           margin-bottom: 1rem;
           font-size: 1rem;
@@ -599,6 +682,7 @@ export default function SpeculativeDecodingViz() {
           gap: 1rem;
           flex-wrap: wrap;
           margin-bottom: 2rem;
+          min-width: 0;
         }
 
         .token-card {
@@ -616,6 +700,11 @@ export default function SpeculativeDecodingViz() {
 
         .token-card.rejected {
           border-color: rgba(239, 68, 68, 0.5);
+        }
+
+        .token-card.discarded {
+          border-color: rgba(148, 163, 184, 0.45);
+          opacity: 0.78;
         }
 
         .token-text {
@@ -666,11 +755,17 @@ export default function SpeculativeDecodingViz() {
           background: rgba(239, 68, 68, 0.1);
         }
 
+        .status.discarded {
+          color: rgba(148, 163, 184, 1);
+          background: rgba(148, 163, 184, 0.1);
+        }
+
         .metrics {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           gap: 1rem;
           margin-bottom: 2rem;
+          min-width: 0;
         }
 
         .metric-card {
@@ -916,6 +1011,12 @@ export default function SpeculativeDecodingViz() {
           margin-bottom: 1rem;
         }
 
+        .speculative-decoding-viz.notebook .challenge-hint,
+        .speculative-decoding-viz.notebook .result-message,
+        .speculative-decoding-viz.notebook .revealed-params {
+          color: #52606b;
+        }
+
         .next-btn {
           padding: 0.6rem 1.5rem;
           border-radius: 8px;
@@ -934,6 +1035,25 @@ export default function SpeculativeDecodingViz() {
         @media (max-width: 768px) {
           .controls {
             flex-direction: column;
+          }
+
+          .control-group label {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+          }
+
+          .control-group label > span:first-child {
+            grid-column: 1 / -1;
+            min-width: 0;
+          }
+
+          .control-group input[type="range"] {
+            width: 100%;
+          }
+
+          .value {
+            min-width: 3rem;
           }
 
           .tokens {

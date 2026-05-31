@@ -1,0 +1,35 @@
+id: ssm-hybrids
+title: "SSM Hybrids: Fixed-State Sequence Models for Long Context"
+domain: attention-transformers
+slug: ssm-hybrids
+difficulty: 4
+status: review
+importance: important
+prerequisites:
+  - attention-transformers
+  - efficient-attention
+  - long-context
+  - llm-serving
+leads_to: []
+related:
+  - mixture-of-experts
+  - retrieval-augmented-generation
+  - tree-search-reasoning
+  - linear-transformations
+tags:
+  - attention-transformers
+  - ssm
+  - mamba
+  - long-context
+  - kv-cache
+  - recurrence
+  - hybrid-architecture
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: graduate
+short_description: "How Mamba-style state-space models and hybrids trade a growing KV cache for a fixed recurrent state, then use selectivity and local attention to recover useful memory."
+author: codex
+created: "2026-05-04"
+updated: "2026-05-04"
+estimated_read_time: 24

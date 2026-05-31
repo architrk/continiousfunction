@@ -1,0 +1,37 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Context:
+
+- We are in the P0 prediction-first demo retrofit pass.
+- The prior Oracle scope response selected `calculus/backpropagation`.
+- The exact requested slice was one hidden-layer learning-signal prediction gate on the existing Backpropagation visualizer.
+- The learner should predict which hidden unit receives the strongest usable hidden learning signal after the output error flows through `W2` and tanh gates.
+- Before reveal, the implementation must show forward state only and hide `delta2`, raw hidden signal, tanh gate values, `delta1`, row-gradient norms, parameter gradients, loss-after-update, loss delta, update effect, measured demo state, and leaky preset names.
+- After reveal, it may show backward/update mechanics and emit compact measured state through `emitDemoState`.
+
+What changed:
+
+- `content/domains/calculus/concepts/backpropagation/viz.tsx`
+  - Added prediction/reveal state, neutral Case A/B/C labels, hidden signal classifier, hidden row-norm diagnostics, reveal-gated Backward/Update phases, and `clearDemoState`.
+  - Hides backward/update values before reveal and emits measured state only after prediction + reveal.
+- `content/domains/calculus/concepts/backpropagation/content.mdx`
+  - Reworked Code/Interactive Demo copy so the static page does not leak the exact interactive demo answer or leaky preset names before the demo.
+- `components/concepts/BackpropagationViz.test.tsx`
+  - Adds classifier, pre-reveal hiding, reveal, stale clearing, Case C, and MDX leak regression coverage.
+
+Local checks already run:
+
+- `npm test -- BackpropagationViz --runInBand` passed.
+- `npm run validate-content` passed with 0 warnings/errors.
+- `npm run typecheck` passed.
+
+Review request:
+
+Please do a strict publish/no-publish review of this implementation against the scope response.
+
+Return exactly one of:
+
+- `publish`
+- `no-publish`
+
+If `no-publish`, list only the blocking fixes required before publish. Focus on prediction-first leaks, wrong classifier logic, stale measured state, misleading pedagogy, mobile/desktop layout risk, or tests that fail to cover the actual requirement. Do not request broad platform/auth/database/curriculum work.

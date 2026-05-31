@@ -1,0 +1,51 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current goal:
+
+- Continue the P0 prediction-first demo retrofit pass.
+- Keep this slice mechanism-first, static-export-safe, and narrow.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, platform work, or broad curriculum rewrites.
+
+Slice under review:
+
+`calculus/computation-graphs`: prediction-first reused-node sensitivity reveal.
+
+Prior Oracle review returned `no-publish`.
+
+Blocking issue from prior review:
+
+- The component hid the backward accumulator, but the static MDX Math/Code sections still revealed the specific hidden derivation before the learner reached the demo: `cos(a)`, `bar a = 1 + cos(a)`, input cotangents, and the near-cancellation case.
+- Mobile pre-reveal copy also named `bar x` / `bar y` unnecessarily.
+
+Fixes made:
+
+- Rewrote the MDX Math section so it keeps the forward graph, cotangent notation, direct baseline, and generic local accumulation rule, but no longer reveals the sine-path derivative, total `bar a`, input cotangents, or near-cancellation case before the demo.
+- Rewrote the MDX Code section into a runnable non-spoiling bookkeeping witness: it stores forward values, records the direct baseline, and records the sine-edge contribution as hidden until demo reveal.
+- Changed mobile pre-reveal copy from naming `bar x`/`bar y` to “Input cotangents unlock after reveal.”
+- Added test coverage scanning the pre-demo MDX boundary so `cos(a)`, `bar a =`, `bar_x`, `bar_y`, near-cancellation, and `a\\approx\\pi` do not reappear before the Interactive Demo.
+
+Validation after the fix:
+
+- `npm test -- ComputationGraphsViz --runInBand` passed 6 tests. It showed the repo's known styled-jsx jsdom warning.
+- `npm run validate-content` passed with 0 warnings/errors.
+- `npm run typecheck` passed.
+
+Review request:
+
+Please review the attached implementation plus the prior no-publish response as GPT Pro / Oracle in a rigorous product, pedagogy, math, and frontend quality role.
+
+Return one of:
+
+- `publish` if there are no blocking correctness/pedagogy/static-export issues.
+- `no-publish` if any blocker must be fixed first.
+
+Specifically check:
+
+1. Did the MDX fix satisfy the prior hidden-before-reveal blocker without making the Math/Code sections useless?
+2. Does the component still hide `cos(a)`, sine-path contribution, `bar a`, `bar x`, `bar y`, accumulation status, correctness, reverse-edge labels, and measured demo state before reveal?
+3. Is the direct baseline still visible and safe before reveal?
+4. Are stale x/y/preset/prediction resets still correct?
+5. Are the focused tests covering the prior blocker well enough?
+6. Are any exact code/copy/test changes still required before publish?
+
+Keep the review narrow. Do not propose a general graph editor, tensor graph support, backpropagation changes, platform work, auth/database/API work, or broad curriculum rewrites.

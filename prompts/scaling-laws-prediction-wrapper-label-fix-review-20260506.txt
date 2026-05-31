@@ -1,0 +1,25 @@
+Project: Continuous Function.
+
+Current slice: `/domains/scaling/scaling-laws/` prediction-first wrapper.
+
+Previous Oracle verdict found exactly one remaining publish blocker:
+
+```tsx
+⏳ NOT YET (&lt;50%)
+```
+
+in `components/foundations/ScalingLawsViz.tsx` should be:
+
+```tsx
+⏳ BELOW CUTOFF (&lt;50%)
+```
+
+I applied exactly that edit. Follow-up checks:
+- `rg` found no remaining blocker strings matching `has emerged|DID emerge|EMERGES|EMERGED|emergent capabilities|emergent abilities|Emergent abilities|emergence thresholds|Emergence threshold|phase transition|turn on|NOT YET`.
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+- `npx jest lib/contentLoader.test.ts --selectProjects unit --runInBand`
+- `CF_STATIC_EXPORT=0 npm run build`
+
+Please review only whether this final one-label blocker is resolved. Return `publish` if acceptable; otherwise give the exact smallest edit.

@@ -1,0 +1,63 @@
+Project: Continuous Function, a Next.js/TypeScript learning atlas for deep learning math. We are running a review-gated claim-evidence workflow. A claim should only be marked `evidence_review.state: substantive-reviewed` after checking that the listed sources and local witnesses substantively support the exact wording, and after adding a bounded review summary/caveat.
+
+Current task: review the next pending claim check.
+
+Concept:
+- Domain: attention-transformers
+- Concept ID: long-context
+- Title: Long Context Engineering: RoPE Scaling, KV Compression & Memory Optimization
+
+Exact claim:
+"Long-context engineering has two separate constraints: positional extrapolation must keep attention usable beyond training lengths, and KV-cache memory management must keep long-context serving feasible."
+
+Current sources:
+- su-2021-roformer: Su et al. 2021, "RoFormer: Enhanced Transformer with Rotary Position Embedding"
+- press-2021-alibi: Press, Smith, and Lewis 2021/ICLR 2022, "Train Short, Test Long: Attention with Linear Biases Enables Input Length Extrapolation"
+- kwon-2023-pagedattention: Kwon et al. 2023, "Efficient Memory Management for Large Language Model Serving with PagedAttention"
+- Current URLs in concept.yaml are arXiv abstract URLs, not direct PDFs.
+
+Primary-source evidence I extracted:
+- RoFormer abstract: RoPE encodes absolute position with a rotation matrix while incorporating explicit relative-position dependency in self-attention. It lists flexibility of sequence length and long-text classification evaluation, but it is not itself a modern RoPE-scaling recipe.
+- RoFormer Section 3.1: the desired inner product should depend on word embeddings and the relative position m - n. Section 3.2 generalizes RoPE with a rotary matrix and shows the query-key product depends on the position difference through a rotation product.
+- ALiBi abstract: the paper asks how a Transformer extrapolates at inference time to sequences longer than training, says changing the position-representation method can enable extrapolation, and introduces ALiBi as a linear attention-score bias instead of adding positional embeddings.
+- ALiBi abstract/results: a 1.3B model trained on length 1024 extrapolates to 2048; the paper frames this as input-length extrapolation and compares against other position methods.
+- ALiBi intro/figure text: current position methods degrade under longer validation input lengths, while ALiBi can train on short sequences and be applied to longer runtime sequences.
+- PagedAttention abstract: high-throughput LLM serving requires batching, but systems struggle because per-request KV-cache memory is huge and grows/shrinks dynamically; inefficient management wastes memory through fragmentation and duplication, limiting batch size.
+- PagedAttention Section 1/2: autoregressive generation caches key/value vectors and becomes memory-bound; batching throughput is constrained by GPU memory.
+- PagedAttention Section 3: serving throughput is memory-bound because batch size is constrained by GPU memory, especially KV-cache storage. It gives an OPT-13B example where one token's KV cache is 800 KB and one request can need up to 1.6 GB.
+- PagedAttention Section 4: PagedAttention stores continuous keys/values in non-contiguous blocks and vLLM manages physical KV-cache memory in a paged fashion.
+
+Local witness refs in the claim:
+- #source-span-su-2021-roformer
+- #source-span-press-2021-alibi
+- #source-span-kwon-2023-pagedattention
+- #math-object-1
+- #code-witness-1
+- #interactive-demo
+
+Important local witness concern:
+- `lib/conceptObjectSpans.ts` currently caps exported math objects at 2.
+- In `content.mdx`, `#math-object-1` is the sliding-window mask equation and `#math-object-2` is masked attention.
+- The KV-cache memory formula is the third display equation, so it is not exposed as `#math-object-3`.
+- Therefore `#math-object-1` is not the best math witness for the claim's KV-cache memory component. The code witness does calculate KV memory, and the interactive demo has a KV Cache tab, but the listed math object currently points at sliding-window attention rather than KV memory.
+
+Attached files:
+- content/domains/attention-transformers/concepts/long-context/concept.yaml
+- content/domains/attention-transformers/concepts/long-context/content.mdx
+- content/domains/attention-transformers/concepts/long-context/viz.tsx
+- lib/conceptObjectSpans.ts
+- content/_generated/claim-evidence-review-queue.json
+
+Please answer as a strict reviewer, not a brainstormer:
+1. Does the listed source set plus local witnesses substantively support the exact claim?
+2. Are any parts too broad or under-caveated? Pay special attention to RoFormer not being a RoPE-scaling recipe, ALiBi vs RoPE extrapolation, PagedAttention proving KV-cache serving-memory pressure, and the math-object mismatch.
+3. Should the source URLs be switched from arXiv abstract pages to direct PDF URLs for this source-backed claim?
+4. If approved, provide the exact YAML patch shape for `claim_checks[0].evidence_review`, and any revised source note/support/caveat/object_refs wording. Keep `evidence_review.summary` under 520 characters and `caveat` under 280 characters.
+5. If not approved, give the smallest local fixes needed before approval.
+
+Constraints:
+- Do not propose broad page redesigns.
+- Do not validate a specific RoPE-scaling recipe, eviction policy, million-token benchmark, or production guarantee.
+- Treat the interactive demo and NumPy code as toy teaching witnesses, not as proof of all serving systems.
+- Prefer the smallest content/metadata fix that makes this claim review honest.
+- Use reviewer value `codex+oracle` and date `2026-05-07` if approved.

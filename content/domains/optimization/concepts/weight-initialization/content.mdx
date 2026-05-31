@@ -19,20 +19,26 @@ Modern scaling work adds another layer: you want hyperparameters to transfer as 
 
 ## Math
 
-Consider a linear layer $h = Wx$ where $x\\in\\mathbb R^{n_{in}}$ has i.i.d. components with $\\mathrm{Var}(x_i)=\\sigma^2$.
-Assume $W_{ij}$ are i.i.d. with mean 0 and variance $\\mathrm{Var}(W_{ij}) = v$.
+Consider a linear layer $h = Wx$ where $x\in\mathbb R^{n_{in}}$ has i.i.d. components with $\mathrm{Var}(x_i)=\sigma^2$.
+Assume $W_{ij}$ are i.i.d. with mean 0 and variance $\mathrm{Var}(W_{ij}) = v$.
 
 Then each output coordinate is a sum of $n_{in}$ terms, so:
 
-$$\\mathrm{Var}(h_j) \\approx n_{in}\\,v\\,\\sigma^2.$$
+$$
+\mathrm{Var}(h_j) \approx n_{in}\,v\,\sigma^2.
+$$
 
-To keep variance stable across layers ($\\mathrm{Var}(h_j) \\approx \\sigma^2$), set:
+To keep variance stable across layers ($\mathrm{Var}(h_j) \approx \sigma^2$), set:
 
-$$v \\approx \\frac{1}{n_{in}}.$$
+$$
+v \approx \frac{1}{n_{in}}.
+$$
 
 This motivates Xavier-like scaling. For ReLU, roughly half the mass is zeroed, so to keep variance stable you use about twice the variance:
 
-$$\\mathrm{Var}(W_{ij}) \\approx \\frac{2}{n_{in}}.$$
+$$
+\mathrm{Var}(W_{ij}) \approx \frac{2}{n_{in}}.
+$$
 
 muP (Maximal Update Parameterization) extends this idea to *updates*: scale parameters and learning rates with width so that update magnitudes stay comparable across model sizes.
 

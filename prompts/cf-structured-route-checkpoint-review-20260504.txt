@@ -1,0 +1,52 @@
+Project: Continuous Function, a static-export-friendly Next.js learning atlas.
+
+Product goal:
+The site should preserve a learner's current question and the smallest useful checkpoint across paper mapper, graph, home, and the attention-serving lab. This should feel continuous and useful without becoming creepy or noisy. Browser `localStorage` is the right early-stage constraint.
+
+Prior Oracle guidance already accepted:
+- Do not build accounts/cloud saved paths yet.
+- Keep one compact local route snapshot under `cf:last-learning-route`.
+- Store the paper/clue separately from the mapped route title.
+- Preserve grounding status.
+- Store only a small lastObservation, not a full activity log.
+- For the KV checkpoint, remember enough structured lab state to restore the exact experiment.
+- Show what changed, what stayed fixed, the result, the caveat, and the next question.
+- Ignore malformed or oversized localStorage values.
+
+What I changed in this pass:
+- Extended `LearningRouteSnapshot.lastObservation` with optional structured fields:
+  - `kind: 'formula-comparison'`
+  - `changed: { symbol, from, to }`
+  - `heldFixed: [{ symbol, value }]`
+  - `result: { before, after, ratio, unit }`
+  - `caveat`
+- Hardened snapshot validation with bounded strings/arrays for top-level snapshot fields, route concepts, equations, observations, held-fixed values, and numeric result fields.
+- Updated the KV checkpoint in `AttentionServingModule` to save the structured formula comparison:
+  - `H_kv 32 -> 8`
+  - held fixed: `B`, `T`, `N_layers`, `d_head`, precision
+  - result in decimal GB
+  - caveat excluding allocator/paged-cache/metadata/scheduler/layout overhead
+  - lab state for restoring sliders.
+- Updated home and graph resume surfaces to render the held-fixed assumptions and caveat.
+
+Local verification already passed:
+- `npm run validate-content`
+- `npm run typecheck`
+- `CF_NEXT_BUILD_CPUS=1 npm run build`, with only existing raw-img and KaTeX warnings.
+- CDP browser flow:
+  1. Open `/paths/attention-serving/?focus=kv-cache&from=graph#serving-module`
+  2. Select correct `H_kv` prediction
+  3. Click the save-checkpoint experiment button
+  4. Inspect localStorage: structured fields are present
+  5. Open `/` and `/graph/?route=kv-cache&from=home#learning-route`: value, held-fixed assumptions, and caveat are visible
+  6. 390px mobile home has no overflow
+  7. Oversized corrupt localStorage snapshot does not render the resume panel
+
+Please review the patch for:
+1. Any blocking correctness/trust problem in the snapshot schema or validation.
+2. Any risk that valid existing snapshots become too brittle or silently disappear.
+3. Any UI/pedagogy issue in showing held-fixed assumptions and caveats on home/graph.
+4. Any privacy or localStorage concern.
+5. Whether this satisfies the previous route-observation Oracle review, or what should still remain queued.
+
+Return blockers, important improvements, optional polish, and a ship/no-ship recommendation for this structured-checkpoint pass.

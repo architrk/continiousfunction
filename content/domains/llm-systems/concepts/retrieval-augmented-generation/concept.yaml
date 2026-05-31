@@ -1,0 +1,33 @@
+id: retrieval-augmented-generation
+title: "Retrieval-Augmented Generation: External Memory for Generation"
+domain: llm-systems
+slug: retrieval-augmented-generation
+difficulty: 4
+status: review
+importance: important
+prerequisites:
+  - representations
+  - long-context
+  - decoding-sampling
+  - llm-serving
+leads_to: []
+related:
+  - structured-decoding
+  - test-time-compute
+  - tree-search-reasoning
+tags:
+  - llm-systems
+  - retrieval
+  - rag
+  - embeddings
+  - external-memory
+  - grounding
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+short_description: "How embedding retrieval selects a small weighted evidence set for generation, and why retrieval coverage, answer correctness, citations, and freshness are different quantities."
+author: codex
+created: "2026-05-03"
+updated: "2026-05-03"
+estimated_read_time: 24

@@ -1,0 +1,32 @@
+You are reviewing a small implementation slice in Continuous Function, a static-exported Next.js Pages Router + TypeScript learning platform for deep learning and mathematics.
+
+Earlier in this session you recommended starting the shared flagship demo-shell rollout with Speculative Decoding. I implemented the first slice:
+- added `components/viz/VizStageAdapter.tsx` as a non-card layout adapter;
+- changed the filesystem Speculative Decoding `viz.tsx` wrapper to use the adapter and pass `chrome="notebook"`;
+- added a `chrome?: 'legacy' | 'notebook'` prop to the legacy foundation demo so `/foundations` can keep the old wrapper while the filesystem concept uses notebook chrome;
+- renamed the prediction challenge from arcade/game language to prediction-check language;
+- made the token trace deterministic until the learner clicks Resample;
+- added a top "Predict first" prompt;
+- changed the final exactness claim to say the toy visualizes acceptance terms while full speculative decoding needs residual sampling;
+- emitted a compact demo-state summary for the AI companion.
+
+Validation already run:
+- `npm run validate-content` passed with 0 warnings / 0 errors.
+- `npm run typecheck` passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed with only existing raw-img and KaTeX warnings.
+- Local route `/domains/llm-systems/speculative-decoding/` returns HTTP 200 on the dev server.
+
+Please review the attached implementation as a skeptical senior product/pedagogy/code reviewer.
+
+Return:
+1. Blocking issues to fix before keeping this slice.
+2. Important but non-blocking issues.
+3. Whether the wrapper contract avoids card-in-card design and is reusable enough for the next demos.
+4. Whether the speculative decoding toy copy now avoids overclaiming exactness.
+5. Any small patch recommendations that should be applied now.
+
+Constraints:
+- Do not suggest broad redesign or accounts/backend/AI infrastructure.
+- Preserve static export compatibility and legacy `/foundations` behavior.
+- Prefer small concrete patch recommendations.
+- Treat the demo goal as prediction -> manipulation -> observation -> explanation.

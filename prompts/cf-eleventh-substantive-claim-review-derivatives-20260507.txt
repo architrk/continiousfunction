@@ -1,0 +1,37 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, calculus/derivatives#derivative-limit-secant-tangent.
+
+Claim under review:
+"For a differentiable scalar function, the derivative at x is the limit of the difference quotient as h approaches 0: secant slopes over [x,x+h] converge to the tangent slope, a local one-variable rate-of-change signal used by gradient-based optimization."
+
+Cited source:
+Deisenroth, Faisal, and Ong, "Mathematics for Machine Learning", Cambridge University Press, 2020, https://mml-book.github.io/
+
+Primary-source evidence I checked before this prompt from the official MML PDF available on the companion site:
+- PDF page 146 / book page 140: MML says it will discuss gradients of functions, which are often essential for learning in machine learning models because the gradient points in the direction of steepest ascent.
+- PDF page 147 / book page 141: MML section 5.1 starts with the difference quotient for a univariate function y=f(x), x,y in R, and defines it as [f(x+delta x)-f(x)]/delta x.
+- PDF page 147 / book page 141: MML states the difference quotient computes the slope of the secant line through two points on the graph, can be considered an average slope between x and x+delta x, and in the limit delta x -> 0 gives the tangent at x if f is differentiable.
+- PDF page 147 / book page 141: Definition 5.2 defines the derivative for h>0 as df/dx := lim_{h->0} [f(x+h)-f(x)]/h and says the secant becomes a tangent; it also states the derivative points in the direction of steepest ascent.
+- PDF page 234 / book page 228: MML section 7.1 defines gradient descent for differentiable f: R^d -> R, recalls from section 5.1 that the gradient points in the direction of steepest ascent, and says gradient descent moves in the negative gradient direction for steepest descent.
+- PDF page 234 / book page 228: MML gives the update x_{i+1}=x_i - gamma_i ((nabla f)(x_i))^T and frames the gradient as the local signal used by the optimization step.
+
+Attached local files:
+- content/domains/calculus/concepts/derivatives/concept.yaml
+- content/domains/calculus/concepts/derivatives/content.mdx
+- content/domains/calculus/concepts/derivatives/viz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether MML substantively supports the claim as written, not merely that the page has a source ID.
+2. Check whether the local math/code/demo witnesses match the claim's scope: scalar differentiable function, difference quotient, secant slope, h shrinking toward 0, tangent slope, and local slope relation used by gradient-based optimization.
+3. Identify any overclaim, missing caveat, misleading wording, or witness mismatch.
+4. If publishable after small edits, provide the exact revised evidence_review.summary and caveat wording you would accept.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require multivariable Jacobians, nondifferentiable subgradient theory, finite-difference numerical-analysis depth, or optimizer convergence proof unless the current wording accidentally claims them.
+- The site source URL currently points to the official MML companion page. Say explicitly if you think it should instead point to the official PDF URL.

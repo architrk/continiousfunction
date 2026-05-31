@@ -25,8 +25,49 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "How models turn inputs into vectors where dot products and distances correspond to meaning, and how training objectives sculpt that geometry."
+sources:
+  - id: bengio-2013-representation-learning
+    kind: paper
+    title: "Representation Learning: A Review and New Perspectives"
+    authors: "Bengio, Courville, and Vincent"
+    year: 2013
+    url: "https://arxiv.org/abs/1206.5538"
+    note: "Grounds representation learning as learning useful explanatory factors and feature geometry."
+  - id: peters-2018-elmo
+    kind: paper
+    title: "Deep contextualized word representations"
+    authors: "Peters et al."
+    year: 2018
+    url: "https://arxiv.org/abs/1802.05365"
+    note: "Grounds contextual embeddings as representations whose meaning changes with surrounding context."
+  - id: oord-2018-cpc
+    kind: paper
+    title: "Representation Learning with Contrastive Predictive Coding"
+    authors: "van den Oord, Li, and Vinyals"
+    year: 2018
+    url: "https://arxiv.org/abs/1807.03748"
+    note: "Grounds contrastive predictive coding and InfoNCE-style losses that score positive pairs against negative samples."
+claim_checks:
+  - id: representations-feature-contextual-elmo
+    status: source-checked
+    claim: "Representation learning trains encoders to transform raw inputs into internal features that make useful factors easier to extract; ELMo-style contextual embeddings make token representations depend on sentence context."
+    source_ids:
+      - bengio-2013-representation-learning
+      - peters-2018-elmo
+    support: "Bengio et al. frame representation learning as learning transformations that expose useful explanatory factors and make useful information easier to extract. Peters et al. introduce ELMo contextual word representations from biLM states that model word use and how it varies across linguistic context. Local math/code witness the extractor and contextual-token clauses."
+    caveat: "Checks only useful-factor extraction and ELMo-style contextual token dependence. It does not certify InfoNCE, retrieval quality, task vectors, anisotropy fixes, equivariance, parallel transport, or all representation-learning subfields."
+    object_refs:
+      - "#source-span-bengio-2013-representation-learning"
+      - "#source-span-peters-2018-elmo"
+      - "#math-object-1"
+      - "#code-witness-1"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-08"
+      reviewer: "codex+oracle+codex-5.3"
+      summary: "Bengio et al. support representation learning as learned features that make useful information or explanatory factors easier for predictors to extract. Peters et al. support ELMo as sentence-contextual token representations from biLM layer states, including task-specific layer weighting and polysemy disambiguation. Local math and code witness this bounded claim; broader geometry demos stay out of scope."
+short_description: "How models turn inputs into vectors whose geometry can expose useful factors, contextual meaning, and similarity structure."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-08"
 estimated_read_time: 18

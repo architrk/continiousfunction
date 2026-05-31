@@ -1,153 +1,174 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import * as d3 from 'd3'
+import { emitDemoState } from '../../lib/demoState'
 
-/**
- * Sparse Autoencoder Visualization
- * Shows reconstruction-sparsity tradeoff frontier
- * Compares L1 SAE vs TopK SAE approaches
- */
-
-interface SparseAutoencoderVizProps {
+type SparseAutoencoderVizProps = {
   width?: number
   height?: number
+  chrome?: 'legacy' | 'notebook'
 }
 
 type SAEType = 'l1' | 'topk' | 'gated'
-
-// Gamification types
-type GamePhase = 'setup' | 'countdown' | 'revealed'
+type CheckPhase = 'setup' | 'revealed'
 type SAEPrediction = SAEType | null
 
-// Mystery challenges for the prediction game
-const FRONTIER_CHALLENGES = [
+type FrontierChallenge = {
+  name: string
+  sparsity: number
+  answer: SAEType
+  description: string
+  observation: string
+}
+
+const FRONTIER_CHALLENGES: FrontierChallenge[] = [
   {
-    name: '🎲 Sparse Regime',
-    sparsity: 5,
-    answer: 'gated' as SAEType,
-    description: 'At very low sparsity (k=5), which SAE type reconstructs best?',
+    name: 'Shrinkage check',
+    sparsity: 6,
+    answer: 'l1',
+    description: 'At low L0, which curve should you inspect for L1 shrinkage bias?',
+    observation: 'Inspect the L1 curve: a soft sparsity penalty can shrink active magnitudes, so reconstruction can lag at the same active-feature budget.',
   },
   {
-    name: '🎲 Dense Regime',
-    sparsity: 40,
-    answer: 'gated' as SAEType,
-    description: 'At high sparsity (k=40), do the frontiers converge?',
+    name: 'Fixed-budget check',
+    sparsity: 20,
+    answer: 'topk',
+    description: 'Which variant makes the active-feature budget an explicit k?',
+    observation: 'TopK makes the active-feature budget the direct knob: keep k latents, then compare reconstruction at that same L0.',
   },
   {
-    name: '🎲 Shrinkage Zone',
+    name: 'Gate/magnitude check',
     sparsity: 15,
-    answer: 'gated' as SAEType,
-    description: 'Mid-range: where does L1 shrinkage hurt most?',
+    answer: 'gated',
+    description: 'Which variant separates feature detection from magnitude estimation?',
+    observation: 'Gated SAEs separate the decision that a feature is present from the estimate of how strongly it contributes.',
   },
   {
-    name: '🎲 OpenAI Range',
+    name: 'Scaled-toy caveat',
     sparsity: 32,
-    answer: 'gated' as SAEType,
-    description: 'Near OpenAI\'s k≈100 (scaled): which dominates?',
+    answer: 'topk',
+    description: 'Which preset is only an OpenAI-style TopK analogue, not an empirical GPT-4 operating point?',
+    observation: 'The TopK preset is only an OpenAI-style analogue. This toy k is normalized for teaching and is not a GPT-4 measurement.',
   },
-];
+]
 
-// Feedback based on prediction accuracy
-const getFrontierFeedback = (
-  predicted: SAEPrediction,
-  actual: SAEType,
-  sparsity: number,
-  mseValues: { l1: number; topk: number; gated: number }
-): string => {
-  const correct = predicted === actual;
-  const _mseSorted = Object.entries(mseValues)
-    .sort(([, a], [, b]) => a - b)
-    .map(([type]) => type);
-
-  if (correct) {
-    if (actual === 'gated') {
-      return `🎯 Correct! Gated SAE wins with MSE=${mseValues.gated.toFixed(3)}. It fixes L1's shrinkage bias by separating "which features" (gate) from "how much" (magnitude). At k=${sparsity}, L1 has MSE=${mseValues.l1.toFixed(3)} while TopK has ${mseValues.topk.toFixed(3)}.`;
-    }
-    if (actual === 'topk') {
-      return `🎯 Correct! TopK wins here. At this sparsity, directly selecting top-k features beats L1's soft thresholding. MSE ranking: TopK(${mseValues.topk.toFixed(3)}) < Gated(${mseValues.gated.toFixed(3)}) < L1(${mseValues.l1.toFixed(3)}).`;
-    }
-    return `🎯 Surprising! L1 wins at k=${sparsity}. This is rare—typically Gated or TopK dominate.`;
-  }
-
-  // Wrong prediction
-  return `❌ ${actual.charAt(0).toUpperCase() + actual.slice(1)} wins! At k=${sparsity}: Gated(${mseValues.gated.toFixed(3)}) < TopK(${mseValues.topk.toFixed(3)}) < L1(${mseValues.l1.toFixed(3)}). L1's shrinkage bias means active features are pushed toward zero, hurting reconstruction. Gated and TopK avoid this.`;
-};
-
-// Operating point presets based on real SAE research
 const OPERATING_PRESETS = [
-  { name: '🔬 Minimal', type: 'topk' as SAEType, k: 5, description: 'Ultra-sparse (5 features/token), extreme interpretability' },
-  { name: '📊 Anthropic', type: 'gated' as SAEType, k: 20, description: 'Anthropic-style: ~20 active features, interpretable' },
-  { name: '🚀 OpenAI GPT-4', type: 'topk' as SAEType, k: 32, description: 'OpenAI 16M SAE: k≈100 features (scaled)' },
-  { name: '💪 High Fidelity', type: 'gated' as SAEType, k: 45, description: 'Best reconstruction, less sparse' },
-];
+  { name: 'Very sparse', type: 'topk' as SAEType, k: 5, description: 'Only a few active features per token; high interpretability pressure.' },
+  { name: 'Gated low-L0 example', type: 'gated' as SAEType, k: 20, description: 'A gated mechanism example at a low active-feature budget.' },
+  { name: 'OpenAI-style TopK analogue', type: 'topk' as SAEType, k: 32, description: 'A scaled teaching analogue for TopK control, not an empirical GPT-4 operating point.' },
+  { name: 'Higher reconstruction budget', type: 'gated' as SAEType, k: 45, description: 'More active features usually improve reconstruction while reducing sparsity.' },
+]
 
-// Dynamic educational insight
-function getSAEInsight(
-  selectedType: SAEType,
-  sparsityParam: number,
-  currentMSE: number
-): string {
+const saeColors: Record<SAEType, string> = {
+  l1: '#8b5cf6',
+  topk: '#22c55e',
+  gated: '#f59e0b',
+}
+
+const saeLabels: Record<SAEType, string> = {
+  l1: 'L1 SAE (tune lambda)',
+  topk: 'TopK SAE (set k)',
+  gated: 'Gated SAE',
+}
+
+const mechanismLabels: Record<SAEType, string> = {
+  l1: 'L1 shrinkage',
+  topk: 'TopK fixed budget',
+  gated: 'gated detection/magnitude split',
+}
+
+function getReconForType(saeType: SAEType, sparsity: number) {
+  if (saeType === 'l1') {
+    return 0.055 + 0.4 / (1 + sparsity / 8)
+  }
+  if (saeType === 'topk') {
+    return 0.022 + 0.34 / (1 + sparsity / 6)
+  }
+  return 0.035 + 0.31 / (1 + sparsity / 5)
+}
+
+function getMSEAtSparsity(sparsity: number) {
+  return {
+    l1: getReconForType('l1', sparsity),
+    topk: getReconForType('topk', sparsity),
+    gated: getReconForType('gated', sparsity),
+  }
+}
+
+function formatToyMSE(mseValues: Record<SAEType, number>) {
+  return `Toy MSE at this L0: L1 ${mseValues.l1.toFixed(3)}, TopK ${mseValues.topk.toFixed(3)}, gated ${mseValues.gated.toFixed(3)}.`
+}
+
+function getFrontierFeedback(
+  predicted: SAEPrediction,
+  challenge: FrontierChallenge,
+  mseValues: Record<SAEType, number>
+) {
+  const matched = predicted === challenge.answer
+  const predictionCopy = predicted
+    ? `You chose ${mechanismLabels[predicted]}.`
+    : 'No mechanism was selected.'
+  const verdict = matched
+    ? 'Prediction matched.'
+    : `Prediction missed. Inspect ${mechanismLabels[challenge.answer]} for this observation.`
+
+  return `${verdict} ${predictionCopy} ${challenge.observation} ${formatToyMSE(mseValues)}`
+}
+
+function getSAEInsight(selectedType: SAEType, sparsityParam: number, currentMSE: number) {
   if (selectedType === 'l1' && sparsityParam < 10) {
-    return `⚠️ L1 SAE with high λ: very sparse but suffers from SHRINKAGE BIAS—active features are pushed toward zero. TopK or Gated fix this by separating "which features" from "how much".`;
+    return 'L1 with a strong sparsity penalty exposes shrinkage bias: active features can be pushed toward zero. Compare it with TopK or gated mechanisms at the same active-feature budget.'
   }
 
   if (selectedType === 'topk') {
     if (sparsityParam <= 5) {
-      return `🎯 TopK with k=${sparsityParam}: Ultra-sparse! Only ${sparsityParam} features fire per token. Great for finding the most important features, but reconstruction suffers (MSE ≈ ${currentMSE.toFixed(3)}).`;
+      return `TopK with k=${sparsityParam} keeps only a few features active per token. That makes the budget easy to inspect, while reconstruction suffers in this toy frontier (MSE ${currentMSE.toFixed(3)}).`
     }
     if (sparsityParam >= 30) {
-      return `🚀 TopK with k=${sparsityParam}: Near-perfect reconstruction (MSE ≈ ${currentMSE.toFixed(3)})! This is close to OpenAI's GPT-4 SAE operating point. Good balance of interpretability and fidelity.`;
+      return `TopK with k=${sparsityParam} fixes the toy active-feature budget directly. This mirrors the motivation for k-sparse SAEs; the slider value is normalized for teaching, not a GPT-4 measurement.`
     }
-    return `📊 TopK with k=${sparsityParam}: Exactly ${sparsityParam} features activate per token. No λ tuning needed! MSE ≈ ${currentMSE.toFixed(3)}. Move the slider to explore the reconstruction-sparsity frontier.`;
+    return `TopK with k=${sparsityParam} activates exactly ${sparsityParam} toy features per token. Move the slider to test how controlled L0 changes reconstruction MSE (${currentMSE.toFixed(3)}).`
   }
 
   if (selectedType === 'gated') {
-    return `🌟 Gated SAE: Best of both worlds! Separate gates for "which features" and "how much". Notice it dominates L1 everywhere on the frontier. MSE ≈ ${currentMSE.toFixed(3)} at L0=${sparsityParam}.`;
+    return `Gated SAE separates feature detection from magnitude estimation. In this toy frontier, that removes the visible L1 shrinkage penalty at the same active-feature budget. Treat it as a mechanism illustration, not a universal ranking.`
   }
 
-  return `📈 L1 SAE with L0≈${sparsityParam}: Reconstruction MSE ≈ ${currentMSE.toFixed(3)}. L1 penalty creates shrinkage bias—try TopK or Gated for a better frontier!`;
+  return `L1 SAE at L0=${sparsityParam} has toy reconstruction MSE ${currentMSE.toFixed(3)}. The key question is whether the sparsity penalty is selecting useful features or simply shrinking active magnitudes.`
 }
 
-export default function SparseAutoencoderViz({ width = 600, height = 400 }: SparseAutoencoderVizProps) {
+function getInsightTone(selectedType: SAEType, sparsityParam: number) {
+  if (selectedType === 'l1' && sparsityParam < 10) return 'caution'
+  if (selectedType === 'topk') return 'control'
+  return 'mechanism'
+}
+
+export default function SparseAutoencoderViz({
+  width = 600,
+  height = 400,
+  chrome = 'legacy',
+}: SparseAutoencoderVizProps) {
   const [selectedType, setSelectedType] = useState<SAEType>('topk')
   const [sparsityParam, setSparsityParam] = useState(10)
-
-  // Game state
-  const [gameMode, setGameMode] = useState(false)
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
-  const [selectedChallenge, setSelectedChallenge] = useState<typeof FRONTIER_CHALLENGES[0] | null>(null)
+  const [checkMode, setCheckMode] = useState(false)
+  const [checkPhase, setCheckPhase] = useState<CheckPhase>('setup')
+  const [selectedChallenge, setSelectedChallenge] = useState<FrontierChallenge | null>(null)
   const [prediction, setPrediction] = useState<SAEPrediction>(null)
-  const [countdown, setCountdown] = useState(3)
-  const [score, setScore] = useState({ correct: 0, total: 0 })
+  const [checkProgress, setCheckProgress] = useState({ correct: 0, total: 0 })
 
   const margin = { top: 20, right: 120, bottom: 60, left: 70 }
   const w = width - margin.left - margin.right
   const h = height - margin.top - margin.bottom
 
-  // Generate Pareto frontier data for different SAE types
   const frontierData = useMemo(() => {
     const points = 50
-    const sparsityRange = [0.5, 50] // L0 sparsity (average active features)
+    const sparsityRange = [0.5, 50]
 
     const generateFrontier = (saeType: SAEType) => {
       const data = []
-      for (let i = 0; i < points; i++) {
+      for (let i = 0; i < points; i += 1) {
         const t = i / (points - 1)
         const sparsity = sparsityRange[0] + t * (sparsityRange[1] - sparsityRange[0])
-
-        // Reconstruction error (MSE) - decreases with more active features
-        let recon: number
-        if (saeType === 'l1') {
-          // L1 SAE: gradual improvement but with shrinkage bias
-          recon = 0.05 + 0.4 / (1 + sparsity / 8)
-        } else if (saeType === 'topk') {
-          // TopK SAE: better frontier (no shrinkage)
-          recon = 0.02 + 0.35 / (1 + sparsity / 6)
-        } else {
-          // Gated SAE: best frontier
-          recon = 0.015 + 0.3 / (1 + sparsity / 5)
-        }
-
-        data.push({ sparsity, recon })
+        data.push({ sparsity, recon: getReconForType(saeType, sparsity) })
       }
       return data
     }
@@ -155,7 +176,7 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
     return {
       l1: generateFrontier('l1'),
       topk: generateFrontier('topk'),
-      gated: generateFrontier('gated')
+      gated: generateFrontier('gated'),
     }
   }, [])
 
@@ -171,490 +192,353 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
     .x(d => xScale(d.sparsity))
     .y(d => yScale(d.recon))
 
-  const saeColors = {
-    l1: '#8b5cf6',
-    topk: '#22c55e',
-    gated: '#f59e0b'
+  const currentMSE = useMemo(
+    () => getMSEAtSparsity(sparsityParam)[selectedType],
+    [selectedType, sparsityParam]
+  )
+
+  const currentInsight = useMemo(
+    () => getSAEInsight(selectedType, sparsityParam, currentMSE),
+    [selectedType, sparsityParam, currentMSE]
+  )
+
+  const insightTone = getInsightTone(selectedType, sparsityParam)
+  const challengeMSE = selectedChallenge ? getMSEAtSparsity(selectedChallenge.sparsity) : null
+
+  useEffect(() => {
+    emitDemoState({
+      conceptId: 'sparse-autoencoders',
+      label: 'Sparse autoencoder frontier',
+      summary: `${saeLabels[selectedType]} at L0=${sparsityParam} has toy reconstruction MSE ${currentMSE.toFixed(3)}.`,
+      values: [
+        selectedType === 'topk'
+          ? 'TopK directly fixes k active latents per token in this toy'
+          : 'L1/gated slider represents a target average active-feature budget',
+        'invariant: compare methods at the same L0 budget',
+        'caveat: illustrative frontier, not trained SAE data',
+        'next test: lower the active-feature budget until reconstruction failure becomes visible',
+      ],
+    })
+  }, [currentMSE, selectedType, sparsityParam])
+
+  const resetCheck = () => {
+    setCheckPhase('setup')
+    setSelectedChallenge(null)
+    setPrediction(null)
   }
 
-  const saeLabels = {
-    l1: 'L1 SAE (tune λ)',
-    topk: 'TopK SAE (set k)',
-    gated: 'Gated SAE'
+  const startChallenge = (challenge: FrontierChallenge) => {
+    setSelectedChallenge(challenge)
+    setPrediction(null)
+    setCheckPhase('setup')
   }
 
-  // Get current operating point MSE
-  const currentMSE = useMemo(() => {
-    const data = frontierData[selectedType]
-    const idx = Math.min(
-      Math.floor((sparsityParam / 50) * data.length),
-      data.length - 1
-    )
-    return data[idx]?.recon ?? 0
-  }, [frontierData, selectedType, sparsityParam])
+  const submitPrediction = (pred: SAEType) => {
+    if (!selectedChallenge) return
 
-  // Dynamic educational insight
-  const currentInsight = useMemo(() => {
-    return getSAEInsight(selectedType, sparsityParam, currentMSE)
-  }, [selectedType, sparsityParam, currentMSE])
+    setPrediction(pred)
+    setSparsityParam(selectedChallenge.sparsity)
+    setSelectedType(selectedChallenge.answer)
+    setCheckProgress(prev => ({
+      correct: prev.correct + (pred === selectedChallenge.answer ? 1 : 0),
+      total: prev.total + 1,
+    }))
+    setCheckPhase('revealed')
+  }
 
-  // Handle preset selection
   const handlePreset = (preset: typeof OPERATING_PRESETS[0]) => {
     setSelectedType(preset.type)
     setSparsityParam(preset.k)
   }
 
-  // Calculate MSE for all SAE types at a given sparsity
-  const getMSEAtSparsity = (sparsity: number) => {
-    const getRecon = (type: SAEType, s: number) => {
-      if (type === 'l1') return 0.05 + 0.4 / (1 + s / 8);
-      if (type === 'topk') return 0.02 + 0.35 / (1 + s / 6);
-      return 0.015 + 0.3 / (1 + s / 5);
-    };
-    return {
-      l1: getRecon('l1', sparsity),
-      topk: getRecon('topk', sparsity),
-      gated: getRecon('gated', sparsity),
-    };
-  };
-
-  // Game control functions
-  const startChallenge = (challenge: typeof FRONTIER_CHALLENGES[0]) => {
-    setSelectedChallenge(challenge);
-    setPrediction(null);
-    setGamePhase('setup');
-  };
-
-  const submitPrediction = (pred: SAEPrediction) => {
-    if (!selectedChallenge || !pred) return;
-    setPrediction(pred);
-    setGamePhase('countdown');
-    setCountdown(3);
-  };
-
-  const resetGame = () => {
-    setGamePhase('setup');
-    setSelectedChallenge(null);
-    setPrediction(null);
-  };
-
-  // Countdown effect
-  useEffect(() => {
-    if (gamePhase !== 'countdown') return;
-
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Reveal phase - show the result at the challenge sparsity
-          if (selectedChallenge) {
-            setSparsityParam(selectedChallenge.sparsity);
-            setSelectedType(selectedChallenge.answer);
-
-            // Update score
-            const correct = prediction === selectedChallenge.answer;
-            setScore(prev => ({
-              correct: prev.correct + (correct ? 1 : 0),
-              total: prev.total + 1,
-            }));
-          }
-          setGamePhase('revealed');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [gamePhase, selectedChallenge, prediction]);
+  const toggleCheckMode = () => {
+    const nextMode = !checkMode
+    setCheckMode(nextMode)
+    if (nextMode) resetCheck()
+  }
 
   return (
-    <div className="sae-viz">
-      {/* Game Mode Toggle */}
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+    <div className={`sae-viz ${chrome}`}>
+      <div className="prediction-toggle-row">
         <button
-          onClick={() => {
-            setGameMode(!gameMode);
-            if (!gameMode) resetGame();
-          }}
-          style={{
-            fontSize: '0.8rem',
-            padding: '0.35rem 0.85rem',
-            borderRadius: '999px',
-            border: gameMode ? '1px solid #8b5cf6' : '1px solid rgba(139, 92, 246, 0.3)',
-            background: gameMode
-              ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(139, 92, 246, 0.1))'
-              : 'rgba(15, 23, 42, 0.9)',
-            color: gameMode ? '#c4b5fd' : '#e5e7eb',
-            cursor: 'pointer',
-            fontWeight: gameMode ? 600 : 400,
-          }}
+          type="button"
+          onClick={toggleCheckMode}
+          className={`check-toggle ${checkMode ? 'active' : ''}`}
+          aria-pressed={checkMode}
         >
-          {gameMode ? '🎮 Challenge Mode' : '🎮 Try Challenge'}
+          {checkMode ? 'Close prediction check' : 'Start prediction check'}
         </button>
-        {gameMode && score.total > 0 && (
-          <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-            Score: {score.correct}/{score.total}
-          </span>
-        )}
+        {checkMode && checkProgress.total > 0 ? (
+          <span className="check-status">Checks completed: {checkProgress.correct}/{checkProgress.total} matched</span>
+        ) : null}
       </div>
 
-      {/* Game Panel */}
-      {gameMode && (
-        <div style={{
-          marginBottom: '1rem',
-          padding: '0.85rem',
-          borderRadius: '10px',
-          background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(245, 158, 11, 0.1))',
-          border: '1px solid rgba(139, 92, 246, 0.3)',
-        }}>
-          {gamePhase === 'setup' && !selectedChallenge && (
+      {checkMode ? (
+        <div className="prediction-panel">
+          {checkPhase === 'setup' && !selectedChallenge ? (
             <>
-              <p style={{ fontSize: '0.85rem', color: '#c4b5fd', marginBottom: '0.5rem', fontWeight: 600 }}>
-                🎯 Frontier Prediction Challenge
+              <p className="prediction-title">Prediction check</p>
+              <p className="prediction-copy">
+                Pick an observation, choose the mechanism you think explains it, then reveal the toy frontier at that L0.
               </p>
-              <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '0.6rem' }}>
-                At a mystery sparsity level, which SAE type will have the lowest reconstruction error?
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                {FRONTIER_CHALLENGES.map((challenge) => (
+              <div className="challenge-buttons">
+                {FRONTIER_CHALLENGES.map(challenge => (
                   <button
                     key={challenge.name}
+                    type="button"
                     onClick={() => startChallenge(challenge)}
                     title={challenge.description}
-                    style={{
-                      fontSize: '0.75rem',
-                      padding: '0.4rem 0.7rem',
-                      borderRadius: '6px',
-                      border: '1px solid rgba(139, 92, 246, 0.3)',
-                      background: 'rgba(15, 23, 42, 0.9)',
-                      color: '#e5e7eb',
-                      cursor: 'pointer',
-                    }}
+                    className="challenge-btn"
                   >
                     {challenge.name}
                   </button>
                 ))}
               </div>
             </>
-          )}
+          ) : null}
 
-          {gamePhase === 'setup' && selectedChallenge && (
+          {checkPhase === 'setup' && selectedChallenge ? (
             <>
-              <p style={{ fontSize: '0.85rem', color: '#c4b5fd', marginBottom: '0.4rem', fontWeight: 600 }}>
-                {selectedChallenge.name}
+              <p className="prediction-title">{selectedChallenge.name}</p>
+              <p className="prediction-copy">{selectedChallenge.description}</p>
+              <p className="prediction-question">
+                Which mechanism should explain the observation at L0={selectedChallenge.sparsity}?
               </p>
-              <p style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: '0.6rem' }}>
-                {selectedChallenge.description}
-              </p>
-              <p style={{ fontSize: '0.78rem', color: '#e5e7eb', marginBottom: '0.5rem' }}>
-                Which SAE type will have the LOWEST MSE at k={selectedChallenge.sparsity}?
-              </p>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => submitPrediction('l1')}
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '0.5rem 0.9rem',
-                    borderRadius: '6px',
-                    border: '1px solid #8b5cf6',
-                    background: 'rgba(139, 92, 246, 0.15)',
-                    color: '#a78bfa',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🔮 L1 SAE
-                </button>
-                <button
-                  onClick={() => submitPrediction('topk')}
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '0.5rem 0.9rem',
-                    borderRadius: '6px',
-                    border: '1px solid #22c55e',
-                    background: 'rgba(34, 197, 94, 0.15)',
-                    color: '#22c55e',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🎯 TopK SAE
-                </button>
-                <button
-                  onClick={() => submitPrediction('gated')}
-                  style={{
-                    fontSize: '0.75rem',
-                    padding: '0.5rem 0.9rem',
-                    borderRadius: '6px',
-                    border: '1px solid #f59e0b',
-                    background: 'rgba(245, 158, 11, 0.15)',
-                    color: '#f59e0b',
-                    cursor: 'pointer',
-                  }}
-                >
-                  🌟 Gated SAE
-                </button>
+              <div className="choice-row">
+                {(['l1', 'topk', 'gated'] as SAEType[]).map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => submitPrediction(type)}
+                    className={`choice-btn ${type}`}
+                  >
+                    {mechanismLabels[type]}
+                  </button>
+                ))}
               </div>
             </>
-          )}
+          ) : null}
 
-          {gamePhase === 'countdown' && (
-            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-              <p style={{ fontSize: '0.95rem', color: '#c4b5fd', marginBottom: '0.5rem' }}>
-                You predicted: <strong>{prediction?.toUpperCase()}</strong>
-              </p>
-              <p style={{ fontSize: '2.2rem', color: '#e5e7eb', fontWeight: 700 }}>
-                {countdown}
-              </p>
-              <p style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Comparing frontiers at k={selectedChallenge?.sparsity}...</p>
-            </div>
-          )}
-
-          {gamePhase === 'revealed' && selectedChallenge && (
+          {checkPhase === 'revealed' && selectedChallenge && challengeMSE ? (
             <>
-              <div style={{
-                padding: '0.65rem',
-                borderRadius: '8px',
-                background: prediction === selectedChallenge.answer
-                  ? 'rgba(34, 197, 94, 0.15)'
-                  : 'rgba(239, 68, 68, 0.15)',
-                border: prediction === selectedChallenge.answer
-                  ? '1px solid rgba(34, 197, 94, 0.3)'
-                  : '1px solid rgba(239, 68, 68, 0.3)',
-                marginBottom: '0.65rem',
-              }}>
-                <p style={{ fontSize: '0.8rem', color: '#e5e7eb', lineHeight: 1.5 }}>
-                  {getFrontierFeedback(
-                    prediction,
-                    selectedChallenge.answer,
-                    selectedChallenge.sparsity,
-                    getMSEAtSparsity(selectedChallenge.sparsity)
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={resetGame}
-                style={{
-                  fontSize: '0.75rem',
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '6px',
-                  border: '1px solid rgba(139, 92, 246, 0.3)',
-                  background: 'rgba(15, 23, 42, 0.9)',
-                  color: '#e5e7eb',
-                  cursor: 'pointer',
-                }}
+              <div
+                className={`result-message ${prediction === selectedChallenge.answer ? 'matched' : 'missed'}`}
+                role="status"
+                aria-live="polite"
               >
-                Try Another
+                {getFrontierFeedback(prediction, selectedChallenge, challengeMSE)}
+              </div>
+              <button type="button" onClick={resetCheck} className="try-another-btn">
+                Try another check
               </button>
             </>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
-      {/* Operating Point Presets */}
+      <p className="predict-first">
+        Predict first: if two points use the same active-feature budget, which one should reconstruct better, and what mechanism explains the difference?
+      </p>
+
       <div className="presets">
-        {OPERATING_PRESETS.map((preset) => (
-          <button
-            key={preset.name}
-            onClick={() => handlePreset(preset)}
-            className={`preset-btn ${selectedType === preset.type && sparsityParam === preset.k ? 'active' : ''}`}
-            title={preset.description}
-          >
-            {preset.name}
-          </button>
-        ))}
+        {OPERATING_PRESETS.map(preset => {
+          const active = selectedType === preset.type && sparsityParam === preset.k
+
+          return (
+            <button
+              key={preset.name}
+              type="button"
+              onClick={() => handlePreset(preset)}
+              className={`preset-btn ${active ? 'active' : ''}`}
+              title={preset.description}
+              aria-pressed={active}
+            >
+              {preset.name}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Dynamic Insight */}
-      <div
-        className="dynamic-insight"
-        style={{
-          background: currentInsight.includes('🌟') || currentInsight.includes('🚀')
-            ? 'linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(34, 197, 94, 0.05))'
-            : currentInsight.includes('⚠️')
-              ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05))'
-              : 'linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(59, 130, 246, 0.05))',
-          border: currentInsight.includes('🌟') || currentInsight.includes('🚀')
-            ? '1px solid rgba(52, 211, 153, 0.3)'
-            : currentInsight.includes('⚠️')
-              ? '1px solid rgba(245, 158, 11, 0.3)'
-              : '1px solid rgba(96, 165, 250, 0.3)',
-        }}
-      >
+      <div className={`dynamic-insight tone-${insightTone}`}>
         {currentInsight}
       </div>
 
       <div className="controls">
         <div className="control-group">
-          <label>SAE Type:</label>
+          <label>SAE type</label>
           <div className="button-group">
             {(['l1', 'topk', 'gated'] as SAEType[]).map(type => (
               <button
                 key={type}
+                type="button"
                 className={selectedType === type ? 'active' : ''}
                 onClick={() => setSelectedType(type)}
                 style={{ borderColor: saeColors[type] }}
+                aria-pressed={selectedType === type}
               >
                 {saeLabels[type]}
               </button>
             ))}
           </div>
         </div>
-        <div className="control-group">
-          <label>
-            {selectedType === 'topk' ? 'k (active features)' : 'Target sparsity'}: {sparsityParam}
-            <input
-              type="range"
-              min="1"
-              max="50"
-              step="1"
-              value={sparsityParam}
-              onChange={(e) => setSparsityParam(parseInt(e.target.value))}
-            />
+        <div className="control-group slider-group">
+          <label htmlFor="sae-active-feature-budget">
+            {selectedType === 'topk' ? 'k active features' : 'Target average L0'}: {sparsityParam}
           </label>
+          <input
+            id="sae-active-feature-budget"
+            type="range"
+            min="1"
+            max="50"
+            step="1"
+            value={sparsityParam}
+            onChange={(event) => setSparsityParam(parseInt(event.target.value, 10))}
+          />
         </div>
       </div>
 
-      <svg width={width} height={height} role="img" aria-label="Sparse autoencoder visualization showing L0 sparsity vs reconstruction loss tradeoff">
-        <g transform={`translate(${margin.left},${margin.top})`}>
-          {/* Axes */}
-          <g className="axis axis-x" transform={`translate(0,${h})`}>
-            {xScale.ticks(5).map(tick => (
-              <g key={tick} transform={`translate(${xScale(tick)},0)`}>
-                <line y2="6" stroke="currentColor" />
-                <text y="20" textAnchor="middle" fontSize="12" fill="currentColor">
-                  {tick}
-                </text>
-              </g>
-            ))}
-            <text x={w / 2} y="45" textAnchor="middle" fontSize="14" fill="currentColor">
-              L0 Sparsity (average active features per token)
-            </text>
-          </g>
+      <div
+        className="chart-scroll"
+        role="region"
+        aria-label="Scrollable sparse autoencoder frontier chart"
+        tabIndex={0}
+      >
+        <svg width={width} height={height} role="img" aria-label="Sparse autoencoder visualization showing active features per token versus toy reconstruction MSE">
+          <g transform={`translate(${margin.left},${margin.top})`}>
+            <g className="axis axis-x" transform={`translate(0,${h})`}>
+              {xScale.ticks(5).map(tick => (
+                <g key={tick} transform={`translate(${xScale(tick)},0)`}>
+                  <line y2="6" stroke="currentColor" />
+                  <text y="20" textAnchor="middle" fontSize="12" fill="currentColor">
+                    {tick}
+                  </text>
+                </g>
+              ))}
+              <text x={w / 2} y="45" textAnchor="middle" fontSize="14" fill="currentColor">
+                Active features per token, L0
+              </text>
+            </g>
 
-          <g className="axis axis-y">
-            {yScale.ticks(5).map(tick => (
-              <g key={tick} transform={`translate(0,${yScale(tick)})`}>
-                <line x2="-6" stroke="currentColor" />
-                <text x="-10" textAnchor="end" alignmentBaseline="middle" fontSize="12" fill="currentColor">
-                  {tick.toFixed(2)}
-                </text>
-              </g>
-            ))}
-            <text
-              transform={`translate(-55,${h / 2}) rotate(-90)`}
-              textAnchor="middle"
-              fontSize="14"
-              fill="currentColor"
-            >
-              Reconstruction Error (MSE)
-            </text>
-          </g>
+            <g className="axis axis-y">
+              {yScale.ticks(5).map(tick => (
+                <g key={tick} transform={`translate(0,${yScale(tick)})`}>
+                  <line x2="-6" stroke="currentColor" />
+                  <text x="-10" textAnchor="end" alignmentBaseline="middle" fontSize="12" fill="currentColor">
+                    {tick.toFixed(2)}
+                  </text>
+                </g>
+              ))}
+              <text
+                transform={`translate(-55,${h / 2}) rotate(-90)`}
+                textAnchor="middle"
+                fontSize="14"
+                fill="currentColor"
+              >
+                Toy reconstruction MSE
+              </text>
+            </g>
 
-          {/* Grid */}
-          <g className="grid" opacity={0.05}>
-            {xScale.ticks(10).map(tick => (
-              <line
-                key={`v-${tick}`}
-                x1={xScale(tick)}
-                x2={xScale(tick)}
-                y1={0}
-                y2={h}
-                stroke="currentColor"
-              />
-            ))}
-            {yScale.ticks(10).map(tick => (
-              <line
-                key={`h-${tick}`}
-                x1={0}
-                x2={w}
-                y1={yScale(tick)}
-                y2={yScale(tick)}
-                stroke="currentColor"
-              />
-            ))}
-          </g>
-
-          {/* Pareto frontiers */}
-          {Object.entries(frontierData).map(([type, data]) => (
-            <path
-              key={type}
-              d={lineGen(data) || ''}
-              fill="none"
-              stroke={saeColors[type as SAEType]}
-              strokeWidth={selectedType === type ? 3 : 1.5}
-              opacity={selectedType === type ? 1 : 0.3}
-            />
-          ))}
-
-          {/* Current operating point */}
-          {(() => {
-            const data = frontierData[selectedType]
-            const idx = Math.min(
-              Math.floor((sparsityParam / 50) * data.length),
-              data.length - 1
-            )
-            const point = data[idx]
-            return (
-              <g>
-                <circle
-                  cx={xScale(point.sparsity)}
-                  cy={yScale(point.recon)}
-                  r={6}
-                  fill={saeColors[selectedType]}
-                  stroke="#fff"
-                  strokeWidth={2}
-                />
-                <text
-                  x={xScale(point.sparsity)}
-                  y={yScale(point.recon) - 15}
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill={saeColors[selectedType]}
-                  fontWeight="bold"
-                >
-                  Operating point
-                </text>
-              </g>
-            )
-          })()}
-
-          {/* Legend */}
-          <g transform={`translate(${w + 10},20)`}>
-            {(['l1', 'topk', 'gated'] as SAEType[]).map((type, i) => (
-              <g key={type} transform={`translate(0,${i * 25})`}>
+            <g className="grid" opacity={0.05}>
+              {xScale.ticks(10).map(tick => (
                 <line
-                  x1="0"
-                  x2="20"
-                  y1="0"
-                  y2="0"
-                  stroke={saeColors[type]}
-                  strokeWidth={selectedType === type ? 3 : 1.5}
+                  key={`v-${tick}`}
+                  x1={xScale(tick)}
+                  x2={xScale(tick)}
+                  y1={0}
+                  y2={h}
+                  stroke="currentColor"
                 />
-                <text x="25" y="5" fontSize="11" fill="currentColor">
-                  {saeLabels[type]}
-                </text>
-              </g>
-            ))}
-          </g>
+              ))}
+              {yScale.ticks(10).map(tick => (
+                <line
+                  key={`h-${tick}`}
+                  x1={0}
+                  x2={w}
+                  y1={yScale(tick)}
+                  y2={yScale(tick)}
+                  stroke="currentColor"
+                />
+              ))}
+            </g>
 
-          {/* Annotation */}
-          <g transform={`translate(${w * 0.15},${h * 0.2})`}>
-            <text fontSize="10" fill="#f59e0b" fontStyle="italic">
-              Better →
-            </text>
-            <text y="12" fontSize="9" fill="#f59e0b" opacity={0.8}>
-              (lower error, same sparsity)
-            </text>
+            {Object.entries(frontierData).map(([type, data]) => (
+              <path
+                key={type}
+                d={lineGen(data) || ''}
+                fill="none"
+                stroke={saeColors[type as SAEType]}
+                strokeWidth={selectedType === type ? 3 : 1.5}
+                opacity={selectedType === type ? 1 : 0.3}
+              />
+            ))}
+
+            {(() => {
+              const point = {
+                sparsity: sparsityParam,
+                recon: currentMSE,
+              }
+              return (
+                <g>
+                  <circle
+                    cx={xScale(point.sparsity)}
+                    cy={yScale(point.recon)}
+                    r={6}
+                    fill={saeColors[selectedType]}
+                    stroke="#fff"
+                    strokeWidth={2}
+                  />
+                  <text
+                    x={xScale(point.sparsity)}
+                    y={yScale(point.recon) - 15}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fill={saeColors[selectedType]}
+                    fontWeight="bold"
+                  >
+                    Selected toy point
+                  </text>
+                </g>
+              )
+            })()}
+
+            <g transform={`translate(${w + 10},20)`}>
+              {(['l1', 'topk', 'gated'] as SAEType[]).map((type, index) => (
+                <g key={type} transform={`translate(0,${index * 25})`}>
+                  <line
+                    x1="0"
+                    x2="20"
+                    y1="0"
+                    y2="0"
+                    stroke={saeColors[type]}
+                    strokeWidth={selectedType === type ? 3 : 1.5}
+                  />
+                  <text x="25" y="5" fontSize="11" fill="currentColor">
+                    {saeLabels[type]}
+                  </text>
+                </g>
+              ))}
+            </g>
+
+            <g transform={`translate(${w * 0.15},${h * 0.2})`}>
+              <text fontSize="10" fill="#f59e0b" fontStyle="italic">
+                Lower toy MSE
+              </text>
+              <text y="12" fontSize="9" fill="#f59e0b" opacity={0.8}>
+                same L0 only
+              </text>
+            </g>
           </g>
-        </g>
-      </svg>
+        </svg>
+      </div>
 
       <div className="insight">
         <p>
-          <strong>Reconstruction-Sparsity Frontier:</strong> SAEs trade reconstruction quality
-          for interpretability (sparsity). TopK directly controls k active features per token,
-          making tuning easier than L1 penalty. Gated SAEs fix L1 shrinkage bias for the best frontier.
-          OpenAI's 16M-latent SAE on GPT-4 uses TopK with k≈100 features per token.
+          <strong>Mechanism invariant:</strong> compare SAE variants at the same active-feature budget.
+          More active features usually improve reconstruction, but lower reconstruction loss is not the
+          same as a cleaner or more faithful feature dictionary. This toy frontier is illustrative; real
+          SAE quality also depends on feature interpretability, downstream loss, dead latents, and stability.
+          OpenAI trained a 16M-latent TopK SAE on GPT-4 activations; this toy does not reproduce its data,
+          scale, or operating point.
         </p>
       </div>
 
@@ -665,6 +549,136 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
           border-radius: 8px;
           padding: 1.5rem;
           margin: 2rem 0;
+          min-width: 0;
+          color: var(--text-primary);
+        }
+
+        .prediction-toggle-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .check-toggle,
+        .challenge-btn,
+        .choice-btn,
+        .try-another-btn,
+        .preset-btn,
+        .button-group button {
+          font: inherit;
+          min-height: 34px;
+          cursor: pointer;
+          transition: background 0.15s ease-out, border-color 0.15s ease-out, color 0.15s ease-out;
+        }
+
+        .check-toggle,
+        .try-another-btn {
+          font-size: 0.8rem;
+          padding: 0.35rem 0.85rem;
+          border-radius: 999px;
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          background: rgba(15, 23, 42, 0.9);
+          color: #e5e7eb;
+        }
+
+        .check-toggle.active {
+          border-color: #8b5cf6;
+          background: rgba(139, 92, 246, 0.18);
+          color: #c4b5fd;
+          font-weight: 600;
+        }
+
+        .check-status {
+          font-size: 0.8rem;
+          color: #9ca3af;
+        }
+
+        .prediction-panel {
+          margin-bottom: 1rem;
+          padding: 0.85rem;
+          border-radius: 10px;
+          background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(245, 158, 11, 0.1));
+          border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .prediction-title {
+          font-size: 0.85rem;
+          color: #c4b5fd;
+          margin: 0 0 0.5rem;
+          font-weight: 600;
+        }
+
+        .prediction-copy,
+        .prediction-question {
+          font-size: 0.78rem;
+          color: #cbd5e1;
+          line-height: 1.5;
+          margin: 0 0 0.6rem;
+        }
+
+        .prediction-question {
+          color: #e5e7eb;
+          font-weight: 600;
+        }
+
+        .challenge-buttons,
+        .choice-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.45rem;
+        }
+
+        .challenge-btn,
+        .choice-btn {
+          font-size: 0.75rem;
+          padding: 0.45rem 0.7rem;
+          border-radius: 6px;
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          background: rgba(15, 23, 42, 0.9);
+          color: #e5e7eb;
+        }
+
+        .choice-btn.l1 {
+          border-color: #8b5cf6;
+          color: #c4b5fd;
+        }
+
+        .choice-btn.topk {
+          border-color: #22c55e;
+          color: #86efac;
+        }
+
+        .choice-btn.gated {
+          border-color: #f59e0b;
+          color: #fcd34d;
+        }
+
+        .result-message {
+          padding: 0.65rem;
+          border-radius: 8px;
+          margin-bottom: 0.65rem;
+          font-size: 0.8rem;
+          line-height: 1.55;
+          color: #e5e7eb;
+        }
+
+        .result-message.matched {
+          background: rgba(34, 197, 94, 0.15);
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .result-message.missed {
+          background: rgba(239, 68, 68, 0.14);
+          border: 1px solid rgba(239, 68, 68, 0.28);
+        }
+
+        .predict-first {
+          margin: 0 0 0.75rem;
+          color: #cbd5e1;
+          font-size: 0.86rem;
+          line-height: 1.5;
         }
 
         .presets {
@@ -681,11 +695,13 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
           border: 1px solid rgba(139, 92, 246, 0.25);
           background: rgba(15, 23, 42, 0.8);
           color: #e5e7eb;
-          cursor: pointer;
-          transition: all 0.15s ease-out;
         }
 
-        .preset-btn:hover {
+        .preset-btn:hover,
+        .challenge-btn:hover,
+        .choice-btn:hover,
+        .try-another-btn:hover,
+        .check-toggle:hover {
           background: rgba(139, 92, 246, 0.15);
           border-color: rgba(139, 92, 246, 0.5);
         }
@@ -703,6 +719,21 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
           font-size: 0.88rem;
           line-height: 1.6;
           color: rgba(255, 255, 255, 0.9);
+        }
+
+        .tone-mechanism {
+          background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(34, 197, 94, 0.05));
+          border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .tone-caution {
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.05));
+          border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .tone-control {
+          background: linear-gradient(135deg, rgba(96, 165, 250, 0.15), rgba(59, 130, 246, 0.05));
+          border: 1px solid rgba(96, 165, 250, 0.3);
         }
 
         .controls {
@@ -738,18 +769,15 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
           border-radius: 6px;
           color: var(--text-primary);
           font-size: 0.85rem;
-          cursor: pointer;
-          transition: all 0.2s;
         }
 
         .button-group button:hover {
           background: rgba(245, 158, 11, 0.1);
-          transform: translateY(-1px);
         }
 
         .button-group button.active {
           background: rgba(245, 158, 11, 0.2);
-          font-weight: bold;
+          font-weight: 700;
         }
 
         input[type="range"] {
@@ -757,9 +785,18 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
           min-width: 200px;
         }
 
+        .chart-scroll {
+          max-width: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 0.4rem;
+        }
+
         svg {
           display: block;
           margin: 0 auto;
+          min-width: 34rem;
         }
 
         .insight {
@@ -779,6 +816,104 @@ export default function SparseAutoencoderViz({ width = 600, height = 400 }: Spar
 
         .insight strong {
           color: var(--text-primary);
+        }
+
+        .sae-viz.notebook {
+          margin: 0;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          color: #17202a;
+        }
+
+        .sae-viz.notebook .prediction-panel,
+        .sae-viz.notebook .dynamic-insight,
+        .sae-viz.notebook .insight {
+          color: #2f3c48;
+          background: rgba(255, 251, 245, 0.78);
+          border-color: rgba(27, 36, 48, 0.08);
+        }
+
+        .sae-viz.notebook .prediction-title {
+          color: #1f6f78;
+        }
+
+        .sae-viz.notebook .prediction-copy,
+        .sae-viz.notebook .prediction-question,
+        .sae-viz.notebook .predict-first,
+        .sae-viz.notebook .check-status {
+          color: #4b5965;
+        }
+
+        .sae-viz.notebook .check-toggle,
+        .sae-viz.notebook .challenge-btn,
+        .sae-viz.notebook .choice-btn,
+        .sae-viz.notebook .try-another-btn,
+        .sae-viz.notebook .preset-btn,
+        .sae-viz.notebook .button-group button {
+          background: rgba(255, 251, 245, 0.82);
+          color: #263747;
+          border-color: rgba(27, 36, 48, 0.12);
+        }
+
+        .sae-viz.notebook .check-toggle.active,
+        .sae-viz.notebook .preset-btn.active,
+        .sae-viz.notebook .button-group button.active {
+          background: rgba(31, 111, 120, 0.12);
+          color: #1f6f78;
+          border-color: rgba(31, 111, 120, 0.32);
+        }
+
+        .sae-viz.notebook .result-message {
+          color: #263747;
+        }
+
+        .sae-viz.notebook .result-message.matched {
+          background: rgba(34, 197, 94, 0.1);
+          border-color: rgba(34, 197, 94, 0.24);
+        }
+
+        .sae-viz.notebook .result-message.missed {
+          background: rgba(190, 18, 60, 0.08);
+          border-color: rgba(190, 18, 60, 0.18);
+        }
+
+        .sae-viz.notebook .control-group label,
+        .sae-viz.notebook .insight p,
+        .sae-viz.notebook .insight strong {
+          color: #2f3c48;
+        }
+
+        @media (max-width: 640px) {
+          .sae-viz {
+            padding: 1rem;
+            margin: 1rem 0;
+          }
+
+          .sae-viz.notebook {
+            padding: 0;
+            margin: 0;
+          }
+
+          .controls,
+          .control-group,
+          .control-group label,
+          .slider-group {
+            min-width: 0;
+            width: 100%;
+          }
+
+          .button-group button,
+          .preset-btn,
+          .challenge-btn,
+          .choice-btn {
+            white-space: normal;
+          }
+
+          input[type="range"] {
+            min-width: 0;
+          }
         }
       `}</style>
     </div>

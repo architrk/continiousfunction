@@ -1,0 +1,45 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. Current direction: slow high-quality concept growth, mechanism-first animations, math/code witnesses, prediction checks, AI companion demo-state context, and a coherent shared visualization shell.
+
+This slice was selected by a previous GPT Pro/Oracle run after the Retrieval-Augmented Generation notebook rollout:
+
+Selected slice: `swiglu` filesystem concept + notebook demo bridge.
+
+Central learner action: Given one highlighted MLP channel, predict whether the SwiGLU gate will suppress, pass, or amplify the value projection before revealing SiLU(g_i), v_i * SiLU(g_i), and the resulting token-wise MLP write.
+
+Implementation summary:
+- Created `content/domains/attention-transformers/concepts/swiglu/{concept.yaml,content.mdx,viz.tsx}`.
+- `concept.yaml` is `status: review`; has visualization/demo/code flags and sparse links.
+- `content.mdx` includes Intuition, Math, Code, Interactive Demo. Math defines shapes for x, W_v, W_g, W_o, v, g, y, and the 2/3 parameter-budget comparison. Code mirrors the math.
+- `viz.tsx` wraps `SwiGLUViz` in `VizShell` + `VizStageAdapter`, passing `chrome="notebook" conceptId="swiglu"`.
+- `components/foundations/SwiGLUViz.tsx` now accepts `chrome?: 'legacy' | 'notebook'` and defaults to legacy for foundations usage.
+- Notebook mode replaces the activation race with selected token/channel, visible v_i and g_i, hidden SiLU(g_i)/product/write until reveal, suppress/pass/amplify prediction buttons, reveal/reset, aria-pressed controls, role=status reveal feedback, focus-visible styles, compact notebook-only demo-state, and synchronous reveal reset via selection keys.
+- Added `swiglu` to the legacy visualization map so `/foundations/swiglu/` still mounts the default legacy demo.
+
+Local verification already run:
+- `npm run generate-content`
+- `npm run validate-content` passed with 0 warnings / 0 errors.
+- `npm run typecheck` passed before the final legacy mapping addition; I will rerun after review/fixes.
+- Dev server was restarted in screen `cf-dev-3001` on port 3001.
+- Route checks returned 200 for `/domains/attention-transformers/swiglu/` and `/foundations/swiglu/`.
+- Chrome CDP checks:
+  - New route has notebook demo and no legacy dark card in notebook stage.
+  - Pre-reveal demo text and demo-state do not expose actual gate regime, SiLU(g_i), product, or token-wise write.
+  - Reveal shows values and emits post-reveal demo-state including actual gate regime and parameter-budget ratio.
+  - Changing preset after reveal hides the answer again and demo-state returns to revealed: no.
+  - 390px mobile viewport has no document/body horizontal overflow.
+  - Legacy `/foundations/swiglu/` mounts `.activation-functions-card` and does not mount notebook mode.
+
+Please review for must-fix issues before this slice can be considered accepted.
+
+Focus areas:
+1. Pedagogy: Does the concept correctly teach SwiGLU as a gated token-local MLP write, not merely a curve comparison?
+2. Math/content correctness: Are the shapes, formulas, parameter-budget comparison, and code witness accurate and appropriately caveated?
+3. Interaction design: Does the notebook reveal flow avoid pre-reveal leakage through visible text, DOM state, chart scales, or demo-state? Is suppress/pass/amplify framed rigorously enough?
+4. Architecture: Does the `chrome="legacy" | "notebook"` branch preserve legacy behavior and fit the prior VizShell/VizStageAdapter pattern?
+5. Accessibility/responsiveness: Are aria-pressed, role=status, focus styles, and mobile containment sufficient?
+6. Scope: Did this add only the SwiGLU slice without dragging in GQA/product/image work?
+
+Return:
+- P0/P1 must-fix blockers first, with exact file/line references where possible.
+- Then non-blocking refinements.
+- Then a ship/no-ship verdict for review-status publication of this slice.

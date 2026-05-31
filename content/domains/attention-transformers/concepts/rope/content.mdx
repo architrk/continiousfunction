@@ -17,25 +17,27 @@ A good mental model is "clock hands at multiple speeds":
 
 In a 2D subspace, define a rotation matrix:
 
-$$R(\\theta) = \\begin{pmatrix} \\cos\\theta & -\\sin\\theta \\\\ \\sin\\theta & \\cos\\theta \\end{pmatrix}.$$
+$$
+R(\theta) = \begin{pmatrix} \cos\theta & -\sin\theta \\\\ \sin\theta & \cos\theta \end{pmatrix}.
+$$
 
-RoPE rotates queries/keys by position-dependent angles:
+RoPE rotates queries/keys by position-dependent angles, and their dot product reduces to a relative angle:
 
-$$\\tilde q_p = R(\\theta_p) q_p, \\qquad \\tilde k_q = R(\\theta_q) k_q.$$
+$$
+\tilde q_p^\top \tilde k_q = q_p^\top R(\theta_q - \theta_p) k_q, \qquad \tilde q_p = R(\theta_p) q_p, \qquad \tilde k_q = R(\theta_q) k_q, \qquad R(\theta_p)^\top R(\theta_q)=R(\theta_q-\theta_p).
+$$
 
-Then the dot product becomes:
-
-$$\\tilde q_p^\\top \\tilde k_q = q_p^\\top R(\\theta_p)^\\top R(\\theta_q) k_q = q_p^\\top R(\\theta_q - \\theta_p) k_q.$$
-
-So attention can depend on *relative position* through $(\\theta_q-\\theta_p)$.
+So attention can depend on *relative position* through $(\theta_q-\theta_p)$.
 
 In practice, RoPE applies this to many 2D pairs with different frequencies. A common choice is:
 
-$$\\theta_{p,i} = p\\,\\omega_i, \\qquad \\omega_i = \\mathrm{base}^{-2i/d},$$
+$$
+\theta_{p,i} = p\,\omega_i, \qquad \omega_i = \mathrm{base}^{-2i/d},
+$$
 
 where $d$ is head dimension and $i$ indexes the 2D pairs.
 
-RoPE applies this rotation independently to each 2D coordinate pair $(2i,2i+1)$ of a head, so $d$ is typically even and $i \\in \\{0,\\dots,\\frac d2-1\\}$.
+RoPE applies this rotation independently to each 2D coordinate pair $(2i,2i+1)$ of a head, so $d$ is typically even and $i \in \{0,\dots,\frac d2-1\}$.
 
 ## Code
 

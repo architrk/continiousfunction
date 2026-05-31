@@ -1,0 +1,47 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts.
+
+Current product philosophy:
+- Slow, high-quality concept growth.
+- Mechanism-first animations and prediction checks.
+- Intuition, math, code witness, and interactive demo should mutually reinforce each other.
+- Use Oracle/GPT Pro as a serious review partner.
+- Prefer bounded, reviewable slices over broad feature dumps.
+- Use image generation when a generated bitmap materially improves a concept cover, UI direction, or learning mood, but prefer code-native visuals for precise interactive math.
+
+Recent completed sequence:
+- Speculative Decoding notebook shell.
+- Sparse Autoencoders notebook shell.
+- Mixture of Experts notebook shell.
+- Diffusion forward process notebook shell.
+- Loss Landscapes 2D sharpness notebook shell.
+- Score Matching DSM target notebook shell.
+- Flow Matching velocity target notebook shell.
+- Edge of Stability notebook shell.
+- Structured Decoding token-mask notebook shell.
+- SSM Hybrids selective-gate notebook shell.
+- Retrieval-Augmented Generation evidence-selection notebook shell.
+- SwiGLU gated-MLP notebook shell. SwiGLU fix review returned ship verdict; route is `/domains/attention-transformers/swiglu/`.
+
+Current open rollout task in TODO still says continue with Loss Landscapes 3D, dedicated GQA bridge work, or the next Oracle-selected flagship demo shell slice.
+
+Candidate next actions:
+1. Dedicated Grouped-Query Attention / MQA / GQA filesystem concept + notebook demo bridge.
+   - Efficient Attention already includes a GQA section, so a dedicated page must not duplicate it lazily.
+   - A good central action might be: given query-head count, kv-head count, sequence length, and head dim, predict how KV-cache memory and sharing pattern change before reveal.
+2. SwiGLU mechanism-first concept cover image + wiring.
+   - User has repeatedly asked for lots of images and design based on them.
+   - Need only if it materially improves the concept hero, not decoration.
+3. Loss Landscapes 3D legacy surface integration.
+   - Previously deferred because the invariant was weaker than 2D sharpness/Edge.
+4. Another small product-level joy/continuity slice.
+   - Must be reduced to one route and one learner action if selected.
+
+Please select the single best next bounded action after SwiGLU.
+
+Return:
+1. Selected slice and why it beats alternatives now.
+2. Central learner action or asset job.
+3. Exact files/components likely to change.
+4. What to avoid.
+5. Whether image generation should be used for this slice, and if yes, a concise mechanism-first visual brief.
+6. Acceptance checklist and local verification gates.

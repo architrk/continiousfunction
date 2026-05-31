@@ -1,0 +1,46 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, attention-transformers/efficient-attention#kv-cache-sharing-memory-bandwidth.
+
+Claim under review:
+"At incremental decoding time, KV cache reads can become a memory-bandwidth bottleneck; sharing key/value heads with MQA or GQA reduces KV tensor size while preserving multiple query heads."
+
+Cited sources:
+- Shazeer, "Fast Transformer Decoding: One Write-Head is All You Need" (2019), https://arxiv.org/pdf/1911.02150
+- Ainslie et al., "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints" (EMNLP 2023), https://aclanthology.org/2023.emnlp-main.298.pdf
+
+Primary-source evidence I checked before this prompt:
+- Shazeer PDF page 1: the abstract says incremental inference is often slow due to memory-bandwidth cost from repeatedly loading large keys and values tensors; MQA shares keys and values across attention heads, reducing tensor size and incremental-decoding memory bandwidth requirements.
+- Shazeer PDF page 1: the introduction says incremental Transformer inference speed is limited by memory bandwidth needed to reload large keys and values tensors encoding attention-layer state.
+- Shazeer PDF page 4: the analysis says the memory-to-compute ratio can make memory bandwidth a major bottleneck; it ties the hard term to reloading K and V tensors and proposes reducing the K/V tensor size by removing their heads dimension while maintaining the heads dimension in queries.
+- Shazeer PDF page 5: Multi-query attention is identical to multi-head attention except the different heads share a single set of keys and values.
+- Shazeer PDF page 7: the experiment reports much faster incremental decoder step times for the multi-query model than the baseline in the tested setting.
+- Ainslie et al. PDF page 1: the abstract says MQA uses a single key-value head and drastically speeds decoder inference, while GQA uses an intermediate number of key-value heads and achieves quality close to MHA with comparable speed to MQA.
+- Ainslie et al. PDF page 1: the introduction says autoregressive decoder inference is bottlenecked by memory bandwidth from loading decoder weights and all attention keys/values at every step, and that loading keys/values can be sharply reduced through MQA, which uses multiple query heads but single key/value heads.
+- Ainslie et al. PDF page 2: Figure 2/Section 2.2 says MHA has H query/key/value heads, MQA shares single key/value heads across all query heads, and GQA shares single key/value heads for each group of query heads, interpolating between MHA and MQA.
+- Ainslie et al. PDF page 2: Section 2.2 says reducing H key/value heads to one reduces key-value cache size and the amount of data loaded by a factor of H; GQA keeps a proportional decrease in bandwidth and capacity as model size increases.
+- Ainslie et al. PDF page 3: Table 1 and main results show GQA-8-XXL close to MHA-XXL quality with speed close to MQA in their tested setup.
+
+Attached local files:
+- content/domains/attention-transformers/concepts/efficient-attention/concept.yaml
+- content/domains/attention-transformers/concepts/efficient-attention/content.mdx
+- content/domains/attention-transformers/concepts/efficient-attention/viz.tsx
+- components/foundations/KVCacheDashboard.tsx
+- components/foundations/KVCacheViz.tsx
+- components/foundations/GQAViz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether Shazeer and Ainslie et al. substantively support the claim as written, not merely that the page has source IDs.
+2. Check whether the local math/code/demo witnesses match the claim's scope: incremental/autoregressive decoding, cached K/V tensors, KV cache memory scaling with H_kv, MHA vs MQA vs GQA head sharing, preservation of multiple query heads, and memory/bandwidth reduction as a mechanism rather than a universal performance guarantee.
+3. Identify any overclaim, missing caveat, misleading wording, source URL/provenance mismatch, or witness mismatch.
+4. If publishable after small edits, provide exact compact evidence_review.summary and caveat wording you would accept. Keep summary under 520 characters and caveat under 280 characters because local validation enforces those bounds.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require FlashAttention support for this claim; FlashAttention is a separate source on this concept but not in this claim_check.source_ids.
+- Do not require a universal speedup, universal quality guarantee, exact Llama adoption proof, exact hardware trace, full serving stack model, paging/fragmentation details, or exact latency model unless the current wording accidentally claims them.
+- If source URLs should point directly to the reviewed PDFs rather than arXiv/landing pages, say so explicitly as a small fix.

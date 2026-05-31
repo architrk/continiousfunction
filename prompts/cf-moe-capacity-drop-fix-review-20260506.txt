@@ -1,0 +1,22 @@
+Project: Continuous Function, a Next.js/React learning platform for mechanism-first deep learning and mathematics concepts.
+
+You previously reviewed the Mixture-of-Experts capacity/drop notebook slice and returned NO-PUBLISH because notebook mode still rendered the old legacy MoE visualization below the new capacity lab.
+
+I applied the blocker fix:
+- `chrome="notebook"` now renders only the capacity/drop lab, not the old `.moe-main` legacy token-type/router/load visualization.
+- Added a regression test asserting notebook mode does not show `Token type`, `Route a sample token`, `Softmax concentration`, `Expert load`, or the old myth card.
+- Added a regression test that changing the batch preset after reveal clears stale result/demo state.
+- Adopted two non-blocking suggestions while touching the code:
+  - result copy and emitted values use `slot utilization`;
+  - visible MDX explains the dispatch rule is a simple toy policy and real systems may use different overflow/fallback policies.
+
+Validation after fix:
+- npm test -- MoERoutingViz --runInBand: passed, 6 tests. Only the known styled-jsx React/Jest warning appeared.
+- Before this fix, `npm run typecheck`, `npm run validate-content`, full `npm test -- --runInBand`, and `CF_NEXT_BUILD_CPUS=1 npm run build` had passed.
+
+Please review only whether the prior NO-PUBLISH blocker is fixed and whether any new exact blocker was introduced.
+
+Return:
+- status: PUBLISH or NO-PUBLISH
+- exact blockers if NO-PUBLISH
+- optional non-blocking improvements separately

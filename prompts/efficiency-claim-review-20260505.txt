@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, math objects, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/efficiency/concepts/efficiency. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what the current sources support. Also answer whether we should add sources for quantization/distillation here, or keep this claim narrower around the existing Sze/LoRA/MoE sources.
+
+Proposed claim_check:
+- id: resource-levers-active-compute-trainable-params
+- status: source-checked
+- claim: Efficiency is a resource-bottleneck tradeoff: Sze frames compute, memory, energy, throughput, and accuracy; LoRA lowers adaptation cost by training a low-rank BA update while freezing W; sparse MoE grows total expert capacity while activating only top-k experts per token.
+- source_ids: sze-2017-efficient-dnn, hu-2021-lora, shazeer-2017-sparsely-gated-moe
+- support: Sze et al. ground efficiency as system-level resource tradeoffs rather than one scalar. Hu et al. ground the frozen-base plus low-rank adapter update W+BA and reduced trainable-parameter story. Shazeer et al. ground sparse expert routing/conditional computation as increasing capacity without activating every parameter. The page math/code/demo instantiate LoRA rank and trainable parameter count plus MoE top-k active compute.
+- caveat: This checks the overview resource-lever lesson for system framing, LoRA, and sparse MoE only; it does not source-check the page's distillation, quantization, task-vector, exact speedup, or serving-cost claims.
+- object_refs: #source-span-sze-2017-efficient-dnn, #source-span-hu-2021-lora, #source-span-shazeer-2017-sparsely-gated-moe, #math-object-4, #math-object-5, #math-object-6, #code-witness-1, #interactive-demo

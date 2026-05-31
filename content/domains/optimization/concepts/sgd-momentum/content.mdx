@@ -1,0 +1,92 @@
+---
+title: "SGD & Momentum: The Workhorses of Optimization"
+---
+
+## Intuition
+
+Stochastic gradient descent is the simplest training loop:
+
+1. look at a mini-batch,
+2. estimate the gradient,
+3. step downhill.
+
+The problem is that mini-batch gradients are noisy. On a narrow ravine, SGD can spend many steps zig-zagging across the steep direction instead of making steady progress along the shallow direction you actually care about.
+
+Momentum adds memory. Instead of trusting only the current gradient, you keep an exponentially weighted average of recent gradients and move using that average.
+
+That does two useful things:
+
+- it **smooths noise** across batches,
+- it **accelerates consistent directions**, because repeated pushes in the same direction accumulate.
+
+This is why momentum feels like a heavy ball rolling downhill: tiny bumps get averaged away, while persistent slope keeps building velocity.
+
+## Math
+
+Let $\theta_t$ be parameters at step $t$, $g_t = \nabla L(\theta_t)$ the gradient, $\eta$ the learning rate, and $\mu \in [0,1)$ the momentum coefficient.
+
+Plain SGD is
+
+$$
+\theta_{t+1} = \theta_t - \eta g_t.
+$$
+
+Momentum introduces a velocity variable:
+
+$$
+v_{t+1} = \mu v_t + g_t,
+$$
+$$
+\theta_{t+1} = \theta_t - \eta v_{t+1}.
+$$
+
+If gradients point in roughly the same direction for many steps, then $v_t$ approaches a geometric sum:
+
+$$
+v_t \approx g_t + \mu g_t + \mu^2 g_t + \cdots = \frac{1}{1-\mu} g_t.
+$$
+
+So with $\mu = 0.9$, the effective step along a persistent direction can be about $10\times$ larger than plain SGD with the same nominal learning rate.
+
+Nesterov momentum evaluates the gradient at a look-ahead point:
+
+$$
+v_{t+1} = \mu v_t + \nabla L(\theta_t - \eta \mu v_t),
+$$
+$$
+\theta_{t+1} = \theta_t - \eta v_{t+1}.
+$$
+
+The mental model is: "if I keep moving this way, what slope will I see next?"
+
+## Code
+
+```python
+import numpy as np
+
+A = np.diag([1.0, 25.0])  # shallow in x, steep in y
+theta0 = np.array([6.0, 6.0])
+
+def grad(theta):
+    return A @ theta
+
+def optimize(mu, lr, steps=60):
+    theta = theta0.copy()
+    v = np.zeros_like(theta)
+    for _ in range(steps):
+        v = mu * v + grad(theta)
+        theta = theta - lr * v
+    return theta
+
+sgd = optimize(mu=0.0, lr=0.08)
+mom = optimize(mu=0.9, lr=0.02)
+
+print("SGD final theta     :", np.round(sgd, 3))
+print("Momentum final theta:", np.round(mom, 3))
+```
+
+The learning rate for momentum is smaller here on purpose: once gradients accumulate, the effective step can become much larger than the raw `lr` suggests.
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A natural next step is a ravine visualization that overlays SGD and momentum trajectories while you change learning rate and $\mu$.

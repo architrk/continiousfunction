@@ -1,0 +1,37 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts.
+
+This is a focused fix review for the SwiGLU notebook slice.
+
+Previous GPT Pro/Oracle implementation review saved at `responses/cf-swiglu-demo-shell-implementation-review-20260504.md` returned no P0s but four P1 blockers:
+1. Pre-reveal semantic leakage through channel labels like boost/brake/cleanup.
+2. Pipeline SVG visually routed both value and gate branches into the SiLU node.
+3. Suppress/pass/amplify grading thresholds were hidden and copy said above one while classifier used above 1.10.
+4. Revealed toy write was labeled like the full MLP write instead of one selected-channel contribution.
+
+Fixes applied:
+- Channel feature labels are now neutral: syntax feature, noun feature, rare pattern feature, negation feature, entity feature, template feature, arithmetic feature, discourse feature, copy feature.
+- Pipeline SVG now routes `x -> xW_v -> mul` and `x -> xW_g -> SiLU(g_i) -> mul -> product`; value no longer enters the SiLU box.
+- Prediction panel now exposes the public rubric: suppress below 0.55x, pass 0.55x to 1.10x, amplify above 1.10x, with a note about negative SiLU sign flips.
+- Button copy uses the same thresholds.
+- UI, aria label, and demo-state now say selected-channel contribution rather than token-wise/full MLP write.
+- Reveal live region now exists before reveal, and preset grid has role=group.
+- MDX Interactive Demo clarifies that the visualized write is one selected-channel contribution and that the full MLP write sums many channels.
+
+Fresh local verification:
+- `npm run validate-content` passed with 0 warnings / 0 errors.
+- `npm run typecheck` passed.
+- Browser CDP after fixes:
+  - New route has notebook demo and no legacy card in notebook stage.
+  - Pre-reveal text has no semantic label leakage and no hidden numeric/outcome leakage.
+  - Pre-reveal demo-state does not expose actual regime, SiLU(g_i), product, or selected-channel contribution.
+  - Reveal shows coefficient/product and emits actual gate regime, selected-channel contribution, and parameter-budget ratio.
+  - Changing preset after reveal hides the answer and returns demo-state to `revealed: no`.
+  - 390px viewport has no document/body horizontal overflow.
+  - `/foundations/swiglu/` mounts `.activation-functions-card` and not notebook mode.
+
+Please review only whether the previous P1 blockers are actually fixed and whether any new blocker was introduced.
+
+Return:
+- Remaining P0/P1 blockers, if any.
+- Non-blocking refinements.
+- Ship/no-ship verdict for keeping this slice as `status: review`.

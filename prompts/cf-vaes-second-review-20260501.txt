@@ -1,0 +1,27 @@
+You are Oracle/GPT Pro performing a second strict review for Continuous Function.
+
+Context:
+- The previous Oracle review for VAEs said to demote the old published page because it taught "reconstruction plus regularization" without the exact ELBO gap identity, and because the old borrowed VAE demo scripted beta behavior instead of computing the ELBO.
+- I accepted that review, demoted the concept from published to review, rewrote the content around `log p(x) = ELBO + KL(q || posterior)`, and replaced the old demo with a co-located deterministic 1D latent-variable demo.
+- The rebuilt demo computes prior, likelihood shape, true posterior, q(z|x), reconstruction log likelihood, KL(q||prior), ELBO, log evidence, gap, and KL(q||posterior). It has a linear posterior mode and a two-causes posterior mode.
+
+Project standard:
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md`.
+- A concept should be intuitive, precise, visual, executable, and connected.
+- Prefer one excellent mechanism over a broad survey.
+
+Question:
+Review the rebuilt VAEs concept and decide whether it is now publishable, publishable after small fixes, should remain in review, or should return to draft.
+
+Return:
+1. Verdict.
+2. Remaining blocking correctness issues, if any.
+3. Remaining blocking pedagogy issues, if any.
+4. Important improvements that should be patched before publish.
+5. Demo-specific issues: math correctness, controls, labels, failure mode, and whether the two-causes posterior teaches the inference gap honestly.
+6. Code witness issues: whether the scalar Gaussian witness mirrors the math and whether the shape notes are enough.
+7. Graph/status audit: prerequisites, related, leads_to, and whether `status: review` is right until patched.
+8. Exact patch-style edits for any required fixes.
+9. Out-of-scope suggestions to ignore for this pass.
+
+Be strict. If it is not publishable, say exactly what remains.

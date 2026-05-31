@@ -1,0 +1,30 @@
+Final publish review for the Continuous Function content-object manifest spine.
+
+Previous must-fixes:
+1. `claimCheck.object_refs` field malformed branch was still warning-level.
+2. `#math-object-0`, `#math-object-01`, `#math-object-foo`, `#code-witness-0`, and similar refs could derive object keys.
+3. Local math/code resolution used count heuristics instead of generator-equivalent object refs.
+4. Source-span local resolution could include sources the generator would skip.
+
+Fixes now applied:
+- `claimCheck.object_refs` malformed/non-array/too-long branch is now `error`.
+- Content object ref grammar is exact in `lib/contentObjectKeys.ts`, `scripts/generate-content-object-manifest.ts`, and `scripts/validate-content.ts`:
+  - math refs must match `#math-object-[1-9]\\d*`
+  - code refs must match `#code-witness-[1-9]\\d*`
+  - source-span refs must match the bounded source-span grammar
+- `validate-content.ts` now builds `generatedObjectRefs` from generator-equivalent extraction:
+  - strips MDX comments
+  - extracts non-empty display math, capped at 2
+  - extracts non-empty fenced code, capped at 1
+  - derives exact allowed `#math-object-N` and `#code-witness-N` refs
+- Claim refs are required to be both mappable and locally present before `requireManifestKey(...)` can add them to `expectedKeys`.
+- Source-span refs are only added when the source has the id/title fields required for manifest emission, then the same fallback segment logic as the generator is used.
+- Added tests that malformed ordinal refs like `#math-object-0`, `#math-object-01`, `#math-object-foo`, `#code-witness-0`, and `#code-witness-01` do not produce keys.
+
+Commands passed:
+- `npm run generate-object-manifest`
+- `npm run validate-content` -> 0 warnings, 0 errors, 851 manifest objects
+- `npm test -- contentObject`
+- `npm run typecheck`
+
+Please review only whether the prior must-fixes are now satisfied. Return publish / publish-after-fixes / no-publish, with must-fix items only.

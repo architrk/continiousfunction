@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, the first two math objects only, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/generative-models/concepts/score-matching. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what Hyvarinen 2005, Vincent 2011, and Song 2020 Score SDE actually support. Also flag any local content wording that should be softened before this claim is added.
+
+Proposed claim_check:
+- id: score-field-denoising-reverse-dynamics
+- status: source-checked
+- claim: Score matching learns the score field grad_x log p(x) without evaluating the normalizing constant; denoising score matching turns Gaussian corruption into a target score -(x_tilde-x)/sigma^2 = -epsilon/sigma, and learned time-dependent scores can drive reverse-time generative dynamics.
+- source_ids: hyvarinen-2005-score-matching, vincent-2011-denoising-score, song-2020-score-sde
+- support: Hyvarinen grounds score matching for unnormalized statistical models and the classical objective shown in the first two equations. Vincent grounds the denoising-score connection under Gaussian corruption. Song grounds using learned time-dependent score fields for reverse-time SDE generation. The page code/demo instantiate the conditional denoising target and noise-scaling equivalence.
+- caveat: This checks the score/DSM/reverse-dynamics teaching bridge, not exact score-SDE solvers, unconditional versus conditional score equivalence, high-dimensional image generation results, or the full diffusion training objective.
+- object_refs: #source-span-hyvarinen-2005-score-matching, #source-span-vincent-2011-denoising-score, #source-span-song-2020-score-sde, #math-object-1, #math-object-2, #code-witness-1, #interactive-demo

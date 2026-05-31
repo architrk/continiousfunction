@@ -4,62 +4,134 @@ title: "Probability Basics"
 
 ## Intuition
 
-Probability is what we use when we can’t predict an outcome exactly, but we can reason about *how often* outcomes happen in the long run.
+You see one outcome, but you do not see the hidden situation that produced it. How should your belief change?
 
-A clean way to think about it is: there is a space of possible worlds, and an event is a subset of those worlds. Probability assigns a number between 0 and 1 to events.
+Probability starts by listing possible worlds and assigning mass to sets of worlds. An event is a subset of those worlds. Conditional probability is what happens when you learn that the true world lies inside one event: you keep only the compatible worlds and renormalize their mass back to $1$.
 
-In ML, probability is the backbone of:
+This "filter then renormalize" picture is the foundation for likelihood, Bayesian inference, calibration, uncertainty, and losses such as cross-entropy. In machine learning, a model is often a device that assigns probabilities to possible observations or labels. The first question is not whether the model is deep; it is whether its probability statements obey the basic rules.
 
-- likelihood (how well a model explains data)
-- uncertainty and calibration
-- losses like cross-entropy
+The analogy has a limit: probability is not only long-run frequency. In Bayesian inference it can also represent degrees of belief over unknowns. What stays invariant is the algebra of events, conditioning, and normalization.
 
 ## Math
 
-A probability space is $(\Omega, \mathcal{F}, P)$:
+For this page, start with a finite probability model. A probability space is $(\Omega,\mathcal F,P)$:
 
 - $\Omega$: sample space (all outcomes)
-- $\mathcal{F}$: events (a collection of subsets of $\Omega$)
+- $\mathcal{F}$: events (in a finite model, usually all subsets of $\Omega$; in general, a sigma-algebra of measurable subsets)
 - $P$: probability measure
 
-Axioms:
+For events $E\in\mathcal F$, the basic axioms are:
 
-1. $P(A) \ge 0$
+1. $P(E) \ge 0$
 2. $P(\Omega)=1$
-3. If $A$ and $B$ are disjoint, then $P(A\cup B)=P(A)+P(B)$
+3. If $E_1,E_2,\dots$ are pairwise disjoint, then
 
-**Conditional probability** (update probabilities after observing $B$):
+$$
+P\left(\bigcup_i E_i\right)=\sum_i P(E_i).
+$$
 
-$$P(A\mid B) = \frac{P(A\cap B)}{P(B)} \quad (P(B)>0).$$
+For finite examples, this reduces to adding the probabilities of disjoint pieces.
 
-**Independence** means learning $B$ doesn’t change $A$:
+The complement rule follows:
 
-$$A \perp B \iff P(A\cap B)=P(A)P(B).$$
+$$
+P(E^c)=1-P(E).
+$$
 
-Bayes’ rule follows directly:
+**Conditional probability** means updating probabilities after observing an event $O$:
 
-$$P(A\mid B) = \frac{P(B\mid A)P(A)}{P(B)}.$$
+$$
+P(E\mid O) = \frac{P(E\cap O)}{P(O)} \quad (P(O)>0).
+$$
+
+The denominator matters. Conditioning does not merely keep $E\cap O$; it rescales all probability inside $O$ so the new total mass is $1$. If $P(O)=0$, there is no mass inside the observed event to renormalize, so $P(E\mid O)$ is undefined.
+
+The product rule is the same equation rearranged:
+
+$$
+P(E\cap O)=P(E\mid O)P(O)=P(O\mid E)P(E),
+$$
+
+when the conditioning events have positive probability.
+
+**Independence** means learning one event does not change the probability of the other:
+
+$$
+E \perp O \iff P(E\cap O)=P(E)P(O).
+$$
+
+Equivalently, when $P(O)>0$, independence means $P(E\mid O)=P(E)$.
+
+Bayes' rule follows by writing the same intersection two ways:
+
+$$
+P(E\mid O) = \frac{P(O\mid E)P(E)}{P(O)}.
+$$
+
+If $C_1,\dots,C_m$ are mutually exclusive hidden cases that cover the sample space, they form a partition. The denominator can be expanded by total probability:
+
+$$
+P(O)=\sum_{j=1}^m P(O\mid C_j)P(C_j),
+$$
+
+for hidden cases with positive prior probability.
+
+That gives the form used in classification, diagnosis, and Bayesian updating:
+
+$$
+P(C_i\mid O)=\frac{P(O\mid C_i)P(C_i)}{\sum_{j=1}^m P(O\mid C_j)P(C_j)}.
+$$
+
+The numerator is likelihood times prior. The denominator is the total evidence. In the demo, the hidden cases are "coin A was chosen" and "coin B was chosen," while $O$ is the observed Head or Tail.
 
 ## Code
 
 ```python
 import numpy as np
 
-# Estimate P(H) for a biased coin
-p = 0.65
-n = 100_000
-flips = (np.random.rand(n) < p)
-print("P(H) approx:", flips.mean())
+rng = np.random.default_rng(0)
 
-# Conditional probability example with two coins: choose coin then flip
-coin = (np.random.rand(n) < 0.5)  # False=coin0, True=coin1
-p0, p1 = 0.2, 0.8
-heads = np.where(coin, np.random.rand(n) < p1, np.random.rand(n) < p0)
+# Hidden state: choose coin A or coin B, then observe Head or Tail.
+prior_B = 0.30
+p_head_A = 0.20
+p_head_B = 0.80
 
-# P(coin1 | heads)
-print("P(coin1 | heads) approx:", coin[heads].mean())
+prior_A = 1 - prior_B
+
+joint = {
+    ("A", "H"): prior_A * p_head_A,
+    ("A", "T"): prior_A * (1 - p_head_A),
+    ("B", "H"): prior_B * p_head_B,
+    ("B", "T"): prior_B * (1 - p_head_B),
+}
+
+assert abs(sum(joint.values()) - 1.0) < 1e-12
+
+# Bayes numerator = likelihood times prior.
+bayes_numerator = p_head_B * prior_B
+evidence_H = p_head_A * prior_A + p_head_B * prior_B
+posterior_B_given_H = bayes_numerator / evidence_H
+
+assert abs(bayes_numerator - joint[("B", "H")]) < 1e-12
+assert abs(evidence_H - (joint[("A", "H")] + joint[("B", "H")])) < 1e-12
+
+print("P(H):", round(evidence_H, 3))
+print("P(B and H):", round(joint[("B", "H")], 3))
+print("P(H | B)P(B):", round(bayes_numerator, 3))
+print("P(B | H):", round(posterior_B_given_H, 3))
+
+# Monte Carlo check: simulate the same process.
+n = 200_000
+is_B = rng.random(n) < prior_B
+head_probability = np.where(is_B, p_head_B, p_head_A)
+heads = rng.random(n) < head_probability
+print("simulation P(B | H):", round(is_B[heads].mean(), 3))
 ```
 
 ## Interactive Demo
 
-No interactive demo yet. A good demo: sliders for priors and likelihoods, showing Bayes' rule updating a posterior.
+Move the prior and likelihood sliders, then switch the observation between Head and Tail. After you reveal, the table shows the four joint probabilities. Conditioning keeps the column matching the observation and renormalizes it.
+
+When Head is observed, the likelihoods are $P(H\mid A)$ and $P(H\mid B)$. When Tail is observed, the likelihoods are $P(T\mid A)=1-P(H\mid A)$ and $P(T\mid B)=1-P(H\mid B)$.
+
+Watch the base rate. A coin can be very good at producing heads, but if it is rare enough, observing heads may still leave uncertainty about which coin was chosen.

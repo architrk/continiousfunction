@@ -17,17 +17,23 @@ Two ideas show up constantly in ML:
 
 A function is written
 
-$$f: X \to Y$$
+$$
+f: X \to Y
+$$
 
 meaning: for each input $x \in X$ (the **domain**), the output $f(x)$ lies in $Y$ (the **codomain**).
 
 The **graph** of a real-valued function $f: \mathbb{R} \to \mathbb{R}$ is the set of points
 
-$$\{(x, f(x)) : x \in \mathbb{R}\}.$$
+$$
+\{(x, f(x)) : x \in \mathbb{R}\}.
+$$
 
 **Composition** means chaining machines together. If $g: X \to Y$ and $f: Y \to Z$, then
 
-$$(f \circ g)(x) = f(g(x)).$$
+$$
+(f \circ g)(x) = f(g(x)).
+$$
 
 That “feed the output of $g$ into $f$” pattern is the exact shape of neural networks.
 

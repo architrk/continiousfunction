@@ -1,0 +1,56 @@
+Project: Continuous Function, a Next.js/React learning atlas for deep learning and math. Current product direction is prediction-first, mechanism-specific concept slices that hide the important answer until the learner commits, then emit compact measured demo state for grounded AI/research handoff.
+
+Review target:
+components/foundations/TransformerArchitectureViz.tsx was retrofitted with the next Oracle/GPT Pro scoped P0 slice for the attention-transformers/attention-transformers route: transformer-architecture-prediction-first-residual-shape-reveal.
+
+The one invariant this slice must teach:
+A transformer layer is stackable because attention and the feed-forward network both return to the residual-stream boundary shape T x d_model, even though attention internally forms h x T x T weights and the FFN expands to T x d_ff.
+
+The correct prediction is:
+"Attention and FFN return to T x d_model"
+
+Pre-reveal requirements:
+- The learner may see architecture topology and neutral component roles.
+- Hide tensor shape labels such as src: 6 x 512, tgt: 6 x 512, Q/K/V shapes, vocab logits shape.
+- Hide overview hyperparameter tables/panels.
+- Hide component tensor tables, formulas, and hover formula tooltips.
+- Hide detailed dynamic insights and detailed token-stage labels that explain the invariant.
+- Do not emit measured demo state before reveal.
+- Keep architecture quiz disabled before reveal so it cannot leak the invariant.
+
+Post-reveal requirements:
+- Show whether the prediction matched.
+- Show the residual-stream readout and the boundary invariant.
+- Unlock shape labels, hyperparameters, tensor tables, formulas, and formula tooltips.
+- Emit compact measured demo state containing prediction, actual, correctness, residual stream shape, attention weights/output shape, FFN hidden/output shape, residual-add legality, d_model, d_ff, heads, d_k, active stage/focus/variant.
+
+State/lifecycle requirements:
+- Changing prediction after reveal clears stale reveal and shared demo state.
+- Changing architecture variant after reveal clears stale reveal and shared demo state.
+- Reset clears stale reveal and shared demo state.
+- Clicking a component after reveal clears stale shared demo state before emitting the new focused state.
+- conceptId changes and unmounts clear shared demo state.
+- When the parent attention-transformers route unmounts/remounts the Transformer Block child tab, stale child reveal state must not persist.
+
+What I changed:
+- Added a residual-shape prediction panel, reveal button, reset button, pre-reveal locked copy, and post-reveal residual readout.
+- Gated shapes/formulas/hyperparameters/tooltips/quiz/measured state behind reveal.
+- Added clearDemoState lifecycle guards.
+- Added focused Jest coverage for pre-reveal hiding, correct/wrong reveal emission, stale-state clearing, and parent tab remount behavior.
+
+Local validation already passed:
+- npm test -- TransformerArchitectureViz --runInBand
+- npm run typecheck
+- npm run validate-content
+- npm test -- --runInBand
+- CF_NEXT_BUILD_CPUS=1 npm run build
+
+Please do a strict publish/no-publish review.
+Return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Blocking issues, if any, with exact file/line/function references.
+3. Non-blocking improvements.
+4. Whether the implementation faithfully matches the scoped invariant above.
+5. Any test or browser verification gaps that still matter before shipping.
+
+Be especially skeptical about pre-reveal answer leaks, stale demo-state emission, accessibility of disabled controls, and mobile/layout risks.

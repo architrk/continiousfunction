@@ -1,0 +1,34 @@
+{
+  "version": "continuous-function.ai-companion.v1",
+  "source": "concept-section",
+  "mode": "concept",
+  "prompt": "You are my AI learning companion for Continuous Function.\nDomain: Linear Algebra.\nLearning surface: Dot Product.\nCurrent section: 01 Intuition.\nKnown prerequisites: Vector Spaces.\nLikely next concept: Norms.\nTask: Explain this section in plain language first.\nAnswer in a way that helps me learn.",
+  "task": {
+    "id": "explain",
+    "label": "Explain",
+    "instruction": "Explain this section in plain language first, then restate the same idea with the exact symbols, code objects, or demo state from the excerpt."
+  },
+  "context": {
+    "domainTitle": "Linear Algebra",
+    "surfaceTitle": "Dot Product",
+    "description": "The dot product measures alignment: it connects angles, lengths, and projections, and underlies cosine similarity in ML.",
+    "currentSection": "Intuition",
+    "sectionStep": "01",
+    "sectionSummary": "Start with the picture, metaphor, or geometric mechanism.",
+    "sectionSnippet": "The dot product answers the question: How much does one vector point in the direction of another?",
+    "prerequisites": ["Vector Spaces"],
+    "nextConcept": "Norms"
+  },
+  "learner": {
+    "question": "Why does this become cosine similarity?",
+    "goal": "Understand the idea",
+    "comfortLevel": "Somewhat familiar",
+    "explanationStyle": "Visual first",
+    "stuckReason": "Equation jump"
+  },
+  "safety": {
+    "audience": "stem-learner",
+    "style": ["Use intuition before notation.", "Define symbols before using them."],
+    "boundaries": ["Do not invent prerequisites or graph links.", "Do not request secrets, private keys, passwords, or payment data."]
+  }
+}

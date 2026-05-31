@@ -1,0 +1,74 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. Current direction: slow high-quality concept growth, mechanism-first animations, math/code witnesses, prediction checks, AI companion demo-state context, and a coherent shared visualization shell.
+
+This is the implementation review for the third slice of the shared "flagship demo shell rollout": Mixture of Experts / MoE routing.
+
+Prior GPT Pro Oracle scope review chose MoE routing as the next target because it is a one-route, one-foundation-component patch, unlike Diffusion or Loss Landscapes which are multi-demo bundles.
+
+The requested scope was:
+
+- Replace `content/domains/efficiency/concepts/mixture-of-experts/viz.tsx` direct re-export with a `VizShell` + `VizStageAdapter` wrapper.
+- Add `chrome?: 'legacy' | 'notebook'` and `conceptId?: string` to `MoERoutingViz`.
+- Keep legacy `/foundations` dark rendering as the default.
+- Pass `chrome="notebook"` from the filesystem concept route.
+- Remove score/streak/achievement/celebration/game language.
+- Replace expert personalities and semantic-specialist copy with neutral synthetic-router copy.
+- Convert clickable expert divs into accessible buttons with pressed state.
+- Add polite prediction-check feedback.
+- Avoid "2/8 = 25% compute" unless heavily caveated.
+- Add compact demo-state emission for the AI companion.
+- Tighten MDX demo copy so it says synthetic toy router, not trained router or production load-balancer.
+
+Implemented changes:
+
+- `content/domains/efficiency/concepts/mixture-of-experts/viz.tsx`
+  - Now wraps the demo in `VizShell` and `VizStageAdapter`.
+  - Uses metrics: `8 toy experts`, `top-2 routing`, `synthetic logits`.
+  - Notes and challenge copy explicitly say presets are hand-built teaching cases and the mechanism is sorting router probabilities.
+  - Dynamically imports `MoERoutingViz` with `ssr: false`.
+  - Passes `chrome="notebook"` and `conceptId="mixture-of-experts"`.
+
+- `components/foundations/MoERoutingViz.tsx`
+  - Adds `MoERoutingVizProps` with `chrome='legacy'` and `conceptId='mixture-of-experts'` defaults.
+  - Root class is now `moe-card ${chrome}`.
+  - Replaces expert personalities with neutral `E0`...`E7` toy FFN expert labels.
+  - Replaces preset descriptions with "synthetic preset" / "largest logits" wording.
+  - Replaces score/streak/achievement/celebration state with `PredictionResult`.
+  - Prediction check now reports matched count and actual top-k experts in a polite live region.
+  - Expert boxes are real `button` elements with `aria-pressed` when prediction mode is active.
+  - Token preset buttons and prediction toggle use `aria-pressed`.
+  - Compute pill now says `Expert FFN calls — 2/8 experts active for this token`.
+  - Myth card now caveats shared layers, routing skew, capacity, memory movement, and all-to-all communication.
+  - Load caption now says it is usage skew from repeated toy routing and real systems also enforce capacity factors and dispatch constraints.
+  - Adds notebook CSS overrides that hide the internal header and remove dark outer chrome while keeping the legacy default unchanged.
+  - Adds compact `emitDemoState` with current preset, top-k experts, top-k probability mass, routed sample token count, highest toy load, and prediction result.
+
+- `content/domains/efficiency/concepts/mixture-of-experts/content.mdx`
+  - Replaces "specialist team" analogy with sparse-routing framing.
+  - Interactive Demo now says the demo shows synthetic router logits, top-k expert choices, and accumulated toy expert-load skew; it is not a trained router or production load-balancing simulator.
+
+Local validation after implementation:
+
+- `npm run validate-content`: passed with 0 warnings / 0 errors.
+- `npm run typecheck`: passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build`: passed. Existing unrelated warnings remain for raw `<img>` usage and KaTeX display-newline warnings.
+- After moving generated build output to the hidden parent stale-build stash and restarting only port 3001:
+  - `curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/domains/efficiency/mixture-of-experts/` returned `200`.
+  - `curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/foundations/mixture-of-experts/` returned `200`.
+  - `lsof` shows only port `3001` active for this repo app server.
+
+Please review the attached files as a strict implementation reviewer. I want blockers before this slice is considered complete, not a broad brainstorm.
+
+Questions:
+
+1. Are there any correctness, pedagogy, claim-calibration, accessibility, SSR/static-export, or UX blockers?
+2. Did the notebook shell avoid duplicate chrome while preserving legacy dark `/foundations` behavior?
+3. Is the prediction-check language mechanism-first enough, or are there remaining game/leaderboard/semantic-specialist leaks?
+4. Is the demo-state emission useful and safe for the AI companion context?
+5. Are there any exact copy/code changes required before continuing to the next demo?
+
+Please answer with:
+
+- "BLOCKERS" first, ordered by severity, with file/section references.
+- "REQUIRED PATCH" with exact text/code changes if blockers exist.
+- "ACCEPTABLE TO CONTINUE" if no blockers remain.
+- Keep optional polish separate from blockers.

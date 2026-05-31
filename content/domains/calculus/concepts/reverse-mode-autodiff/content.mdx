@@ -1,0 +1,123 @@
+---
+title: "Reverse-Mode Automatic Differentiation"
+---
+
+## Intuition
+
+Suppose one scalar loss depends on millions of parameters. Do you need to run one derivative computation for each parameter to know how to change them all?
+
+Reverse-mode automatic differentiation is the bookkeeping trick that makes the answer no.
+
+The previous idea, computation graphs, makes dependencies visible. Reverse-mode AD adds an execution rule: during the forward pass, record the primitive operations and the intermediate values they will need later. During the reverse pass, start from the final question, "how much does the loss change if this output changes?", and walk backward through the recorded operations. Each local backward rule converts an output sensitivity into input sensitivities.
+
+The key advantage is shape. If one scalar loss depends on many parameters, reverse mode can compute all parameter gradients in one backward sweep through the graph. Forward mode would ask, one input direction at a time, how the output changes.
+
+The useful mental model is a tape plus a register file. The tape remembers what primitive operations ran. The registers store cotangents such as $\bar a$ and $\bar x$. The model breaks if you imagine symbolic simplification: reverse mode does not expand the formula by hand; it accumulates local contributions on the graph that actually ran.
+
+## Math
+
+Let a differentiable computation graph produce a scalar output $L$ from intermediate variables $v_1,\dots,v_n$. Reverse mode stores, for each node, an adjoint or cotangent
+
+$$
+\bar v_i = \frac{\partial L}{\partial v_i}.
+$$
+
+Before the reverse sweep, initialize every non-output cotangent register to zero. Then seed the scalar output with
+
+$$
+\bar L = \frac{\partial L}{\partial L} = 1.
+$$
+
+For scalar nodes and a local operation $v_j = f(v_i)$, the chain rule sends sensitivity backward. When the operation producing $v_j$ is processed, $\bar v_j$ already contains all downstream contributions:
+
+$$
+\bar v_i \mathrel{+}= \bar v_j \frac{\partial v_j}{\partial v_i}.
+$$
+
+For an operation with multiple inputs, such as $v_j=f(u,w)$, each input receives its own local derivative:
+
+$$
+\bar u \mathrel{+}= \bar v_j \frac{\partial v_j}{\partial u},\qquad \bar w \mathrel{+}= \bar v_j \frac{\partial v_j}{\partial w}.
+$$
+
+The plus-equals matters. If a value is reused by several later nodes, all downstream paths contribute to its total sensitivity. Reverse mode is therefore not symbolic simplification; it is graph-local accumulation of vector-Jacobian products.
+
+For vector nodes, choose column-vector cotangents. If $v_i\in\mathbb{R}^n$, $v_j=f(v_i)\in\mathbb{R}^m$, $\bar v_i\in\mathbb R^n$, $\bar v_j\in\mathbb R^m$, and
+
+$$
+J_{ji}=\frac{\partial v_j}{\partial v_i}\in\mathbb{R}^{m\times n},
+$$
+
+then the reverse update is
+
+$$
+\bar v_i \mathrel{+}= J_{ji}^{\mathsf T}\bar v_j.
+$$
+
+This is the direction contrast:
+
+$$
+\text{JVP: }\dot v_j=J_{ji}\dot v_i,\qquad \text{VJP: }\bar v_i=J_{ji}^{\mathsf T}\bar v_j.
+$$
+
+For a scalar loss $L:\mathbb R^p\to\mathbb R$, one forward evaluation records the needed values, and one reverse sweep gives the full gradient
+
+$$
+\nabla_\theta L = \left(\frac{\partial L}{\partial \theta_1},\dots,\frac{\partial L}{\partial \theta_p}\right)^{\mathsf T}
+$$
+
+assuming primitive backward rules are available. The cost is memory for saved forward values on a tape, or extra compute if some values are recomputed. An autodiff engine automates this bookkeeping by recording primitive operations during the forward pass and executing their local backward rules in reverse topological order.
+
+These equations assume the recorded primitives are differentiable at the saved forward values. For nonsmooth primitives, an implementation must choose a convention, use a subgradient, or report that the derivative is undefined. If the program has control flow, reverse mode differentiates the branch that actually ran.
+
+## Code
+
+```python
+import math
+
+x, y = 2.0, 3.0
+
+# Forward graph:
+# a = x * y
+# b = sin(a)
+# L = a + b
+a = x * y
+b = math.sin(a)
+L = a + b
+
+# Reverse-mode table: each bar_* stores dL/d(node).
+# Start with empty cotangent registers, then seed the output.
+bar_L = 0.0
+bar_a = 0.0
+bar_b = 0.0
+bar_x = 0.0
+bar_y = 0.0
+
+bar_L = 1.0
+
+# Read the tape backward.
+# L = a + b sends one unit of sensitivity to both inputs.
+bar_a += bar_L * 1.0
+bar_b += bar_L * 1.0
+
+# b = sin(a) contributes another path back into a.
+bar_a += bar_b * math.cos(a)
+
+# a = x * y sends sensitivity to both inputs.
+bar_x += bar_a * y
+bar_y += bar_a * x
+
+print("L:", round(L, 4))
+print("dL/dx:", round(bar_x, 4))
+print("dL/dy:", round(bar_y, 4))
+```
+
+The code initializes every cotangent register and then uses `+=` for local contributions. The reused node $a$ receives two contributions: directly through $L=a+b$, and indirectly through $b=\sin(a)$. With $x=2$ and $y=3$, the output is approximately $L=5.7206$, $\partial L/\partial x=5.8805$, and $\partial L/\partial y=3.9203$.
+
+## Interactive Demo
+
+Use the sliders to change $x$ and $y$, then compare the three phases.
+
+Forward tape mode records the primitive operations and the saved values that local backward rules will need. Reverse sweep mode reads the same tape backward, starts from $\bar L=1$, and fills the cotangent registers. Cost shape mode highlights the main reason reverse mode matters for deep learning: when many inputs feed one scalar loss, one reverse sweep gives the whole gradient vector.
+
+Try the second preset after making a prediction. It changes the product regime so the same tape can expose a different cotangent-accumulation pattern.

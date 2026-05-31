@@ -3,7 +3,7 @@ title: "Vector Spaces"
 domain: linear-algebra
 slug: vector-spaces
 difficulty: 2
-status: draft
+status: published
 importance: critical
 prerequisites: []
 leads_to:
@@ -11,19 +11,43 @@ leads_to:
   - basis-and-span
   - linear-transformations
 related:
-  - matrices
   - dot-product
   - norms
-  - eigenvalues
-  - svd
+  - representations
 tags:
   - linear-algebra
 has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: highschool
+sources:
+  - id: deisenroth-2020-mml
+    kind: book
+    title: "Mathematics for Machine Learning"
+    authors: "Deisenroth, Faisal, and Ong"
+    year: 2020
+    url: "https://mml-book.github.io/book/mml-book.pdf"
+    note: "Grounds vector spaces, bases, coordinates, and the linear algebra vocabulary needed for ML models."
+claim_checks:
+  - id: vector-space-closure-linear-combinations
+    status: source-checked
+    claim: "A vector space has addition and scalar multiplication obeying the vector-space axioms; closure guarantees that for u,v in V and scalars a,b, the linear combination au+bv is still in V."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "MML Def. 2.9 defines real vector spaces by +: V x V -> V and scalar multiplication R x V -> V plus Abelian-group, distributive, scalar-associative, and identity axioms; Def. 2.11 defines linear combinations sum_i lambda_i x_i in V. Local math states the field-general form; code checks R^3 operations and the demo forms w=a u+b v in R^2."
+    source_ids:
+      - deisenroth-2020-mml
+    support: "MML defines real-valued vector spaces by addition V x V -> V, scalar multiplication R x V -> V, and the usual group/distributive/scalar axioms. It also treats closure and linear combinations as scaled sums staying in V; the page uses standard field notation F while code/demo instantiate R^d/R^2."
+    caveat: "MML is real-valued; the page's field-general F wording is standard but slightly broader than the source. This review checks algebraic closure/linear combinations only, not affine spaces, modules, norms/topology, completeness, basis/independence, or numerical edge cases."
+    object_refs:
+      - "#source-span-deisenroth-2020-mml"
+      - "#math-object-1"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "A vector space is a set of objects you can add and scale, where those operations behave consistently."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 10

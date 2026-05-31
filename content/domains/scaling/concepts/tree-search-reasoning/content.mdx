@@ -1,0 +1,183 @@
+---
+title: "Tree Search Reasoning: Allocating Inference Budget Across Prefixes"
+---
+
+## Intuition
+
+Background references include Cobbe et al., ["Training Verifiers to Solve Math Word Problems"](https://arxiv.org/abs/2110.14168), Lightman et al., ["Let's Verify Step by Step"](https://arxiv.org/abs/2305.20050), Brown et al., ["Large Language Monkeys"](https://arxiv.org/abs/2407.21787), Wang et al., ["Self-Consistency Improves Chain of Thought Reasoning"](https://arxiv.org/abs/2203.11171), Yao et al., ["Tree of Thoughts"](https://arxiv.org/abs/2305.10601), and the UCT background note by Kocsis and Szepesvari, ["Bandit Based Monte-Carlo Planning"](https://ggp.stanford.edu/readings/uct.pdf). The source-checked core for this page uses Yao et al. for partial-state tree search and Lightman et al. for process-supervised step scoring.
+
+Best-of-$N$ search spends all extra compute on complete traces. It samples whole solutions, scores them, and returns the best sampled solution.
+
+Tree search asks a sharper question: after seeing a partial reasoning prefix, which branch deserves more budget?
+
+That changes the unit of allocation. The search state is a prefix $h$: a partial derivation, proof, plan, or scratchpad. A generator proposes next steps. A process reward model or local verifier scores those steps. In the finite teaching model below, a max-backup rule lets a good visible continuation raise the value of the earlier prefix that led to it.
+
+This page teaches a finite prefix-tree mechanism inspired by ToT and PRM-style scoring: visible prefixes, local verifier scores, frontier expansion, max backup, and a toy noisy-verifier failure. Full MCTS, UCT, rollouts, visit counts, PUCT, and AlphaZero-style search are part of the larger family, but they are not the teaching core here.
+
+## Math
+
+Fix one prompt $x$ and a finite rooted tree $\mathcal T$ of possible reasoning prefixes. The root is the empty prefix $\emptyset$. A node is a prefix $h$, taking next step $a$ creates child prefix $ha$, the generator proposes that edge, and the local verifier scores it:
+
+$$
+h=(a_1,\dots,a_t),
+\qquad
+ha=(a_1,\dots,a_t,a),
+\qquad
+\pi_\theta(a\mid h),
+\qquad
+r_\phi(h,a).
+$$
+
+Here $r_\phi(h,a)$ is the process-reward-model style judgment of whether step $a$ is valid after prefix $h$.
+
+At search step $t$, let $\mathcal T_t$ be the visible subtree. The frontier, cumulative local verifier score, deterministic expansion rule, and page-level max backup are:
+
+$$
+\begin{aligned}
+\mathcal F_t
+&=
+\mathrm{Frontier}(\mathcal T_t),\\
+G_\phi(h)
+&=
+\sum_{(g,a)\in \mathrm{path}(h)}
+r_\phi(g,a),\\
+h_t
+&=
+\arg\max_{h\in\mathcal F_t}
+\left[G_\phi(h)+b_\phi(h)\right],\\
+V_t(h)
+&=
+\begin{cases}
+0, & h \text{ is terminal},\\
+b_\phi(h), & h\in\mathcal F_t,\\
+\max\limits_{a:ha\in\mathcal T_t}\left[r_\phi(h,a)+V_t(ha)\right], & h \text{ is expanded}.
+\end{cases}
+\end{aligned}
+$$
+
+A terminal trace $z$ also has hidden correctness
+
+$$
+u(z)\in\{0,1\},
+$$
+
+but $u$ is used only for evaluation, not for search.
+
+Here $b_\phi(h)$ is a prefix heuristic: how promising an unfinished prefix looks before its children are revealed. The $h_t$ line is the simplest deterministic expansion rule: choose the visible unfinished prefix with the highest current path score plus heuristic.
+
+Expanding $h_t$ reveals its children and scores their incoming edges. This is the unit of inference budget.
+
+The backed-up residual value on the visible tree is the $V_t$ recurrence above: terminal nodes contribute no future score, unfinished frontier nodes use their heuristic, and expanded nodes inherit the best visible child continuation.
+
+The recommended visible path follows the best backed-up child:
+
+$$
+a^\star(h)=
+\arg\max_{a:ha\in\mathcal T_t}
+\left[r_\phi(h,a)+V_t(ha)\right].
+$$
+
+This is not a convergence theorem or a claim about perfect planning. It means only: among the continuations currently visible under this prefix, choose the one with the highest verifier-backed score.
+
+A compact cost model is
+
+$$
+C_t=
+\sum_{h\ \mathrm{expanded}}
+|A_t(h)|(c_{\mathrm{gen}}+c_{\mathrm{score}}),
+$$
+
+where $A_t(h)$ is the set of generated children revealed when prefix $h$ is expanded.
+
+The contrast with best-of-$N$ is the frontier. Complete-trace search samples $\tau^{(1)},\dots,\tau^{(N)}$ and selects
+
+$$
+\tau^\star=
+\arg\max_i s_\phi(\tau^{(i)}).
+$$
+
+There is no visible prefix frontier and no bottom-up backup. Tree search replaces "sample another whole trace" with "expand another prefix."
+
+## Code
+
+This witness runs the same finite prefix tree as the demo for $2(x+3)=14$. In clean mode, the best-first frontier reaches a correct terminal trace. In noisy mode, an invalid shortcut is falsely scored high, and the max backup sends the root toward the wrong terminal.
+
+```python
+NODES = {
+    "root": {"children": ["A", "B", "C"]},
+    "A": {"parent": "root", "children": ["A1"], "clean": -1.2, "noisy": 1.2, "b_clean": -0.3, "b_noisy": 1.1},
+    "A1": {"parent": "A", "terminal": True, "correct": False, "clean": -0.4, "noisy": 1.6},
+    "B": {"parent": "root", "children": ["B1", "B2"], "clean": 0.8, "noisy": 0.8, "b_clean": 0.9, "b_noisy": 0.9},
+    "B1": {"parent": "B", "terminal": True, "correct": True, "clean": 1.0, "noisy": 1.0},
+    "B2": {"parent": "B", "terminal": True, "correct": False, "clean": -0.6, "noisy": -0.6},
+    "C": {"parent": "root", "children": ["C1", "C2"], "clean": 0.7, "noisy": 0.7, "b_clean": 1.3, "b_noisy": 1.3},
+    "C1": {"parent": "C", "children": ["C1a", "C1b"], "clean": 0.9, "noisy": 0.9, "b_clean": 0.8, "b_noisy": 0.8},
+    "C1a": {"parent": "C1", "terminal": True, "correct": True, "clean": 0.8, "noisy": 0.8},
+    "C1b": {"parent": "C1", "terminal": True, "correct": False, "clean": -0.6, "noisy": -0.6},
+    "C2": {"parent": "C", "terminal": True, "correct": False, "clean": -0.8, "noisy": -0.8},
+}
+
+ORDER = ["root", "A", "A1", "B", "B1", "B2", "C", "C1", "C1a", "C1b", "C2"]
+
+def score(node_id, mode):
+    return NODES[node_id][mode]
+
+def heuristic(node_id, mode):
+    return NODES[node_id].get(f"b_{mode}", 0.0)
+
+def cumulative(node_id, mode):
+    if node_id == "root":
+        return 0.0
+    parent = NODES[node_id]["parent"]
+    return cumulative(parent, mode) + score(node_id, mode)
+
+def run(mode="clean", budget=2):
+    visible = set(["root", *NODES["root"]["children"]])
+    expanded = {"root"}
+
+    def is_frontier(node_id):
+        node = NODES[node_id]
+        return node_id in visible and not node.get("terminal") and node_id not in expanded
+
+    for _ in range(budget):
+        frontier = [node_id for node_id in ORDER if is_frontier(node_id)]
+        if not frontier:
+            break
+        chosen = max(frontier, key=lambda node_id: (cumulative(node_id, mode) + heuristic(node_id, mode), node_id))
+        expanded.add(chosen)
+        visible.update(NODES[chosen].get("children", []))
+
+    def value(node_id):
+        node = NODES[node_id]
+        if node.get("terminal"):
+            return 0.0
+        if node_id not in expanded:
+            return heuristic(node_id, mode)
+        return max(score(child, mode) + value(child) for child in node["children"] if child in visible)
+
+    path = ["root"]
+    while path[-1] in expanded and not NODES[path[-1]].get("terminal"):
+        children = [child for child in NODES[path[-1]]["children"] if child in visible]
+        if not children:
+            break
+        path.append(max(children, key=lambda child: (score(child, mode) + value(child), child)))
+
+    terminal = path[-1] if NODES[path[-1]].get("terminal") else None
+    return {"path": path, "root_value": value("root"), "terminal": terminal}
+
+clean = run("clean", budget=2)
+noisy = run("noisy", budget=2)
+
+assert clean["path"] == ["root", "C", "C1", "C1a"]
+assert NODES[clean["terminal"]]["correct"] is True
+assert noisy["path"] == ["root", "A", "A1"]
+assert NODES[noisy["terminal"]]["correct"] is False
+print(clean)
+print(noisy)
+```
+
+## Interactive Demo
+
+Use the Prefix Budget Explorer to expand visible prefixes under a clean or noisy verifier. Before revealing the backed-up path, predict which root branch the visible verifier values will recommend. Hidden correctness can be shown afterward for diagnosis, but the search rule never uses it.
+
+{/* viz.tsx component renders here if it exists */}

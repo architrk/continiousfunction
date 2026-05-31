@@ -1,0 +1,34 @@
+Project: Continuous Function, a Next.js/static-export learning platform for deep learning concepts. Source edits live in /Users/architkhare/Library/Mobile Documents/com~apple~CloudDocs/Repos/continiousfunction, not the iCloud root. The site teaches concepts through concise intuition, math objects, small code witnesses, and interactive demos; we prefer one precise mechanism over broad surveys.
+
+Current goal: add the next high-leverage scaling concept, `pretraining-data-mixtures`, because the scaling domain currently risks implying that scaling is only "parameters plus token count." The concept should teach that the training distribution is a designed object: mixture proportions, filters, deduplication, quality classifiers, domain up/down-sampling, and late curriculum/annealing determine what a token means.
+
+Existing local context:
+- `content/domains/scaling/concepts/scaling-laws/content.mdx` teaches Chinchilla-style parameter/token/compute allocation.
+- `content/domains/scaling/concepts/test-time-compute/content.mdx` and `tree-search-reasoning/content.mdx` show the desired style: canonical sources, one mechanism, exact math, code witness, demo.
+- TODO already queues `pretraining-data-mixtures` as "data mixture, filtering, deduplication, and curriculum (FineWeb / FineWeb-Edu / modern open-data practice)."
+
+Primary-source grounding I checked before asking you:
+- Chinchilla / Hoffmann et al. (2022): compute-optimal training scales model size and training tokens together under a fixed recipe; this is the page we are extending, not replacing. https://arxiv.org/abs/2203.15556
+- FineWeb dataset card: Common Crawl was processed, filtered, and deduplicated into about 15T GPT-2 tokens; FineWeb reports stronger benchmark performance than other public web datasets under its ablations. https://huggingface.co/datasets/HuggingFaceFW/fineweb
+- FineWeb-Edu dataset card: Llama3/Phi3-style educational quality classifiers motivate filtering; threshold 3 removed 92% of FineWeb and left 1.3T educational tokens; threshold 2 retained 5.4T tokens with lower performance. https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu
+- Dolma official page: an open 3T-token corpus mixing web content, academic publications, code, books, and encyclopedic materials, plus a toolkit with built-in taggers and fast deduplication. https://allenai.github.io/dolma/
+- DataComp-LM / DCLM NeurIPS 2024: standardized 240T-token Common Crawl corpus; benchmark lets participants test deduplication, filtering, and data mixing; model-based filtering was key to a strong public baseline. https://proceedings.neurips.cc/paper_files/paper/2024/file/19e4ea30dded58259665db375885e412-Paper-Datasets_and_Benchmarks_Track.pdf
+- Data Mixing Laws / Ye et al. ICLR 2025: mixture proportions crucially affect model competence; small-scale mixture experiments can predict unseen mixture performance and guide large-run mixture selection. https://arxiv.org/abs/2403.16952
+- Llama 3 Herd of Models: data mix selection used knowledge classification and scaling-law experiments; final pretraining mix roughly 50% general knowledge, 25% math/reasoning, 17% code, 8% multilingual; training adjusted mix by increasing non-English, upsampling math, adding recent web data, and downsampling lower-quality subsets. https://arxiv.org/pdf/2407.21783
+
+Question for GPT Pro:
+Design the narrow pedagogical scope for a `Pretraining Data Mixtures` concept page.
+
+Please return:
+1. The one central mechanism to teach in one page, with a suggested title/subtitle.
+2. The mathematical object: define domains/sources, mixture weights, filters, dedup/quality retention, effective token distribution, and at least one evaluation/validation loss quantity without overclaiming.
+3. A compact interactive demo concept suitable for React/TypeScript. It should be intuitive, not a giant dataset explorer. It should let a learner change mixture/filter/curriculum choices and see tradeoffs such as general loss, code/math loss, contamination/dedup risk, or diversity loss.
+4. A small code witness that is faithful as a toy model.
+5. Pedagogical caveats: what this page must explicitly not claim, especially around "quality", benchmark leakage, synthetic data, and replacing real large-scale experiments.
+6. How it should connect to existing pages: scaling-laws, test-time-compute, retrieval-augmented-generation, tokenization, llm-serving, mixture-of-experts, structured-decoding if relevant.
+7. Whether this should start as `review` or `published` status and what publish blockers you would set.
+
+Constraints:
+- Avoid a literature survey. Make it feel like a mathematical lens for modern pretraining practice.
+- The page should be approachable to an ML learner but precise enough that a researcher will not find the simplification misleading.
+- Do not recommend anything requiring a backend or live external data.

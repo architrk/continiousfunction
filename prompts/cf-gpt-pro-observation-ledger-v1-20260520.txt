@@ -1,0 +1,126 @@
+You are GPT-Pro acting as Continuous Function's product/pedagogy/UI second mind.
+
+Goal: give Codex a concrete, buildable V1 plan for the next improvement slice:
+
+  Promote the saved Long Context KV-memory WitnessTriad observation into a reusable
+  ObservationLedgerCard that can appear across concept notebooks, Search, Graph,
+  Paper Mapper, and the public route cockpit without introducing accounts, backend
+  APIs, synced memory, or static-export risk.
+
+Current state already implemented:
+
+- ConceptNotebookPage has a compact SelectedObjectBar with exactly one selected object control.
+- Long Context now has one WitnessTriad for KV-cache memory:
+  Mem_KV ≈ B * L * T * H_kv * d_head * 2 * bytes.
+- The WitnessTriad asks the learner to predict what happens when T doubles while
+  B, L, H_kv, d_head, and bytes stay fixed.
+- Save writes a structured formula-comparison observation into the existing
+  browser-local LearningRouteSnapshot.lastObservation.
+- Visual QA passed:
+  selectedObjectControlCount=1,
+  staleSelectedObjectBarCount=0,
+  witnessTriadCount=1,
+  witnessSurfaceLinkCount=3,
+  symbolMapRows=7,
+  routeStripCount=1,
+  mobile selected-object height=112px,
+  mobile collapsed WitnessTriad height=320px,
+  overflowX=0,
+  Equation 3 selection,
+  lastObservationUpdatesAfterSave=true.
+
+Existing durable constraints:
+
+- This is a static-exported Next.js Pages Router TypeScript app.
+- Use only browser-local storage already represented by LearningRouteSnapshot.
+- Do not invent backend persistence.
+- Do not imply live AI.
+- Keep the product's pedagogy: Intuition -> Math -> Code -> Interactive Demo.
+- Improve the learner's ability to carry one observation across surfaces.
+- The site should feel like an atlas, notebook, and lab surface for serious deep-learning learners.
+
+Please produce a concise but specific implementation spec.
+
+I need:
+
+1. The highest-impact V1 scope for ObservationLedgerCard.
+   - Which surfaces should receive it now?
+   - Which surfaces should wait?
+   - What is the minimum viable shared component/API?
+
+2. Exact copy hierarchy for the card.
+   - Eyebrow/title/labels/body/actions.
+   - Copy should be rigorous but compact on mobile.
+   - Include specific copy for the Long Context KV-memory formula-comparison observation.
+
+3. A TypeScript component/API proposal.
+   - Inputs should be compatible with LearningRouteSnapshot.lastObservation.
+   - Include empty/no-observation behavior.
+   - Include dense/compact variants if needed.
+
+4. Visual placement guidance.
+   - Concept notebook placement relative to WitnessTriad, RouteStateStrip, and LearningRouteContinuityBanner.
+   - Search placement relative to SearchRouteBridge/results.
+   - Graph placement relative to GraphProductNavigator.
+   - Homepage/public cockpit placement if relevant.
+   - Mobile height and no-overflow constraints.
+
+5. Acceptance metrics and visual QA checklist.
+   - Include desktop and 390px mobile checks.
+   - Include localStorage/route snapshot checks after clicking Save in WitnessTriad.
+
+6. Traps to avoid.
+   - Especially around not overbuilding, not duplicating route state, not making the UI noisy, and not implying AI memory.
+
+7. A prioritized implementation sequence for Codex, with likely files to modify.
+
+Important available data shape:
+
+LearningRouteSnapshot.lastObservation currently looks like:
+
+{
+  label: string,
+  value: string,
+  detail?: string,
+  nextQuestion?: string,
+  source: "kv-memory-lab" | "prediction-checkpoint" | "learning-route",
+  updatedAt: string,
+  kind?: "formula-comparison",
+  changed?: { symbol: string, from: number, to: number },
+  heldFixed?: Array<{ symbol: string, value: string | number }>,
+  result?: { before: number, after: number, ratio: number, unit: "GB-decimal" | "GiB" },
+  caveat?: string,
+  labState?: {
+    context: number,
+    layers: number,
+    queryHeads: number,
+    kvHeads: number,
+    dHead: number,
+    batch: number,
+    bytes: number
+  }
+}
+
+For the Long Context KV-memory witness, the saved observation is:
+
+- label: "KV memory witness"
+- value: "T doubled; KV memory doubled"
+- detail: "Changed T from 32768 to 65536 while B, L, H_kv, d_head, and bytes stayed fixed."
+- nextQuestion: "Next repair: reduce H_kv, bytes, or cached tokens before treating long context as only an attention-compute problem."
+- source: "kv-memory-lab"
+- kind: "formula-comparison"
+- changed: { symbol: "T", from: 32768, to: 65536 }
+- heldFixed includes B=8, L=80, H_kv=8, d_head=128, bytes=2
+- result: before 85.9, after 171.8, ratio 2, unit "GB-decimal"
+- caveat: decimal GB, not GiB
+
+Existing surfaces already read LearningRouteSnapshot from browser localStorage and listen to the custom event:
+
+- ConceptNotebookPage: has routeSnapshot state, SelectedObjectBar, WitnessTriad, and LearningRouteContinuityBanner.
+- LearningRouteContinuityBanner: renders "Last observation" as one generic fact card when a snapshot has lastObservation.
+- RouteStateStrip: renders compact active route state below the editorial shell nav.
+- SearchRouteBridge: renders route chips above Search.
+- GraphProductNavigator: preserves lastObservation when route IDs match, and can render LearningRouteContinuityBanner compact.
+- HomeLanding / homepage already contains a public route cockpit/resume surface.
+
+Assume Codex can inspect and edit the repo after your answer. Be decisive: pick one best V1 and explain why it is the highest-impact next move.

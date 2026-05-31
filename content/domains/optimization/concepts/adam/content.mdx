@@ -19,16 +19,26 @@ Let $g_t = \nabla_\theta \mathcal{L}_t(\theta_t)$ be the (stochastic) gradient a
 
 Adam keeps exponential moving averages:
 
-$$m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t$$
-$$v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2$$
+$$
+m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t
+$$
+$$
+v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2
+$$
 
 Because $m_t$ and $v_t$ start at zero, Adam uses **bias correction**:
 
-$$\hat m_t = \frac{m_t}{1-\beta_1^t}, \qquad \hat v_t = \frac{v_t}{1-\beta_2^t}$$
+$$
+\hat m_t = \frac{m_t}{1-\beta_1^t}, \qquad \hat v_t = \frac{v_t}{1-\beta_2^t}
+$$
 
 Update rule:
 
-$$\theta_{t+1} = \theta_t - \alpha \frac{\hat m_t}{\sqrt{\hat v_t} + \varepsilon}.$$
+$$
+\theta_{t+1} = \theta_t - \alpha \frac{\hat m_t}{\sqrt{\hat v_t} + \varepsilon}.
+$$
+
+The division is elementwise, so Adam acts like a diagonal preconditioner: coordinates with consistently large gradients get smaller effective steps, while coordinates with consistently small gradients get larger relative steps. Bias correction matters most early in training because the moving averages are initialized at zero. The small $\varepsilon$ is not a learning signal; it prevents division by zero and can affect stability when gradients are tiny.
 
 Typical defaults: $\beta_1=0.9$, $\beta_2=0.999$, $\varepsilon=10^{-8}$.
 

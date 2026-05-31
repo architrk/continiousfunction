@@ -1,0 +1,28 @@
+Project: Continuous Function.
+
+Context: Oracle/GPT Pro already returned `publish` for the `AttentionGeometryViz` top-key prediction reveal. It listed non-blocking hardening follow-ups. I applied only small follow-ups:
+
+- Added pre-reveal tests for matrix `?` text, neutral matrix `fill-opacity`, value-vector radius, locked value SVG aria label, and value labels without weights.
+- Added reset tests for matrix view changes, post-reveal prediction changes, and unmount clearing.
+- Polished tie result copy so tied cases say `Actual winners` instead of implying only the first tied key is actual.
+
+Targeted test command passed after these changes:
+
+`npm test -- AttentionGeometryViz --runInBand`
+
+Question:
+
+Do a final narrow publish gate only for these follow-up changes.
+
+Return exactly:
+
+1. `publish` or `no-publish`.
+2. If `no-publish`, list only blockers introduced or missed by these follow-up changes.
+3. If `publish`, keep any follow-ups short and non-blocking.
+
+Check for:
+
+- Any new answer leak before reveal.
+- Any broken tie/correctness semantics.
+- Any stale-state clearing regression.
+- Any test assertion that is brittle or misaligned with the intended behavior.

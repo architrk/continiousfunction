@@ -1,0 +1,23 @@
+You previously reviewed the DPO prediction-first wrapper and gave a no-publish verdict.
+
+This is a narrow fix review. Please verify whether the must-fix blockers are resolved and return either:
+- "acceptable, no remaining must-fix blockers", or
+- a short list of remaining must-fix blockers.
+
+Previous blockers to verify:
+1. Pre-reveal UI copy leaked the answer by saying margin/reference/ratio too early.
+2. Parent route state could overwrite measured `DPORatioViz` state after reveal because both used `conceptId: 'dpo'` and the parent delayed re-emitted.
+3. `content/domains/alignment/concepts/dpo/viz.tsx` lacked an explicit `'use client'` boundary.
+
+Applied fixes:
+- Added `'use client'`.
+- Replaced pre-reveal title/subtitle/metrics/challenge/checkpoint/gate copy with neutral wording that avoids margin/reference/ratio hints.
+- Changed revealed parent route-state `conceptId` to `dpo-prediction-checkpoint` and removed the delayed parent re-emit, so the mounted `DPORatioViz conceptId="dpo" emitState` remains the latest measured `dpo` state.
+- Added the optional reduced-motion CSS and `role="img"` on the probability bar.
+
+Local checks after fixes:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+
+Please focus only on whether the previous blockers are actually resolved. Do not expand scope into broader redesign ideas unless there is a new publish blocker.

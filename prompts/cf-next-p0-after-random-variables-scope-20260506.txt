@@ -1,0 +1,69 @@
+We are continuing the Continuous Function north-star work in a Next.js learning platform repo.
+
+Current objective:
+
+- Make the site a deep, joyful, rigorous learning platform for modern deep learning math.
+- Prefer slow, high-quality, mechanism-first concept slices over broad idea dumps.
+- Use Oracle/GPT Pro as a review/scoping partner.
+- Keep each slice static-export-safe unless explicitly doing platform/account work.
+
+Current state:
+
+- Branch: `private/research-learning-loop-20260505`.
+- The P0 `prediction-first-demo-retrofit` remains open in `content/_agent/TODO.yaml`.
+- Completed concept-specific P0 slices in this pass include Reverse-Mode Autodiff, Probability Basics, and Random Variables.
+- Random Variables just shipped after Oracle first returned no-publish for near-tie co-winner semantics; the fix review returned publish.
+- The audit still says the full north-star goal is not achieved: older demos need deeper concept-specific pre-reveal framing, claim-level source quality is not complete, and live account/collaboration layers are not yet done.
+
+Recent scan:
+
+- Published demos whose local `viz.tsx` wrapper still lacks `emitDemoState`/`clearDemoState` include:
+  - `attention-transformers/efficient-attention`
+  - `generative-models/vaes`
+  - `optimization/adam` (thin export to `components/foundations/AdamOptimizerViz`, but the audit says the foundation component has an Adam race reveal)
+  - `scaling/tree-search-reasoning` (thin export to `components/foundations/TreeSearchReasoningViz`)
+  - plus several child-lab pages where the route may already be wrapped elsewhere.
+- Published demos whose local `viz.tsx` lacks obvious prediction/reveal text include:
+  - `attention-transformers/efficient-attention`
+  - `generative-models/vaes`
+  - `optimization/adam`
+  - `scaling/tree-search-reasoning`
+  - `calculus/computation-graphs`, `calculus/derivatives`, `linear-algebra/dot-product`, `linear-algebra/vector-spaces` (these emit measured state but may not be prediction-gated).
+
+Decision needed:
+
+Choose the next concrete P0 slice after Random Variables. Do not design a broad roadmap. Pick one route/component and define a narrow, publishable implementation scope that improves joy/depth/rigor without introducing auth, database, API routes, dynamic atlas reads, or unrelated platform work.
+
+Candidates I am considering:
+
+1. Efficient Attention route wrapper:
+   - Current route is a tabbed wrapper that immediately mounts KV cache, KV mechanics, or GQA child labs.
+   - It might benefit from a route-level prediction gate around the mechanism: KV cache growth, GQA KV-head sharing, or FlashAttention/IO avoidance.
+   - Risk: avoid duplicating the existing GQA and KV child demos; keep the slice focused.
+
+2. Variational Autoencoders:
+   - Current demo exposes prior, likelihood, exact posterior, q, ELBO, log evidence, gap, and KL identity immediately.
+   - It could become a strong prediction-first exercise around whether moving q toward the posterior tightens the ELBO, or why a unimodal q misses one posterior mode in the quadratic decoder.
+   - Risk: avoid hiding so much that the learner cannot make an informed prediction.
+
+3. Tree Search Reasoning:
+   - Current page uses a finite prefix tree and noisy verifier story.
+   - It may benefit from predicting which prefix will be expanded/recommended before revealing the backed-up path.
+   - Risk: already has some interactive reveal/failure affordance in the foundation component; inspect before choosing.
+
+4. Adam:
+   - The audit says it already has a true prediction-first race reveal in the foundation component.
+   - It may not be the best next slice despite the thin domain export.
+
+Please return:
+
+- The single best next slice and why.
+- Exact file(s) to edit.
+- What should be visible before reveal, what must stay hidden, and what learner prediction should be required.
+- What demo state should be emitted after reveal.
+- What stale-state clearing behavior is required.
+- Minimal tests and browser checks.
+- What should explicitly be out of scope.
+- Any likely pre-reveal leak in the attached files.
+
+Give a crisp scoping answer that can be implemented next.

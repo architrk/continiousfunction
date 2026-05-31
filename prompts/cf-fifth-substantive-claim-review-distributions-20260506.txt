@@ -1,0 +1,44 @@
+Project: Continuous Function, a Next.js/TypeScript static-export learning atlas for deep learning concepts. The current trust work separates source-linked claim metadata from substantively reviewed source support. A claim should only be marked `evidence_review.state: substantive-reviewed` when the exact cited source, caveat, and local witness refs honestly support the bounded claim.
+
+Current change to review:
+- I marked one Distributions claim as `substantive-reviewed` in `content/domains/probability/concepts/distributions/concept.yaml`.
+- I regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`, moving the queue from 4 reviewed / 47 pending to 5 reviewed / 46 pending.
+- I updated `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` and `content/_agent/TODO.yaml` to say attention, Adam, Gradient Descent, Cross-Entropy, and Distributions are reviewed, with Maximum Likelihood next.
+
+Exact claim:
+"A distribution is the probability law induced by a random variable: it pushes probability from raw outcomes onto measurable value sets, with PMFs and densities as common representations."
+
+Primary sources checked:
+- Deisenroth, Faisal, and Ong, "Mathematics for Machine Learning", official free PDF from https://mml-book.github.io/
+  - Chapter 6.1-6.2, Probability and Random Variables / Discrete and Continuous Probabilities.
+- Goodfellow, Bengio, and Courville, "Deep Learning", official HTML book:
+  - Chapter 3.3 Probability Distributions, https://www.deeplearningbook.org/contents/prob.html
+
+Source evidence I checked:
+- MML chapter 6.1.2 says random variables transfer probability from the basic probability space to a convenient target space and introduces the idea of a distribution or law associated with a random variable.
+- MML defines a target-space function `X: Omega -> T` that takes an outcome and returns a quantity of interest, and calls that mapping a random variable.
+- MML gives the coin example where two raw outcomes map to the same value and the probability mass function aggregates their probabilities.
+- MML gives `P_X(S) = P(X in S) = P(X^-1(S)) = P({omega in Omega : X(omega) in S})`, then says `P_X`, equivalently `P o X^-1`, is the law or distribution of random variable `X`.
+- MML chapter 6.2 says for discrete target spaces `P(X=x)` is the probability mass function, and for continuous target spaces it uses CDFs and PDFs/densities with interval probability given by integrating the density.
+- Goodfellow chapter 3.3 says a probability distribution describes how likely a random variable or set of random variables is to take each possible state.
+- Goodfellow chapter 3.3 says discrete-variable distributions may be described with PMFs, and a PMF maps a random-variable state to the probability of that state.
+- Goodfellow chapter 3.3 says continuous-variable distributions are described using PDFs, and density gives probability through integration over regions rather than point probability.
+
+Local witness alignment:
+- The page states the distribution/law of `X` is `P_X(A)=P(X in A)=P({omega in Omega : X(omega) in A})`.
+- The page states this is the pushforward of `P` through `X`.
+- The page states the discrete PMF as `p_X(x)=P(X=x)` and, for finite raw sample spaces, sums all raw outcomes mapping to `x`.
+- The page states density values are not themselves probabilities and interval probabilities are computed by integration.
+- The page caveat limits this review to probability-law framing and common PMF/density vocabulary, not measure-theoretic edge cases or every distribution family used in ML.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the Distributions claim is honestly marked `substantive-reviewed` given the source evidence, caveat, and local witness refs.
+3. Whether the review summary is too broad, too vague, or misses an important caveat.
+4. Whether the generated queue/audit/TODO wording remains honest and internally consistent.
+5. Any blocker fixes only. Do not propose broad product ideas here.
+
+Constraints:
+- Keep scope limited to distribution-as-law/pushforward framing and PMF/PDF-density representations.
+- Do not certify all measure-theoretic variants, mixed/singular distributions, every parametric family, or all likelihood/modeling claims.
+- Treat attached source IDs and witness refs as review targets unless the evidence summary and caveat make the bounded support clear.

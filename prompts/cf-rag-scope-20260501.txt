@@ -1,0 +1,45 @@
+Project: Continuous Function, a slow-growth mathematical atlas for deep learning concepts.
+
+We just published the inference/reasoning/systems bridge:
+- Test-Time Compute: complete-trace best-of-N with a verifier
+- Tree Search Reasoning: finite prefix expansion with local verifier scores and max backup
+- Structured Decoding: finite schema automaton masks over next-token logits
+
+Next queued/legacy concept:
+- id: retrieval-augmented-generation
+- domain: likely llm-systems or representation-learning; legacy category was representation
+- working title: Retrieval-Augmented Generation: External Memory for Generation
+
+Legacy notes say:
+- RAG is non-parametric memory.
+- Long context is what the model can read; retrieval decides what it should read.
+- Core math in the old stub: p(y|x)=sum_d p(d|x)p(y|x,d), retrieval by embedding similarity.
+- Missing intuition: RAG is not just pasting docs into a prompt; retrieval errors, chunk granularity, ranking, and freshness dominate.
+
+I need a scoping review before implementation. The goal is not a broad product survey of vector databases, agents, web search, or enterprise architecture. We need one small, exact, visual concept that fits Continuous Function:
+- intuitive first
+- mathematically honest
+- code witness and interactive demo can implement the same finite object
+- connected to Representations/embeddings, Long Context, Test-Time Compute, Structured Decoding, and later tool-use/evals pages
+- not overclaiming truth, citation correctness, freshness, or factual reliability
+
+Please recommend the narrow publishable scope.
+
+Return:
+1. The one-sentence contract for the page.
+2. What this page should teach, in 4-6 bullets.
+3. What it should explicitly avoid.
+4. A simplest finite mathematical model. Prefer a small finite corpus, query/document embeddings, softmax retrieval weights, top-k truncation, generator likelihood conditioned on documents, and a clean separation between retrieval coverage and generation correctness.
+5. A concrete interactive demo design with fixed toy corpus, query, embedding scores, top-k, temperature/rerank/noise controls, and metrics.
+6. A deterministic Python witness shape with expected assertions.
+7. Graph metadata recommendation: domain, prerequisites, leads_to, related.
+8. Primary sources to anchor the page. Prefer primary papers/docs over blog posts; include enough references to be rigorous but keep the teaching spine narrow.
+9. Publish blockers to check in the later Oracle review.
+
+Attached context:
+- legacy RAG stub excerpt via data/foundationsData.ts
+- Representation Learning page
+- Long Context page
+- Structured Decoding page
+- Test-Time Compute page
+- LLM Serving page

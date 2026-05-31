@@ -19,12 +19,39 @@ tags:
   - efficiency
   - memory
   - io-aware
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: graduate
+sources:
+  - id: dao-2022-flashattention
+    kind: paper
+    title: "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness"
+    authors: "Dao et al."
+    year: 2022
+    url: "https://arxiv.org/pdf/2205.14135"
+    note: "Primary source for the dense FlashAttention mechanism: IO-aware HBM/SRAM tiling plus block-wise/incremental softmax statistics reduce HBM reads/writes and avoid materializing the full N x N attention matrix."
+claim_checks:
+  - id: exact-io-aware-tiling
+    status: source-checked
+    claim: "FlashAttention computes exact attention while using tiling and online softmax to reduce high-bandwidth-memory traffic instead of materializing the full T x T attention matrix."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Dao et al. against the exact claim: the paper presents FlashAttention as exact attention, uses HBM/SRAM tiling, maintains block softmax statistics (m,l,O) to compute the same softmax(QK^T)V result, and avoids reading/writing the full N x N attention matrix to HBM; local math/code/demo illustrate the same finite-row invariant."
+    source_ids:
+      - dao-2022-flashattention
+    support: "Dao et al. frame FlashAttention as IO-aware exact attention using HBM/SRAM tiling; Algorithm 1 updates block softmax statistics and returns O=softmax(QK^T)V while avoiding reads/writes of the full N x N attention matrix to HBM."
+    caveat: "\"Online softmax\" means the paper's block-wise/incremental softmax statistics. This checks the dense FlashAttention mechanism, not block-sparse variants, CUDA numeric equivalence, backward-pass implementation, or universal speedups."
+    object_refs:
+      - "#source-span-dao-2022-flashattention"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "A fused, tiled attention implementation that avoids materializing the full T x T matrix by using an online softmax, reducing memory traffic and speeding up long-context training/inference."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 18

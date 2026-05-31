@@ -6,31 +6,64 @@ title: "Norms"
 
 A norm is a notion of “length.” But there isn’t only one reasonable way to measure length.
 
+The usual Euclidean length asks for the straight-line distance from the origin. That is perfect when every coordinate should be treated like a perpendicular spatial axis. But machine learning often asks different questions: how large is the total absolute weight mass, how large is the biggest coordinate, or how big is a gradient update before we apply it?
+
 Changing the norm changes the geometry:
 
 - In $\|\cdot\|_2$ (Euclidean norm), circles are circles.
 - In $\|\cdot\|_1$, circles become diamonds.
 - In $\|\cdot\|_\infty$, circles become squares.
 
-In optimization, this matters because regularization penalties (like $\|w\|_1$ or $\|w\|_2^2$) push parameters toward different kinds of solutions.
+Those shapes are not decorative. They describe what the model considers “equally large.” An $\ell_1$ penalty tends to make sparse solutions because its diamond-shaped level sets have corners on the coordinate axes. An $\ell_2$ penalty spreads shrinkage more smoothly. An $\ell_\infty$ constraint cares about the worst coordinate.
+
+In optimization, norms decide how we measure parameter size, gradient size, perturbation size, and distance moved by an update. That is why regularization, gradient clipping, adversarial perturbations, and embedding normalization all depend on choosing the right notion of “length.”
 
 ## Math
 
-A function $\|\cdot\|: V \to \mathbb{R}$ is a **norm** if for all $x,y \in V$ and $\alpha \in \mathbb{R}$:
+Let $V$ be a real vector space. A function $\|\cdot\|: V \to \mathbb{R}$ is a **norm** if for all $x,y \in V$ and $\alpha \in \mathbb{R}$:
 
 1. **Non-negativity:** $\|x\| \ge 0$ and $\|x\| = 0 \iff x = 0$
 2. **Homogeneity:** $\|\alpha x\| = |\alpha|\,\|x\|$
 3. **Triangle inequality:** $\|x+y\| \le \|x\| + \|y\|$
 
+These axioms say length is never negative, scaling a vector scales its length by the same amount, and taking a two-step path cannot be shorter than the direct path.
+
 Common norms on $\mathbb{R}^n$:
 
-- $\ell_2$: $$\|x\|_2 = \sqrt{\sum_i x_i^2}$$
-- $\ell_1$: $$\|x\|_1 = \sum_i |x_i|$$
-- $\ell_\infty$: $$\|x\|_\infty = \max_i |x_i|$$
+- $\ell_2$: $\|x\|_2 = \sqrt{\sum_i x_i^2}$
+- $\ell_1$: $\|x\|_1 = \sum_i |x_i|$
+- $\ell_\infty$: $\|x\|_\infty = \max_i |x_i|$
+
+More generally, for $p \ge 1$,
+
+$$
+\|x\|_p = \left(\sum_{i=1}^n |x_i|^p\right)^{1/p}.
+$$
 
 If your norm comes from a dot product, then
 
-$$\|x\| = \sqrt{x\cdot x}.$$
+$$
+\|x\| = \sqrt{x\cdot x}.
+$$
+
+For the standard dot product on $\mathbb{R}^n$, this gives the Euclidean norm:
+
+$$
+\sqrt{x\cdot x}
+= \sqrt{\sum_{i=1}^n x_i x_i}
+= \sqrt{\sum_{i=1}^n x_i^2}
+= \|x\|_2.
+$$
+
+Not every norm comes from a dot product. The $\ell_1$ and $\ell_\infty$ norms are valid lengths, but they do not come from an inner product in the same way. This matters because dot-product geometry gives angles and projections, while general norms mainly give size and distance.
+
+Once a norm is chosen, it induces a distance:
+
+$$
+d(x,y) = \|x-y\|.
+$$
+
+So changing the norm changes both what counts as a small vector and what counts as two points being close.
 
 ## Code
 

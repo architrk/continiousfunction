@@ -1,0 +1,99 @@
+---
+title: "Computation Graphs"
+---
+
+## Intuition
+
+Suppose one intermediate value gets used twice. If $a=xy$, $b=\sin(a)$, and $c=a+b$, then $a$ affects $c$ directly and also through $b$. How should the derivative remember both uses without differentiating one huge expanded formula by hand?
+
+A computation graph makes that bookkeeping visible.
+
+Instead of treating a function as one large expression, we split it into small operations: multiply here, apply a nonlinearity, add there, reuse an intermediate value. Each operation becomes a node, and each dependency becomes an edge.
+
+A computation graph is not just an expression tree. The expanded expression $xy+\sin(xy)$ repeats $xy$. The graph stores $a=xy$ once and records that two later operations depend on that same value.
+
+This matters because the graph gives backpropagation a route. Values move forward through the graph to produce an output or loss. Derivatives move backward through the same graph, using local slopes on each edge. The chain rule stops feeling like one giant symbolic derivative and becomes bookkeeping over small local changes.
+
+## Math
+
+In this first example, every node is scalar. Let $x,y\in\mathbb R$, and draw edges from inputs to the values that depend on them. The graph for one forward pass is a directed acyclic graph: later nodes depend on earlier nodes, not the other way around.
+
+Consider the scalar computation
+
+$$
+a = xy,\qquad b = \sin(a),\qquad c = a + b.
+$$
+
+The graph has inputs $x,y$, intermediate nodes $a,b$, and output $c$. The forward pass stores each node value. The important detail is reuse: $a$ is stored once, but two later uses depend on it. The backward pass asks how a small change in each node would affect the output.
+
+For any node $v$, write
+
+$$
+\bar v = \frac{\partial c}{\partial v}.
+$$
+
+The output seed is $\bar c=1$. The final add node $c=a+b$ sends one unit of sensitivity to both inputs:
+
+$$
+\bar a \mathrel{+}= \bar c\frac{\partial c}{\partial a}\Big|_{\text{direct}} = 1,\qquad \bar b \mathrel{+}= \bar c\frac{\partial c}{\partial b} = 1.
+$$
+
+The sine branch also sends a local contribution into the same stored node $a$. The important invariant is local: a node's cotangent is the sum of contributions from each immediate downstream use. The demo hides the sine-branch contribution until you predict whether it will lower, preserve, or raise the direct baseline.
+
+The backward pass does not expand every symbolic path; each downstream node has already summarized everything beyond it.
+
+For vector or tensor nodes, the same idea uses Jacobians or local vector-Jacobian product rules. With column-vector cotangents, if $v_j=f(v_i)$ and $J_{ji}=\partial v_j/\partial v_i$, the reverse update is
+
+$$
+\bar v_i \mathrel{+}= J_{ji}^{\mathsf T}\bar v_j.
+$$
+
+Reverse-mode autodiff is the automated version of this bookkeeping: save forward values, then run local backward rules in reverse topological order.
+
+## Code
+
+```python
+import math
+
+x, y = 2.0, 3.0
+
+# Forward pass: store intermediate node values.
+a = x * y
+b = math.sin(a)
+c = a + b
+
+# Reverse pass bookkeeping: every downstream use appends one local contribution.
+bar_c = 1.0
+bar_a = 0.0
+bar_b = 0.0
+bar_x = 0.0
+bar_y = 0.0
+
+# c = a + b sends one unit to both inputs.
+bar_a += bar_c * 1.0
+bar_b += bar_c * 1.0
+
+# b = sin(a) sends another contribution into reused node a.
+bar_a += bar_b * math.cos(a)
+
+# a = x * y sends the accumulated sensitivity to x and y.
+bar_x += bar_a * y
+bar_y += bar_a * x
+
+print("c:", round(c, 4))
+print("stored a once:", a)
+print("downstream uses of a:", ["direct add edge", "sine edge"])
+print("bar_a:", round(bar_a, 4))
+print("dc/dx:", round(bar_x, 4))
+print("dc/dy:", round(bar_y, 4))
+```
+
+The code is deliberately manual. The `+=` updates are the graph mechanism: a reused node collects every downstream local contribution before sending its accumulated sensitivity to its own inputs.
+
+## Interactive Demo
+
+Use the sliders to change $x$ and $y$. In Forward mode, watch the stored value $a=xy$ feed both $b=\sin(a)$ and the final add node $c=a+b$.
+
+Before switching into the backward numbers, predict whether the hidden accumulated sensitivity at the reused node $a$ should land lower than, nearly equal to, or higher than the direct contribution from $c=a+b$.
+
+Use Case A and Case B as neutral graph states. Commit first, then reveal how the downstream paths combine before $a$ sends sensitivity back to $x$ and $y$.

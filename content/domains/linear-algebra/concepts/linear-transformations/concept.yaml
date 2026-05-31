@@ -3,14 +3,14 @@ title: "Linear Transformations"
 domain: linear-algebra
 slug: linear-transformations
 difficulty: 3
-status: published
+status: review
 importance: important
 prerequisites:
   - vector-spaces
   - basis-and-span
 leads_to:
-  - eigenvalues
-  - svd
+  - representations
+  - attention-transformers
 related:
   - dot-product
   - norms
@@ -25,5 +25,5 @@ math_level: undergraduate
 short_description: "A linear transformation is a function that preserves addition and scaling; in coordinates it becomes a matrix, determined by what it does to a basis."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 16

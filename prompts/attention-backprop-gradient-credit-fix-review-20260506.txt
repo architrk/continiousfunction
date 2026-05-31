@@ -1,0 +1,23 @@
+Project: Continuous Function. This is a narrow fix review for `components/foundations/AttentionBackpropViz.tsx`.
+
+Previous Oracle implementation review returned `no-publish` with four blockers:
+1. pre-reveal formulas were only exposed by SVG hover, not reliably accessible on keyboard/touch/mobile;
+2. W_Q and the softmax gate both displayed 120%, making the revealed answer non-unique;
+3. pre-reveal SVG neutrality tests covered width only, not opacity/glow/forward-mode raw magnitudes;
+4. parent Attention/Transformers tab unmount/remount stale-state coverage was missing.
+
+Fixes made:
+- added a visible text formula witness panel with dL/dQ, dL/dK, dW_Q, dW_K, and dW_V formulas before reveal;
+- adjusted the key-scale stress multipliers so W_Q is uniquely strongest and softmax gate is lower;
+- made all edge magnitudes neutral before reveal in both forward and backward modes;
+- suppressed the `edge-softmax` glow class until reveal and lowered softmax-region opacity pre-reveal;
+- expanded tests to assert formula accessibility, width/opacity neutrality in backward and forward modes, no pre-reveal softmax glow class, unique post-reveal W_Q/softmax numbers, and parent tab stale-state reset.
+
+`npm test -- AttentionBackpropViz --runInBand` and `npm run typecheck` pass locally.
+
+Please review only whether those four blockers are resolved and whether any new blocking correctness, leakage, stale-state, or accessibility problem was introduced.
+
+Return:
+1. `publish` or `no-publish`.
+2. If no-publish, list blocking issues only with exact fixes.
+3. If publish, list only small non-blocking hardening suggestions.

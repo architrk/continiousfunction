@@ -1,0 +1,43 @@
+Project: Continuous Function, a Next.js/TypeScript learning atlas for deep-learning math and frontier-AI concepts.
+
+Current long-running product goal: make the site deep, joyful, interactive, source-grounded, and worth returning to. The current concrete slice is claim-level source-quality work: each published concept has structured claim_checks[], but a claim should only be marked evidence_review.state=substantive-reviewed after checking the cited source and local witnesses.
+
+This review request is narrow. I marked the Random Variables claim as substantively reviewed and regenerated the queue. Please review whether that mark is justified, or whether I should revert/soften it.
+
+Claim under review:
+"A random variable is a measurable map from raw outcomes to values; pushing probability through that map gives its distribution, and expectations can be computed from either raw outcomes or the induced value distribution."
+
+Cited source:
+- Deisenroth, Faisal, Ong, Mathematics for Machine Learning, chapter 6.
+
+Source evidence I checked locally:
+- MML 6.1.2 defines a probability space (Omega, A, P), introduces a target space T, and defines X: Omega -> T as a random variable.
+- It says this random variable transfers probability to a more convenient, often numerical space.
+- It defines preimages X^-1(S) = {omega in Omega : X(omega) in S}.
+- Equation 6.8 gives PX(S) = P(X in S) = P(X^-1(S)) = P({omega in Omega : X(omega) in S}).
+- It says PX, equivalently P composed with X^-1, is the law or distribution of random variable X.
+- MML 6.2 discusses discrete PMFs and continuous PDFs/CDFs, and notes Borel sigma-algebra technicalities for continuous real-valued random variables.
+- MML 6.4.1 defines expected values for continuous random variables by integrals over p(x), and for discrete random variables by sums over p(x).
+- MML 6.4 defines mean, covariance, and variance as spread summaries via expectations.
+
+Local page/witness context:
+- content/domains/probability/concepts/random-variables/content.mdx defines a probability space, a real-valued measurable function into R/Borel sets, the induced law PX(B), finite pushforward PMF by grouping fibers, expectation from raw outcomes and from p_X(x), variance, density/integral notes, and an ML mini-batch-loss bridge.
+- The code witness computes a finite tilted-die pushforward, grouped fibers, PMF, mean from outcomes, mean from PMF, and variance.
+- The interactive demo is prediction-first: learners predict which measured value collects most probability mass before support, expectation, variance, and winning fiber are revealed.
+
+Files attached:
+- Random Variables concept yaml and content.
+- Generated claim-evidence queue artifacts.
+- Product audit and TODO bookkeeping.
+- Queue/validation implementation files.
+
+Questions:
+1. Does the cited MML source substantively support the exact reviewed claim, including the "measurable map", induced-law/pushforward, and expectation-over-induced-distribution pieces?
+2. Is the evidence_review.summary accurate and bounded enough, or should it be softened?
+3. Are the source_ids and witness refs appropriate for a substantive-reviewed mark?
+4. Are the regenerated queue counts and audit/TODO updates consistent?
+
+Return one verdict:
+- PUBLISH if this is safe as-is.
+- PUBLISH_AFTER_SMALL_FIXES if only wording/bookkeeping edits are needed; list exact fixes.
+- DO_NOT_PUBLISH if the substantive-reviewed mark is not justified; explain what must change.

@@ -1,0 +1,17 @@
+Project: Continuous Function.
+
+This is a narrow fix review after Oracle returned NO-PUBLISH for `cf-second-substantive-claim-review-adam-bookkeeping`.
+
+Prior blockers:
+1. `content/_agent/PRODUCT_NORTH_STAR_CONCEPT_COVERAGE_AUDIT.md` had a stale "Current queue metric" block saying 1 reviewed / 50 pending.
+2. `content/_agent/TODO.yaml` had a `last_completed` note that said "The first generated queue has 51 structured claim checks, 0 substantive reviews, and 51 published pending reviews" in a way that could conflict with the current generated 2/49 state.
+
+Fix applied:
+- Audit current queue metric now says 51 structured, 2 substantively reviewed, 49 source-linked/review-pending, and 49 published review-pending.
+- TODO note now says the initial generated queue had 51/0/51 and that current generated artifacts track subsequent substantive reviews separately.
+- `npm run generate-claim-evidence-review-queue`, `npm run validate-content`, and `git diff --check` pass locally after the fix.
+
+Please review the attached files and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the two prior blockers are resolved.
+3. Any remaining blocker fixes only.

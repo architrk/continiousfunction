@@ -1,0 +1,67 @@
+We are continuing the Continuous Function north-star work in a Next.js learning platform repo.
+
+Current objective:
+
+- Make the site a deep, joyful, rigorous learning platform for modern deep learning math.
+- Prefer slow, high-quality, mechanism-first concept slices over broad idea dumps.
+- Use Oracle/GPT Pro as a review/scoping partner before shipping meaningful concept changes.
+- Keep each slice static-export-safe unless explicitly doing platform/account work.
+
+This review is for one concrete P0 retrofit:
+
+Variational Autoencoders now has a prediction-first ELBO gap reveal. The learner can adjust decoder mode, observed x, q mean, and q std. Before reveal, they see the prior, normalized likelihood shape, q(z|x), and a hidden ELBO identity shell. They must predict whether the hidden gap diagnoses:
+
+1. Tight bound
+2. Shift or scale mismatch
+3. Family mismatch
+
+After reveal, the UI shows the true posterior curve, log p(x), ELBO, gap, KL(q || posterior), identity error, reconstruction term, KL(q || prior), post-reveal explanation, and quick alignment helpers. The demo emits measured state only after reveal. Any mode/x/q/prediction change after reveal should clear the shared demo state, hide the answer again, and require a fresh prediction.
+
+The earlier Oracle scope response is attached. It selected VAE as the best next slice after Random Variables and warned against positive-vs-negative mode predictions because the quadratic decoder can have symmetric co-winners.
+
+What I changed:
+
+- `content/domains/generative-models/concepts/vaes/viz.tsx`
+  - Adds `emitDemoState` / `clearDemoState`.
+  - Adds a gated prediction panel.
+  - Hides true posterior and ELBO diagnostics before reveal.
+  - Classifies the expected diagnosis with:
+    - tight if `gap <= 0.05`
+    - family mismatch if quadratic mode and `xObs >= 0.65`
+    - otherwise shift/scale mismatch
+  - Emits compact measured state after reveal.
+  - Clears shared demo state on mount, unmount, control changes, prediction changes, and quick actions.
+
+- `content/domains/generative-models/concepts/vaes/content.mdx`
+  - Rewrites the Interactive Demo copy so it does not pre-announce posterior/gap answers or post-reveal helper buttons.
+
+- `components/concepts/VAEsViz.test.tsx`
+  - Adds focused regressions for pre-reveal hiding, reveal requiring prediction, quadratic family-mismatch state emission, stale-state clearing after q changes, no positive/negative cause prediction choices, and MDX leak phrases.
+
+Verification already run locally before this review:
+
+- `npm test -- --runInBand` passed: 28 suites, 175 tests.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed after clearing a stale generated `.next` directory.
+- Production browser checks on `http://localhost:3056/domains/generative-models/vaes/` passed:
+  - Desktop 1280x900 and mobile 390x844.
+  - Pre-reveal: posterior legend, KL(q || posterior), reconstruction term, match posterior, choose +/-sqrt buttons all hidden; reveal disabled; no horizontal overflow.
+  - Post-reveal after choosing quadratic + Family mismatch: posterior, ELBO diagnostics, KL(q || posterior), claim, and quick actions visible; no horizontal overflow.
+  - Changing q mean after reveal hides posterior/metrics again, clears old state, disables reveal until a fresh prediction; no horizontal overflow.
+
+Please review for publish/no-publish.
+
+Return:
+
+- Verdict: publish or no-publish.
+- Blocking issues only if they would mislead learners, leak the answer before reveal, produce stale AI/checkpoint state, break accessibility/mobile layout, or encode wrong ELBO/posterior/KL semantics.
+- For each blocker, give the exact file and the smallest fix.
+- Non-blocking polish can be listed separately, but do not invent broad roadmap work.
+
+Explicitly out of scope for this review:
+
+- Auth, database, Clerk, Convex/Supabase, API routes, dynamic atlas reads.
+- Efficient Attention, Tree Search, Adam, or other concept pages.
+- New VAE training simulators, beta-VAE, normalizing flows, diffusion, flow matching.
+- Broad platform architecture.

@@ -3,6 +3,9 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import Head from 'next/head'
 import dynamic from 'next/dynamic'
+import ExperienceBridge from '@/components/editorial/ExperienceBridge'
+import NotebookLayout from '@/components/editorial/NotebookLayout'
+import { FoundationsHeroFigure } from '@/components/editorial/EditorialFigures'
 import { foundationsConcepts, studyOrder, CATEGORY_LABELS, generateFoundationsGraphData } from '../../data/foundationsData'
 import { conceptVisualizationMap } from '../../data/visualizationMappings'
 
@@ -29,7 +32,7 @@ function getConnectionCount(conceptId: string): number {
 
 // Dynamic import for the graph to avoid SSR issues with D3
 const FoundationsGraph = dynamic(
-  () => import('../../components/FoundationsGraph'),
+  () => import('@/components/graphs/FoundationsGraph'),
   {
     ssr: false,
     loading: () => (
@@ -71,6 +74,30 @@ const FoundationsGraph = dynamic(
 
 // Get unique categories for filtering
 const categories = [...new Set(foundationsConcepts.map(c => c.category))]
+
+const foundationsBridgeItems = [
+  {
+    label: 'Survey',
+    title: 'Use the graph when you need the map.',
+    body: 'The legacy foundations graph is still the fastest way to see prerequisites, hubs, and semantic edges across the full 100-concept atlas.',
+    href: '#concept-map',
+    cta: 'Open concept map',
+  },
+  {
+    label: 'Sequence',
+    title: 'Use the study path when order matters.',
+    body: 'The phases turn a broad topic list into a teachable route from core training ideas to systems, alignment, and frontier methods.',
+    href: '#study-path',
+    cta: 'Follow phases',
+  },
+  {
+    label: 'Lab',
+    title: 'Use demo filters when you want to learn by doing.',
+    body: 'The old dark demo surfaces stay intact here while the surrounding experience points learners toward notebooks and domain pages.',
+    href: '#all-concepts',
+    cta: 'Find demos',
+  },
+]
 
 export default function FoundationsIndex() {
   const router = useRouter()
@@ -118,47 +145,53 @@ export default function FoundationsIndex() {
   }
 
   return (
-    <div className="foundations-page">
+    <NotebookLayout
+      eyebrow="Legacy Atlas"
+      title="Mathematical Foundations"
+      lede="The foundations library is the broad map: 100 interconnected concepts, legacy demos, canonical papers, and migration links into the newer domain notebooks."
+      breadcrumb={[
+        { label: 'Home', href: '/' },
+        { label: 'Foundations' },
+      ]}
+      meta={[
+        `${totalConcepts} concepts`,
+        `${totalDemos} demos`,
+        `${totalConnections} connections`,
+        '13 learning phases',
+      ]}
+      actions={[
+        { href: '#concept-map', label: 'Open Concept Map' },
+        { href: '#all-concepts', label: 'Browse Concepts', variant: 'secondary' },
+      ]}
+      heroVisual={<FoundationsHeroFigure />}
+    >
       <Head>
         <title>Mathematical Foundations — Continuous Function</title>
       </Head>
 
-      {/* Breadcrumb */}
-      <nav className="breadcrumb" aria-label="Breadcrumb">
-        <Link href="/">Home</Link>
-        <span className="breadcrumb-sep">/</span>
-        <span className="breadcrumb-current">Foundations</span>
-      </nav>
+      <div className="foundations-page">
+        <ExperienceBridge
+          eyebrow="How To Use This Layer"
+          title="Foundations is the wide map; domains are the refined notebooks."
+          intro="Keep the old map useful while migration continues: browse broadly here, then step into domain notebooks when a concept has a newer treatment."
+          items={foundationsBridgeItems}
+        />
 
-      <section className="hero">
-        <h1>Mathematical Foundations</h1>
-        <p className="hero-tagline">
-          {totalConcepts} core concepts explaining how modern AI systems work.
-          Interactive visualizations are available for many concepts (and expanding).
-        </p>
-        <div className="hero-stats">
-          <span className="hero-stat"><strong>{totalConcepts}</strong> concepts</span>
-          <span className="hero-stat"><strong>{totalDemos}</strong> demos</span>
-          <span className="hero-stat"><strong>{totalConnections}</strong> connections</span>
-          <span className="hero-stat"><strong>13</strong> learning phases</span>
-        </div>
-      </section>
-
-      {/* Quick Navigation */}
-      <nav className="page-nav">
-        <a href="#concept-map" className="page-nav-link">
-          <span className="page-nav-icon">🗺️</span>
-          <span>Concept Map</span>
-        </a>
-        <a href="#study-path" className="page-nav-link">
-          <span className="page-nav-icon">📚</span>
-          <span>Study Path</span>
-        </a>
-        <a href="#all-concepts" className="page-nav-link">
-          <span className="page-nav-icon">📖</span>
-          <span>All Concepts</span>
-        </a>
-      </nav>
+        {/* Quick Navigation */}
+        <nav className="page-nav" aria-label="Foundations sections">
+          <a href="#concept-map" className="page-nav-link">
+            <span className="page-nav-icon">Map</span>
+            <span>Concept Map</span>
+          </a>
+          <a href="#study-path" className="page-nav-link">
+            <span className="page-nav-icon">Path</span>
+            <span>Study Path</span>
+          </a>
+          <a href="#all-concepts" className="page-nav-link">
+            <span className="page-nav-icon">100</span>
+            <span>All Concepts</span>
+          </a>
+        </nav>
 
       <section id="concept-map" className="graph-section">
         {mounted && (
@@ -416,8 +449,12 @@ export default function FoundationsIndex() {
 
       <style jsx>{`
         .foundations-page {
-          max-width: 1400px;
-          margin: 0 auto;
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 1.1rem;
+          max-width: none;
+          margin: 0;
+          min-width: 0;
         }
 
         @media (min-width: 1600px) {
@@ -453,34 +490,49 @@ export default function FoundationsIndex() {
 
         /* Page Navigation */
         .page-nav {
-          display: flex;
-          justify-content: center;
-          gap: 1rem;
-          margin: 1.5rem 0 2rem;
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0.75rem;
+          margin: 0;
           padding: 1rem;
-          background: var(--bg-surface);
+          background: rgba(255, 251, 245, 0.78);
           border-radius: var(--radius-lg);
           border: 1px solid var(--border-subtle);
         }
 
         .page-nav-link {
-          display: flex;
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          color: var(--text-secondary);
+          min-width: 0;
+          min-height: 56px;
+          padding: 0.65rem 0.8rem;
+          color: #455361;
           text-decoration: none;
-          border-radius: var(--radius-md);
+          border-radius: 8px;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          background: rgba(255, 251, 245, 0.86);
           transition: all 0.2s;
         }
 
         .page-nav-link:hover {
-          background: var(--bg-elevated);
-          color: var(--text-primary);
+          background: rgba(239, 247, 245, 0.86);
+          color: #17202a;
+          text-shadow: none;
         }
 
         .page-nav-icon {
-          font-size: 1rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 2.25rem;
+          height: 2.25rem;
+          border-radius: 8px;
+          background: #1b2430;
+          color: #f8f3ea;
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
         }
 
         .hero {
@@ -515,13 +567,23 @@ export default function FoundationsIndex() {
         }
 
         .graph-section {
-          margin: 2rem 0;
+          margin: 0;
+          width: 100%;
+          max-width: 100%;
+          justify-self: stretch;
+          box-sizing: border-box;
           display: flex;
           justify-content: center;
+          min-width: 0;
+          padding: 1rem;
+          border-radius: 24px;
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          background: rgba(255, 251, 245, 0.78);
+          overflow: hidden;
         }
 
         .study-path-section {
-          margin: 4rem 0;
+          margin: 0;
         }
 
         .study-path-section h2 {
@@ -543,10 +605,11 @@ export default function FoundationsIndex() {
         }
 
         .phase-card {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
-          border-radius: 12px;
+          background: rgba(255, 251, 245, 0.86);
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
           padding: 1.5rem;
+          box-shadow: 0 14px 30px rgba(7, 15, 25, 0.04);
         }
 
         .phase-header {
@@ -580,23 +643,24 @@ export default function FoundationsIndex() {
           gap: 0.75rem;
         }
 
-        .concept-chip {
+        .phase-concepts :global(.concept-chip) {
           display: flex;
           align-items: center;
           gap: 0.4rem;
           padding: 0.4rem 0.8rem;
-          background: rgba(8, 12, 20, 0.8);
+          background: rgba(255, 251, 245, 0.86);
           border: 1px solid;
           border-radius: 20px;
           font-size: 0.85rem;
           text-decoration: none;
-          color: var(--text-primary);
+          color: #17202a;
           transition: all 0.2s;
         }
 
-        .concept-chip:hover {
-          background: rgba(245, 158, 11, 0.1);
+        .phase-concepts :global(.concept-chip:hover) {
+          background: rgba(239, 247, 245, 0.86);
           transform: translateY(-1px);
+          text-shadow: none;
         }
 
         .concept-icon {
@@ -605,7 +669,7 @@ export default function FoundationsIndex() {
         }
 
         .concepts-grid-section {
-          margin: 4rem 0;
+          margin: 0;
         }
 
         .concepts-header {
@@ -629,7 +693,7 @@ export default function FoundationsIndex() {
         .view-toggle {
           display: flex;
           gap: 0.25rem;
-          background: var(--bg-elevated);
+          background: rgba(239, 232, 219, 0.78);
           padding: 0.25rem;
           border-radius: var(--radius-sm);
         }
@@ -649,8 +713,8 @@ export default function FoundationsIndex() {
         }
 
         .view-btn.active {
-          background: var(--bg-surface);
-          color: var(--accent);
+          background: rgba(255, 251, 245, 0.9);
+          color: #1f6f78;
         }
 
         /* Filter Bar */
@@ -660,7 +724,7 @@ export default function FoundationsIndex() {
           gap: 1rem;
           margin-bottom: 1.5rem;
           padding: 1rem;
-          background: var(--bg-surface);
+          background: rgba(255, 251, 245, 0.78);
           border-radius: var(--radius-lg);
           border: 1px solid var(--border-subtle);
         }
@@ -684,7 +748,7 @@ export default function FoundationsIndex() {
         .search-input {
           width: 100%;
           padding: 0.75rem 2.5rem 0.75rem 2.5rem;
-          background: var(--bg-elevated);
+          background: rgba(255, 251, 245, 0.9);
           border: 1px solid var(--border-subtle);
           border-radius: var(--radius-md);
           color: var(--text-primary);
@@ -693,7 +757,7 @@ export default function FoundationsIndex() {
 
         .search-input:focus {
           outline: none;
-          border-color: var(--accent);
+          border-color: #1f6f78;
         }
 
         .search-input::placeholder {
@@ -726,7 +790,7 @@ export default function FoundationsIndex() {
 
         .category-btn {
           padding: 0.5rem 0.75rem;
-          background: var(--bg-elevated);
+          background: rgba(255, 251, 245, 0.9);
           border: 1px solid var(--border-subtle);
           border-radius: 999px;
           color: var(--text-secondary);
@@ -743,7 +807,7 @@ export default function FoundationsIndex() {
         .category-btn.active {
           background: var(--cat-color, var(--accent));
           border-color: var(--cat-color, var(--accent));
-          color: var(--bg-deep);
+          color: #ffffff;
         }
 
         .filter-results {
@@ -758,7 +822,7 @@ export default function FoundationsIndex() {
         .clear-filters {
           background: none;
           border: none;
-          color: var(--accent);
+          color: #1f4b99;
           cursor: pointer;
           font-size: 0.85rem;
         }
@@ -803,12 +867,12 @@ export default function FoundationsIndex() {
           gap: 0.5rem;
         }
 
-        .concept-list-item {
+        .concepts-list :global(.concept-list-item) {
           display: flex;
           align-items: center;
           gap: 1rem;
           padding: 0.75rem 1rem;
-          background: var(--bg-surface);
+          background: rgba(255, 251, 245, 0.86);
           border: 1px solid var(--border-subtle);
           border-radius: var(--radius-md);
           text-decoration: none;
@@ -816,9 +880,10 @@ export default function FoundationsIndex() {
           transition: all 0.2s;
         }
 
-        .concept-list-item:hover {
-          border-color: var(--accent);
-          background: rgba(245, 158, 11, 0.05);
+        .concepts-list :global(.concept-list-item:hover) {
+          border-color: rgba(31, 111, 120, 0.28);
+          background: rgba(239, 247, 245, 0.86);
+          text-shadow: none;
         }
 
         .list-number {
@@ -856,20 +921,21 @@ export default function FoundationsIndex() {
           flex-shrink: 0;
         }
 
-        .concept-card {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
-          border-radius: 12px;
+        .concepts-grid :global(.concept-card) {
+          background: rgba(255, 251, 245, 0.86);
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
           padding: 1.5rem;
           text-decoration: none;
           color: inherit;
           transition: all 0.2s;
         }
 
-        .concept-card:hover {
-          border-color: var(--accent);
+        .concepts-grid :global(.concept-card:hover) {
+          border-color: rgba(31, 111, 120, 0.28);
           transform: translateY(-2px);
-          box-shadow: 0 4px 20px rgba(245, 158, 11, 0.1);
+          box-shadow: 0 16px 34px rgba(7, 15, 25, 0.08);
+          text-shadow: none;
         }
 
         .concept-card-header {
@@ -888,7 +954,7 @@ export default function FoundationsIndex() {
           border-radius: 6px;
           font-size: 0.75rem;
           font-weight: bold;
-          color: #0a0a0a;
+          color: #ffffff;
         }
 
         .concept-icon-large {
@@ -896,7 +962,7 @@ export default function FoundationsIndex() {
           font-family: var(--font-symbol);
         }
 
-        .concept-card h3 {
+        .concepts-grid :global(.concept-card) h3 {
           margin: 0 0 0.25rem;
           font-size: 1.1rem;
         }
@@ -936,12 +1002,12 @@ export default function FoundationsIndex() {
           font-weight: 500;
         }
 
-        .concept-card.highly-connected {
+        .concepts-grid :global(.concept-card.highly-connected) {
           border-color: rgba(20, 184, 166, 0.3);
           background: linear-gradient(135deg, rgba(8, 12, 20, 0.5), rgba(20, 184, 166, 0.03));
         }
 
-        .concept-card.highly-connected:hover {
+        .concepts-grid :global(.concept-card.highly-connected:hover) {
           border-color: var(--converge-teal);
           box-shadow: 0 4px 20px rgba(20, 184, 166, 0.15);
         }
@@ -953,9 +1019,9 @@ export default function FoundationsIndex() {
 
         .demo-badge {
           font-size: 0.7rem;
-          color: var(--accent);
-          background: rgba(245, 158, 11, 0.12);
-          border: 1px solid rgba(245, 158, 11, 0.18);
+          color: #1f6f78;
+          background: rgba(239, 247, 245, 0.9);
+          border: 1px solid rgba(31, 111, 120, 0.18);
           padding: 0.15rem 0.45rem;
           border-radius: 6px;
           letter-spacing: 0.01em;
@@ -965,16 +1031,16 @@ export default function FoundationsIndex() {
           display: block;
           margin-top: 1rem;
           font-size: 0.85rem;
-          color: var(--converge-teal);
+          color: #1f4b99;
           transition: color 0.2s;
         }
 
-        .concept-card:hover .concept-cta {
-          color: var(--accent);
+        .concepts-grid :global(.concept-card:hover) .concept-cta {
+          color: #17202a;
         }
 
         .cta-section {
-          margin: 4rem 0;
+          margin: 0;
           text-align: center;
         }
 
@@ -1003,9 +1069,9 @@ export default function FoundationsIndex() {
         }
 
         .cta-card {
-          background: rgba(8, 12, 20, 0.5);
-          border: 1px solid rgba(245, 158, 11, 0.15);
-          border-radius: 12px;
+          background: rgba(255, 251, 245, 0.86);
+          border: 1px solid rgba(27, 36, 48, 0.08);
+          border-radius: 8px;
           padding: 1.5rem;
           text-align: left;
         }
@@ -1033,14 +1099,16 @@ export default function FoundationsIndex() {
           }
 
           .page-nav {
-            flex-wrap: wrap;
-            gap: 0.5rem;
+            grid-template-columns: 1fr;
           }
 
           .page-nav-link {
-            flex: 1;
-            min-width: 100px;
-            justify-content: center;
+            justify-content: start;
+          }
+
+          .graph-section {
+            padding: 0.75rem;
+            border-radius: 18px;
           }
 
           .filter-bar {
@@ -1068,7 +1136,7 @@ export default function FoundationsIndex() {
             grid-template-columns: 1fr;
           }
 
-          .concept-list-item {
+          .concepts-list :global(.concept-list-item) {
             flex-wrap: wrap;
           }
 
@@ -1079,6 +1147,7 @@ export default function FoundationsIndex() {
           }
         }
       `}</style>
-    </div>
+      </div>
+    </NotebookLayout>
   )
 }

@@ -27,8 +27,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: sennrich-2015-bpe
+    kind: paper
+    title: "Neural Machine Translation of Rare Words with Subword Units"
+    authors: "Sennrich, Haddow, and Birch"
+    year: 2015
+    url: "https://arxiv.org/pdf/1508.07909v5"
+    note: "Primary BPE subword source. Sec. 3.2 initializes a character-symbol vocabulary, repeatedly counts adjacent symbol pairs, merges the most frequent pair, and grows the final symbol vocabulary by merge operations."
+  - id: kudo-2018-sentencepiece
+    kind: paper
+    title: "SentencePiece: A simple and language independent subword tokenizer and detokenizer for Neural Text Processing"
+    authors: "Kudo and Richardson"
+    year: 2018
+    url: "https://arxiv.org/pdf/1808.06226v1"
+    note: "Primary SentencePiece source. Describes a language-independent tokenizer/detokenizer that manages vocabulary-id mapping and implements BPE plus unigram language-model subword segmentation."
+claim_checks:
+  - id: subword-tokenization-segmentation-mechanics
+    status: source-checked
+    claim: "Subword tokenizers map text to vocabulary items: BPE builds units by repeatedly merging the most frequent adjacent symbols; SentencePiece supports BPE and unigram language-model subword segmentation."
+    source_ids:
+      - sennrich-2015-bpe
+      - kudo-2018-sentencepiece
+    support: "Sennrich Sec. 3.2 initializes character symbols, counts adjacent pairs, repeatedly merges the most frequent pair, and grows final vocab by merge count. Kudo/Richardson describe SentencePiece as language-independent tokenization/detokenization with subword sequences, vocab-id mapping, and BPE plus unigram LM segmentation. The first two equations, first code witness, and demo BPE/unigram portions are toy witnesses."
+    caveat: "Checks high-level subword vocab, BPE merges, and SentencePiece BPE/unigram mechanics only; not exact LLM tokenizer files, byte fallback, Unicode normalization edges, merge-rank details, vocab-size scaling, downstream capability/cost claims, or the demo's byte/Unicode/cost panes."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Sennrich Sec. 3.2 and Kudo/Richardson: Sennrich supports BPE as character-symbol vocabulary plus adjacent-pair counts and repeated most-frequent-pair merges; Kudo/Richardson supports SentencePiece as language-independent tokenizer/detokenizer with vocabulary-id conversion and BPE/unigram LM segmentation. Local math/code and BPE/unigram demo portions are toy witnesses only."
+    object_refs:
+      - "#source-span-sennrich-2015-bpe"
+      - "#source-span-kudo-2018-sentencepiece"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "How text becomes token IDs: segmentation, BPE/unigram tokenizers, and the tradeoffs that shape cost and capability."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 14

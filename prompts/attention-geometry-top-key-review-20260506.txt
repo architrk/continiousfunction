@@ -1,0 +1,45 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for deep-learning math.
+
+Slice under review: `attention-geometry-prediction-first-top-key-reveal`.
+
+Oracle/GPT Pro previously selected the next P0 retrofit after Backpropagation:
+
+- Route: `/domains/attention-transformers/attention-transformers/`
+- Component: `components/foundations/AttentionGeometryViz.tsx`
+- Mechanism: learners predict which key receives the highest post-softmax attention weight for the active query.
+
+Implementation summary:
+
+- Added a local prediction gate directly inside `AttentionGeometryViz`.
+- Before reveal, the learner can see active query, token/Q/K geometry, visible key choices, temperature/scaling controls, matrix row/column shell, and value-vector shell.
+- Before reveal, the component hides score cells, attention weights, real heat intensity, entropy, effective attended tokens, top weight, value weights, output vector, row sums, correctness, and measured `emitDemoState` payloads.
+- After reveal, it shows correctness, top weight, score/weight matrix values, entropy/effective-token readouts, value weights/output vector, and row sums.
+- After reveal, it emits compact measured state with prediction, actual top key, correctness, active query, temperature, score row, attention row, top weight, entropy, effective attended tokens, output vector, row probability sum, and visible distribution state.
+- Temperature changes, active-query changes, matrix-view changes, post-reveal prediction changes, and unmounts call `clearDemoState(conceptId)` and reset local reveal state.
+- Added `components/foundations/AttentionGeometryViz.test.tsx`.
+- Targeted test command passed: `npm test -- AttentionGeometryViz --runInBand`.
+
+Constraints:
+
+- Keep this slice bounded to `AttentionGeometryViz`; do not request a full route rewrite.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, or global demo-state API changes.
+- Static-export safety must remain intact.
+- The parent route already has its own mechanism checkpoint; this review is only for the local child demo.
+
+Question:
+
+Review the implementation as a publish gate.
+
+Return exactly:
+
+1. `publish` or `no-publish`.
+2. If `no-publish`, list the minimal blockers only, with exact leak/stale-state/test/build reason.
+3. If `publish`, list any non-blocking follow-ups separately.
+
+Specifically check:
+
+- Does any pre-reveal UI text, SVG text, aria label, title, matrix color/opacity, value-vector radius/label, entropy/top-weight/readout, row sum, result copy, or `emitDemoState` payload leak the actual top key or distribution?
+- Does the reveal use the actual post-softmax row, not raw dot products?
+- Are tie semantics within tolerance reasonable?
+- Are stale revealed state and shared demo state cleared when the hidden answer or visible reveal surface changes?
+- Are the component tests sufficient for the intended blast radius?

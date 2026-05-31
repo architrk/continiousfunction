@@ -1,0 +1,49 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning joyful, visual, intuitive, and mathematically serious. We use GPT Pro/Oracle as a review partner before and after implementation.
+
+This is the implementation review for the Flow Matching demo-shell rollout slice.
+
+Oracle previously scoped this slice as:
+- Teach one learner action: highlight one coupled noise/data pair at x_t=(1-t)x_0+t x_1.
+- Ask the learner to predict whether the hidden conditional velocity target is the full displacement u_t=x_1-x_0 or the shorter remaining displacement x_1-x_t.
+- Reveal the arrow and emphasize x_t+(1-t)u_t=x_1.
+- Filesystem concept route should use VizShell + VizStageAdapter and pass chrome="notebook" conceptId="flow-matching".
+- Foundation component must preserve legacy default behavior.
+- Notebook mode must hide the path-race/game, sampling-quality curves, rectified-flow panel, unsupported OT claims, and fast-model claims.
+- Demo state must emit only in notebook mode and must not leak the target vector before reveal.
+
+What I changed:
+- Wrapped content/domains/generative-models/concepts/flow-matching/viz.tsx in VizShell + VizStageAdapter with a dynamic FlowMatchingViz import.
+- Added FlowMatchingViz props: chrome, conceptId, initialSeed, initialTime, initialPairIndex.
+- Added notebook-only prediction panel for the conditional velocity target with choices:
+  - full displacement u_t=x1-x0
+  - remaining displacement x1-xt
+  - back toward noise x0-xt
+  - unit direction only
+- Added highlighted source/current/target pair, selected pair line, reveal-only target and remaining arrows, deterministic New pair behavior, t scrub, and background-pair toggle.
+- Added notebook-only compact demo-state emission, with target vector hidden before reveal and rounded values after reveal.
+- Hid path-race/game, preset row, path-length panel, sampling proxy chart, and rectified-flow panel in notebook mode.
+- Rewrote visible notebook and legacy copy to avoid claiming random pair lines are a solved optimal-transport plan or using synthetic quality curves as measured sample quality.
+- Updated content.mdx and concept.yaml around the velocity-label distinction.
+
+Local checks already run:
+- npm run validate-content passed with 0 warnings and 0 errors.
+- npm run typecheck passed.
+- Dev server route checks returned 200:
+  - /domains/generative-models/flow-matching/
+  - /foundations/flow-matching/
+- Headless Chrome desktop/mobile DOM check passed for the notebook route:
+  - no horizontal overflow
+  - VizShell present
+  - flow-matching-demo root present
+  - legacy title not present inside notebook demo
+  - forbidden notebook text not visible
+  - no target/remaining arrows before reveal
+  - after choosing "Remaining displacement" and waiting, reveal is enabled, status appears, target arrow count is 1, remaining arrow count is 1
+
+Please review the attached implementation for blockers only. I need:
+1. Must-fix correctness or pedagogy blockers.
+2. Must-fix UI/accessibility blockers.
+3. Must-fix code architecture/regression blockers.
+4. Any exact wording fixes if the current copy still overclaims.
+
+Do not ask for broad expansion or future-slice ideas unless they are necessary to fix this slice. Return a concise prioritized blocker list, and say explicitly if the slice is acceptable after the listed fixes.

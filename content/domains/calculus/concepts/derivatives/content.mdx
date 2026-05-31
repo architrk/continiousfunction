@@ -14,17 +14,23 @@ In optimization, this local slope is the gradient: it tells you how to change pa
 
 **Definition (derivative).** The derivative of $f$ at $x$ is
 
-$$f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}.$$
+$$
+f'(x) = \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}.
+$$
 
 The fraction
 
-$$\frac{f(x+h) - f(x)}{h}$$
+$$
+\frac{f(x+h) - f(x)}{h}
+$$
 
 is a **secant slope** (average rate of change over an interval). The limit turns it into a **tangent slope**.
 
 Once you know $f'(x_0)$, the tangent line at $x_0$ is
 
-$$y = f(x_0) + f'(x_0)(x - x_0).$$
+$$
+y = f(x_0) + f'(x_0)(x - x_0).
+$$
 
 ## Code
 
@@ -42,4 +48,4 @@ for h in [1.0, 0.3, 0.1, 0.03, 0.01]:
 
 ## Interactive Demo
 
-Use the demo to shrink $h$ and watch the secant line become the tangent line.
+Use the demo to inspect the visible secant slope, predict the hidden tangent relation, then reveal how the derivative appears as $h$ shrinks.

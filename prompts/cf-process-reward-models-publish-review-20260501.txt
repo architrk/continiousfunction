@@ -1,0 +1,56 @@
+Project: Continuous Function, a slow-growth mathematical learning atlas for deep learning concepts.
+
+Concept under review:
+- Domain: alignment
+- Slug: process-reward-models
+- Title: Process Reward Models: Step-Level Verifiers for Reasoning
+- Current status: review
+- It follows the already published RLHF, DPO, KTO, and Reward Hacking pages.
+
+Context:
+Oracle previously recommended this as the next single alignment concept after the finite-action preference/proxy branch. I implemented it as a new filesystem concept rather than merely migrating the old legacy stub.
+
+The page teaches:
+- outcome supervision as a terminal label on a complete trace
+- process supervision as a local label on a prefix plus next step
+- a Bernoulli step verifier trained with cross-entropy
+- additive step-logit trajectory scoring
+- KL-regularized reweighting over complete traces, matching the RLHF pattern
+- the limitation that PRMs are still learned proxies and can be verifier-hacked
+
+Interactive demo:
+- fixed finite reasoning traces for 2(x+3)=14
+- default process verifier selects the clean derivation
+- outcome-only verifier selects a lucky final answer with invalid steps
+- false-positive process verifier error makes the process verifier select the lucky invalid trace
+- controls: scorer, aggregation, verifier error, beta
+- metrics: selected trace, expected terminal correctness, expected step correctness, expected verifier score, selected proxy error, KL(policy || ref)
+
+Local verification passed:
+- npm run generate-content
+- npm run validate-content
+- npm run typecheck
+- deterministic Python code witness asserts the three regimes above
+- desktop Chrome route check at 1440px: no KaTeX errors, no horizontal overflow, required text/demo present, interactions pass
+- mobile Chrome route check at 390px: no KaTeX errors, no horizontal overflow, required text/demo present, interactions pass
+- npm run build passed; known existing KaTeX display-mode newline warnings still appear elsewhere in the content set
+
+Attached files:
+- Oracle next-concept recommendation that asked for this PRM page
+- concept.yaml metadata
+- content.mdx lesson
+- viz.tsx route export
+- ProcessRewardModelsViz.tsx demo
+- adjacent alignment metadata/content for RLHF and Reward Hacking
+
+Please do a rigorous publish/no-publish review.
+
+Return:
+1. Verdict: "publish as is", "publish after fixes", or "keep in review".
+2. Blocking issues only, with exact file-level fixes.
+3. Check math-demo-code equivalence: do the content, code witness, and React demo implement the same finite object?
+4. Check whether the terminology is honest: outcome reward model vs process reward model vs verifier vs PRM.
+5. Check whether the proxy-error/verifier-hacking caveat is precise enough and not overclaimed.
+6. Check atlas graph fit: prerequisites, leads_to, related, and whether it should publish after the current alignment branch.
+
+Avoid broad roadmap suggestions. I need a release review for this exact page.

@@ -1,0 +1,146 @@
+---
+title: "Test-Time Compute: Spending Inference Budget on Search"
+---
+
+## Intuition
+
+Canonical sources: Kaplan et al., ["Scaling Laws for Neural Language Models"](https://arxiv.org/abs/2001.08361), Hoffmann et al., ["Training Compute-Optimal Large Language Models"](https://arxiv.org/abs/2203.15556), Cobbe et al., ["Training Verifiers to Solve Math Word Problems"](https://arxiv.org/abs/2110.14168), Uesato et al., ["Solving Math Word Problems With Process- and Outcome-Based Feedback"](https://arxiv.org/abs/2211.14275), Lightman et al., ["Let's Verify Step by Step"](https://arxiv.org/abs/2305.20050), Brown et al., ["Large Language Monkeys: Scaling Inference Compute with Repeated Sampling"](https://arxiv.org/abs/2407.21787), Wang et al., ["Self-Consistency Improves Chain of Thought Reasoning in Language Models"](https://arxiv.org/abs/2203.11171), and Snell et al., ["Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters"](https://arxiv.org/abs/2408.03314).
+
+Training-time scaling spends more compute before deployment: more parameters, more data, longer training.
+
+Test-time scaling spends more compute after the prompt arrives. In this page, that means sampling more complete candidate traces and scoring them with a verifier.
+
+Here "search" means parallel best-of-$N$ over complete traces, not prefix expansion or tree search.
+
+This page focuses on the smallest useful case: best-of-$N$ with a verifier. For one prompt, the model samples $N$ complete candidate traces. A verifier scores each trace. The system returns the highest-scoring sampled trace.
+
+For this finite best-of-$N$ verifier setup, extra inference compute is useful only when two conditions are both true:
+
+- the generator sometimes samples a good trace,
+- the verifier tends to rank good traces above bad ones.
+
+If the good trace is almost never sampled, extra compute may not be enough. If the verifier has a false-positive trap, more samples can make the system worse by making that trap more likely to appear. The honest question is not "does thinking longer help?" It is: for this prompt, generator, verifier, and cost model, is another sample worth buying?
+
+## Math
+
+For one prompt $x$, let the base model define a finite distribution over complete candidate traces. Each trace has hidden task correctness and a verifier score:
+
+$$
+p_i=\pi_{\mathrm{base}}(\tau_i\mid x),
+\qquad
+\sum_i p_i=1,
+\qquad
+u_i\in\{0,1\},
+\qquad
+s_i=s_\phi(\tau_i).
+$$
+
+Best-of-$N$ draws $N$ independent traces from $p$ and returns the sampled trace with the highest verifier score. Assume verifier scores are distinct and sort traces from lowest to highest verifier score, so $s_1 < \cdots < s_K$:
+
+$$
+\begin{aligned}
+\tau^\star
+&=
+\arg\max_{\tau\in\{\tau^{(1)},\dots,\tau^{(N)}\}}
+s_\phi(\tau),\\
+F_k
+&=
+\sum_{i=1}^k p_i,\qquad F_0=0,\\
+P_N(k\ \mathrm{selected})
+&=
+F_k^N-F_{k-1}^N,\\
+A(N)
+&=
+\sum_k
+u_k
+\left(F_k^N-F_{k-1}^N\right),\\
+\mathrm{coverage}_N
+&=
+1-\left(1-\sum_i p_i u_i\right)^N.
+\end{aligned}
+$$
+
+To connect back to process reward models, a trace score might be an additive step score:
+
+$$
+s_\phi(\tau_i)
+=
+\sum_{t=1}^{T_i}
+r_\phi(h_{i,t-1},a_{i,t}).
+$$
+
+Treat this as a ranking score, not a calibrated probability of correctness. Sum-vs-mean aggregation, length normalization, and distribution shift can all change which traces receive high verifier score.
+
+The expected selected verifier score is
+
+$$
+S(N)
+=
+\sum_k
+s_k
+\left(F_k^N-F_{k-1}^N\right).
+$$
+
+Selected correctness and sampled-correct coverage can be very different. Sampling a correct trace is coverage. Returning it is selection. More samples can make $S(N)$ rise while $A(N)$ falls if the highest-scoring trace is a verifier error.
+
+A simple cost model is
+
+$$
+C(N)=N(c_{\mathrm{gen}}+c_{\mathrm{score}}).
+$$
+
+Here $N$ is only a teaching proxy for inference budget. Real serving cost also depends on generation length, verifier cost, batching, latency, and traffic volume.
+
+## Code
+
+This witness uses the same finite best-of-$N$ object as the demo. With a clean verifier, more samples improve selected correctness. With a noisy verifier, selected verifier score improves while true correctness eventually falls.
+
+```python
+def selected_distribution(candidates, n):
+    ranked = sorted(candidates, key=lambda item: item["score"])
+    cumulative = 0.0
+    selected = {}
+    for item in ranked:
+        p = item["prior"]
+        next_cumulative = cumulative + p
+        selected[item["id"]] = next_cumulative ** n - cumulative ** n
+        cumulative = next_cumulative
+    return selected
+
+def expected(candidates, selected, key):
+    return sum(selected[item["id"]] * item[key] for item in candidates)
+
+def scored(candidates, mode):
+    return [{**item, "score": item[f"{mode}_score"]} for item in candidates]
+
+def expected_accuracy(candidates, n, mode):
+    rows = scored(candidates, mode)
+    return expected(rows, selected_distribution(rows, n), "correct")
+
+def expected_score(candidates, n, mode):
+    rows = scored(candidates, mode)
+    return expected(rows, selected_distribution(rows, n), "score")
+
+candidates = [
+    {"id": "common_wrong", "prior": 0.50, "correct": 0, "clean_score": -2.0, "noisy_score": -2.0},
+    {"id": "plausible_slip", "prior": 0.25, "correct": 0, "clean_score": -0.3, "noisy_score": -0.3},
+    {"id": "clean_correct", "prior": 0.18, "correct": 1, "clean_score": 1.8, "noisy_score": 1.8},
+    {"id": "rare_exploit", "prior": 0.07, "correct": 0, "clean_score": 0.2, "noisy_score": 2.6},
+]
+
+clean_1 = expected_accuracy(candidates, 1, "clean")
+clean_32 = expected_accuracy(candidates, 32, "clean")
+noisy_1 = expected_accuracy(candidates, 1, "noisy")
+noisy_64 = expected_accuracy(candidates, 64, "noisy")
+
+assert clean_32 > clean_1
+assert noisy_64 < noisy_1
+assert expected_score(candidates, 64, "noisy") > expected_score(candidates, 1, "noisy")
+print(round(clean_32, 3), round(noisy_64, 3))
+```
+
+## Interactive Demo
+
+Use the demo to compare a clean verifier against a noisy verifier on the same four traces. Increase $N$ to spend more inference compute. Watch the gap between "sampled at least one correct trace" and "selected a correct trace"; that gap is where verifier quality matters.
+
+{/* viz.tsx component renders here if it exists */}

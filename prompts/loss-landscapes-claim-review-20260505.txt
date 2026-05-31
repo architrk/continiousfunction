@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, the first two math objects only, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/optimization/concepts/loss-landscapes. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what Li 2017 loss-landscape visualization, Keskar 2016 sharp minima, and Foret 2020 SAM actually support. Also flag any local content wording that should be softened before this claim is added, especially edge-of-stability language which is not directly sourced here.
+
+Proposed claim_check:
+- id: sliced-landscape-sharpness-sam-neighborhood
+- status: source-checked
+- claim: Loss-landscape visualizations are low-dimensional slices through parameter space, not the full neural-network surface; sharpness/flatness are scale- and parameterization-sensitive local diagnostics, and SAM formalizes one neighborhood-sharpness objective by minimizing worst-case loss within a perturbation ball.
+- source_ids: li-2017-loss-landscape-visualization, keskar-2016-sharp-minima, foret-2020-sam
+- support: Li et al. ground 2D filter-normalized loss-slice visualization. Keskar et al. ground the sharp/flat minima and generalization-gap discussion, with caveats around interpretation. Foret et al. ground the min_w max_{||epsilon||<=rho} L(w+epsilon) SAM objective and approximate perturbation direction. The page first two math anchors, code, and demo instantiate quadratic local curvature, sharpness proxy, SAM neighborhood loss, and toy stability.
+- caveat: This checks the 2D-slice/sharpness/SAM neighborhood lesson, not edge-of-stability theory, exact Hessian spectra in real networks, universal generalization guarantees, parameterization-invariant sharpness, or the full 3D legacy surface.
+- object_refs: #source-span-li-2017-loss-landscape-visualization, #source-span-keskar-2016-sharp-minima, #source-span-foret-2020-sam, #math-object-1, #math-object-2, #code-witness-1, #interactive-demo

@@ -3,9 +3,9 @@
 import { useState, useMemo, useEffect, useRef, Suspense, lazy } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
-import ExplorableSection from '../../components/ExplorableSection'
-import PhasePortrait2D from '../../components/PhasePortrait2D'
+import ExplorableLayout, { useExplorable } from '@/components/explorable/ExplorableLayout'
+import ExplorableSection from '@/components/explorable/ExplorableSection'
+import PhasePortrait2D from '@/components/charts/PhasePortrait2D'
 import { VectorField2D, Point2D } from '../../lib/mathObjects'
 
 // Explore in depth link component
@@ -31,8 +31,8 @@ function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label
 }
 
 // Import visualization components from foundations (canonical source with gamification)
-const DiffusionForwardReverse = lazy(() => import('../../components/foundations/DiffusionProcessViz'))
-const FlowMatching = lazy(() => import('../../components/foundations/FlowMatchingViz'))
+const DiffusionForwardReverse = lazy(() => import('@/components/foundations/DiffusionProcessViz'))
+const FlowMatching = lazy(() => import('@/components/foundations/FlowMatchingViz'))
 
 function LoadingFallback() {
   return (

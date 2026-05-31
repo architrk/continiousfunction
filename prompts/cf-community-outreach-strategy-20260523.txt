@@ -1,0 +1,19 @@
+You are advising the founder of Continuous Function.
+
+Context:
+- Continuous Function is becoming a high-signal AI-era learning commons for the mathematics behind modern deep learning and frontier AI.
+- The desired product is part atlas, part notebook, part lab, part seminar room, and part careful AI tutor.
+- The core unit is a learning object: concept, equation, claim, source span, code witness, demo state, misconception, or learning route.
+- The founder wants to recruit like-minded collaborators: math enthusiasts, professors, teachers, students, ML practitioners, researchers, startup builders, and education/AI technologists.
+- The goal is not generic marketing. The goal is to create a beautiful working experience with serious, generous people, reduce noise, and build a sustainable community around object-attached learning, rigorous discussion, AI-assisted tutoring, and recursive improvement of educational content.
+
+Please produce a practical outreach strategy:
+1. Which first 30-50 people or categories should the founder reach out to?
+2. What should the founder ask each category for: feedback, pilot use, advisory help, contribution, research collaboration, content review, or partnership?
+3. What are the best "offers" that make this worth their time?
+4. How should collaboration be structured so the project stays high-signal and does not become a noisy forum?
+5. Which kinds of organizations/startups/communities are worth contacting first?
+6. Give a 30-day outreach plan with weekly targets.
+7. Give 3 short outreach message templates: professor/researcher, student/ML practitioner, startup/community operator.
+
+Be direct. Prioritize actions that would build trust and attract excellent people before scale.

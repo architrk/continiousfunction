@@ -1,0 +1,38 @@
+Continuous Function is a Next.js static learning atlas for deep learning concepts.
+We are running the deterministic claim-evidence workflow: a source-linked claim may only be marked evidence_review.state=substantive-reviewed after a strict source-support review checks the cited sources and local witnesses.
+
+Task: review the next queue item, linear-algebra/dot-product#dot-product-alignment-projection.
+
+Claim under review:
+"For vectors u,v in R^n, the dot product sum_i u_i v_i is a coordinate multiply-sum that also encodes geometry: u dot v = ||u||||v||cos(theta), so sign and size track alignment, cosine similarity removes lengths, and proj_v(u) scales v by (u dot v)/(v dot v)."
+
+Cited source:
+Deisenroth, Faisal, and Ong, "Mathematics for Machine Learning", Cambridge University Press (2020), official MML site/PDF, https://mml-book.github.io/book/mml-book.pdf
+
+Primary-source evidence I checked before this prompt from the official MML PDF:
+- PDF page 78 / book page 72: Section 3.2.1 says the scalar product/dot product in R^n is x^T y = sum_i x_i y_i, and the book refers to this inner product as the dot product.
+- PDF page 78 / book page 72: MML says inner products introduce geometric concepts such as vector length, angle/distance between vectors, and orthogonality.
+- PDF page 82 / book page 76: Section 3.4 defines the angle omega between nonzero vectors by cos omega = <x,y>/(||x|| ||y||) and says the angle tells how similar their orientations are.
+- PDF page 83 / book page 77: Example 3.6 computes an angle using the dot product as the inner product, with x^T y divided by sqrt(x^T x y^T y).
+- PDF page 83 / book page 77: Definition 3.7 says two vectors are orthogonal iff <x,y>=0.
+- PDF pages 89-90 / book pages 83-84: Section 3.8 derives projection onto a one-dimensional subspace U=span(b): pi_U(x)=lambda b with lambda=<x,b>/<b,b>=<b,x>/||b||^2; with dot product, lambda=b^T x/(b^T b), so pi_U(x)=bb^T x / ||b||^2.
+- PDF page 90 / book page 84: MML connects projection length to |cos omega| ||x|| when using the dot product as the inner product.
+
+Attached local files:
+- content/domains/linear-algebra/concepts/dot-product/concept.yaml
+- content/domains/linear-algebra/concepts/dot-product/content.mdx
+- content/domains/linear-algebra/concepts/dot-product/viz.tsx
+- content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md
+
+Review criteria:
+1. Decide whether MML substantively supports the claim as written, not merely that the page has a source ID.
+2. Check whether the local math/code/demo witnesses match the claim's scope: finite-dimensional real vectors, coordinate multiply-sum, induced Euclidean norm, angle/cosine relation for nonzero vectors, sign/alignment interpretation, cosine similarity as length-normalized dot product, and projection of u onto nonzero v by (u dot v)/(v dot v) times v.
+3. Identify any overclaim, missing caveat, misleading wording, source URL/provenance mismatch, or witness mismatch.
+4. If publishable after small edits, provide the exact compact evidence_review.summary and caveat wording you would accept. Keep summary under 520 characters and caveat under 280 characters because local validation enforces those bounds.
+5. Return one verdict: PUBLISH, PUBLISH_AFTER_SMALL_FIXES, or DO_NOT_PUBLISH.
+
+Constraints:
+- Keep the review narrow to this one claim.
+- Do not ask for a broad page redesign.
+- Do not require complex inner products, indefinite bilinear forms, kernelized similarities, arbitrary neural-attention scaling details, or high-dimensional embedding evaluation unless the current wording accidentally claims them.
+- If the source URL should point directly to the reviewed official MML PDF rather than the MML landing page, say so explicitly as a small fix.

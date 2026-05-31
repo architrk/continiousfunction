@@ -19,27 +19,33 @@ If you want a single production mental model: long-context inference is usually 
 
 If each token attends only to the previous $W$ tokens, then attention compute is closer to $O(TW)$ instead of $O(T^2)$. One way to express this is with a mask:
 
-$$M_{ij} =
-\\begin{cases}
-0 & \\text{if } j \\le i \\text{ and } i-j \\le W \\\\
--\\infty & \\text{otherwise}
-\\end{cases}$$
+$$
+M_{ij} =
+\begin{cases}
+0 & \text{if } j \le i \text{ and } i-j \le W \\\\
+-\infty & \text{otherwise}
+\end{cases}
+$$
 
 and:
 
-$$\\mathrm{Attn}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}}+M\\right)V.$$
+$$
+\mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}+M\right)V.
+$$
 
 ### KV cache memory (the bottleneck at long $T$)
 
 Across a batch of $B$ sequences and $L$ layers, storing keys and values for $T$ tokens costs roughly:
 
-$$\\mathrm{Mem}_{KV} \\approx B\\cdot L\\cdot T\\cdot H_{kv}\\cdot d_{head}\\cdot 2 \\cdot \\mathrm{bytes}.$$
+$$
+\mathrm{Mem}_{KV} \approx B\cdot L\cdot T\cdot H_{kv}\cdot d_{head}\cdot 2 \cdot \mathrm{bytes}.
+$$
 
 This grows linearly in $T$, and at long context it dominates the serving budget.
 
 ### RoPE scaling (fix position OOD)
 
-RoPE encodes position by rotating queries/keys. At positions far beyond training, those rotations can become out-of-distribution (especially for low-frequency dimensions). RoPE scaling methods effectively change the mapping $p \\mapsto \\theta(p)$ so the model sees "less extreme" phases at long context, while preserving short-range detail.
+RoPE encodes position by rotating queries/keys. At positions far beyond training, those rotations can become out-of-distribution (especially for low-frequency dimensions). RoPE scaling methods effectively change the mapping $p \mapsto \theta(p)$ so the model sees "less extreme" phases at long context, while preserving short-range detail.
 
 ## Code
 

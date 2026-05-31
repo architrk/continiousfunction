@@ -1,0 +1,44 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for Continuous Function.
+
+Project briefing:
+- Continuous Function is a slow-growth mathematical atlas for deep learning and its mathematical foundations.
+- The quality bar is intuitive, precise, visual, executable, and connected.
+- A concept page is structured as Intuition -> Math -> Code -> Interactive Demo.
+- `status: published` should mean the page can survive a serious reader; otherwise keep it in `review`.
+- The site is a static-exported Next.js Pages Router + TypeScript app. Filesystem concepts live under `content/domains/{domain}/concepts/{concept-id}/`.
+
+Concept under review:
+- ID: reverse-mode-autodiff
+- Domain: calculus
+- Current status: review
+- Intended decision: decide whether it can be promoted to published after fixes, or should stay in review.
+- Role in learning arc: Computation Graphs -> Reverse-Mode Autodiff -> Backpropagation -> Gradient Descent.
+
+Current implementation:
+- The page explains reverse-mode AD as a tape of primitive operations plus cotangent registers.
+- The math defines cotangents, scalar reverse updates, multi-input accumulation, vector-Jacobian products under column-vector cotangent convention, JVP vs VJP, and the scalar-loss cost shape.
+- The code manually computes `a=x*y`, `b=sin(a)`, `L=a+b`, then backpropagates `bar_*` values with `+=`.
+- The new live `viz.tsx` provides sliders for `x` and `y`, phase buttons for Forward tape / Reverse sweep / Cost shape, presets for Reuse and Cancel near pi, a recorded tape panel, and cotangent registers.
+- The demo's central claim is that reverse mode records local operations during the forward pass, then one backward sweep from `bar L=1` fills all input cotangents for a scalar loss.
+- Local verification passed:
+  - `npm run generate-content` wrote 35 viz entries.
+  - `npm run validate-content` passed with 0 warnings and 0 errors.
+  - `npm run typecheck` passed.
+  - CDP desktop check at 1440px: route loads, status is review, no KaTeX error, no horizontal overflow, Reverse sweep reverses tape order and fills registers, Cost shape updates claim, Cancel near pi produces `bar a=0.000`.
+  - CDP mobile check at 390px: route loads, no horizontal overflow, controls stack, Reverse sweep and Cancel near pi states work.
+  - Route metadata now has `prerequisites: [computation-graphs]` and `leads_to: [backpropagation]`.
+  - `npm run build` passed, with known non-blocking KaTeX warnings about `\\` or `\newline` in display mode elsewhere in the site.
+
+Please review the attached files against `content/_agent/CONCEPT_QUALITY_BAR.md`.
+
+Return:
+1. Verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and whether this bridge position is right.
+8. Exact patch-style edits for the highest-impact fixes when possible.
+
+Be strict. Do not say "publish" unless this page actually meets the quality bar after considering the MDX, code, demo, route shell, and neighboring concepts.

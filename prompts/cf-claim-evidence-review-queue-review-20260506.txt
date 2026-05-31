@@ -1,0 +1,53 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning platform for modern deep learning and frontier AI.
+
+Implemented slice:
+`claim-evidence-review-queue-v1`
+
+Oracle previously recommended this next step after `claim-check-handoff-integrity-validator-v1`:
+- separate claim-check plumbing from substantive source review,
+- make learner-facing copy conservative,
+- include evidence-review state in claim-check Reading Room handoffs,
+- block overclaimed `substantive-reviewed` metadata,
+- generate a deterministic queue of claim checks still needing substantive source-support review,
+- keep everything repo-local/static-export-safe with no auth/database/API/live collaboration.
+
+Implementation summary:
+- Added `lib/claimEvidenceReview.ts` for conservative evidence-review states:
+  - `source-linked`
+  - `source-note-reviewed`
+  - `substantive-reviewed`
+- Existing claim checks default to `source-linked`, meaning source IDs and witness refs are attached review targets, not proof.
+- `ConceptClaimReviewPanel` now renders conservative evidence-review labels and warnings instead of treating `source-checked` status as substantive proof.
+- Claim-check Reading Room seed prompts now include evidence-review state, evidence warning, and explicit no-proof wording.
+- `validate-content` now validates optional `claim_check.evidence_review` metadata and errors if `substantive-reviewed` lacks reviewed_at, reviewer, summary, source_ids, support, or caveat.
+- Added `lib/claimEvidenceReviewQueue.ts` and `scripts/generate-claim-evidence-review-queue.ts`.
+- Generated:
+  - `content/_generated/claim-evidence-review-queue.json`
+  - `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`
+- `validate-content` now fails if the generated queue is missing or stale.
+- Updated `TODO.yaml` with a pending `substantive-claim-review-batch-1` queue item and updated the north-star audit with the current metric:
+  - 51 structured claim checks
+  - 0 substantively reviewed
+  - 51 source-linked / review-pending
+  - 51 published review-pending
+
+Local checks already run:
+- `npm run generate-claim-evidence-review-queue` passed.
+- `npm run validate-content` passed with 0 warnings / 0 errors.
+- `npm run typecheck` passed.
+- `npm test -- claimEvidenceReviewQueue claimCheckHandoffIntegrity conceptNotebookDiscussion ConceptNotebookPage researchDiscussionRoom --runInBand` passed: 5 suites, 35 tests.
+
+Please review this implementation as a publish/no-publish gate.
+
+Questions:
+1. Does this satisfy `claim-evidence-review-queue-v1` without overclaiming source support?
+2. Are there any blocking correctness, pedagogy, trust, or static-export-safety issues?
+3. Are the validation rules strong enough to prevent future claims being marked `substantive-reviewed` without real review metadata?
+4. Does the generated queue have enough structure to drive the next source-support audit batch?
+5. Are there any must-fix tests or UI copy changes before committing?
+
+Return:
+- Verdict: PUBLISH or NO-PUBLISH.
+- Blocking issues first, with exact file/function references where possible.
+- Important but non-blocking follow-ups separately.
+- Do not propose accounts/auth/database work in this slice unless there is a static-safety blocker.

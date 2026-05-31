@@ -1,0 +1,49 @@
+Project: Continuous Function, a slow-growth mathematical learning atlas for deep learning and adjacent fields.
+
+We are working on one concept page:
+- Domain: alignment
+- Concept slug: reward-hacking
+- Current status: review, not published
+- Intended learner: mathematically curious student/researcher who knows RLHF at a finite-action level
+- Product standard: publish only if the concept is precise, intuitive, visually coherent, and directly connected to the surrounding atlas
+
+Context:
+Your previous Oracle review of this page said to demote it and rebuild it around finite-action proxy-error probability shaping. I applied that rebuild. The old page had a mismatched game/severity demo and fake KL axis. The new version now uses one prompt with four candidate completions, a reference policy, true utility, reward proxy, uncertainty, and the KL-regularized finite-action optimum.
+
+Core model now used:
+- pi_ref = [0.28, 0.22, 0.42, 0.08]
+- true utility u = [1.20, 0.70, -0.30, -0.80]
+- mean proxy mu = [1.10, 0.60, -0.10, 1.90]
+- uncertainty sigma = [0.15, 0.15, 0.20, 1.00]
+- conservative score s_i(lambda) = mu_i - lambda sigma_i
+- policy pi_{beta,lambda}(i|x) proportional to pi_ref(i|x) exp(s_i(lambda)/beta)
+- tracks expected proxy reward, expected true utility, selected error, and KL(policy || ref)
+
+Local verification already passed:
+- npm run generate-content
+- npm run validate-content
+- npm run typecheck
+- Python finite-action witness: proxy reward rises while true utility falls at strong optimization, and the uncertainty penalty reduces concentration on the exploit
+- desktop Chrome route check at 1440px: no KaTeX errors, no horizontal overflow, required text and demo present, old severity/countdown text absent
+- mobile Chrome route check at 390px: no KaTeX errors, no horizontal overflow, required text and demo present, old severity/countdown text absent
+- npm run build passed; it still emits known existing KaTeX display-mode newline warnings elsewhere in the content set
+
+Attached files:
+- First Oracle review response with the requested rebuild direction
+- concept.yaml metadata
+- content.mdx lesson
+- viz.tsx route export
+- RewardHackingViz.tsx interactive demo
+- RLHF page metadata/content/demo context, because reward hacking follows RLHF in this atlas branch
+
+Please do a second publish/no-publish review.
+
+Return:
+1. Verdict: one of "publish as is", "publish after fixes", or "keep in review".
+2. Blocking issues only, with exact file-level fixes. If something is merely a future improvement, separate it.
+3. Check the finite-action math carefully: signs, beta interpretation, KL direction, selected-error definition, and whether the uncertainty-penalty story is honest.
+4. Check pedagogy: does the page cleanly teach "reward hacking is selected proxy error" without overclaiming?
+5. Check UI/visualization truthfulness: does the demo match the math and code, and are labels understandable?
+6. Check atlas graph fit: prerequisites, related links, and whether this should be published after RLHF/DPO/KTO or remain review.
+
+Do not give broad brainstorming. I need a rigorous release review for this exact page.

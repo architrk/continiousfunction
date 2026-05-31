@@ -6,30 +6,36 @@ title: "Learning Rate Schedules: Warmup, Decay & Cycling"
 
 The learning rate is the step size of training. It is also one of the most sensitive knobs in deep learning: the same model can diverge, crawl, or converge depending on the schedule.
 
-Two recurring patterns in large-model training:
+Two page-local teaching patterns, treated here as extensions beyond the listed Smith/SGDR sources:
 
-- **Warmup:** start small, then ramp up. Early gradients are noisy and optimizers like Adam have biased moment estimates at the start. Warmup avoids "blowing up" before the optimizer settles.
-- **Decay:** once the model has found a good region, reduce the step size so you can refine instead of bouncing around.
+- **Warmup:** start small, then ramp up. This page uses warmup as a teaching pattern for smaller early update scale, but the listed Smith/SGDR sources do not by themselves source large-model warmup practice or Adam warmup rationale.
+- **Decay:** reduce the learning-rate multiplier later so the scalar update scale is smaller late in training.
 
-Modern LLM training commonly uses: warmup -> (optional plateau) -> cosine decay.
+This page includes warmup followed by decay as a teaching shape, but this source-checked claim focuses only on learning-rate range tests, cyclical policies, and cosine annealing/restarts.
 
 ## Math
 
-Let $\\eta_t$ be the learning rate at step $t$.
+Let $\eta_t$ be the learning rate at step $t$.
 
-**Linear warmup** to a peak $\\eta_{\\max}$ over $T_w$ steps:
+**Linear warmup** to a peak $\eta_{\max}$ over $T_w$ steps:
 
-$$\\eta_t = \\eta_{\\max}\\cdot \\frac{t}{T_w},\\qquad t\\le T_w.$$
+$$
+\eta_t = \eta_{\max}\cdot \frac{t}{T_w},\qquad t\le T_w.
+$$
 
-**Cosine decay** from $\\eta_{\\max}$ to $\\eta_{\\min}$ over $T$ total steps (after warmup):
+**Cosine decay** from $\eta_{\max}$ to $\eta_{\min}$ over $T$ total steps (after warmup):
 
-$$\\eta_t = \\eta_{\\min} + \\tfrac12(\\eta_{\\max}-\\eta_{\\min})\\left(1+\\cos\\left(\\pi\\,\\frac{t-T_w}{T-T_w}\\right)\\right),\\qquad t\\ge T_w.$$
+$$
+\eta_t = \eta_{\min} + \tfrac12(\eta_{\max}-\eta_{\min})\left(1+\cos\left(\pi\,\frac{t-T_w}{T-T_w}\right)\right),\qquad t\ge T_w.
+$$
 
 A simple classical alternative is:
 
-$$\\eta_t = \\frac{\\eta_0}{\\sqrt{t+1}}.$$
+$$
+\eta_t = \frac{\eta_0}{\sqrt{t+1}}.
+$$
 
-The schedule interacts with curvature and sharpness: if the learning rate is too high relative to local curvature, training becomes unstable (edge-of-stability behavior).
+Schedules can interact with curvature and sharpness: if the learning rate is too high relative to local curvature, training can become unstable. The edge-of-stability connection is background context, not checked by the Smith/SGDR claim here.
 
 ## Code
 
@@ -54,4 +60,3 @@ print("avg lr:", float(lr.mean()))
 ## Interactive Demo
 
 Use the demo to tune warmup length and decay style, and build intuition for how "big early steps" vs "small late steps" show up as different curves.
-

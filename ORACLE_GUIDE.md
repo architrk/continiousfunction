@@ -1,178 +1,173 @@
-# Oracle CLI Guide (Browser Engine, Manual Login)
+# Oracle CLI Guide
 
-This repo uses **Oracle CLI** in **browser mode** to run deep discovery/review/implementation prompts with large file context.
+This repo uses `@steipete/oracle` browser mode for second-model review and large-context checks.
 
-Key principle: **manual login always**. We do that by running Oracle against a **dedicated Chrome profile** where you are already signed into ChatGPT.
+## Correct Setup
 
----
-
-## Oracle-First Workflow (Continuous Function)
-
-Oracle is not optional here. We use it for:
-
-- discovery (what to build next)
-- deepening (math + intuition + misconceptions)
-- implementation (data + viz + wiring)
-- connecting (prereqs/leads_to/related graph edges)
-- review/refinement (quality, a11y, performance, correctness)
-
-**Always save outputs** to `responses/` with `--slug` + `--write-output` so the repo accumulates durable research.
-
-Typical per-concept query set (repeat until it’s great):
-- discover (batch picks)
-- deepen (math + misconceptions)
-- implement/migrate (concept.yaml + content.mdx + viz.tsx)
-- connect (edges + learning paths)
-- review (quality + diffs)
-
-### Slug Rules (Oracle 0.8.x)
-
-`--slug` must be **3-5 words**. Hyphen-separated slugs count as words, so keep them short.
-
-Good examples:
-- `cf-discovery-next5-20260216`
-- `cf-deepen-diffusion-20260216`
-- `cf-implement-rlhf-20260216`
-
-Avoid long title slugs (they will be truncated).
-
----
-
-## Quick Start (Recommended: Remote Chrome Profile)
-
-1. Start a dedicated Chrome instance with a persistent profile + DevTools port.
-
-Recommended (macOS helper):
+Use Oracle's documented macOS browser flow:
 
 ```bash
-./scripts/oracle/start-chrome-profile.sh 9223 "$HOME/ChromeOracleProfileA"
+oracle --engine browser --browser-manual-login
 ```
 
-Alternative (manual command; less reliable on macOS):
+For this repo, the persistent Oracle browser profile is fixed at:
 
-```bash
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-  --remote-debugging-port=9223 \
-  --user-data-dir "$HOME/ChromeOracleProfileA" \
-  --no-first-run --no-default-browser-check \
-  "https://chatgpt.com/" >/dev/null 2>&1 &
+```text
+~/.oracle/browser-profile-continuous-function
 ```
 
-2. Verify DevTools is reachable:
+That profile must be logged into ChatGPT as:
 
-```bash
-curl -sS --max-time 2 http://127.0.0.1:9223/json/version
+```text
+Archit Khare / adrinkscoffee@gmail.com
 ```
 
-3. In that Chrome window, **log into ChatGPT manually** (once). Keep the window open.
+This is separate from normal Chrome `Profile 2`. That is intentional: Oracle's docs recommend `--browser-manual-login` on macOS because it avoids copying cookies from normal Chrome and avoids macOS Keychain permission failures. Do not use ad hoc `--remote-chrome` profiles for this repo.
 
-4. Run Oracle against that Chrome session:
+## First Login
+
+Run:
 
 ```bash
-./scripts/oracle/run.sh 9223 cf-some-query-20260216 \
-  prompts/cf-discovery-next-5.txt responses/cf-some-query-20260216.md \
+./scripts/oracle/login.sh
+```
+
+In the opened Oracle Chrome window, sign into ChatGPT with `adrinkscoffee@gmail.com`, then leave that window/profile available. Future runs reuse the same profile.
+
+## Normal Runs
+
+Use:
+
+```bash
+./scripts/oracle/run.sh <slug> <prompt-file> <write-output> [--file <path> ...]
+```
+
+Example:
+
+```bash
+./scripts/oracle/run.sh cf-discovery-next5-20260501 \
+  prompts/cf-discovery-next-5.txt responses/cf-discovery-next5-20260501.md \
   --file data/foundationsData.ts \
   --file data/visualizationMappings.ts
 ```
 
----
+The wrapper forces:
 
-## Key Flags (Oracle 0.8.x)
+- `ORACLE_BROWSER_PROFILE_DIR=~/.oracle/browser-profile-continuous-function`
+- `--engine browser`
+- `--browser-manual-login`
+- `--browser-keep-browser`
+- `--browser-model-strategy ignore`
+- `--browser-auto-reattach-delay 5s`
+- `--browser-auto-reattach-interval 3s`
+- `--browser-auto-reattach-timeout 60s`
+- `--browser-attachments ${ORACLE_BROWSER_ATTACHMENTS:-never}`
+- no `--browser-bundle-files` unless `ORACLE_BROWSER_BUNDLE_FILES=1` and uploads are enabled
+- `--write-output responses/...`
 
-- `--engine browser`: run via ChatGPT automation (required for browser sessions)
-- `--model "gpt-5 pro"` (or `"gpt-5.2-pro"`): which model to select in ChatGPT
-- `--remote-chrome host:port`: attach to a running Chrome DevTools endpoint (preferred for reliability + parallel runs)
-- `--chatgpt-url <url>`: optional, force a specific ChatGPT URL (useful for projects/workspaces)
-- `--slug "<3-5-words>"`: stable session id (keep it short; see Slug Rules above)
-- `--prompt "<text>"`: prompt text
-- `--file <paths...>`: attach files/dirs/globs (quote globs; prefix with `!` to exclude)
-- `--write-output responses/<file>.md`: save the final assistant message
-- `--browser-attachments always`: always upload attachments (more reliable than pasting huge bundles)
-- `--browser-bundle-files`: upload a single archive instead of many files
-- `--timeout auto|<seconds>`: overall timeout
-- `--heartbeat 60`: periodic status updates (helps when runs are long)
-- `--force`: rerun even if Oracle thinks an identical prompt is already running
+The default file-context mode is intentionally `never`. In Oracle's browser docs, that means text files from
+`--file` are pasted inline into the ChatGPT composer instead of uploaded as file chips. For this repo that is the
+safest default because most Oracle work is source-code review, and inline text is easier for GPT-Pro to inspect
+than a detachable upload.
 
----
-
-## Parallel Sessions (Manual Login)
-
-To run multiple queries in parallel, start multiple Chrome instances on different ports and profiles:
+To force true uploads, use:
 
 ```bash
-./scripts/oracle/start-chrome-profile.sh 9223 "$HOME/ChromeOracleProfileA"
-./scripts/oracle/start-chrome-profile.sh 9224 "$HOME/ChromeOracleProfileB"
+ORACLE_BROWSER_ATTACHMENTS=always ORACLE_BROWSER_BUNDLE_FILES=0 ./scripts/oracle/run.sh ...
 ```
 
-Log into ChatGPT once in each window, then run:
+To restore Oracle's upstream automatic behavior, use:
 
 ```bash
-oracle --engine browser --model "gpt-5 pro" --wait \
-  --remote-chrome 127.0.0.1:9223 \
-  --slug "cf-query-a" \
-  --prompt "..." \
-  --file "..." \
-  --write-output "responses/cf-query-a.md" &
-
-oracle --engine browser --model "gpt-5 pro" --wait \
-  --remote-chrome 127.0.0.1:9224 \
-  --slug "cf-query-b" \
-  --prompt "..." \
-  --file "..." \
-  --write-output "responses/cf-query-b.md" &
+ORACLE_BROWSER_ATTACHMENTS=auto ./scripts/oracle/run.sh ...
 ```
 
----
+Do not enable bundled browser uploads by default. Bundled uploads can create ChatGPT attachment chips such as
+`attachments-bundle(198).txt`; Oracle's upload-readiness check can then wait forever for the exact bundle filename
+and fail with `Attachments never reached a clickable send button before timeout.`
 
-## Monitoring + Recovery
+This repo also carries a local patch helper for Oracle's browser upload-readiness check:
 
 ```bash
-oracle status --hours 6 --limit 30
-oracle session <slug>
-cat ~/.oracle/sessions/<slug>/output.log
+node scripts/oracle/patch-local-attachment-readiness.js
 ```
 
-If `--write-output` is missing, recover from the log:
+Run it after reinstalling or upgrading `@steipete/oracle`. It teaches the local Oracle install to accept the current
+ChatGPT file-chip text pattern where uploaded files may appear as `name(123).ext` followed by a `Document` label,
+even when the older chip selectors return no nodes.
+
+## Preview Before Sending
 
 ```bash
-awk 'BEGIN{found=0} /^Answer:/{found=1; next} {if(found) print}' \
-  ~/.oracle/sessions/<slug>/output.log > responses/<slug>.recovered.md
+./scripts/oracle/run.sh cf-preview-20260501 \
+  prompts/cf-quality-review-concept.txt responses/cf-preview-20260501.md \
+  --dry-run summary \
+  --file components/foundations \
+  --file "!components/foundations/*.test.tsx"
 ```
 
----
+For serious runs with files, preview first and confirm the delivery path:
 
-## Common Pitfalls
+- `includes N inline files` means the files will be pasted into the prompt.
+- `attachments excluded` means the prompt will rely on file uploads.
+- If the preview unexpectedly switches to uploads, either reduce the file set or run with
+  `ORACLE_BROWSER_ATTACHMENTS=never`.
 
-- **zsh bracket paths:** quote files like `--file 'pages/foundations/[id].tsx'`.
-- **Stale-tab capture:** keep a single ChatGPT tab open per Oracle Chrome profile; if output looks unrelated, rerun with a new `--slug` and `--force`.
-- **Too much parallelism:** keep to 2-4 browser sessions at a time.
+## Attachment Smoke Test
 
----
-
-## Prompt Templates In This Repo
-
-We keep reusable Oracle prompts under `prompts/` (and write outputs under `responses/`).
-
-Common templates:
-
-- `prompts/cf-discovery-next-5.txt` (pick next concepts)
-- `prompts/cf-deepen-concept.txt` (deepen one concept)
-- `prompts/cf-implement-migrate-concept.txt` (migrate a legacy concept into `content/`)
-- `prompts/cf-connect-concepts.txt` (improve graph edges + learning paths)
-- `prompts/cf-quality-review-concept.txt` (quality review + minimal diffs)
-
-Most templates include placeholders like `[CONCEPT_ID]` / `[CONCEPT_TITLE]`; fill them in before running.
-
-Examples:
+Before trusting true browser uploads after a ChatGPT UI change, run:
 
 ```bash
-./scripts/oracle/run.sh 9223 cf-discovery-next5-20260216 \
-  prompts/cf-discovery-next-5.txt responses/cf-discovery-next5-20260216.md \
-  --file data/foundationsData.ts \
-  --file data/visualizationMappings.ts
-
-./scripts/oracle/run.sh 9223 cf-deepen-diffusion-20260216 \
-  prompts/cf-deepen-concept.txt responses/cf-deepen-diffusion-20260216.md \
-  --file content/domains/generative-models/concepts/diffusion/content.mdx \
-  --file content/domains/generative-models/concepts/diffusion/concept.yaml
+./scripts/oracle/smoke-attachments.sh
 ```
+
+The smoke creates one tiny markdown attachment under `responses/oracle-smoke/`, asks GPT-Pro to echo a sentinel
+from that file, and fails unless the saved response contains both success markers.
+
+Useful variants:
+
+```bash
+# Test Oracle's inline file path, without upload chips.
+ORACLE_BROWSER_ATTACHMENTS=never ./scripts/oracle/smoke-attachments.sh
+
+# Test true upload chips without bundling.
+ORACLE_BROWSER_ATTACHMENTS=always ORACLE_BROWSER_BUNDLE_FILES=0 ./scripts/oracle/smoke-attachments.sh
+```
+
+## Sessions
+
+```bash
+oracle status --hours 72 --limit 50
+oracle session <slug> --render
+tail -f ~/.oracle/sessions/<slug>/output.log
+```
+
+If a browser run detaches or times out, reattach to the saved session instead of starting a duplicate request.
+
+Do not count a GPT-Pro/Oracle query as submitted just because a browser tab exists. A valid run should have at
+least one of these:
+
+- a completed Oracle session and non-empty `--write-output` file
+- `~/.oracle/sessions/<slug>/meta.json` showing `browser.runtime.promptSubmitted: true`
+- a ChatGPT conversation whose composer is empty and whose response has started
+
+If an upload run fails with `Attachments never reached a clickable send button before timeout`, do not retry the
+same bundled-upload command. First reapply the local readiness patch and run the attachment smoke:
+
+```bash
+node scripts/oracle/patch-local-attachment-readiness.js
+ORACLE_BROWSER_ATTACHMENTS=always ORACLE_BROWSER_BUNDLE_FILES=0 ./scripts/oracle/smoke-attachments.sh
+```
+
+If true uploads are still failing, switch source-code reviews back to inline mode:
+
+```bash
+ORACLE_BROWSER_ATTACHMENTS=never ORACLE_BROWSER_BUNDLE_FILES=0 ./scripts/oracle/run.sh ...
+```
+
+## Do Not Use
+
+- Do not use normal Chrome `Profile 2` cookie-copy as the default path.
+- Do not use `scripts/oracle/start-chrome-profile.sh`.
+- Do not use one-off `--remote-chrome` profiles unless the user explicitly asks.
+- Do not delete `~/.oracle/browser-profile-continuous-function` unless you intentionally want to sign in again.

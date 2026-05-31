@@ -1,0 +1,20 @@
+name = "continuous-function-ai-companion"
+main = "worker.mjs"
+compatibility_date = "2026-05-02"
+
+[vars]
+# Comma-separated allowlist. Include production and local dev origins.
+ALLOWED_ORIGINS = "https://continuousfunction.ai,https://www.continuousfunction.ai,http://localhost:3003,http://127.0.0.1:3003"
+
+# Set this to the model you choose for the deployed gateway.
+# Keep model choice server-side so the static site is not coupled to a provider default.
+OPENAI_MODEL = "REPLACE_WITH_MODEL"
+
+# Optional tuning.
+RATE_LIMIT_PER_MINUTE = "30"
+MAX_PROMPT_CHARS = "12000"
+OPENAI_MAX_OUTPUT_TOKENS = "700"
+OPENAI_TEMPERATURE = "0.35"
+
+# Store the provider key as a Worker secret, not in this file:
+# npx wrangler secret put OPENAI_API_KEY

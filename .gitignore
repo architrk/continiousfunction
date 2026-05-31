@@ -3,6 +3,8 @@ node_modules/
 
 # Next.js build output
 .next/
+.next.*/
+.next-broken-*/
 out/
 
 # Production
@@ -20,6 +22,10 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.preview.local
+.dev.vars
+.dev.vars.*
+gateway/**/wrangler.toml
 
 # Vercel
 .vercel
@@ -49,6 +55,11 @@ oracle-queries/
 # Testing
 coverage/
 
+# Generated video renders
+artifacts/videos/
+public/videos/
+
 # Ralph Loop (local development only - not deployed)
 RALPH_CONTINUOUS_FUNCTION.md
 state/
+.env*.local

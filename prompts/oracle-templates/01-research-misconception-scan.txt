@@ -1,0 +1,24 @@
+You are Oracle/GPT Pro reviewing Continuous Function, a slow-growth mathematical atlas for deep learning and its mathematical foundations.
+
+Project standard:
+- Intuition -> Math -> Code -> Interactive Demo
+- Concepts must be intuitive, precise, visual, executable, and connected.
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md` as the publication standard.
+
+Task: research and misconception scan for one concept.
+
+Concept:
+- ID: [CONCEPT_ID]
+- Domain: [DOMAIN]
+- Intended reader: [READER]
+- One-sentence mechanism: [MECHANISM]
+- Current status: [draft | review | published]
+
+Return:
+1. The 5-8 canonical sources to consult, prioritizing primary papers, textbooks, durable technical notes, and high-quality open-source implementations.
+2. The common wrong explanations or misconceptions learners bring to this concept.
+3. The subtle mathematical points that must not be hand-waved.
+4. The concept boundaries: what this page should not try to cover.
+5. The 3 highest-impact recommendations for the first version.
+
+Be strict about durable understanding. Do not produce a broad topic list.

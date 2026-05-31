@@ -3,10 +3,10 @@
 import { useMemo, Suspense, lazy } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
-import ExplorableLayout, { useExplorable } from '../../components/ExplorableLayout'
-import ExplorableSection from '../../components/ExplorableSection'
-import KernelHeatmap from '../../components/KernelHeatmap'
-import TimeSeriesPlot from '../../components/TimeSeriesPlot'
+import ExplorableLayout, { useExplorable } from '@/components/explorable/ExplorableLayout'
+import ExplorableSection from '@/components/explorable/ExplorableSection'
+import KernelHeatmap from '@/components/charts/KernelHeatmap'
+import TimeSeriesPlot from '@/components/charts/TimeSeriesPlot'
 import { Matrix2D, TimeSeries, softmax } from '../../lib/mathObjects'
 
 // Explore in depth link component
@@ -32,17 +32,17 @@ function ExploreLink({ href, label = 'Explore in depth' }: { href: string; label
 }
 
 // Import visualization components from foundations (canonical source with gamification)
-const AttentionMatrixViz = lazy(() => import('../../components/foundations/AttentionGeometryViz'))
-const RoPERotationViz = lazy(() => import('../../components/foundations/RoPEViz'))
-const KVCacheViz = lazy(() => import('../../components/foundations/KVCacheViz'))
-const GQAMQAComparison = lazy(() => import('../../components/foundations/GQAViz'))
-const SwiGLUActivation = lazy(() => import('../../components/foundations/SwiGLUViz'))
-const MoERouting = lazy(() => import('../../components/foundations/MoERoutingViz'))
-const SSMRecurrence = lazy(() => import('../../components/foundations/SSMViz'))
-const MambaSelectivity = lazy(() => import('../../components/foundations/MambaViz'))
-const AttentionIsAllYouNeed = lazy(() => import('../../components/foundations/TransformerArchitectureViz'))
-const LayerNormRMSNorm = lazy(() => import('../../components/foundations/LayerNormViz'))
-const SlidingWindowAttention = lazy(() => import('../../components/foundations/SlidingWindowViz'))
+const AttentionMatrixViz = lazy(() => import('@/components/foundations/AttentionGeometryViz'))
+const RoPERotationViz = lazy(() => import('@/components/foundations/RoPEViz'))
+const KVCacheViz = lazy(() => import('@/components/foundations/KVCacheViz'))
+const GQAMQAComparison = lazy(() => import('@/components/foundations/GQAViz'))
+const SwiGLUActivation = lazy(() => import('@/components/foundations/SwiGLUViz'))
+const MoERouting = lazy(() => import('@/components/foundations/MoERoutingViz'))
+const SSMRecurrence = lazy(() => import('@/components/foundations/SSMViz'))
+const MambaSelectivity = lazy(() => import('@/components/foundations/MambaViz'))
+const AttentionIsAllYouNeed = lazy(() => import('@/components/foundations/TransformerArchitectureViz'))
+const LayerNormRMSNorm = lazy(() => import('@/components/foundations/LayerNormViz'))
+const SlidingWindowAttention = lazy(() => import('@/components/foundations/SlidingWindowViz'))
 
 function LoadingFallback() {
   return (

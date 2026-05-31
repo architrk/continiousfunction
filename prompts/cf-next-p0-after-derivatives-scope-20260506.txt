@@ -1,0 +1,42 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current state:
+
+- The repo is on private branch `private/research-learning-loop-20260505`.
+- The active product goal is to make the site deep, joyful, rigorous, interactive, and worth returning to, while growing slowly through review-gated concept slices.
+- We are in the P0 prediction-first demo retrofit pass.
+- Recently completed in-demo P0 slices: Reverse-Mode Autodiff, Probability Basics, Random Variables, Variational Autoencoders, Tree Search Reasoning, Dot Product, Vector Spaces, and Derivatives.
+- The latest shipped slice was `calculus/derivatives`: secant-to-hidden-tangent relation reveal. Oracle first returned no-publish, the fix review returned publish, and it was committed/deployed.
+
+Constraints:
+
+- Keep the slice mechanism-first and bounded.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, broad platform work, or large curriculum rewrites.
+- Prefer one concept route or visualizer.
+- The implementation should support static export and the existing shared demo-state checkpoint.
+- The result should hide the answer-bearing mechanism until the learner makes a concrete prediction, then reveal compact measured state for the AI companion handoff.
+
+Question:
+
+Pick the next best P0 concept-specific retrofit after Derivatives.
+
+Please compare the attached candidate concept files and choose one next slice. I want the slice that most improves the north-star learning experience per unit of implementation risk.
+
+Candidate bias:
+
+- Strong adjacent candidates are `calculus/computation-graphs` and `calculus/backpropagation`, because they are critical prerequisites and currently seem to emit measured state without the same local prediction-first answer-hiding rigor as the newly completed Derivatives and Reverse-Mode Autodiff slices.
+- I am also attaching a few already-prediction-oriented concepts as comparison points so you can avoid repeating a slice that is already good enough.
+
+Return:
+
+1. The single recommended next concept/route.
+2. The exact prediction question learners should answer.
+3. What must remain visible before reveal.
+4. What must be hidden before reveal.
+5. The classifier or expected-answer logic.
+6. The compact measured demo state to emit after reveal.
+7. The stale-state clearing rules.
+8. The smallest test/browser checks required.
+9. Any no-go warnings that would make this slice too broad.
+
+Keep it practical and specific enough that Codex can implement the next slice without asking another scoping question.

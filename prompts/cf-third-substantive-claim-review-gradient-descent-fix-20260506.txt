@@ -1,0 +1,16 @@
+Project: Continuous Function.
+
+This is a narrow fix review after Oracle returned PUBLISH for `cf-third-substantive-claim-review-gradient-descent` with one non-blocking precision note.
+
+Prior non-blocking note:
+- The Gradient Descent evidence review summary would be cleaner if it explicitly mentioned the Taylor/local-approximation evidence and the Euclidean-norm scope.
+
+Fix applied:
+- The summary now says Goodfellow gives directional derivative `u^T grad f`, `-grad` as downhill, the update `x' = x - eps grad f`, positive learning rate `eps`, and the Taylor expansion evidence that curvature can make too-large steps move uphill.
+- It also says Boyd frames descent as direction plus step size and states Euclidean steepest descent coincides with gradient descent.
+- `npm run generate-claim-evidence-review-queue`, `npm run validate-content`, and `git diff --check` pass locally after the fix.
+
+Please review the attached Gradient Descent concept YAML and return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the prior precision note is resolved.
+3. Any remaining blocker fixes only.

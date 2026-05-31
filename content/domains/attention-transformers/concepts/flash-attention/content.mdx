@@ -6,45 +6,59 @@ title: "FlashAttention: IO-Aware Attention"
 
 Standard attention is conceptually simple but computationally awkward on GPUs:
 
-1. Compute the $T\\times T$ score matrix $S=QK^\\top/\\sqrt{d_k}$.
-2. Apply a row-wise softmax to get attention weights $P=\\mathrm{softmax}(S)$.
+1. Compute the $T\times T$ score matrix $S=QK^\top/\sqrt{d_k}$.
+2. Apply a row-wise softmax to get attention weights $P=\mathrm{softmax}(S)$.
 3. Multiply by values: $PV$.
 
-The problem is step (1): materializing a $T\\times T$ matrix is huge, and moving it to and from GPU memory (HBM) is slow. For long sequences, attention is often **memory-bandwidth bound** rather than FLOPs bound.
+The problem is step (1): materializing a $T\times T$ matrix is huge, and moving it to and from GPU memory (HBM) is slow. For long sequences, attention is often **memory-bandwidth bound** rather than FLOPs bound.
 
-FlashAttention is the idea: keep computations in fast on-chip SRAM by tiling, and compute the softmax in a streaming way so you never need to store the full $T\\times T$ matrix.
+FlashAttention is the idea: keep computations in fast on-chip SRAM by tiling, and compute the softmax in a streaming way so you never need to store the full $T\times T$ matrix.
 
 ## Math
 
-### Standard attention (and the $T\\times T$ issue)
+### Standard attention (and the $T\times T$ issue)
 
-For one head, with $Q,K,V\\in\\mathbb R^{T\\times d_k}$:
+For one head, with $Q,K,V\in\mathbb R^{T\times d_k}$:
 
-$$\\mathrm{Attn}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^\\top}{\\sqrt{d_k}}\\right)V.$$
+$$
+\mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V.
+$$
 
-The attention weights matrix is $P\\in\\mathbb R^{T\\times T}$. If you store it explicitly, memory scales like $O(T^2)$.
+The attention weights matrix is $P\in\mathbb R^{T\times T}$. If you store it explicitly, memory scales like $O(T^2)$.
 
 ### Online softmax (streaming trick)
 
-For a single row of scores $s\\in\\mathbb R^T$, the softmax uses:
+For a single row of scores $s\in\mathbb R^T$, the softmax uses:
 
-$$\\mathrm{softmax}(s)_j = \\frac{\\exp(s_j-m)}{\\sum_{k=1}^T \\exp(s_k-m)},\\qquad m=\\max_k s_k.$$
+$$
+\mathrm{softmax}(s)_j = \frac{\exp(s_j-m)}{\sum_{k=1}^T \exp(s_k-m)},\qquad m=\max_k s_k.
+$$
 
-You can compute this in blocks without ever storing all scores at once by maintaining a running max $m$ and a running normalizer $\\ell$.
+You can compute this in blocks without ever storing all scores at once by maintaining a running max $m$ and a running normalizer $\ell$.
 
 For a block $b$ of scores with:
 
-$$m_b=\\max(s_b),\\qquad \\ell_b=\\sum_{j\\in b}\\exp(s_j-m_b),\\qquad o_b=\\sum_{j\\in b}\\exp(s_j-m_b)\\,v_j,$$
+$$
+m_b=\max(s_b),\qquad \ell_b=\sum_{j\in b}\exp(s_j-m_b),\qquad o_b=\sum_{j\in b}\exp(s_j-m_b)\,v_j,
+$$
 
 you can merge block statistics with the running state via:
 
-$$m\\leftarrow \\max(m,m_b),$$
-$$\\ell\\leftarrow e^{m_{old}-m}\\,\\ell_{old}+e^{m_b-m}\\,\\ell_b,$$
-$$o\\leftarrow e^{m_{old}-m}\\,o_{old}+e^{m_b-m}\\,o_b.$$
+$$
+m\leftarrow \max(m,m_b),
+$$
+$$
+\ell\leftarrow e^{m_{old}-m}\,\ell_{old}+e^{m_b-m}\,\ell_b,
+$$
+$$
+o\leftarrow e^{m_{old}-m}\,o_{old}+e^{m_b-m}\,o_b.
+$$
 
 At the end, the attention output for that row is:
 
-$$\\mathrm{out}=\\frac{o}{\\ell}.$$
+$$
+\mathrm{out}=\frac{o}{\ell}.
+$$
 
 This is the core idea: you can compute $PV$ without ever materializing $P$.
 
@@ -83,5 +97,4 @@ print("full:", round(out_full, 6), "stream:", round(out_stream, 6), "diff:", rou
 
 ## Interactive Demo
 
-No demo yet for this concept. A strong demo would visualize tiling (SRAM vs HBM), show the online softmax state $(m,\\ell,o)$ updating per block, and compare memory traffic vs a naive implementation as $T$ grows.
-
+The demo below asks you to predict the memory bottleneck first, then reveal how the online softmax state $(m,\ell,o)$ is merged across tiles. The key invariant is that FlashAttention computes exact attention while avoiding a stored $T\times T$ probability matrix.

@@ -8,8 +8,9 @@ importance: critical
 prerequisites:
   - vector-spaces
 leads_to:
-  - projections
   - norms
+  - linear-transformations
+  - attention-transformers
 related:
   - linear-independence
   - basis-and-span
@@ -21,8 +22,34 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: deisenroth-2020-mml
+    kind: book
+    title: "Mathematics for Machine Learning"
+    authors: "Deisenroth, Faisal, and Ong"
+    year: 2020
+    url: "https://mml-book.github.io/book/mml-book.pdf"
+    note: "Grounds inner products, vector geometry, and the linear algebra notation reused across attention and optimization."
+claim_checks:
+  - id: dot-product-alignment-projection
+    status: source-checked
+    claim: "For vectors u,v in R^n, the dot product sum_i u_i v_i is a coordinate multiply-sum that also encodes geometry: u dot v = ||u||||v||cos(theta), so sign and size track alignment, cosine similarity removes lengths, and proj_v(u) scales v by (u dot v)/(v dot v)."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "MML substantively supports the claim: it defines the R^n dot product as x^T y=sum_i x_i y_i, uses inner products to induce norms/angles/orthogonality, defines cos omega=<x,y>/(||x||||y||), and derives projection onto span(b) as (<x,b>/<b,b>)b. With the dot product this is proj_v(u)=(u dot v)/(v dot v)v; local math/code/demo match."
+    source_ids:
+      - deisenroth-2020-mml
+    support: "MML introduces inner products as algebraic operations with induced norms, angles, orthogonality, and projections; the page's formulas and demo instantiate those relationships in 2D and connect normalized dot products to ML similarity."
+    caveat: "Applies to finite-dimensional real vectors with v != 0, and to angle/cosine only when both vectors are nonzero. Dot-product magnitude still includes vector lengths; cosine normalizes direction only. Excludes complex, indefinite, kernelized, or attention-scaled variants."
+    object_refs:
+      - "#source-span-deisenroth-2020-mml"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "The dot product measures alignment: it connects angles, lengths, and projections, and underlies cosine similarity in ML."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-01"
 estimated_read_time: 12

@@ -1,0 +1,79 @@
+Project: Continuous Function, a slow-growth mathematical atlas for deep learning concepts.
+
+Concept under review:
+- Domain: llm-systems
+- Slug: structured-decoding
+- Title: Structured Decoding: Token Masks From Schema Automata
+- Current status: review
+- It follows Decoding & Sampling and Tokenization/Vocabulary, and connects to LLM Serving, Tree Search Reasoning, Speculative Decoding, and later RAG/tool-use concepts.
+
+Context:
+Oracle scoped this page as a narrow DFA mask page, not a tool-calling or JSON-product survey. I implemented a finite token-level automaton for an exact-order retrieval-call schema:
+
+{"tool":("retrieve"|"lookup"),"source":("docs"|"tickets"),"k":(1|2)} <eos>
+
+The page teaches:
+- the model still produces ordinary next-token logits
+- structured decoding carries a finite schema automaton state
+- invalid next tokens are masked to probability zero and remaining valid tokens are renormalized
+- allowed tokens mean tokens that can still reach an accepting state
+- top-p should be applied after the hard schema mask
+- the guarantee is only membership in the formal schema language, not truth, semantic correctness, safety, or correct tool use
+- serving systems may pay/carry mask computation overhead during decode
+
+Interactive demo:
+- title: Schema Mask Explorer
+- fixed vocabulary and DFA matching the MDX witness
+- controls: constraint on/off, model profile, sampler, temperature, top-p after mask, seed, Step, Run to EOS, Reset
+- profiles:
+  - format-confused: raw model strongly prefers invalid `"DROP"` and `"extra"`
+  - schema-friendly: valid tokens preferred
+  - semantic-mismatch: schema-valid output chooses `"tickets"` even though the hidden intended source is `"docs"`
+- metrics: accepted, invalid prefix, current state, |M(q)|, rejection mass, semantic task, forced steps, tokens emitted, naive checks, cached checks, intended source, selected source
+
+Local verification passed:
+- npm run generate-content
+- npm run validate-content: 0 warnings, 0 errors
+- npm run typecheck
+- deterministic Python witness:
+  - allowed(0) == ["{"]
+  - allowed(3) == {'"retrieve"', '"lookup"'}
+  - allowed(13) == ["<eos>"]
+  - unconstrained bad_format greedily emits `"DROP"` and is not accepted
+  - constrained bad_format emits the exact valid retrieval JSON token sequence ending in `<eos>`
+  - masked probability for `"DROP"` is 0 under the q3 mask
+  - rejection mass at q3 under bad_format is > 0.90
+  - semantic_mismatch is accepted but parses source == "tickets"
+- desktop Chrome route check at 1440px:
+  - no KaTeX errors
+  - no document horizontal overflow
+  - demo shell and metrics present
+  - constrained format-confused Run to EOS accepts and blocks `"DROP"`
+  - unconstrained format-confused Run to EOS fails immediately with `"DROP"`
+  - semantic-mismatch Run to EOS accepts and shows wrong source
+- mobile Chrome route check at 390px:
+  - no KaTeX errors
+  - no document horizontal overflow
+  - demo renders
+- npm run build passed; known existing KaTeX display-mode newline warnings still appear elsewhere in the content set
+
+Attached files:
+- Oracle scope response for this page
+- concept.yaml metadata
+- content.mdx lesson
+- viz.tsx route export
+- StructuredDecodingViz.tsx demo
+- adjacent Decoding & Sampling and LLM Serving pages
+- Tree Search Reasoning page for search-state handoff
+
+Please do a rigorous publish/no-publish review.
+
+Return:
+1. Verdict: "publish as is", "publish after fixes", or "keep in review".
+2. Blocking issues only, with exact file-level fixes.
+3. Check math-demo-code equivalence: do the content, Python witness, and React demo implement the same finite vocabulary/DFA/logits profiles?
+4. Check whether the formal-language guarantee is precise and not overclaimed.
+5. Check whether the semantic-mismatch caveat is strong enough.
+6. Check atlas graph fit: prerequisites, leads_to, related, and whether this should publish after Decoding & Sampling.
+
+Avoid broad roadmap suggestions. I need a release review for this exact page.

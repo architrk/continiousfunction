@@ -1,0 +1,43 @@
+Continuous Function next-slice scope request after `claim-check-object-handoff-v1`.
+
+Project context:
+- Next.js/React concept atlas for deep learning and mathematical foundations.
+- North star: make learning joyful to return to, deeply intuitive, visually rich, interactive, mathematically serious, source-aware, and eventually account-backed for learner memory/research collaboration.
+- Current repo branch is `private/research-learning-loop-20260505`.
+- The public atlas should remain static/cacheable for now. Do not choose a slice that requires Vercel account setup, Clerk credentials, Neon credentials, executed migrations, billing, or external account work.
+- We use review-gated bounded slices: scope with Oracle, implement narrowly, review with Oracle, fix blockers, validate, then commit/push.
+
+Recently completed:
+- `content-object-manifest-spine`: deterministic object-key manifest with 851 objects.
+- `object-memory-contract-v1`: repo-only Drizzle/Postgres schema/migration contract and validators, no runtime DB.
+- `local-object-next-action-journal-v1`: browser-local per-object draft note/next-action journal in ResearchReadingRoom.
+- `claim-check-object-handoff-v1`: structured `claim_checks[]` are exact selectable claim objects with manifest-aligned object keys, exact Claim Review card anchors, full support/caveat/object-ref prompt handoff, safe witness rendering, strict invalid-id validation. Oracle fix review returned PUBLISH.
+
+Audit says the broad goal is still not complete:
+1. Claim-level source quality still needs per-page review before calling the atlas research-grade.
+2. Prediction-first checkpoints are visible globally, but older demos still need deeper concept-specific pre-reveal framing and compact state emission before calling prediction-first interaction complete.
+3. Research discussion and gradual AI are object-attached and locally resumable, but not live, cross-device, account-backed, or permissioned.
+
+Local scan after the claim handoff:
+- Published concepts: 51.
+- Several platform foundations are already done enough to avoid repeating: object manifest, object-memory schema contract, local action journal, claim-check object handoff.
+- Account/deployment work is blocked on external user setup and should not be selected unless the slice is purely repo-local and does not add partial auth surfaces.
+- Potential non-account next lanes:
+  A. A new concept-specific prediction-first demo retrofit for a high-value older route.
+  B. A claim-source review quality workflow for a small cluster, without claiming the whole atlas is research-grade.
+  C. A repo-local guardrail that converts one existing manual probe into permanent validation.
+  D. A better object-attached AI/research-room UI refinement that compounds the journal and claim-check objects without requiring backend.
+
+Task:
+Pick exactly one next bounded slice that best advances the north star now.
+
+Return:
+1. Recommended slice name.
+2. Why it beats nearby alternatives now.
+3. Exact behavior contract.
+4. Files/modules to inspect first.
+5. Small implementation plan and write scope.
+6. Tests/validators/browser checks.
+7. No-go boundaries.
+
+Be strict. Avoid broad strategy, product slogans, or "do everything" advice. The answer should be concrete enough that Codex can implement the slice next without asking follow-up questions.

@@ -1,0 +1,62 @@
+Project: Continuous Function, a static-exported Next.js + TypeScript learning atlas for deep learning math. We are doing claim-evidence review. A claim may be marked `substantive-reviewed` only when the cited sources and local route witnesses actually support the bounded claim. Source IDs and object refs are review targets, not proof.
+
+Target concept:
+- `content/domains/representation-learning/concepts/sparse-autoencoders`
+
+Target claim:
+- `representation-learning/sparse-autoencoders#sae-sparse-dictionary-reconstruction`
+- Claim text: "Sparse autoencoders learn decoder dictionaries that reconstruct language-model activations from sparse latent codes, trading reconstruction error against sparsity so each activation uses a small set of active latents."
+
+Current source IDs:
+- `bricken-2023-monosemanticity`
+- `gao-2024-scaling-sae`
+
+Current object refs:
+- `#source-span-bricken-2023-monosemanticity`
+- `#source-span-gao-2024-scaling-sae`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+
+Note: `#interactive-demo` has intentionally been removed from this claim's object refs. The demo is a synthetic reconstruction-vs-sparsity teaching frontier; it is useful UX but should not be counted as proof that decoder dictionaries are learned from real LM activations.
+
+Primary-source excerpts checked locally:
+
+Bricken et al. 2023, "Towards Monosemanticity: Decomposing Language Models With Dictionary Learning":
+- They frame the desired decomposition as sparse, overcomplete dictionary learning over activations: feature directions should form an overcomplete basis, feature activations should be sparse, and this is mathematically dictionary learning.
+- They say that when decomposing models post-training, they use an MSE loss between activations and their representation in terms of the dictionary, with sparsity inhibiting superposition in the learned dictionary.
+- In "Sparse Autoencoder Setup", they describe an input bias, linear ReLU encoder, linear decoder, and training with Adam to reconstruct transformer MLP activations using MSE plus an L1 penalty to encourage sparsity.
+- In the appendix architecture description, they define encoder weights, decoder weights, hidden activations, reconstruction, and loss:
+  `f = ReLU(W_e (x - b_d) + b_e)`, `x_hat = W_d f + b_d`, `L = mean ||x - x_hat||_2^2 + lambda ||f||_1`.
+- They state that the hidden activations are the learned features and that the decoder is also referred to as the dictionary.
+- Caveat source: they explicitly caution that their features are not believed to be completely monosemantic and not all are necessarily cleanly interpretable.
+
+Gao et al. 2024, "Scaling and evaluating sparse autoencoders":
+- Abstract: SAEs extract interpretable features from a language model by reconstructing activations from a sparse bottleneck layer; studying scaling requires balancing reconstruction and sparsity objectives and dead latents.
+- They propose k-sparse autoencoders to directly control sparsity, simplifying tuning and improving the reconstruction-sparsity frontier.
+- Setup: they train on residual-stream activations and evaluate autoencoders on sparsity L0 and reconstruction MSE.
+- Baseline ReLU SAE section: for residual-stream input `x in R^d`, encoder/decoder are `z = ReLU(W_enc(x-b_pre)+b_enc)`, `x_hat = W_dec z + b_pre`, with loss `||x-x_hat||_2^2 + lambda ||z||_1`, where the first term is reconstruction MSE and the second promotes sparsity in latent activations.
+- TopK section: k-sparse autoencoders directly control active latents by keeping the k largest latents and zeroing the rest; the decoder is unchanged and the training loss is reconstruction loss. They say this enables setting L0 directly and compare the reconstruction-sparsity frontier.
+- Caveat source: Gao notes that improving reconstruction and sparsity is not the ultimate objective; autoencoder quality also needs feature metrics.
+
+What I changed before this review:
+- Upgraded `#code-witness-1` from a fixed random-dictionary sparse projection to a tiny NumPy SAE training loop. It trains `W_enc` and `W_dec` on synthetic activations, computes ReLU latents, reconstructs with `Z @ W_dec.T`, adds an L1-style sparsity gradient, normalizes decoder columns, and asserts that high `lambda` lowers average active latents while increasing reconstruction MSE.
+- Added `components/concepts/SparseAutoencodersConcept.test.tsx` to pin the first two math objects and the code witness.
+- Removed `#interactive-demo` from the claim's object refs because the demo is synthetic and partial.
+
+Review task:
+1. Decide whether the claim can now be marked `substantive-reviewed`.
+2. Check source support: do Bricken + Gao substantively support the exact claim, with the caveats above?
+3. Check local witness alignment:
+   - `#math-object-1`: ReLU encoder to sparse latent code and decoder reconstruction.
+   - `#math-object-2`: reconstruction loss plus `lambda ||z||_1` sparsity.
+   - `#code-witness-1`: tiny learned encoder/decoder SAE showing high-lambda sparsity vs reconstruction tradeoff.
+4. Check whether excluding `#interactive-demo` from object refs is the right conservative choice.
+5. Return a verdict: PASS or BLOCK. If BLOCK, list the smallest required patch. If PASS, provide a short evidence_review summary suitable for `concept.yaml` and any caveat wording improvements.
+
+Attached files:
+- concept metadata and content
+- route viz wrapper
+- underlying SparseAutoencoderViz for demo caveat check
+- focused witness test
+- content loader test expectation

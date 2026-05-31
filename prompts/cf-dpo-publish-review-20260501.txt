@@ -1,0 +1,33 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for Continuous Function.
+
+Project mission:
+- Continuous Function is a slow-growth mathematical atlas for modern AI and its foundations.
+- A serious concept must become intuitive, precise, visual, executable, and connected.
+- We prefer one excellent mechanism over a broad survey.
+- The current arc is maximum likelihood -> cross-entropy -> KL divergence -> RLHF/DPO.
+
+Concept under review:
+- ID: dpo
+- Domain: alignment
+- Intended status: published, but I suspect it is currently too thin and may borrow an over-broad visualization.
+
+Reader:
+- A motivated learner who has just read Maximum Likelihood, Cross-Entropy, KL Divergence, and RLHF.
+- They know log probabilities, KL directionality, and preference comparisons, but may not understand why DPO can remove explicit reward-model/RL training.
+
+Primary source to respect:
+- Rafailov et al., "Direct Preference Optimization: Your Language Model is Secretly a Reward Model", arXiv:2305.18290.
+
+What I need from you:
+1. Verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Blocking correctness issues in the current DPO page and demo.
+3. Blocking pedagogy issues, especially around beta, KL direction, reference-policy ratios, pairwise Bradley-Terry likelihood, and the relationship to KL-regularized RLHF.
+4. The one central learner-facing mechanism this page should teach first.
+5. A minimal high-quality interactive demo design: controls, state, visible quantities, failure regime, and what to remove.
+6. Exact patch-style guidance for `content.mdx`, `concept.yaml`, and `viz.tsx` or component structure.
+7. Code-witness guidance: what runnable snippet and assertions should appear so code mirrors the math.
+8. Graph/link audit: prerequisites, leads_to, related, and whether DPO should depend on RLHF or only relate to it.
+9. Out-of-scope ideas to ignore for now so we do not bloat this page.
+
+Be strict. Do not say "looks good" unless it actually meets the quality bar.
+Prefer refined, durable fixes over many ideas.

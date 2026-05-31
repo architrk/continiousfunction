@@ -1,0 +1,29 @@
+You are reviewing a narrow Continuous Function implementation slice.
+
+Project context:
+- Next.js/React learning atlas for deep-learning math concepts.
+- Product north star: concepts should be intuitive, prediction-first, visually inspectable, source-grounded, and resumable for future AI tutoring.
+- Current pattern for older demos: route-level `VizShell` + `VizStageAdapter`, ask the learner to predict before reveal, hide the old lab until reveal, emit compact `emitDemoState(...)` before/after reveal, and verify desktop/mobile hydration.
+- RLHF is a published alignment concept and prerequisite for DPO, Reward Hacking, KTO, and Process Reward Models. Its source-checked claim is narrow: preference-based RLHF learns a reward model from human comparisons and optimizes a policy against it; InstructGPT-style RLHF adds SFT and PPO with a KL penalty to the SFT/reference policy.
+
+What changed:
+- `content/domains/alignment/concepts/rlhf/viz.tsx` was changed from a thin dynamic import into a prediction-first route wrapper.
+- Learners now choose the finite-action policy update shape before the probability-shaping lab mounts.
+- Expected answer: "Reward reshapes reference".
+- Pre-reveal route state should not reveal the expected update except as one of several choices.
+- `components/foundations/RLHFProbabilityShapingViz.tsx` now has optional `conceptId` and `emitState` props. It emits compact measured state only when mounted by the route wrapper with `emitState`.
+
+Local checks already passed before this review:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+
+Please review only this slice. I need a publish/no-publish verdict with concrete must-fix blockers and nice-to-have improvements.
+
+Review questions:
+1. Does the prediction checkpoint teach the correct RLHF finite-action mechanism, or does it oversimplify the source-checked claim into "reward changes probabilities" without enough preference/reward-model/KL-reference precision?
+2. Is there any pre-reveal answer leakage in the wrapper title, metrics, notes, challenge, preview, result placeholder, aria labels, or emitted state?
+3. Is the post-reveal handoff to the probability-shaping lab conceptually correct and scoped to the source-checked claim?
+4. Is the optional measured demo-state emission in `RLHFProbabilityShapingViz` compact, non-leaking by default, and useful for future AI/learning-route handoff?
+5. Are there implementation, accessibility, mobile/layout, reduced-motion, or hydration hazards in the wrapper or prop change?
+6. If you recommend edits, keep them minimal and local to these files unless there is a hard reason to touch shared components.

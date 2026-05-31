@@ -1,1 +1,1 @@
-export { default } from '../../../../../components/foundations/AdamOptimizerViz'
+export { default } from '@/components/foundations/AdamOptimizerViz'

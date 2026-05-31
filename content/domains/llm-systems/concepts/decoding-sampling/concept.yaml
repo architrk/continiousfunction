@@ -22,9 +22,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: holtzman-2019-nucleus
+    kind: paper
+    title: "The Curious Case of Neural Text Degeneration"
+    authors: "Holtzman et al."
+    year: 2019
+    url: "https://arxiv.org/pdf/1904.09751v2"
+    note: "Primary nucleus sampling source. Sec. 3.1 defines the top-p vocabulary, rescales the truncated distribution, and samples from a dynamically sized nucleus; Sec. 3.3 defines temperature softmax."
+claim_checks:
+  - id: nucleus-sampling-distribution-control
+    status: source-checked
+    claim: "Decoding settings reshape the next-token distribution at inference time: temperature rescales probabilities, while nucleus sampling truncates the unreliable tail and renormalizes the remaining dynamic token set."
+    source_ids:
+      - holtzman-2019-nucleus
+    support: "Holtzman et al. define nucleus sampling as a top-p vocabulary whose cumulative probability exceeds p, then rescale that truncated distribution for sampling; the candidate set changes with distribution shape. Sec. 3.3 defines temperature softmax over logits. Local math/code/demo are toy distribution-shaping witnesses."
+    caveat: "Checks temperature softmax and nucleus top-p truncation/renormalization only; not universal decoding-quality settings, safety behavior, task optimality, top-k guarantees, repetition penalties, beam-search behavior, or production sampler implementations. Demo is toy/local only."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked Holtzman Sec. 3.1 and 3.3: temperature is softmax re-estimation over logits divided by temperature, while nucleus/top-p selects a smallest cumulative-probability set, rescales the truncated distribution, samples from a dynamically sized nucleus, and targets the unreliable tail. The first two equations, first code witness, and updated demo are toy/local distribution-shaping witnesses only."
+    object_refs:
+      - "#source-span-holtzman-2019-nucleus"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "How inference settings reshape the next-token distribution into actual model behavior: temperature, nucleus sampling, and why decoding is a control knob."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 16
-

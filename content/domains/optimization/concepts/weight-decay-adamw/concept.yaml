@@ -1,0 +1,29 @@
+id: weight-decay-adamw
+title: "Weight Decay & AdamW: Decoupled Regularization"
+domain: optimization
+slug: weight-decay-adamw
+difficulty: 3
+status: review
+importance: important
+prerequisites:
+  - adam
+  - maximum-likelihood
+leads_to:
+  - scaling-laws
+related:
+  - sgd-momentum
+  - label-smoothing
+tags:
+  - optimization
+  - regularization
+  - adamw
+  - weight-decay
+has_visualization: false
+has_interactive_demo: false
+has_code_example: true
+math_level: undergraduate
+short_description: "Why shrinking weights is not the same as adding an L2 penalty inside Adam, and how AdamW restores the intended regularization behavior."
+author: codex
+created: "2026-04-21"
+updated: "2026-04-21"
+estimated_read_time: 13

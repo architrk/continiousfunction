@@ -1,0 +1,52 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for deep-learning math.
+
+Slice under review: `self-attention-prediction-first-value-mixing-reveal`.
+
+Oracle/GPT Pro selected this as the next P0 retrofit after the `AttentionGeometryViz` top-key reveal:
+
+- Route: `/domains/attention-transformers/attention-transformers/`
+- Tab: `Self-Attention`
+- Component: `components/foundations/SelfAttentionViz.tsx`
+- Mechanism: learners predict which source token contributes the largest weighted value vector `alpha_ij * V_j` to the output mixture.
+
+Implementation summary:
+
+- Replaced the old attention-token quiz surface with a local value-mixing prediction gate.
+- Default query remains `T1 · cat`, temperature `T = 1.00`.
+- Prediction choices are token-indexed: `T0 · The`, `T1 · cat`, `T2 · sat`, `T3 · on`, `T4 · the`, `T5 · mat`, plus `No clear single contributor`.
+- Before reveal, visible setup includes selected query, token/Q/K/V setup, static formulas, temperature controls, neutral token-chip intensity, neutral score/attention heatmaps, and locked distribution/mixture panels.
+- Before reveal, the component hides top attention token, top weight, entropy/focus percent, insight copy that names a top token, score/attention row values, value contribution norms, value mixture, row sum, correctness, and measured `emitDemoState`.
+- After reveal, it shows correctness, actual strongest value contributor, top attention token/weight, attention focus/entropy, insight copy, score/attention heatmaps, value contribution norms, value mixture, and row sum.
+- After reveal, it emits compact measured state with query, temperature, prediction, actual value contributor, correctness, top attention token, entropy, row sum, score row, attention row, contribution norms, and value mixture.
+- Temperature changes, active query changes, prediction changes after reveal, reset, unmount, and concept id changes clear stale shared demo state.
+- Added focused tests in `components/foundations/SelfAttentionViz.test.tsx`.
+
+Validation already run:
+
+- `npm test -- SelfAttentionViz --runInBand`
+- `npm run typecheck`
+
+Constraints:
+
+- Keep this slice bounded to `SelfAttentionViz`; do not request a full route rewrite.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, or global demo-state API changes.
+- Static-export safety must remain intact.
+- The parent route already has its own mechanism checkpoint; this review is only for the local child demo.
+
+Question:
+
+Review the implementation as a publish gate.
+
+Return exactly:
+
+1. `publish` or `no-publish`.
+2. If `no-publish`, list the minimal blockers only, with exact leak/stale-state/test/build reason.
+3. If `publish`, list any non-blocking follow-ups separately.
+
+Specifically check:
+
+- Does any pre-reveal UI text, SVG title/label, token styling, matrix color/intensity, insight copy, result copy, or `emitDemoState` payload leak the actual value contributor, top attention token, attention row, score row, entropy, row sum, contribution norms, or value mixture?
+- Does the classifier use `alpha_ij * V_j` contribution norm, not raw attention weight?
+- Are duplicate tokens unambiguous through token-indexed labels?
+- Are stale revealed state and shared demo state cleared when query, temperature, prediction, reset, unmount, or concept id changes?
+- Are the tests sufficient for the intended blast radius?

@@ -1,0 +1,27 @@
+You are Oracle/GPT Pro performing a full publish/no-publish review for Continuous Function.
+
+Project briefing:
+- Continuous Function is a mathematical atlas for modern AI foundations.
+- A serious concept must move cleanly between intuition, math, code, and an interactive demo.
+- This repo renders filesystem concepts from `content/domains/*/concepts/*`.
+- `concept.yaml` controls graph links and status; `content.mdx` is restricted markdown; `viz.tsx` is a co-located client-only React demo.
+- Local checks already passing before this review: `npm run generate-content`, `npm run validate-content`, and `npm run typecheck`.
+
+Current goal:
+- Review the new `cross-entropy` concept in the probability domain.
+- It is intended to become a published bridge from maximum likelihood to KL divergence, gradient descent, label smoothing, and soft-target training.
+- The demo's central claim is: cross-entropy is target-weighted surprise, and with softmax logits its gradient is `q - p`.
+
+Please review the attached files against `content/_agent/CONCEPT_QUALITY_BAR.md`.
+
+Return:
+1. Verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and missing P0 concepts.
+8. Exact patch-style edits for the highest-impact fixes when possible.
+
+Be strict. Do not say "looks good" unless the concept actually meets the quality bar.

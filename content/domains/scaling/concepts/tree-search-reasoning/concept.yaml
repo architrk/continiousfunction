@@ -1,0 +1,69 @@
+id: tree-search-reasoning
+title: "Tree Search Reasoning: Allocating Inference Budget Across Prefixes"
+domain: scaling
+slug: tree-search-reasoning
+difficulty: 4
+status: published
+importance: important
+prerequisites:
+  - test-time-compute
+  - process-reward-models
+  - decoding-sampling
+leads_to:
+  - retrieval-augmented-generation
+related:
+  - reward-hacking
+  - rlhf
+  - llm-serving
+  - speculative-decoding
+tags:
+  - scaling
+  - inference
+  - tree-search
+  - reasoning
+  - verifiers
+has_visualization: true
+has_interactive_demo: true
+has_code_example: true
+math_level: undergraduate
+sources:
+  - id: yao-2023-tree-of-thoughts
+    kind: paper
+    title: "Tree of Thoughts: Deliberate Problem Solving with Large Language Models"
+    authors: "Yao et al."
+    year: 2023
+    url: "https://arxiv.org/abs/2305.10601"
+    note: "Grounds ToT as search over partial solution states with thought generation, state evaluation, and search procedures."
+  - id: lightman-2023-verify-step-by-step
+    kind: paper
+    title: "Let's Verify Step by Step"
+    authors: "Lightman et al."
+    year: 2023
+    url: "https://arxiv.org/abs/2305.20050"
+    note: "Grounds process-supervised reward models that predict correctness for intermediate reasoning steps."
+claim_checks:
+  - id: prefix-frontier-verifier-backup
+    status: source-checked
+    claim: "Tree-search reasoning allocates inference budget over visible partial prefixes: a generator proposes next thoughts, verifier-style scores rank prefixes, a frontier rule expands promising nodes, and max backups propagate visible continuation scores; the demo shows noisy scores can select a wrong path."
+    source_ids:
+      - yao-2023-tree-of-thoughts
+      - lightman-2023-verify-step-by-step
+    support: "Yao et al. define ToT as search over states representing partial solutions, with thought generation, state evaluation, and BFS/DFS-style search. Lightman et al. ground PRMs as step-level correctness predictors. The page teaches a finite visible tree with edge scores, frontier expansion, max backups, and a noisy-verifier failure."
+    caveat: "This checks the page's finite prefix-tree teaching model. It does not claim full MCTS/UCT/PUCT, convergence or optimal-planning guarantees, calibrated verifier scores, real serving cost, or immunity to reward hacking."
+    object_refs:
+      - "#source-span-yao-2023-tree-of-thoughts"
+      - "#source-span-lightman-2023-verify-step-by-step"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-20"
+      reviewer: codex
+      summary: "Reviewed source TeX: Yao et al. support ToT as search over partial solution states with thought generation, state evaluation, and BFS/DFS-style exploration; Lightman et al. support PRMs as step-level correctness predictors used to score generated solutions. The page's max-backup and noisy-verifier behavior is supported by its local finite math/code/demo witness, not claimed as Yao's exact algorithm."
+short_description: "Tree search spends inference budget on partial reasoning prefixes, using local verifier scores, frontier expansion, and max backups to decide which branches deserve more thought."
+author: codex
+created: "2026-05-01"
+updated: "2026-05-20"
+estimated_read_time: 24

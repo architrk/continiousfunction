@@ -1,0 +1,69 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current goal:
+
+- Continue the P0 prediction-first demo retrofit pass.
+- Use a mechanism-first, static-export-safe slice.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, or broad platform work.
+
+Earlier in this run, Oracle/GPT Pro selected this exact next slice:
+
+`calculus/derivatives`: a prediction-first secant-to-hidden-tangent relation reveal inside `DerivativesViz`.
+
+Requested mechanism:
+
+- Keep visible interval/secant geometry available: function, x, h, x+h, f(x), f(x+h), curve, two points, secant line, delta triangle, and secant slope.
+- Hide tangent line, f'(x), tangent slope, signed/absolute slope gap, convergence status, correctness, and measured demo state until reveal.
+- Ask the learner to predict whether the hidden local tangent slope at x is lower than, nearly equal to, or higher than the visible secant slope.
+- Use scale-aware relation tolerance:
+  `max(0.02, 0.02 * max(1, |tangentSlope|, |secantSlope|))`.
+- Clear stale demo state on function/x/h/reset changes.
+- Emit compact measured demo state only after reveal.
+
+Implementation summary:
+
+- `DerivativesViz` now exports `classifyTangentRelation(tangentSlope, secantSlope)`.
+- It adds prediction/reveal state and hides tangent/gap/status until reveal.
+- It gates the tangent line behind `revealed && showTangent`.
+- It keeps the secant line and secant slope visible as the known measured interval.
+- It changes the old "Show tangent" checkbox to post-reveal-only "Show revealed tangent".
+- It imports and uses `clearDemoState('derivatives')` before reveal and on stale-state reset.
+- It emits `Secant-to-tangent derivative reveal` measured state only after reveal, including prediction, actual relation, correctness, function, x, x+h, h, f(x), f(x+h), secant slope, tangent slope, signed slope gap, absolute slope gap, tolerance, convergence status, and visible layers.
+- The MDX demo copy is now prediction-first.
+- Added `components/concepts/DerivativesViz.test.tsx`.
+
+Validation already run:
+
+- `npm test -- DerivativesViz --runInBand` passed 6 tests. It showed the repo's known styled-jsx jsdom warning.
+- `npm run validate-content` passed with 0 warnings/errors.
+- `npm run typecheck` passed.
+
+Review request:
+
+Please review the attached implementation as GPT Pro / Oracle in a rigorous product, pedagogy, math, and frontend quality role.
+
+Return one of:
+
+- `publish` if there are no blocking correctness/pedagogy/static-export issues.
+- `no-publish` if any blocker must be fixed first.
+
+Classify findings as:
+
+- blocking correctness
+- blocking pedagogy
+- blocking UI/mobile/accessibility
+- important improvement
+- optional polish
+- out of scope
+
+Specifically check:
+
+1. Is the prediction target mathematically and pedagogically sound across x^2, sin, and exp?
+2. Is the relation classifier/tolerance defensible, especially for near equality and larger slopes?
+3. Is anything still leaking tangent line, f'(x), tangent slope, signed/absolute gap, convergence status, correctness, or measured state before reveal?
+4. Is stale state cleared correctly for function/x/h/reset changes?
+5. Is keeping secant slope visible before reveal pedagogically useful without leaking the answer?
+6. Is the UI likely to overflow or become awkward on mobile?
+7. Are there exact code/copy/test changes you would require before this is publishable?
+
+Keep the review narrow. Do not propose broad calculus curriculum, computation graph work, platform work, or unrelated refactors.

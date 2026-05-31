@@ -1,0 +1,38 @@
+Project: Continuous Function, a static-exported Next.js + TypeScript learning atlas for the mathematics behind deep learning. The publication standard is source-grounded, prediction-first pedagogy: Intuition -> Math -> Code -> Interactive Demo. Claim checks should only be promoted to substantive-reviewed when the cited sources and local witnesses really support the bounded claim.
+
+Task: audit the published concept `generative-models/vaes` for this claim check:
+
+`vaes#vae-elbo-reparameterized-inference`
+
+Claim:
+"A VAE fits a latent-variable generative model by maximizing the ELBO: q_phi(z|x) approximates the usually intractable posterior, E_q[log p_theta(x|z)] rewards reconstruction likelihood, KL(q_phi(z|x)||p(z)) penalizes deviation from the prior, and reparameterization gives pathwise gradients through z samples."
+
+Sources:
+- Kingma and Welling, 2013, "Auto-Encoding Variational Bayes"
+- Rezende, Mohamed, and Wierstra, 2014, "Stochastic Backpropagation and Approximate Inference in Deep Generative Models"
+
+Source support I verified before asking you:
+- Kingma/Welling introduce `q_phi(z|x)` as a recognition model approximating the intractable true posterior `p_theta(z|x)`, and describe it as a probabilistic encoder learned jointly with the generative model.
+- Kingma/Welling Eq. 1 rewrites `log p_theta(x_i)` as `KL(q_phi(z|x_i)||p_theta(z|x_i)) + L(theta,phi;x_i)`, making the nonnegative KL the gap between marginal likelihood and ELBO.
+- Kingma/Welling Eq. 3 writes the ELBO as a reconstruction expected log likelihood minus `KL(q_phi(z|x_i)||p_theta(z))`, and explains that the KL term regularizes the approximate posterior toward the prior.
+- Kingma/Welling Sec. 2.3-2.4 reparameterizes `z ~ q_phi(z|x)` as a differentiable transform of external noise, with the Gaussian case `z = mu + sigma epsilon`, enabling low-variance pathwise/stochastic-gradient optimization.
+- Rezende et al. introduce a recognition model as an approximate posterior, optimize a lower bound on marginal likelihood for deep latent Gaussian models, decompose the free energy into a KL-to-prior regularizer plus reconstruction error, and use stochastic backpropagation for recognition/generative parameters.
+
+Local witnesses attached:
+- `content/domains/generative-models/concepts/vaes/concept.yaml`
+- `content/domains/generative-models/concepts/vaes/content.mdx`
+- `content/domains/generative-models/concepts/vaes/viz.tsx`
+- `components/concepts/VAEsViz.test.tsx`
+
+Important local detail to audit:
+- The concept object extractor only exports the first two display equations in the Math section as `#math-object-1` and `#math-object-2`.
+- I revised those first two equations so `#math-object-1` should now cover the latent model, marginal likelihood, and true posterior, while `#math-object-2` should now cover the ELBO identity, reconstruction-minus-prior-KL decomposition, and diagonal Gaussian reparameterized sample.
+
+Please review for:
+1. Source support: do the two papers substantively support the bounded claim?
+2. Witness alignment: do `#math-object-1`, `#math-object-2`, `#code-witness-1`, and `#interactive-demo` locally witness the claim rather than a nearby weaker idea?
+3. Pedagogical/scientific caveats: is the caveat in `concept.yaml` sufficient, especially for Monte Carlo reconstruction estimates and reparameterizable continuous latents?
+4. UX leakage: does the demo hide posterior/ELBO diagnostics before reveal and require a prediction first?
+5. Final verdict: PASS to mark `evidence_review.state: substantive-reviewed`, or BLOCK with the smallest required fixes.
+
+Return concise findings with severity. If PASS, give a one-paragraph evidence review summary suitable for `concept.yaml`.

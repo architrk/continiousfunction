@@ -1,0 +1,37 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas and research-learning platform.
+
+Current branch: `private/research-learning-loop-20260505`.
+
+Context:
+- The previous shipped slice added `claim-evidence-review-queue-v1`.
+- Claim checks are source-linked review targets by default. They must not be called substantively reviewed unless exact source support, caveats, and local witness alignment have been checked.
+- `validate-content` now blocks overclaimed `substantive-reviewed` metadata unless date, reviewer, summary, support, caveat, and same-concept source IDs are present.
+- The generated queue initially had 51 pending claims. I am starting the first substantive review batch with the top critical attention claim.
+
+Source checked outside the repo:
+- Primary source: Vaswani et al., "Attention Is All You Need", arXiv:1706.03762, https://arxiv.org/abs/1706.03762.
+- The arXiv abstract says the Transformer is based on attention mechanisms and dispenses with recurrence/convolutions.
+- In the ar5iv HTML of the paper, section 3.2 defines attention as query/key-value compatibility weights over values.
+- Section 3.2.1 defines Scaled Dot-Product Attention: queries and keys are compared by dot products, divided by sqrt(d_k), softmax gives weights, and outputs are computed by applying those weights to values.
+- Section 3.2.2 describes learned linear projections of queries, keys, and values for multi-head attention and then parallel attention over those projected versions.
+
+Change under review:
+- In `content/domains/attention-transformers/concepts/attention-transformers/concept.yaml`, I marked claim `scaled-dot-product-attention-value-mixing` as:
+  - `evidence_review.state: substantive-reviewed`
+  - reviewer `codex+oracle`
+  - summary: checked sections 3.2, 3.2.1, and 3.2.2 against the exact claim.
+- Regenerated `content/_generated/claim-evidence-review-queue.json` and `content/_agent/CLAIM_EVIDENCE_REVIEW_QUEUE.md`; the queue now has 51 structured claim checks, 1 substantively reviewed, and 50 pending.
+- Updated TODO/audit docs to say the first batch is in progress, not complete.
+- `npm run validate-content` passes with 0 warnings and 0 errors.
+
+Ask:
+Review whether this one claim is honestly marked `substantive-reviewed`.
+
+Return:
+1. Verdict: PUBLISH or NO-PUBLISH.
+2. Whether the exact claim is supported by the cited source, with any caveat.
+3. Whether the `evidence_review.summary` is too broad, too narrow, or acceptable.
+4. Whether the queue/audit/TODO updates are honest.
+5. Any blocking change needed before commit.
+
+Do not expand into a broad roadmap. This review is only for this first substantive source-support marking.

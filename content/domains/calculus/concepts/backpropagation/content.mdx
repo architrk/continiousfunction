@@ -1,0 +1,113 @@
+---
+title: "Backpropagation"
+---
+
+## Intuition
+
+Backpropagation is reverse-mode autodiff specialized to neural networks.
+
+A neural network is a layered computation graph. The forward pass turns inputs into predictions and a loss. The backward pass asks each layer a local question: "if the loss is sensitive to my output, how sensitive is it to my inputs and parameters?"
+
+The answer is passed backward layer by layer. Each parameter receives a gradient, and an optimizer uses those gradients to update the model. Backpropagation is not magic pattern recognition; it is the chain rule organized so every local derivative is reused efficiently.
+
+## Math
+
+For a simple feed-forward network, write activations as
+
+$$
+h_0=x,\qquad z_\ell=W_\ell h_{\ell-1}+b_\ell,\qquad h_\ell=\phi(z_\ell),
+$$
+
+for layers $\ell=1,\dots,K$. For one training example, use column-vector shapes:
+
+$$
+h_{\ell-1}\in\mathbb{R}^{n_{\ell-1}},\quad W_\ell\in\mathbb{R}^{n_\ell\times n_{\ell-1}},\quad b_\ell,z_\ell,h_\ell\in\mathbb{R}^{n_\ell}.
+$$
+
+Let the scalar loss be
+
+$$
+J=\ell(h_K, y).
+$$
+
+Backpropagation tracks sensitivities flowing backward from the loss. Define
+
+$$
+\delta_\ell = \frac{\partial J}{\partial z_\ell}\in\mathbb{R}^{n_\ell}.
+$$
+
+For the final layer,
+
+$$
+\delta_K = \nabla_{h_K}J \odot \phi'(z_K).
+$$
+
+If the output layer is the identity, then $h_K=z_K$ and $\delta_K=\nabla_{h_K}J$. For squared error $J=\frac12\|\hat y-y\|^2$, this gives $\delta_K=\hat y-y$.
+
+For earlier layers, the chain rule gives
+
+$$
+\delta_\ell = (W_{\ell+1}^{\mathsf T}\delta_{\ell+1}) \odot \phi'(z_\ell).
+$$
+
+Once $\delta_\ell$ is known, the parameter gradients are local:
+
+$$
+\frac{\partial J}{\partial W_\ell} = \delta_\ell h_{\ell-1}^{\mathsf T},\qquad \frac{\partial J}{\partial b_\ell}=\delta_\ell.
+$$
+
+This is the core efficiency: the same downstream sensitivity $\delta_\ell$ is reused to compute gradients for both parameters and earlier activations. For a scalar loss with many parameters, one backward pass computes the full gradient needed by gradient descent.
+
+For a batch, the same local rules apply per example, then weight and bias gradients are summed or averaged across the batch dimension.
+
+## Code
+
+```python
+import numpy as np
+
+# Separate numbers from the interactive demo.
+# Shapes:
+# x: (2, 1), W1: (3, 2), b1: (3, 1)
+# W2: (1, 3), b2: (1, 1), y: (1, 1)
+x = np.array([[0.5], [-1.0]])
+y = np.array([[0.25]])
+
+W1 = np.array([[0.6, -0.2],
+               [-0.3, 0.4],
+               [0.1, 0.5]])
+b1 = np.array([[0.05], [0.0], [-0.05]])
+
+W2 = np.array([[0.25, -0.15, 0.2]])
+b2 = np.array([[0.02]])
+
+# Forward pass
+z1 = W1 @ x + b1
+h1 = np.tanh(z1)
+z2 = W2 @ h1 + b2
+pred = z2
+loss = 0.5 * float(np.sum((pred - y) ** 2))
+
+# Backward pass
+delta2 = pred - y
+dW2 = delta2 @ h1.T
+db2 = delta2
+
+dh1 = W2.T @ delta2
+delta1 = dh1 * (1 - h1 ** 2)
+dW1 = delta1 @ x.T
+db1 = delta1
+dx = W1.T @ delta1
+
+print("loss:", round(loss, 4))
+print("hidden signal shape:", delta1.shape)
+print("first-layer gradient shape:", dW1.shape)
+print("input cotangent shape:", dx.shape)
+```
+
+This tiny network has one hidden layer, but it shows the recurrence: `delta2` moves through `W2.T`, becomes `delta1` after the `tanh` derivative, and then produces both `dW1` and `dx`. The interactive demo below uses a different concrete network and hides its backward values until you predict the hidden learning-signal path.
+
+## Interactive Demo
+
+Use the demo to step through one tiny two-layer network. First inspect the stored forward values, the target, and the readout weights. Before seeing the backward pass, predict which hidden unit will carry the strongest usable learning signal after the output error passes through the readout weights and local tanh gates.
+
+Use Case A, Case B, and Case C as neutral graph states. Commit first, then reveal the hidden deltas, tanh gates, row-gradient norms, and update outcome.

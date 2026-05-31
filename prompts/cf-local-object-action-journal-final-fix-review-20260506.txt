@@ -1,0 +1,22 @@
+Project: Continuous Function, static/export-safe Next.js/TypeScript learning platform.
+
+This is the final focused Oracle fix review for local-object-next-action-journal-v1.
+
+Your last fix review returned NO-PUBLISH for one blocker:
+- Clicking the already-selected object cleared localDraft/draftNote/draftNextAction, but the reload effect did not run because selectedObjectKey did not change.
+
+Fix made:
+- ResearchReadingRoom.focusItem now detects item.anchor.id === selectedItem.anchor.id. In that case it only resets copyStatus, calls onFocusObject, and returns. It does not clear localDraft or draft editor state.
+- Added component regression test: pre-save a claim draft, render the room, click the active claim rail item again, and verify the Draft note input, AI handoff prompt, and saved status still show the draft.
+
+Validation after this final fix:
+- npm test -- localObjectActionJournal researchDiscussionRoom ResearchReadingRoom --runInBand
+- npm run typecheck
+- npm run validate-content
+- npm run validate:object-memory
+
+Please review only whether the previous active-item re-click blocker is fixed and whether any new concrete blocker prevents publishing this exact slice. Return one of:
+- PUBLISH
+- NO-PUBLISH
+
+If NO-PUBLISH, list only concrete release blockers for this slice.

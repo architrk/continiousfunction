@@ -1,0 +1,52 @@
+You are reviewing a narrow Continuous Function learning-platform slice for publish/no-publish.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- The current product direction is prediction-first, mechanism-first concept learning: learners should commit to a causal/mathematical prediction before a visualization reveals the measured result.
+- The shared `emitDemoState` event lets a demo carry compact measured values into the concept page's demo checkpoint, saved local route snapshot, research-room prompt, and future account-backed learner memory.
+- This slice must stay repo-only and static-export-safe. It must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+
+Earlier Oracle/GPT Pro scoped the next P0 slice after VAE as:
+- Concept: `scaling/tree-search-reasoning`
+- Primary file: `components/foundations/TreeSearchReasoningViz.tsx`
+- Small copy file: `content/domains/scaling/concepts/tree-search-reasoning/content.mdx`
+- Required mechanism: add a local "Predict the backed-up root branch" checkpoint.
+- Learner should see verifier mode, expansion budget, visible tree topology/states, local edge score `r`, cumulative score `G`, frontier heuristic `b`, expanded count/frontier size, and A/B/C prediction choices.
+- Learner should not see selected path, selected terminal, `V(root)`, node-level `V`, selected node styling, terminal correctness, hidden-correctness toggle, selected-branch explanation text, or a `data-selected-path` leak before reveal.
+- After reveal, show prediction result, selected path, node values, `V(root)`, root branch backup scores, and then enable the hidden-correctness diagnostic toggle.
+- Emit compact measured demo state only after reveal, and re-emit/redact when hidden correctness is toggled.
+- Clear stale shared demo state on mount/unmount and whenever mode, budget, or prediction changes back to an unrevealed state.
+
+Implementation summary:
+- Retrofitted `components/foundations/TreeSearchReasoningViz.tsx` with:
+  - `prediction: 'A' | 'B' | 'C'`
+  - disabled reveal button until prediction is selected
+  - reveal-gated selected path, selected terminal, `V(root)`, node `V`, selected node styling, root branch backups, and hidden-correctness toggle
+  - `rootBranchScores` from `r(child) + V(child)` for A/B/C
+  - `clearDemoState('tree-search-reasoning')` on mount/unmount and unreveal resets
+  - `emitDemoState(...)` only after reveal with mode, budget, prediction, expected root, correctness, selected path/terminal, expanded prefixes, frontier size, `V(root)`, root backups, hidden-correctness state, and selected terminal correctness only when truth is shown
+  - removed the old `data-selected-path` DOM attribute
+- Neutralized the MDX Interactive Demo copy so it asks the learner to predict instead of pre-announcing the clean/noisy outcome.
+- Added `components/foundations/TreeSearchReasoningViz.test.tsx` covering pre-reveal hiding/no emission, clean reveal/emission, noisy false-positive truth staging, budget reset clearing, and spoiler-copy regression.
+
+Local verification already run:
+- `npm test -- TreeSearchReasoningViz --runInBand` passed: 1 suite, 5 tests.
+- `npm run validate-content` passed: 0 warnings, 0 errors.
+- `npm run typecheck` passed.
+- The focused Jest run has the existing styled-jsx jsdom warning this repo sees when rendering components that contain `<style jsx>`. Treat it as known noise unless it masks a real Tree Search failure.
+
+Please review this as a publish/no-publish gate.
+
+Questions:
+1. Does this satisfy the scoped Tree Search P0 mechanism pedagogically: prefix expansion plus visible max-backup, while hidden correctness remains diagnostic only?
+2. Are there any pre-reveal leaks through visual text, aria/labels, DOM attributes, selected styling, metrics, emitted state, or the MDX copy?
+3. Is the max-backup math and `rootBranchScores` derivation correct for the clean/noisy examples and budgets?
+4. Is stale state clearing and reveal-only demo-state emission robust enough for the shared demo checkpoint/AI handoff?
+5. Are the tests strong enough for this P0 slice, or is there a blocker-level missing regression?
+6. Is there any UX/accessibility/responsiveness issue serious enough to block publish?
+
+Return:
+- Start with `publish` or `no-publish`.
+- If no-publish, list blockers with exact file/path references and concrete fixes.
+- If publish, list non-blocking improvements separately.
+- Include any exact copy/math changes you recommend.

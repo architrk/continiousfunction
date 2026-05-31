@@ -1,0 +1,32 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product direction is: make learning feel joyful and visually intuitive while staying mathematically serious, slowly growing a graph of concepts through high-quality interactive explanations. We use GPT Pro/Oracle as a review partner before and after implementation.
+
+Current rollout pattern:
+- We are moving legacy foundation visualizations onto a shared concept-page demo shell.
+- The filesystem concept route should use VizShell + VizStageAdapter.
+- The foundation component must preserve legacy behavior by default, and accept chrome="notebook" for the filesystem concept route.
+- The notebook version should focus on one mechanism-first learner action, not a broad game.
+- The demo should emit compact state only when in notebook mode so the site AI companion can reason about the learner's current view.
+- Existing completed slices: Speculative Decoding, Sparse Autoencoders, Mixture of Experts, Diffusion forward process, Loss Landscapes 2D sharpness, and Score Matching DSM target.
+
+I just finished Score Matching as a conditional denoising-score target: the learner predicts the hidden target vector for one highlighted noisy particle before reveal. Flow Matching is the next generative-models bridge.
+
+Attached files:
+- Flow Matching current concept route/content/component.
+- Adjacent completed Diffusion and Score Matching route wrappers for the shared shell pattern.
+- VizShell and VizStageAdapter.
+- TODO for rollout context.
+
+Please scope the next Flow Matching slice only. Do not write code. I want a refined implementation plan, not a grab bag.
+
+Questions to answer:
+1. What is the single best learner action for Flow Matching after Diffusion forward process and Score Matching DSM target? My candidate is: highlight one coupled noise/data pair at time t, ask the learner to predict the conditional velocity target u_t = x_1 - x_0, then reveal the target arrow and compare it with the current position x_t = (1-t)x_0 + t x_1.
+2. What should the filesystem route's VizShell title/subtitle/metrics/notes/challenge say?
+3. Which parts of the current FlowMatchingViz should be hidden or rewritten in notebook mode? Be strict about removing arcade/game framing, emoji, unsupported "OT optimal" overclaims, and synthetic sample-quality overclaims if they are not justified by the toy.
+4. What exact component props/state/computed values/events should be added? Include a compact demo-state payload design.
+5. What blockers or correctness issues must be fixed before this can be considered a high-quality concept page?
+6. What validation should I run after implementation?
+
+Return a prioritized plan with:
+- "Implement now" blockers.
+- "Leave for later" items.
+- Any exact wording corrections you recommend.

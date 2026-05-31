@@ -1,0 +1,72 @@
+We are continuing the Continuous Function north-star work in a Next.js learning platform repo.
+
+Current objective:
+
+- Make the site a deep, joyful, rigorous learning platform for modern deep learning math.
+- Prefer slow, high-quality, mechanism-first concept slices over broad idea dumps.
+- Use Oracle/GPT Pro as a review/scoping partner.
+- Keep each slice static-export-safe unless explicitly doing platform/account work.
+
+Current branch:
+
+- `private/research-learning-loop-20260505`
+
+Recent P0 prediction-first in-demo retrofits already shipped and pushed:
+
+- Reverse-Mode Autodiff: cotangent accumulation reveal.
+- Probability Basics: conditioning/posterior reveal.
+- Random Variables: pushforward/fiber reveal.
+- Variational Autoencoders: ELBO gap diagnostic reveal.
+
+The current audit still says the full north-star goal is not achieved. The P0 that remains is:
+
+> For live demos that predate the demo-shell rollout, add explicit concept-specific "predict before reveal" states and compact demo-state emission. A global demo-shell checkpoint now gives every published live demo a baseline prediction prompt, so the remaining work should focus on deeper in-demo reveal states for critical prerequisites and flagship-adjacent pages.
+
+Current scan after the VAE commit:
+
+1. `attention-transformers/efficient-attention`
+   - Domain `viz.tsx` is a tabbed wrapper.
+   - Child labs already have substantial prediction/reveal mechanics:
+     - `KVCacheDashboard` has a memory prediction game and emits demo state.
+     - `KVCacheViz` has a KV-cache savings prediction game.
+     - `GQAViz` has a notebook reveal for group size/KV cache ratio and emits demo state.
+   - Risk: route-level retrofit may duplicate child mechanics unless scoped very carefully.
+
+2. `scaling/tree-search-reasoning`
+   - Domain `viz.tsx` is a direct export to `components/foundations/TreeSearchReasoningViz`.
+   - The foundation component has a finite prefix tree, clean/noisy verifier mode, expansion budget, selected path, frontier, backed-up values, and hidden-correctness toggle.
+   - It has no shared `emitDemoState`, no `clearDemoState`, and no required local prediction before revealing selected path/backed-up values/correctness.
+   - Risk: it already had a publish review around hidden correctness leakage, so avoid leaking correctness or making it a broad MCTS/PUCT page.
+
+3. Critical prerequisite demos that emit measured state but do not have local prediction gates:
+   - `calculus/computation-graphs`
+   - `calculus/derivatives`
+   - `linear-algebra/dot-product`
+   - `linear-algebra/vector-spaces`
+   These are foundational and important, but currently may be more "measured state handoff" than "predict before reveal".
+
+4. `optimization/adam`
+   - Direct export, but foundation component already has a true prediction-first optimizer race reveal and emits state.
+   - Probably not the best next slice.
+
+Decision needed:
+
+Choose the next concrete P0 slice after VAE. Do not design a broad roadmap. Pick one route/component and define a narrow, publishable implementation scope that improves joy/depth/rigor without introducing auth, database, API routes, dynamic atlas reads, or unrelated platform work.
+
+Please return:
+
+- The single best next slice and why.
+- Exact file(s) to edit.
+- What should be visible before reveal, what must stay hidden, and what learner prediction should be required.
+- What demo state should be emitted after reveal.
+- What stale-state clearing behavior is required.
+- Minimal tests and browser checks.
+- What should explicitly be out of scope.
+- Any likely pre-reveal leak in the attached files.
+
+Important constraints:
+
+- Do not close the overall P0 unless this single slice truly completes it; assume it does not.
+- Prefer a bounded mechanism-first slice over broad platform work.
+- Prefer concept-specific prediction gates and compact measured-state handoff.
+- Avoid duplicating child demos that already have prediction mechanics.

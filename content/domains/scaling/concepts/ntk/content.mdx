@@ -10,25 +10,27 @@ The NTK perspective asks a different question:
 
 What if the network is so wide that, during training, it barely moves in parameter space?
 
-If parameters move only a little, the network behaves like its own first-order Taylor expansion around initialization. In that regime, training is no longer mysterious nonlinear feature learning. It becomes a **kernel method** in disguise, where the "features" are the gradients of the network output with respect to its parameters.
+If parameters move only a little, the network behaves like its own first-order Taylor expansion around initialization. In that regime, training can often be analyzed as linearized dynamics rather than nonlinear feature learning. It becomes a **kernel method** in disguise, where the "features" are the gradients of the network output with respect to its parameters.
 
-This is useful because kernel methods are mathematically tractable: you can often predict learning dynamics and generalization behavior without simulating full training.
+This is useful because kernel methods are mathematically tractable: you can often predict learning dynamics, and in some studied settings reason about generalization-related behavior, without simulating full training.
 
 ## Math
 
-Let $f_\\theta(x)$ be a network and $\\theta$ its parameters. The neural tangent kernel is:
+Let $f_\theta(x)$ be a network and $\theta$ its parameters. The neural tangent kernel is:
 
-$$\\Theta(x,x') = \\nabla_\\theta f_\\theta(x)^\\top \\nabla_\\theta f_\\theta(x').$$
+$$
+\Theta(x,x') = \nabla_\theta f_\theta(x)^\top \nabla_\theta f_\theta(x').
+$$
 
-Consider gradient flow on a squared loss over training points $(x_i,y_i)$:
+Consider gradient flow on a squared loss over training points $(x_i,y_i)$, with $\mathcal L(\theta) = \tfrac12\sum_i (f_\theta(x_i) - y_i)^2$.
 
-$$\\mathcal L(\\theta) = \\tfrac12\\sum_i (f_\\theta(x_i) - y_i)^2.$$
+In the infinite-width NTK limit for the standard parameterizations studied in this literature, $\Theta$ becomes deterministic and stays approximately constant during training. The function evolves according to:
 
-In the infinite-width limit (for common parameterizations), $\\Theta$ becomes deterministic and stays approximately constant during training. The function evolves according to:
+$$
+\partial_t f_t(x) = -\sum_i \Theta(x,x_i)\,(f_t(x_i) - y_i),
+$$
 
-$$\\partial_t f_t(x) = -\\sum_i \\Theta(x,x_i)\\,(f_t(x_i) - y_i),$$
-
-which is a linear ODE in function space. The solution corresponds to kernel regression with kernel $\\Theta$ (with details depending on loss, step size, and regularization).
+which is a linear ODE in function space. The solution corresponds to kernel regression with kernel $\Theta$ (with details depending on loss, step size, and regularization).
 
 ## Code
 
@@ -71,5 +73,4 @@ Use the demo to compare:
 
 - kernel-like learning dynamics (fixed features / linearized training),
 - feature learning (representations change), and
-- how width and parameterization push you toward one regime or the other.
-
+- how width and fixed-feature assumptions push you toward one regime or the other.

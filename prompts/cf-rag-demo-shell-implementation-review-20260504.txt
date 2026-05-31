@@ -1,0 +1,57 @@
+We are building Continuous Function, a Next.js/React learning platform for deep mathematical ideas. The product goal is to make learning joyful, rigorous, visual, interactive, and worth returning to. We use GPT Pro/Oracle extensively as a design/review partner, then verify locally.
+
+This is the implementation review for the RAG notebook-shell rollout slice selected by GPT Pro/Oracle after SSM Hybrids.
+
+Oracle selected this slice with the central learner action:
+- Predict whether the RAG system has no current evidence, retrieves the current evidence but still answers wrongly, or retrieves enough fresh evidence mass to answer correctly.
+- Reveal should show the top-k set, scores/weights, evidence mass, answer mixture, selected answer, cited source, citation support, and correctness.
+- The invariant must remain narrow: coverage, evidence mass, answer correctness, citation support, and freshness are separate quantities.
+
+What I changed:
+- `content/domains/llm-systems/concepts/retrieval-augmented-generation/viz.tsx`
+  - Replaced the direct foundation export with `VizShell` + `VizStageAdapter`.
+  - The shell challenge asks the learner to predict absent evidence vs covered-but-wrong vs fresh-evidence-wins before revealing.
+  - The shell caveat says this is a finite toy RAG system, not a vector-database survey, agent architecture, or hallucination guarantee.
+- `components/foundations/RetrievalAugmentedGenerationViz.tsx`
+  - Added `chrome?: 'legacy' | 'notebook'` and `conceptId`, preserving legacy default behavior.
+  - Added notebook-only scenario presets:
+    - Similarity only, k=1.
+    - Similarity only, k=2.
+    - Freshness rerank, k=2.
+  - Added prediction buttons:
+    - Current evidence absent.
+    - Covered but still wrong.
+    - Fresh evidence wins.
+  - Added reveal gating. Pre-reveal notebook mode shows settings, query, candidate chunks, and embedding map only.
+  - Pre-reveal notebook root does not emit `data-answer`, `data-coverage`, or `data-cited-source`.
+  - Post-reveal shows coverage, evidence mass, P(correct), selected answer, cited source, citation support, retrieved/top-k chunks, scores, weights, answer mixture, and result feedback.
+  - Changing a scenario or control resets prediction/reveal.
+  - Emits compact demo state only in notebook mode: pre-reveal includes neutral settings and prediction; post-reveal adds retrieved ids, selected answer, correctness, coverage, evidence mass, citation support, and cited source.
+- `content/domains/llm-systems/concepts/retrieval-augmented-generation/content.mdx`
+  - Tightened Interactive Demo copy to the single prediction/reveal distinction.
+
+Local checks already run:
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- `npm run typecheck` passed.
+- Route checks:
+  - `/domains/llm-systems/retrieval-augmented-generation/` returns 200.
+  - `/foundations/retrieval-augmented-generation/` returns 200.
+- Headless Chrome DevTools checks against the running local dev server passed:
+  - RAG notebook route renders one `.rag-demo` notebook root.
+  - No nested legacy dark card/deck in the notebook.
+  - Pre-reveal `.rag-demo` has no `data-answer`, `data-coverage`, or `data-cited-source`.
+  - Pre-reveal `.rag-demo` does not show selected answer, evidence mass, P(correct), cited source, citation support, answer mixture, retrieved-chunk verdicts, or result feedback.
+  - Reveal button is disabled before prediction.
+  - Similarity only k=2 + Covered but still wrong reveals coverage true, selected answer 14 days, evidence mass 0.441, cited source old_policy, and correct feedback.
+  - Changing scenario after reveal hides result/answer mixture and disables reveal again.
+  - Freshness rerank k=2 + Fresh evidence wins reveals selected answer 30 days and cited source current_policy.
+  - Similarity only k=1 + Current evidence absent reveals coverage absent and evidence mass 0.000.
+  - Mobile 390px has no document-level horizontal overflow.
+
+Please review for blockers only:
+1. Must-fix correctness or pedagogy blockers, especially whether the finite RAG mechanics honestly support the three regimes and whether pre-reveal state leaks computed outcomes.
+2. Must-fix UI/accessibility blockers, especially prediction buttons, reveal feedback, focus states, and mobile containment.
+3. Must-fix architecture/regression blockers, especially legacy default behavior and route composition.
+4. Exact wording fixes if current copy overclaims retrieval/citation/grounding.
+
+Do not request broad RAG survey expansion, vector database coverage, agent loops, new sources, image generation, or future roadmap ideas unless necessary to ship this slice. Say explicitly whether the slice is acceptable after the listed fixes.

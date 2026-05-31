@@ -1,0 +1,62 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas for modern deep-learning math.
+
+Current goal:
+
+- Continue the P0 prediction-first demo retrofit pass.
+- Use a mechanism-first, static-export-safe slice.
+- Do not introduce auth, database, API routes, protected pages, dynamic atlas reads, broad platform work, or curriculum rewrites.
+
+Oracle/GPT Pro selected this exact next slice:
+
+`calculus/computation-graphs`: prediction-first reused-node sensitivity reveal.
+
+Requested mechanism:
+
+- Existing toy graph: `a = xy`, `b = sin(a)`, `c = a + b`.
+- Teach that a reused intermediate node accumulates downstream sensitivity contributions.
+- Keep visible before reveal: x/y sliders, forward values x/y/a/b/c, graph topology, fact that `a` has two downstream uses, and the direct baseline `dc/da = 1`.
+- Hide before reveal: `cos(a)`, sine-path contribution, `bar a = 1 + cos(a)`, `bar x`, `bar y`, accumulation relation/status, reverse-edge labels such as `cos(a)`, correctness, and measured demo state.
+- Ask learner whether hidden accumulated sensitivity at `a` will be lower than, nearly equal to, or higher than the direct contribution.
+- Use relation classifier against the hidden sine-path contribution:
+  - `viaB < -0.12` => lower
+  - `viaB > 0.12` => higher
+  - otherwise nearly equal
+- Clear stale local/shared state on x/y/preset/prediction changes.
+- Emit compact measured demo state only after reveal.
+
+Implementation summary:
+
+- `ComputationGraphsViz` now imports `clearDemoState`.
+- It exports `classifyAccumulatorRelation(viaB)`.
+- It adds prediction/reveal state and neutral Case A / Case B preset labels.
+- The Backward phase is locked until reveal.
+- Pre-reveal summary keeps forward values and direct baseline visible.
+- Pre-reveal accumulator, SVG node sensitivity labels, mobile flow, and MDX copy hide answer-bearing backward values.
+- After reveal it shows direct + sine path, accumulated `bar a`, `bar x`, `bar y`, relation status, correctness, and emits `Prediction-first reused-node sensitivity reveal`.
+- Added focused tests in `components/concepts/ComputationGraphsViz.test.tsx`.
+
+Validation already run:
+
+- `npm test -- ComputationGraphsViz --runInBand` passed 6 tests. It showed the repo's known styled-jsx jsdom warning.
+- `npm run typecheck` passed.
+
+Review request:
+
+Please review the attached implementation as GPT Pro / Oracle in a rigorous product, pedagogy, math, and frontend quality role.
+
+Return one of:
+
+- `publish` if there are no blocking correctness/pedagogy/static-export issues.
+- `no-publish` if any blocker must be fixed first.
+
+Specifically check:
+
+1. Is the prediction target mathematically and pedagogically sound for this computation graph?
+2. Is the classifier/tolerance defensible for default Case A, Case B near-cancellation, and intermediate slider states?
+3. Is anything still leaking `cos(a)`, sine-path contribution, `bar a`, `bar x`, `bar y`, accumulation status, correctness, or measured state before reveal?
+4. Are x/y/preset/prediction stale-state resets correct?
+5. Is the direct baseline `dc/da = 1` safe and useful before reveal?
+6. Is the mobile flow likely to overflow or leak hidden values before reveal?
+7. Are there exact code/copy/test changes required before publish?
+
+Keep the review narrow. Do not propose a general graph editor, tensor graph support, backpropagation changes, platform work, auth/database/API work, or broad curriculum rewrites.

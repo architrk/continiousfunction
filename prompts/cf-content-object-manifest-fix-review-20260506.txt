@@ -1,0 +1,29 @@
+This is a narrow fix review after your prior verdict was publish-after-fixes for the Continuous Function content-object manifest spine.
+
+Your blockers were:
+1. Unknown `claim_checks[].object_refs` could be silently dropped instead of failing.
+2. Validation did not prove the generated manifest had no stale extra objects.
+
+Fixes applied:
+- `scripts/generate-content-object-manifest.ts` now throws when a claim-check object ref cannot map to a canonical source-span, equation, code, or demo object key.
+- `scripts/validate-content.ts` now errors on unsupported claim-check object refs instead of only checking broad `#fragment` shape.
+- `scripts/validate-content.ts` now tracks the exact expected manifest key set while validating content:
+  - product route keys
+  - concept keys
+  - concept route keys
+  - source-grounding keys
+  - central claim keys
+  - misconception keys
+  - demo keys only for real demo+viz concepts
+  - generated equation/code keys
+  - source/source-span keys
+  - claim-check keys
+  - claim-check object refs
+- After content validation, it compares `manifest.keys` against `expectedKeys` and fails on both missing expected keys and stale/unexpected extra keys.
+- Docs/TODO now mention exact manifest set validation and unsupported object-ref failures.
+
+Commands passed after the fixes:
+- `npm run generate-object-manifest`
+- `npm run validate-content` -> 0 warnings, 0 errors, 851 manifest objects
+
+Please review only whether the two blockers are fixed and whether any new blocker was introduced. Return publish / publish-after-fixes / no-publish, with must-fix items only.

@@ -1,0 +1,74 @@
+Project: Continuous Function, a slow-growth mathematical atlas for deep learning concepts.
+
+Concept under review:
+- Domain: scaling
+- Slug: tree-search-reasoning
+- Title: Tree Search Reasoning: Allocating Inference Budget Across Prefixes
+- Current status: review
+- It follows published Process Reward Models and Test-Time Compute, and should become the narrow bridge from complete-trace best-of-N to prefix-level search.
+
+Context:
+Oracle first scoped this page as a deliberately narrow mechanism: finite deterministic prefix tree + local verifier scores + frontier expansion + max backup + verifier-trap failure mode. I rewrote the page to avoid making PUCT, UCT, visit-count MCTS, AlphaZero-style search, agents, tool use, or product histories the teaching core.
+
+The page teaches:
+- complete-trace best-of-N spends budget on full solutions; tree search spends budget on partial reasoning prefixes
+- prefix states h=(a_1,...,a_t), next-step children ha, local verifier scores r_phi(h,a), and hidden terminal correctness u(z)
+- a visible subtree T_t and frontier F_t
+- cumulative local score G_phi(h)
+- a deterministic best-first expansion rule h_t = argmax_h [G_phi(h)+b_phi(h)]
+- a max backup V_t(h) over the visible tree
+- selected visible path via backed-up child values
+- a compact cost model for revealed children
+- the limitation that verifier errors can be amplified by the backup
+
+Interactive demo:
+- title: Prefix Budget Explorer
+- fixed algebra task: 2(x+3)=14
+- controls: clean/noisy verifier mode, 0..6 prefix expansions after root, show hidden correctness toggle
+- clean mode default budget 2 selects root -> C -> C1 -> C1a, a correct terminal trace
+- noisy mode with the same budget selects root -> A -> A1, a wrong terminal trace, because the invalid A branch has high proxy scores
+- metrics: selected visible path, selected terminal, expanded prefixes, frontier size, V(root)
+- state view: unseen, frontier, expanded, selected/backed-up path, terminal nodes
+- hidden correctness is diagnostic only and does not affect selection
+
+Local verification passed:
+- npm run generate-content
+- npm run validate-content: 0 warnings, 0 errors
+- npm run typecheck
+- deterministic Python witness:
+  - clean budget=2 returns root -> C -> C1 -> C1a, terminal correct
+  - noisy budget=2 returns root -> A -> A1, terminal wrong
+- desktop Chrome route check at 1440px:
+  - no KaTeX errors
+  - no document horizontal overflow
+  - required demo title/frontier/V(root) content present
+  - clean path root>C>C1>C1a
+  - noisy path root>A>A1
+  - hidden-truth toggle does not change selection and reveals hidden truth: wrong
+  - old exploration-c UI is not present
+- mobile Chrome route check at 390px:
+  - no KaTeX errors
+  - no document horizontal overflow
+  - clean path root>C>C1>C1a
+- npm run build passed; known existing KaTeX display-mode newline warnings still appear elsewhere in the content set
+
+Attached files:
+- Oracle scope response for this page
+- concept.yaml metadata
+- content.mdx lesson
+- viz.tsx route export
+- TreeSearchReasoningViz.tsx demo
+- adjacent Test-Time Compute and Process Reward Models pages for handoff accuracy
+- Reward Hacking page because this page reuses the proxy-error caveat
+
+Please do a rigorous publish/no-publish review.
+
+Return:
+1. Verdict: "publish as is", "publish after fixes", or "keep in review".
+2. Blocking issues only, with exact file-level fixes.
+3. Check math-demo-code equivalence: do the content, code witness, and React demo implement the same finite object?
+4. Check whether the page cleanly separates this simplified best-first prefix expansion from full MCTS/UCT/PUCT.
+5. Check whether the verifier-error caveat is precise enough and not overclaimed.
+6. Check atlas graph fit: prerequisites, leads_to, related, and whether this should publish after PRMs and Test-Time Compute.
+
+Avoid broad roadmap suggestions. I need a release review for this exact page.

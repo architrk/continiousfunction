@@ -1,0 +1,43 @@
+You are Oracle/GPT Pro performing a strict publish/no-publish review for Continuous Function.
+
+Project briefing:
+- Continuous Function is a slow-growth mathematical atlas for deep learning and its mathematical foundations.
+- The quality bar is intuitive, precise, visual, executable, and connected.
+- A concept page is structured as Intuition -> Math -> Code -> Interactive Demo.
+- `status: published` should mean the page can survive a serious reader; otherwise keep it in `review`.
+- The site is a static-exported Next.js Pages Router + TypeScript app. Filesystem concepts live under `content/domains/{domain}/concepts/{concept-id}/`.
+
+Concept under review:
+- ID: gradient-descent
+- Domain: optimization
+- Current status: review
+- Intended decision: decide whether it can be promoted to published after fixes, or should stay in review.
+- Role in learning arc: derivatives/backpropagation produce gradients; gradient descent consumes gradients; SGD momentum, Adam, learning-rate schedules, clipping, and loss landscapes build on it.
+
+Current implementation:
+- The page explains gradient descent as local slope information plus a learning-rate-controlled update rule.
+- The math defines `L: R^p -> R`, the Euclidean gradient, `theta_{t+1} = theta_t - eta grad L(theta_t)`, a first-order Taylor decrease argument, curvature-limited stability on a quadratic, and the mini-batch stochastic gradient version.
+- The code minimizes `0.5 * theta^T A theta` for `A = diag([1, 20])`, with comments about `0 < eta < 2/lambda_max`.
+- The new live `viz.tsx` provides a stretched quadratic contour plot, a visible gradient-descent path, learning-rate and curvature controls, crawl / zig-zag stable / too large presets, a stability-bound readout, first-gradient and first-update readouts, and a no-overflow mobile layout.
+- The demo's central claim is that the gradient gives a local direction, while the learning rate controls how far to trust that direction before measuring again; curvature makes the safe step size smaller.
+- Local verification passed:
+  - `npm run generate-content` wrote 36 viz entries.
+  - `npm run validate-content` passed with 0 warnings and 0 errors.
+  - `npm run typecheck` passed.
+  - CDP desktop check at 1440px: route loads, status is review, no KaTeX error, no horizontal overflow, stable/crawl/diverge presets update loss, diagnosis, and path class.
+  - CDP mobile check at 390px: route loads, no horizontal overflow, SVG remains visible and controls stack cleanly, presets work.
+  - `npm run build` passed, with known non-blocking KaTeX warnings about `\\` or `\newline` in display mode elsewhere in the site.
+
+Please review the attached files against `content/_agent/CONCEPT_QUALITY_BAR.md`.
+
+Return:
+1. Verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Blocking correctness issues.
+3. Blocking pedagogy issues.
+4. Important improvements.
+5. Optional polish.
+6. Out-of-scope suggestions to ignore for now.
+7. Graph/link audit: prerequisites, leads_to, related, and whether this bridge position is right.
+8. Exact patch-style edits for the highest-impact fixes when possible.
+
+Be strict. Do not say "publish" unless this page actually meets the quality bar after considering the MDX, code, demo, route shell, and neighboring concepts.

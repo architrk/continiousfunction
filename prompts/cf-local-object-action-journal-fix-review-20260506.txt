@@ -1,0 +1,27 @@
+Project: Continuous Function, static/export-safe Next.js/TypeScript learning platform.
+
+This is a fix review after your previous Oracle review returned NO-PUBLISH for local-object-next-action-journal-v1.
+
+Previous blockers:
+1. Stale draft fields could momentarily carry across selected objects because draftNote/draftNextAction synced after selectedObjectKey changed.
+2. buildResearchDiscussionPrompt/buildResearchDiscussionRoomPacket accepted any localDraft and did not enforce localDraft.objectKey === item.anchor.objectKey.
+3. Tests did not prove clearing one object preserved another draft, and did not verify custom/storage event refresh behavior without cross-object leakage.
+
+Fixes made:
+- ResearchReadingRoom now tracks draftEditorObjectKey and derives selectedDraftNote/selectedDraftNextAction only when the editor key matches selectedObjectKey. focusItem resets localDraft, draft editor key, draftNote, draftNextAction, and draftStatus synchronously before the effect reloads a matching saved draft.
+- save/clear/canSave/rendered inputs use the selected-key-scoped draft values so previous-object editor text cannot enable a save or appear in the newly selected object's prompt.
+- researchDiscussionRoom.ts now has matchingLocalDraftForItem and only includes/returns a local draft when item.anchor.objectKey exists and equals draft.objectKey.
+- Added helper test for mismatched/unkeyed draft rejection.
+- Expanded component tests: switching objects clears unsaved editor text synchronously; clearing the selected draft preserves a second object's draft; custom journal event and storage event refresh only the selected object's draft and do not leak another object's draft.
+
+Validation after fixes:
+- npm test -- localObjectActionJournal researchDiscussionRoom ResearchReadingRoom --runInBand
+- npm run typecheck
+- npm run validate-content
+- npm run validate:object-memory
+
+Please review only whether the previous blockers are now fixed and whether any new concrete blocker prevents publishing this exact slice. Return one of:
+- PUBLISH
+- NO-PUBLISH
+
+If NO-PUBLISH, list only concrete release blockers for this slice.

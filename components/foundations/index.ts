@@ -42,12 +42,14 @@ export { default as TaskVectorViz } from './TaskVectorViz'
 export { default as AttentionBackpropViz } from './AttentionBackpropViz'
 export { default as DiffusionProcessViz } from './DiffusionProcessViz'
 export { default as KVCacheDashboard } from './KVCacheDashboard'
+export { default as GQAViz } from './GQAViz'
 export { default as SpeculativeDecodingViz } from './SpeculativeDecodingViz'
 export { default as ServingLatencyViz } from './ServingLatencyViz'
 export { default as KTOViz } from './KTOViz'
 export { default as RewardHackingViz } from './RewardHackingViz'
 export { default as SparseAutoencoderViz } from './SparseAutoencoderViz'
 export { default as TokenizationViz } from './TokenizationViz'
+export { default as PretrainingDataMixturesViz } from './PretrainingDataMixturesViz'
 
 // Re-export visualization mappings from pure data module
 // (kept here for backwards compatibility)

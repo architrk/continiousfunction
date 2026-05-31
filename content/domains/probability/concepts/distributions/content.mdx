@@ -1,0 +1,136 @@
+---
+title: "Distributions"
+---
+
+## Intuition
+
+The raw outcome might be $HH$, $HT$, $TH$, or $TT$, but your model only records $X=$ number of heads. So what is the probability of $X=1$?
+
+A random variable is the measurement rule that turns each raw outcome into a value. A distribution is the probability measure induced on those values after the rule is applied.
+
+The distinction is small but important. The world may have detailed outcomes: full coin-flip sequences, images, documents, users, or physical states. A random variable turns each outcome into a value we care about. The distribution tells us how probability lands on those values. "Measurement" is only a metaphor: $X$ does not have to be a physical instrument, and the distribution is not the rule itself. It is the probability law created by applying the rule to uncertain outcomes.
+
+Many different outcomes can map to the same value. If $X$ is the number of heads in two coin flips, both $HT$ and $TH$ become $X=1$. The probability of $X=1$ is the combined probability of all outcomes that map there.
+
+That is the bridge to modeling. Once you know the distribution of a random variable, you can sample from it, compute expectations, and score observations. Maximum likelihood will later ask which parameter setting makes the observed values most probable under a chosen distribution family.
+
+## Math
+
+Let $(\Omega,\mathcal F,P)$ be a probability space. Let $(S,\mathcal S)$ be the measurable space of values, and let
+
+$$
+X:(\Omega,\mathcal F)\to(S,\mathcal S)
+$$
+
+be a measurable random variable. The distribution, or law, of $X$ is the probability measure $P_X$ on values:
+
+$$
+P_X(A)=P(X\in A)=P(\{\omega\in\Omega:X(\omega)\in A\}).
+$$
+
+Here $A\in\mathcal S$ is a measurable set of values. Equivalently, $P_X(A)=P(X^{-1}(A))$.
+
+This is called the pushforward of $P$ through $X$. It says: start with probability on raw outcomes, apply the measurement $X$, and add up the probability that lands inside each value-set $A$.
+
+For a discrete random variable, the probability mass function is
+
+$$
+p_X(x)=P(X=x).
+$$
+
+If the raw sample space is finite, this is just the mass of every outcome that maps to $x$:
+
+$$
+p_X(x)=\sum_{\omega:X(\omega)=x}P(\omega).
+$$
+
+This is the central mechanism: a value collects probability from every raw outcome that maps to it. Grouping changes the representation of probability, not the total mass, so $\sum_x p_X(x)=1$.
+
+When $X$ is real-valued, the cumulative distribution function is
+
+$$
+F_X(t)=P(X\le t).
+$$
+
+It accumulates the mass up to a threshold. For many real-valued distributions used in machine learning, $P_X$ has a density $f_X$ and interval probabilities are computed by integration:
+
+$$
+P(a\le X\le b)=\int_a^b f_X(x)\,dx.
+$$
+
+A density value is not itself a probability; only area under the density over a region is probability. Density values can be greater than $1$, because they depend on the units of $x$. Some distributions are mixed or have no ordinary density, so PMFs and densities are important cases, not the whole definition of distribution.
+
+The demo uses two independent Bernoulli flips with head probability $p$ and random variable $X=$ number of heads. Then $X$ has a binomial distribution:
+
+$$
+P(X=k)=\binom{2}{k}p^k(1-p)^{2-k},\qquad k\in\{0,1,2\}.
+$$
+
+Its expectation and variance are
+
+$$
+\mathbb E[X]=2p,\qquad \operatorname{Var}(X)=2p(1-p).
+$$
+
+In machine learning, a parametric distribution family writes this mass or density as $p_\theta(x)$. If observed values $x^{(1)},\dots,x^{(n)}$ are treated as independent draws from the distribution, the log likelihood is
+
+$$
+\ell(\theta)=\sum_{i=1}^n \log p_\theta(x^{(i)}).
+$$
+
+For discrete data, $p_\theta(x)$ is a probability mass. For continuous data, $p_\theta(x)$ is a density value, so likelihood scores density at the observations; it is not the probability of observing those exact points.
+
+## Code
+
+```python
+import math
+import numpy as np
+
+p_head = 0.65
+
+# Raw outcomes for two independent flips.
+outcomes = {
+    "HH": p_head * p_head,
+    "HT": p_head * (1 - p_head),
+    "TH": (1 - p_head) * p_head,
+    "TT": (1 - p_head) * (1 - p_head),
+}
+
+def number_of_heads(outcome):
+    return outcome.count("H")
+
+# Push probability mass through X(outcome) = number of heads.
+pmf = {0: 0.0, 1: 0.0, 2: 0.0}
+for outcome, prob in outcomes.items():
+    pmf[number_of_heads(outcome)] += prob
+
+# Grouping changes where the mass lives, not the total amount of mass.
+assert abs(sum(outcomes.values()) - 1.0) < 1e-12
+assert abs(sum(pmf.values()) - 1.0) < 1e-12
+
+mean = sum(x * prob for x, prob in pmf.items())
+variance = sum((x - mean) ** 2 * prob for x, prob in pmf.items())
+
+print("PMF:", {x: round(prob, 3) for x, prob in pmf.items()})
+print("E[X]:", round(mean, 3))
+print("Var(X):", round(variance, 3))
+
+# Likelihood scores observed values under this distribution.
+observed = np.array([2, 1, 1, 0, 2])
+observed_masses = [pmf[int(x)] for x in observed]
+log_likelihood = (
+    -math.inf
+    if any(prob == 0 for prob in observed_masses)
+    else sum(math.log(prob) for prob in observed_masses)
+)
+print("observed values:", observed.tolist())
+print("log likelihood:", log_likelihood if math.isinf(log_likelihood) else round(log_likelihood, 3))
+```
+
+The code does not start with the binomial formula. It first assigns probability to raw outcomes, applies the random variable, and adds the mass that lands on the same value. The closed-form binomial PMF is the compact result of that aggregation.
+
+## Interactive Demo
+
+Move the head-probability slider. The map from outcomes to $X$ stays fixed, but the probability mass on outcomes changes, so the distribution of $X$ changes.
+
+Watch two things at once: the left side shows raw outcome probabilities, while the right side shows the aggregated probability mass function. The readout connects the distribution to expectation, variance, and a small i.i.d. observed-data log likelihood. At the endpoints, some observed values become impossible, so the log likelihood falls to negative infinity.

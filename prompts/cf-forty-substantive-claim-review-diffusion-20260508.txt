@@ -1,0 +1,49 @@
+Project: Continuous Function, a Next.js/TypeScript mathematical atlas for deep learning foundations.
+
+Task: substantive evidence review for one published structured claim check.
+
+Concept:
+- `content/domains/generative-models/concepts/diffusion/concept.yaml`
+- `content/domains/generative-models/concepts/diffusion/content.mdx`
+- `content/domains/generative-models/concepts/diffusion/viz.tsx`
+- `components/foundations/DiffusionProcessViz.tsx`
+
+Claim check under review:
+`generative-models/diffusion#forward-noising-noise-prediction-score-bridge`
+
+Question:
+Do the listed source IDs and local witness refs substantively support the exact claim enough to add:
+
+```yaml
+evidence_review:
+  state: substantive-reviewed
+```
+
+The exact claim says:
+"Diffusion can be taught as gradual corruption plus learned reverse denoising: Sohl-Dickstein frames forward diffusion and learned reversal; Ho DDPM supplies q(x_t|x_0), the reparameterized x_t sample, and simplified epsilon-prediction MSE; Score SDE supplies the score-based reverse-sampling bridge."
+
+Primary sources attached as extracted PDF text:
+- Sohl-Dickstein et al. 2015, "Deep Unsupervised Learning using Nonequilibrium Thermodynamics"
+- Ho, Jain, and Abbeel 2020, "Denoising Diffusion Probabilistic Models"
+- Song et al. 2020, "Score-Based Generative Modeling through Stochastic Differential Equations"
+
+Local witness refs to inspect:
+- `#source-span-sohl-dickstein-2015-nonequilibrium`
+- `#source-span-ho-2020-ddpm`
+- `#source-span-song-2020-score-sde`
+- `#math-object-1`
+- `#math-object-2`
+- `#code-witness-1`
+- `#interactive-demo`
+
+Important scope:
+- The two exported math objects are only the first two display equations in the Math section.
+- The code witness and interactive demo isolate DDPM forward noising.
+- The source spans may support Ho epsilon-prediction and Song reverse-time score/SDE material, but local code/demo should not be treated as witnesses for a trained sampler.
+- Do not approve broad claims about guidance, latent diffusion, sampler variants, flow matching, production image quality, or modality-general performance.
+
+Please return:
+1. Verdict: publish / no-publish for adding a substantive evidence_review.
+2. Any blockers, especially overclaiming or local-witness mismatch.
+3. A concise evidence_review summary under 520 characters.
+4. Any support/caveat wording changes you recommend.

@@ -1,0 +1,12 @@
+Project: Continuous Function, a Next.js learning atlas. We are adding compact source-checked claim metadata to one published concept at a time. The validator requires source_ids to exist in concept.yaml and object_refs to point at rendered source spans, the first two math objects only, code witness, or #interactive-demo.
+
+Task: Review a proposed claim_check for content/domains/optimization/concepts/learning-rate-schedules. Do not write code. Return Verdict: Pass or Modify, then the exact claim id, claim text, source_ids, support, caveat, and object_refs you recommend. Be strict about what Smith 2015 Cyclical Learning Rates and Loshchilov/Hutter 2016 SGDR actually support. Also answer whether this page should add a source for warmup/large-model training, or keep the claim narrower around LR range tests/cyclical schedules and cosine annealing/restarts.
+
+Proposed claim_check:
+- id: schedule-shape-controls-update-scale
+- status: source-checked
+- claim: Learning-rate schedules control training by changing update scale over time: Smith grounds using learning-rate range tests and cyclical schedules to tune optimization dynamics, while SGDR grounds cosine annealing and warm restarts as a schedule family; the page's warmup+decay demo is a teaching extension, not fully sourced by these two papers.
+- source_ids: smith-2015-cyclical-learning-rates, loshchilov-2016-sgdr
+- support: Smith supports LR range tests and cyclical learning-rate policies as practical controls over optimization dynamics. Loshchilov and Hutter support cosine annealing with warm restarts. The page math/code/demo instantiate schedule curves, warmup/cosine shape, inverse-sqrt baseline, and prediction-first schedule behavior.
+- caveat: This checks schedule-shape/update-scale intuition and cosine/cyclical schedule families, not exact large-language-model warmup practice, Adam bias-correction dynamics, edge-of-stability claims, convergence guarantees, or universal best schedules.
+- object_refs: #source-span-smith-2015-cyclical-learning-rates, #source-span-loshchilov-2016-sgdr, #math-object-1, #math-object-2, #code-witness-1, #interactive-demo

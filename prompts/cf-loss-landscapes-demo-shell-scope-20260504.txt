@@ -1,0 +1,60 @@
+We are building Continuous Function, a static-export-safe Next.js learning platform for frontier AI/math concepts. The user goal is not just coverage: learning should feel joyful enough to return to voluntarily, visually rich, interactive, deep, mathematically serious, and non-trivial. The site should grow slowly with refined concepts rather than bulk content.
+
+We are executing a "flagship demo shell rollout": port the highest-leverage interactive demos onto a coherent shared `VizShell` / `VizStageAdapter` system, with mechanism-first prediction checks, accessible controls, calibrated toy claims, and compact AI companion demo-state emission.
+
+Completed rollout slices:
+
+1. Speculative Decoding
+   - Filesystem route uses `VizShell` + `VizStageAdapter`.
+   - Legacy foundation component behavior preserved by default.
+   - Mechanism-first prediction checks, deterministic trace, accepted-prefix semantics, residual-repair copy, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+2. Sparse Autoencoders
+   - Filesystem concept route uses `VizShell` + `VizStageAdapter`.
+   - Foundation component supports `chrome="legacy" | "notebook"`.
+   - Mechanism-first prediction checks, calibrated toy frontier claims, nonnegative TopK math/code, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+3. Mixture of Experts
+   - Filesystem concept route uses `VizShell` + `VizStageAdapter`.
+   - Foundation component supports `chrome="legacy" | "notebook"`.
+   - Neutral synthetic-router copy, accessible expert buttons, prediction-check live feedback, softmax concentration wording, load-bar/count fixes, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+4. Diffusion forward process
+   - Filesystem concept route uses `VizShell` + `VizStageAdapter`.
+   - Foundation component supports `chrome="legacy" | "notebook"`.
+   - Narrowed to DDPM forward noising, alpha-bar signal retention, deterministic particles, normalized structure-match prediction checks, clean x0 anchors, replay-not-sampler caveat, demo-state emission.
+   - GPT Pro Oracle implementation blockers applied.
+
+Next likely target from TODO is Loss Landscapes. It currently has a filesystem concept route with a custom tab wrapper over three demos:
+
+- `LossLandscapeViz` for a 2D slice / SAM / sharpness demo.
+- `LossLandscape3DViz` for a Three.js/R3F 3D surface.
+- `EdgeOfStabilityViz` for learning-rate stability dynamics.
+
+This is probably too large to patch all at once. Please scope the next one implementation slice.
+
+Decision criteria:
+
+- Maximize learning joy and depth: the learner should want to manipulate the demo out of curiosity, and the interaction should expose the actual mechanism.
+- Maximize visual coherence with the new shell without creating nested-card clutter.
+- Avoid broad refactors and avoid breaking legacy `/foundations`.
+- Prefer the smallest slice that can be implemented, locally validated, and then sent back to GPT Pro Oracle for implementation review.
+- Static export must keep working.
+- Avoid backend/account/live-data dependencies.
+- Do not introduce unsupported empirical claims about flat minima/generalization; qualify toy or correlation claims.
+- If the slice touches 3D/canvas/heavy animation, call out concrete verification needs.
+- Preserve the pattern used in prior slices: route-level `VizShell`, `VizStageAdapter`, optional foundation `chrome="legacy" | "notebook"` when useful, accessible prediction checks, compact demo-state emission.
+
+Please answer with:
+
+1. "TARGET" with the chosen Loss Landscapes target or sub-slice and why it beats the other sub-slices now.
+2. "PATCH PLAN" with the exact smallest useful file set.
+3. "PEDAGOGY RISKS" with exact claims/interactions to avoid.
+4. "VISUAL/JOY OPPORTUNITY" with the best way to make this feel compelling without decorative fluff.
+5. "IMPLEMENTATION NOTES" with concrete prop/CSS/state/copy changes.
+6. "VALIDATION" with exact local checks and route smoke checks.
+
+Assume I will implement one focused slice after your answer, then send it back to GPT Pro Oracle for implementation review.

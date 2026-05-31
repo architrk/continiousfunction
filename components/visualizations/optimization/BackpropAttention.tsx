@@ -1022,6 +1022,35 @@ export default function AttentionBackpropExplorer() {
           }
         }
 
+        @media (max-width: 640px) {
+          .attention-backprop-card {
+            padding: 1rem;
+          }
+
+          .attention-header {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .attention-header > div:last-child {
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            align-items: stretch !important;
+          }
+
+          .mode-toggle {
+            display: flex;
+            width: 100%;
+          }
+
+          .mode-toggle button {
+            flex: 1 1 0;
+            padding-inline: 0.45rem;
+            text-align: center;
+          }
+        }
+
         /* ----- Game Panel Styles ----- */
         .backprop-game-panel {
           margin-top: 1rem;

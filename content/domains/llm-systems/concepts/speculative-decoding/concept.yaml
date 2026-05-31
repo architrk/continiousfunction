@@ -24,9 +24,44 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Generate faster by drafting multiple tokens, then verifying them with the target model using rejection sampling so the final distribution is exactly unchanged."
+sources:
+  - id: leviathan-2022-speculative-decoding
+    kind: paper
+    title: "Fast Inference from Transformers via Speculative Decoding"
+    authors: "Leviathan, Kalman, and Matias"
+    year: 2022
+    url: "https://arxiv.org/pdf/2211.17192"
+    note: "Introduces speculative decoding as parallel draft-prefix scoring with modified rejection/residual sampling that preserves the target distribution."
+  - id: chen-2023-speculative-sampling
+    kind: paper
+    title: "Accelerating Large Language Model Decoding with Speculative Sampling"
+    authors: "Chen et al."
+    year: 2023
+    url: "https://arxiv.org/pdf/2302.01318"
+    note: "Independently grounds K-token drafts, parallel target scoring, modified rejection sampling, residual repair, and measured large-model decoding speedups."
+claim_checks:
+  - id: draft-verify-lossless-distribution
+    status: source-checked
+    claim: "Speculative decoding uses a fast draft model to propose multiple tokens and a target model to verify them in parallel, using rejection/residual sampling so the final output distribution matches target-model decoding."
+    source_ids:
+      - leviathan-2022-speculative-decoding
+      - chen-2023-speculative-sampling
+    support: "Leviathan defines gamma draft tokens from a faster approximation model, parallel target scoring of draft prefixes, accept/reject filtering, residual sampling from norm(max(0, p - q)), and proves target-distribution sampling. Chen independently describes K-token drafts, parallel target scoring, modified rejection/residual sampling, and preservation within hardware numerics."
+    caveat: "Checks lossless sampling under standardized sampling distributions; Chen qualifies the guarantee as within hardware numerics. Not a universal latency guarantee. Code is a toy finite-distribution/residual check plus prefix simulation; demo is a toy speedup witness, not proof."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Leviathan 2022 supports gamma-token drafting, parallel target scoring of draft prefixes, accept/reject filtering, residual sampling from norm(max(0, p - q)), and a proof of target-distribution sampling. Chen 2023 independently supports K-token drafts, parallel scoring, modified rejection/residual sampling, and hardware-numerics-qualified preservation, with reversed p/q notation. Page math follows Leviathan; code is a toy residual/distribution plus prefix check, and demo is toy speedup only."
+    object_refs:
+      - "#source-span-leviathan-2022-speculative-decoding"
+      - "#source-span-chen-2023-speculative-sampling"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+short_description: "Draft several tokens with a fast model, score draft prefixes with the target model in parallel, then use modified rejection/residual sampling so the sampled distribution matches target-model decoding."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 18
-

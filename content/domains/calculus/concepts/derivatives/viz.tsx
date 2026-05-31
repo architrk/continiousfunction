@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { clearDemoState, emitDemoState } from '../../../../../lib/demoState'
 import { clamp, MATH_COLORS } from '../../../../../lib/mathObjects'
 
 type FnKey = 'x2' | 'sin' | 'exp'
+export type TangentRelation = 'tangent-lower' | 'near' | 'tangent-higher'
 
 type FnSpec = {
   key: FnKey
@@ -46,22 +48,74 @@ const fmt = (n: number): string => {
   return (Math.abs(r) < 0.0005 ? 0 : r).toString()
 }
 
+const RELATION_COPY: Record<TangentRelation, { label: string; detail: string; status: string }> = {
+  'tangent-lower': {
+    label: "f'(x) is lower",
+    detail: 'The local slope at x sits below the visible average slope.',
+    status: 'tangent lower',
+  },
+  near: {
+    label: "f'(x) is nearly equal",
+    detail: 'The visible average already matches the local slope closely.',
+    status: 'nearly equal',
+  },
+  'tangent-higher': {
+    label: "f'(x) is higher",
+    detail: 'The local slope at x sits above the visible average slope.',
+    status: 'tangent higher',
+  },
+}
+
+export function classifyTangentRelation(tangentSlope: number, secantSlope: number): {
+  relation: TangentRelation
+  signedSlopeGap: number
+  relationTolerance: number
+} {
+  const signedSlopeGap = tangentSlope - secantSlope
+  const relationTolerance = Math.max(0.02, 0.02 * Math.max(1, Math.abs(tangentSlope), Math.abs(secantSlope)))
+
+  if (Math.abs(signedSlopeGap) <= relationTolerance) {
+    return { relation: 'near', signedSlopeGap, relationTolerance }
+  }
+
+  return {
+    relation: signedSlopeGap > 0 ? 'tangent-higher' : 'tangent-lower',
+    signedSlopeGap,
+    relationTolerance,
+  }
+}
+
 export default function DerivativesViz() {
   const [fnKey, setFnKey] = useState<FnKey>('x2')
   const [x0, setX0] = useState(1)
   const [h, setH] = useState(0.6)
   const [showSecant, setShowSecant] = useState(true)
   const [showTangent, setShowTangent] = useState(true)
+  const [prediction, setPrediction] = useState<TangentRelation | null>(null)
+  const [revealed, setRevealed] = useState(false)
 
   const fn = useMemo(() => FUNS.find((s) => s.key === fnKey) ?? FUNS[0], [fnKey])
 
+  const resetReveal = () => {
+    setPrediction(null)
+    setRevealed(false)
+    clearDemoState('derivatives')
+  }
+
+  const setFunctionKey = (next: FnKey) => {
+    resetReveal()
+    setFnKey(next)
+  }
+
   const safeSetH = (next: number) => {
+    resetReveal()
     const clampedH = clamp(next, 0.01, 2)
     setH(clampedH)
     setX0((prev) => clamp(prev, X_MIN + 0.2, X_MAX - 0.2 - clampedH))
   }
 
   const safeSetX0 = (next: number) => {
+    resetReveal()
     setX0(clamp(next, X_MIN + 0.2, X_MAX - 0.2 - h))
   }
 
@@ -114,6 +168,18 @@ export default function DerivativesViz() {
 
   const secantSlope = (y1 - y0) / h
   const tangentSlope = fn.df(x0)
+  const relation = useMemo(
+    () => classifyTangentRelation(tangentSlope, secantSlope),
+    [secantSlope, tangentSlope]
+  )
+  const slopeGap = Math.abs(secantSlope - tangentSlope)
+  const convergenceStatus =
+    slopeGap <= relation.relationTolerance
+      ? 'nearly tangent'
+      : slopeGap <= relation.relationTolerance * 5
+        ? 'approaching tangent'
+        : 'coarse secant'
+  const predictionCorrect = prediction === relation.relation
 
   const secantLine = useMemo(() => {
     const yL = y0 + secantSlope * (X_MIN - x0)
@@ -140,6 +206,42 @@ export default function DerivativesViz() {
   const p0 = { x: xToSvg(x0), y: yToSvg(y0) }
   const p1 = { x: xToSvg(x1), y: yToSvg(y1) }
 
+  useEffect(() => {
+    clearDemoState('derivatives')
+    return () => clearDemoState('derivatives')
+  }, [])
+
+  useEffect(() => {
+    if (!revealed || !prediction) {
+      clearDemoState('derivatives')
+      return
+    }
+
+    emitDemoState({
+      conceptId: 'derivatives',
+      label: 'Secant-to-tangent derivative reveal',
+      summary: `prediction=${prediction}; actual=${relation.relation}; correct=${predictionCorrect ? 'yes' : 'no'}; ${fn.label}, x=${fmt(x0)}, h=${fmt(h)}, secant=${fmt(secantSlope)}, tangent=${fmt(tangentSlope)}, signed gap=${fmt(relation.signedSlopeGap)}.`,
+      values: [
+        `prediction: ${prediction}`,
+        `actual relation: ${relation.relation}`,
+        `prediction correct: ${predictionCorrect ? 'yes' : 'no'}`,
+        `function: ${fn.label}`,
+        `x: ${fmt(x0)}`,
+        `x+h: ${fmt(x1)}`,
+        `h: ${fmt(h)}`,
+        `f(x): ${fmt(y0)}`,
+        `f(x+h): ${fmt(y1)}`,
+        `secant slope: ${fmt(secantSlope)}`,
+        `tangent slope: ${fmt(tangentSlope)}`,
+        `signed slope gap: tangent - secant = ${fmt(relation.signedSlopeGap)}`,
+        `absolute slope gap: ${fmt(slopeGap)}`,
+        `relation tolerance: ${fmt(relation.relationTolerance)}`,
+        `convergence status: ${convergenceStatus}`,
+        `visible layers: ${showSecant ? 'secant' : 'secant hidden'}, ${showTangent ? 'tangent' : 'tangent hidden'}`,
+      ],
+    })
+  }, [convergenceStatus, fn.label, h, prediction, predictionCorrect, relation, revealed, secantSlope, showSecant, showTangent, slopeGap, tangentSlope, x0, x1, y0, y1])
+
   const axes = useMemo(() => {
     // x-axis at y=0 if it’s inside the view
     const y0Svg = yToSvg(0)
@@ -158,10 +260,10 @@ export default function DerivativesViz() {
     <div className="wrap">
       <div className="controls">
         <div className="row">
-          <label className="lbl">
+          <label className="lbl" htmlFor="derivatives-function">
             <span className="lblTop">Function</span>
           </label>
-          <select className="sel" value={fnKey} onChange={(e) => setFnKey(e.target.value as FnKey)}>
+          <select id="derivatives-function" className="sel" value={fnKey} onChange={(e) => setFunctionKey(e.target.value as FnKey)}>
             {FUNS.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
@@ -192,7 +294,7 @@ export default function DerivativesViz() {
             <span className="lblVal">{fmt(h)}</span>
           </label>
           <input
-            aria-label="h"
+            aria-label="h (step)"
             type="range"
             min={0.01}
             max={2}
@@ -207,14 +309,17 @@ export default function DerivativesViz() {
             <input type="checkbox" checked={showSecant} onChange={(e) => setShowSecant(e.target.checked)} />
             <span>Show secant</span>
           </label>
-          <label className="toggle">
-            <input type="checkbox" checked={showTangent} onChange={(e) => setShowTangent(e.target.checked)} />
-            <span>Show tangent</span>
-          </label>
+          {revealed ? (
+            <label className="toggle">
+              <input type="checkbox" checked={showTangent} onChange={(e) => setShowTangent(e.target.checked)} />
+              <span>Show revealed tangent</span>
+            </label>
+          ) : null}
           <button
             type="button"
             className="btn"
             onClick={() => {
+              resetReveal()
               setFnKey('x2')
               setX0(1)
               setH(0.6)
@@ -227,15 +332,96 @@ export default function DerivativesViz() {
         </div>
 
         <div className="readout">
+          <div className="line interval">
+            <span className="mono">x+h</span> = <span className="val">{fmt(x1)}</span>
+            <span className="mono">f(x)</span> = <span className="val">{fmt(y0)}</span>
+            <span className="mono">f(x+h)</span> = <span className="val">{fmt(y1)}</span>
+          </div>
           <div className="line">
             <span className="mono">secant</span> = (f(x+h) − f(x)) / h = <span className="val">{fmt(secantSlope)}</span>
           </div>
-          <div className="line">
-            <span className="mono">tangent</span> = f'(x) = <span className="val">{fmt(tangentSlope)}</span>
-          </div>
-          <div className="hint">Shrink h to watch the secant slope converge to the derivative.</div>
+          {revealed ? (
+            <>
+              <div className="line emph">
+                <span className="mono">tangent</span> = f'(x) = <span className="val">{fmt(tangentSlope)}</span>
+              </div>
+              <div className="line emph">
+                <span className="mono">signed gap</span> = tangent − secant = <span className="val">{fmt(relation.signedSlopeGap)}</span>
+              </div>
+              <div className="line">
+                <span className="mono">absolute gap</span> = <span className="val">{fmt(slopeGap)}</span>
+                <span className={`badge ${convergenceStatus.replace(/\s+/g, '-')}`}>{convergenceStatus}</span>
+              </div>
+            </>
+          ) : (
+            <div className="line locked">local tangent slope and gap hidden until reveal</div>
+          )}
+          <div className="hint">The secant is the visible average over the interval. Predict the hidden local tangent at x before revealing the derivative.</div>
         </div>
       </div>
+
+      <section className="predictionPanel">
+        <div className="predictionCopy">
+          <span>prediction checkpoint</span>
+          <strong>Where is the hidden tangent slope?</strong>
+          <p>
+            Compare the curve near <span className="mono">x</span> with the visible secant interval. Is the local tangent slope lower than, nearly equal to, or higher than the secant slope?
+          </p>
+        </div>
+
+        <div className="choiceRow" role="group" aria-label="Hidden tangent relation prediction">
+          {(Object.keys(RELATION_COPY) as TangentRelation[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={prediction === key ? 'selected' : ''}
+              aria-pressed={prediction === key}
+              onClick={() => {
+                setPrediction(key)
+                setRevealed(false)
+                clearDemoState('derivatives')
+              }}
+            >
+              <strong>{RELATION_COPY[key].label}</strong>
+              <span>{RELATION_COPY[key].detail}</span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="reveal"
+          disabled={!prediction}
+          onClick={() => {
+            if (prediction) setRevealed(true)
+          }}
+        >
+          Reveal tangent relation
+        </button>
+      </section>
+
+      <section className={`result ${revealed ? 'shown' : ''}`} aria-live="polite">
+        {revealed && prediction ? (
+          <>
+            <h4>{predictionCorrect ? 'Correct.' : 'Not quite.'} The hidden tangent is {RELATION_COPY[relation.relation].status}.</h4>
+            <p>
+              Prediction: {RELATION_COPY[prediction].label}. Actual: {RELATION_COPY[relation.relation].label}. The secant averaged the interval, while the derivative is the local limit at <span className="mono">x</span>.
+            </p>
+            <div className="resultGrid">
+              <span>secant</span>
+              <strong>{fmt(secantSlope)}</strong>
+              <span>tangent</span>
+              <strong>{fmt(tangentSlope)}</strong>
+              <span>signed gap</span>
+              <strong>{fmt(relation.signedSlopeGap)}</strong>
+              <span>tolerance</span>
+              <strong>{fmt(relation.relationTolerance)}</strong>
+            </div>
+          </>
+        ) : (
+          <p>{prediction ? 'Reveal the tangent line to test your relation prediction.' : "Choose a tangent relation to unlock f'(x), the tangent line, and the slope gap."}</p>
+        )}
+      </section>
 
       <svg className="svg" viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} role="img" aria-label="Derivative as secant-to-tangent">
         {/* plot background */}
@@ -246,7 +432,7 @@ export default function DerivativesViz() {
         <line x1={axes.yAxis.x1} y1={axes.yAxis.y1} x2={axes.yAxis.x2} y2={axes.yAxis.y2} stroke="rgba(148, 163, 184, 0.35)" strokeWidth={1.5} />
 
         {/* curve */}
-        <path d={pathD} fill="none" stroke="rgba(245, 245, 245, 0.82)" strokeWidth={2.5} />
+          <path d={pathD} fill="none" stroke="rgba(245, 245, 245, 0.82)" strokeWidth={2.5} />
 
         {/* secant line */}
         {showSecant ? (
@@ -254,13 +440,13 @@ export default function DerivativesViz() {
         ) : null}
 
         {/* tangent line */}
-        {showTangent ? (
+        {revealed && showTangent ? (
           <line x1={tangentLine.x1} y1={tangentLine.y1} x2={tangentLine.x2} y2={tangentLine.y2} stroke={MATH_COLORS.primary} strokeWidth={2} strokeDasharray="2 6" />
         ) : null}
 
         {/* points */}
-        <circle cx={p0.x} cy={p0.y} r={6.5} fill={MATH_COLORS.primary} stroke="rgba(0,0,0,0.35)" strokeWidth={1} />
-        <circle cx={p1.x} cy={p1.y} r={6.5} fill={MATH_COLORS.secondary} stroke="rgba(0,0,0,0.35)" strokeWidth={1} />
+          <circle className="moving-point" cx={p0.x} cy={p0.y} r={6.5} fill={MATH_COLORS.primary} stroke="rgba(0,0,0,0.35)" strokeWidth={1} />
+          <circle className="moving-point" cx={p1.x} cy={p1.y} r={6.5} fill={MATH_COLORS.secondary} stroke="rgba(0,0,0,0.35)" strokeWidth={1} />
 
         {/* delta triangle */}
         {showSecant ? (
@@ -376,6 +562,18 @@ export default function DerivativesViz() {
           align-items: baseline;
         }
 
+        .line.emph {
+          color: rgba(245, 245, 245, 0.96);
+        }
+
+        .locked {
+          border: 1px dashed rgba(34, 197, 94, 0.24);
+          border-radius: 8px;
+          color: rgba(148, 163, 184, 0.9);
+          margin-top: 0.4rem;
+          padding: 0.4rem 0.55rem;
+        }
+
         .mono {
           font-family: var(--font-mono);
         }
@@ -385,16 +583,175 @@ export default function DerivativesViz() {
           color: ${MATH_COLORS.secondary};
         }
 
+        .badge {
+          border: 1px solid rgba(148, 163, 184, 0.2);
+          border-radius: 999px;
+          color: rgba(245, 245, 245, 0.78);
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
+          padding: 0.12rem 0.45rem;
+        }
+
+        .badge.nearly-tangent {
+          border-color: rgba(34, 197, 94, 0.38);
+          color: rgba(187, 247, 208, 0.95);
+        }
+
+        .badge.approaching-tangent {
+          border-color: rgba(59, 130, 246, 0.38);
+          color: rgba(191, 219, 254, 0.95);
+        }
+
         .hint {
           margin-top: 0.45rem;
           color: rgba(148, 163, 184, 0.88);
           font-size: 0.85rem;
         }
 
+        .predictionPanel,
+        .result {
+          border-top: 1px solid rgba(34, 197, 94, 0.14);
+          padding: 0.9rem 1rem;
+        }
+
+        .predictionPanel {
+          background: rgba(8, 12, 20, 0.2);
+        }
+
+        .predictionCopy {
+          display: grid;
+          gap: 0.25rem;
+        }
+
+        .predictionCopy span,
+        .result span {
+          color: rgba(148, 163, 184, 0.88);
+          font-size: 0.74rem;
+          text-transform: uppercase;
+        }
+
+        .predictionCopy strong,
+        .result h4 {
+          color: rgba(245, 245, 245, 0.96);
+          font-size: 1rem;
+          margin: 0;
+        }
+
+        .predictionCopy p,
+        .result p {
+          color: rgba(203, 213, 225, 0.88);
+          font-size: 0.9rem;
+          line-height: 1.55;
+          margin: 0;
+        }
+
+        .choiceRow {
+          display: grid;
+          gap: 0.55rem;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          margin-top: 0.8rem;
+        }
+
+        .choiceRow button {
+          border: 1px solid rgba(148, 163, 184, 0.2);
+          border-radius: 8px;
+          background: rgba(8, 12, 20, 0.42);
+          color: rgba(203, 213, 225, 0.9);
+          cursor: pointer;
+          display: grid;
+          gap: 0.25rem;
+          min-height: 92px;
+          padding: 0.7rem;
+          text-align: left;
+        }
+
+        .choiceRow button strong {
+          color: rgba(245, 245, 245, 0.96);
+          font-size: 0.9rem;
+        }
+
+        .choiceRow button span {
+          color: rgba(148, 163, 184, 0.9);
+          font-size: 0.78rem;
+          line-height: 1.45;
+          text-transform: none;
+        }
+
+        .choiceRow button.selected {
+          border-color: rgba(34, 197, 94, 0.62);
+          box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.2);
+        }
+
+        .reveal {
+          border: 1px solid rgba(34, 197, 94, 0.45);
+          border-radius: 8px;
+          background: rgba(34, 197, 94, 0.13);
+          color: rgba(245, 245, 245, 0.96);
+          cursor: pointer;
+          font-weight: 700;
+          margin-top: 0.75rem;
+          padding: 0.65rem 0.9rem;
+          width: 100%;
+        }
+
+        .reveal:disabled {
+          border-color: rgba(148, 163, 184, 0.18);
+          color: rgba(148, 163, 184, 0.84);
+          cursor: not-allowed;
+          opacity: 0.74;
+        }
+
+        .result {
+          background: rgba(8, 12, 20, 0.3);
+          min-height: 72px;
+        }
+
+        .result.shown {
+          border-top-color: rgba(34, 197, 94, 0.3);
+        }
+
+        .resultGrid {
+          display: grid;
+          gap: 0.45rem 0.75rem;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          margin-top: 0.75rem;
+        }
+
+        .resultGrid strong {
+          color: rgba(245, 245, 245, 0.96);
+          font-family: var(--font-mono);
+          font-size: 0.94rem;
+        }
+
         .svg {
           width: 100%;
           height: auto;
           display: block;
+        }
+
+        .svg line,
+        .svg circle,
+        .svg path {
+          transition:
+            cx 180ms ease,
+            cy 180ms ease,
+            x1 180ms ease,
+            x2 180ms ease,
+            y1 180ms ease,
+            y2 180ms ease,
+            d 180ms ease,
+            opacity 180ms ease;
+        }
+
+        @media (max-width: 620px) {
+          input[type='range'] {
+            min-width: 170px;
+          }
+
+          .choiceRow,
+          .resultGrid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>

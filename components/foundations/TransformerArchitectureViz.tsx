@@ -10,6 +10,7 @@ import React, {
   CSSProperties,
 } from 'react'
 import { interpolateNumber } from 'd3'
+import { clearDemoState, emitDemoState } from '../../lib/demoState'
 
 // Architecture variant presets for exploration
 type ArchitectureVariant = 'original' | 'gpt' | 'bert' | 't5'
@@ -24,6 +25,7 @@ interface ArchitecturePreset {
 
 // === Gamification Types ===
 type GamePhase = 'setup' | 'countdown' | 'revealed'
+type ResidualShapePrediction = 'attention-matrix' | 'ffn-expanded' | 'residual-stream' | 'vocab-logits'
 
 interface ArchitectureChallenge {
   name: string
@@ -31,6 +33,63 @@ interface ArchitectureChallenge {
   hint: string
   answer: ArchitectureVariant
   explanation: string
+}
+
+const RESIDUAL_SHAPE_ACTUAL: ResidualShapePrediction = 'residual-stream'
+const RESIDUAL_SHAPE_OPTIONS: Array<{
+  id: ResidualShapePrediction
+  label: string
+  description: string
+}> = [
+  {
+    id: 'attention-matrix',
+    label: 'Attention keeps the stream as T × T',
+    description: 'The attention matrix becomes the next layer input.',
+  },
+  {
+    id: 'ffn-expanded',
+    label: 'The FFN hands T × d_ff to the next layer',
+    description: 'The expanded hidden width becomes the block boundary.',
+  },
+  {
+    id: 'residual-stream',
+    label: 'Attention and FFN return to T × d_model',
+    description: 'Each sublayer comes back to the residual-stream width.',
+  },
+  {
+    id: 'vocab-logits',
+    label: 'The block outputs T × V logits',
+    description: 'The output projection shape becomes the next layer input.',
+  },
+]
+
+const RESIDUAL_SHAPE_LABELS: Record<ResidualShapePrediction, string> = {
+  'attention-matrix': 'attention keeps the stream as T × T',
+  'ffn-expanded': 'the FFN hands T × d_ff forward',
+  'residual-stream': 'attention and FFN return to T × d_model',
+  'vocab-logits': 'the block outputs T × V logits',
+}
+
+const LOCKED_INSIGHT = {
+  emoji: '🔎',
+  color: '#8b5cf6',
+  text:
+    'The diagram shows where sublayers sit. The hidden part is what shape each sublayer must hand back to the residual stream.',
+}
+
+const LOCKED_COMPONENT_COPY: Record<TransformerComponentId, string> = {
+  'input-embedding':
+    'This entry block prepares token information for the stream. Its exact tensor boundary is locked until reveal.',
+  'multihead-self-attn':
+    'This attention block routes information across positions. Its internal workspace and returned stream shape are locked until reveal.',
+  'add-norm':
+    'This block joins a sublayer path with the residual path. The compatibility condition is locked until reveal.',
+  'feed-forward':
+    'This per-position block transforms each token independently. Its internal expansion and return shape are locked until reveal.',
+  'encoder-decoder-attn':
+    'This bridge lets the decoder read encoder memory. Query/key/value shapes are locked until reveal.',
+  'output-projection':
+    'This final readout maps hidden states toward vocabulary choices. Where it belongs in the stack is locked until reveal.',
 }
 
 const ARCHITECTURE_CHALLENGES: ArchitectureChallenge[] = [
@@ -1590,7 +1649,11 @@ function ComponentMiniDiagram({ componentId }: { componentId: TransformerCompone
 
 // === Main component ===
 
-export default function TransformerMasterDiagram() {
+type TransformerMasterDiagramProps = {
+  conceptId?: string
+}
+
+export default function TransformerMasterDiagram({ conceptId = 'attention-transformers' }: TransformerMasterDiagramProps) {
   const [focus, setFocus] = useState<FocusTarget>({ kind: 'overview' })
   const [showShapes, setShowShapes] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -1598,6 +1661,11 @@ export default function TransformerMasterDiagram() {
   const [speed, setSpeed] = useState(1) // multiplier
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [activeVariant, setActiveVariant] = useState<ArchitectureVariant>('original')
+  const [shapePrediction, setShapePrediction] = useState<ResidualShapePrediction | null>(null)
+  const [shapeRevealed, setShapeRevealed] = useState(false)
+  const conceptIdRef = useRef(conceptId)
+  const conceptChanged = conceptIdRef.current !== conceptId
+  const revealVisible = shapeRevealed && !conceptChanged
 
   // === Gamification State ===
   const [gameMode, setGameMode] = useState(false)
@@ -1607,6 +1675,29 @@ export default function TransformerMasterDiagram() {
   const [countdown, setCountdown] = useState(0)
   const [score, setScore] = useState(0)
   const [completedChallenges, setCompletedChallenges] = useState<Set<string>>(new Set())
+
+  const resetReveal = useCallback((clearPrediction = true) => {
+    if (clearPrediction) setShapePrediction(null)
+    setShapeRevealed(false)
+    setTooltip(null)
+    setGameMode(false)
+    setGamePhase('setup')
+    setSelectedChallenge(null)
+    setPrediction(null)
+    clearDemoState(conceptId)
+  }, [conceptId])
+
+  const chooseShapePrediction = useCallback((nextPrediction: ResidualShapePrediction) => {
+    setShapePrediction(nextPrediction)
+    if (shapeRevealed) {
+      resetReveal(false)
+    }
+  }, [resetReveal, shapeRevealed])
+
+  const revealResidualShape = useCallback(() => {
+    if (!shapePrediction) return
+    setShapeRevealed(true)
+  }, [shapePrediction])
 
   // Start a challenge
   const startChallenge = useCallback((challenge: ArchitectureChallenge) => {
@@ -1626,8 +1717,6 @@ export default function TransformerMasterDiagram() {
       setScore((s) => s + 1)
       setCompletedChallenges((prev) => new Set([...prev, selectedChallenge.name]))
     }
-    // Switch to the correct architecture variant
-    setActiveVariant(selectedChallenge.answer)
   }, [gamePhase, selectedChallenge, completedChallenges])
 
   // Reset game
@@ -1646,9 +1735,6 @@ export default function TransformerMasterDiagram() {
       if (countdown === 1) {
         // Time's up - reveal without prediction
         setGamePhase('revealed')
-        if (selectedChallenge) {
-          setActiveVariant(selectedChallenge.answer)
-        }
       } else {
         setCountdown((c) => c - 1)
       }
@@ -1664,7 +1750,10 @@ export default function TransformerMasterDiagram() {
   // Handle variant selection
   const handleVariantSelect = useCallback((variant: ArchitectureVariant) => {
     setActiveVariant(variant)
-  }, [])
+    if (shapeRevealed) {
+      resetReveal(false)
+    }
+  }, [resetReveal, shapeRevealed])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const animationFrameRef = useRef<number | null>(null)
@@ -1721,6 +1810,7 @@ export default function TransformerMasterDiagram() {
 
   const handleBlockClick = (block: DiagramBlock) => {
     if (block.componentId) {
+      if (revealVisible) clearDemoState(conceptId)
       setFocus({ kind: 'component', componentId: block.componentId })
     }
   }
@@ -1730,14 +1820,14 @@ export default function TransformerMasterDiagram() {
     evt: ReactMouseEvent<SVGGElement>,
   ) => {
     if (!block.componentId) return
-    const meta = COMPONENT_METADATA[block.componentId]
-    if (!meta) return
     const containerRect = containerRef.current?.getBoundingClientRect()
     if (!containerRect) return
 
-    const content = meta.formulas
-      .map((f) => `${f.label}: ${f.formula}`)
-      .join('\n')
+    const meta = COMPONENT_METADATA[block.componentId]
+    if (!meta) return
+    const content = revealVisible
+      ? meta.formulas.map((f) => `${f.label}: ${f.formula}`).join('\n')
+      : 'Formula locked until residual-shape reveal.'
 
     setTooltip({
       x: evt.clientX - containerRect.left + 12,
@@ -1771,12 +1861,78 @@ export default function TransformerMasterDiagram() {
   const resetAnimation = () => {
     setProgress(0)
     setIsPlaying(false)
+    if (shapeRevealed) {
+      resetReveal(false)
+    }
   }
+
+  useEffect(() => {
+    conceptIdRef.current = conceptId
+    setShapePrediction(null)
+    setShapeRevealed(false)
+    setGameMode(false)
+    setGamePhase('setup')
+    setSelectedChallenge(null)
+    setPrediction(null)
+    clearDemoState(conceptId)
+    return () => clearDemoState(conceptId)
+  }, [conceptId])
 
   const overviewActive = focus.kind === 'overview'
 
   // Detail panel content (overview or component drill-down)
   const renderDetailPanel = () => {
+    if (!revealVisible) {
+      if (focus.kind === 'overview') {
+        return (
+          <div style={styles.detailPanel}>
+            <div style={styles.breadcrumbsRow}>
+              <span style={styles.breadcrumbActive}>Transformer (overview)</span>
+            </div>
+            <h2 style={styles.detailTitle}>Residual-stream shape locked</h2>
+            <p style={styles.detailText}>
+              The topology is visible, but tensor shapes, formulas, and residual-boundary measurements are locked until you predict the block-shape invariant.
+            </p>
+            <ul style={styles.detailList}>
+              <li>
+                <span style={styles.listLabel}>Look at the block order</span> before revealing which internal workspaces change shape.
+              </li>
+              <li>
+                <span style={styles.listLabel}>Click a block</span> to inspect its role without exposing shape tables yet.
+              </li>
+              <li>
+                <span style={styles.listLabel}>Reveal once</span> to unlock tensor labels, formulas, and the residual-boundary readout.
+              </li>
+            </ul>
+          </div>
+        )
+      }
+
+      const meta = COMPONENT_METADATA[focus.componentId]
+      return (
+        <div style={styles.detailPanel}>
+          <div style={styles.breadcrumbsRow}>
+            <button
+              type="button"
+              style={styles.breadcrumbLink}
+              onClick={() => setFocus({ kind: 'overview' })}
+            >
+              Transformer
+            </button>
+            <span style={styles.breadcrumbSeparator}>/</span>
+            <span style={styles.breadcrumbDim}>{meta.category}</span>
+            <span style={styles.breadcrumbSeparator}>/</span>
+            <span style={styles.breadcrumbActive}>{meta.title}</span>
+          </div>
+          <h2 style={styles.detailTitle}>{meta.title}</h2>
+          <p style={styles.detailText}>{LOCKED_COMPONENT_COPY[meta.id]}</p>
+          <div style={styles.lockedPanel}>
+            Tensor shapes and formulas are locked until the residual-shape reveal.
+          </div>
+        </div>
+      )
+    }
+
     if (focus.kind === 'overview') {
       return (
         <div style={styles.detailPanel}>
@@ -1902,6 +2058,99 @@ export default function TransformerMasterDiagram() {
   const tokenStageLabel = `${tokenState.stageIndex + 1}/${TOKEN_STAGES.length}: ${
     activeStage.label
   }`
+  const activeVariantPreset = ARCHITECTURE_PRESETS.find((preset) => preset.id === activeVariant)
+  const focusedMetadata = focus.kind === 'component' ? COMPONENT_METADATA[focus.componentId] : null
+  const focusLabel = focusedMetadata?.title ?? 'Transformer overview'
+  const focusCategory = focusedMetadata?.category ?? 'Overview'
+  const visibleTokenStageLabel = revealVisible
+    ? tokenStageLabel
+    : `${tokenState.stageIndex + 1}/${TOKEN_STAGES.length}: ${BLOCK_INDEX[activeBlockId]?.label ?? activeStage.blockId}`
+  const visibleInsight = revealVisible ? currentInsight : LOCKED_INSIGHT
+  const shapePredictionCorrect = shapePrediction !== null && shapePrediction === RESIDUAL_SHAPE_ACTUAL
+  const shapePredictionLabel = shapePrediction ? RESIDUAL_SHAPE_LABELS[shapePrediction] : 'none'
+  const actualShapeLabel = RESIDUAL_SHAPE_LABELS[RESIDUAL_SHAPE_ACTUAL]
+  const architectureEvidenceSteps = [
+    {
+      step: '01',
+      label: 'Predict',
+      detail: shapePrediction ? shapePredictionLabel : 'Choose the residual-boundary shape.',
+    },
+    {
+      step: '02',
+      label: 'Observe',
+      detail: revealVisible ? actualShapeLabel : 'Shapes and formulas stay locked.',
+    },
+    {
+      step: '03',
+      label: 'Ground',
+      detail: revealVisible ? 'Attention and FFN return to T x d_model.' : 'Watch which paths must be added.',
+    },
+    {
+      step: '04',
+      label: 'Carry',
+      detail: revealVisible
+        ? shapePredictionCorrect
+          ? 'Matched. Use the revealed block to inspect variants.'
+          : `Compare with ${actualShapeLabel}.`
+        : 'Then unlock tensor labels and the architecture quiz.',
+    },
+  ]
+  const architectureActiveEvidenceIndex = revealVisible ? 3 : 0
+
+  useEffect(() => {
+    if (!revealVisible || shapePrediction === null) return
+
+    emitDemoState({
+      conceptId,
+      label: 'Transformer architecture residual-shape reveal',
+      summary:
+        `Learner predicted ${shapePredictionLabel}; revealed that attention and FFN both return to T × d_model, making residual stacking legal.`,
+      values: [
+        'slice: transformer-architecture-prediction-first-residual-shape-reveal',
+        `architecture variant: ${activeVariantPreset?.name ?? activeVariant} (${activeVariant})`,
+        `prediction: ${shapePredictionLabel}`,
+        `actual: ${actualShapeLabel} at the residual boundary`,
+        `prediction correct: ${shapePredictionCorrect ? 'yes' : 'no'}`,
+        'residual stream shape: T × d_model',
+        'attention weights shape: h × T × T',
+        'attention output shape: T × d_model',
+        'ffn hidden shape: T × d_ff',
+        'ffn output shape: T × d_model',
+        'residual add legal: yes, sublayer output matches input stream shape',
+        `d_model: ${D_MODEL}`,
+        `d_ff: ${D_FF}`,
+        `heads: ${NUM_HEADS}`,
+        `d_k: ${D_K}`,
+        `active token stage: ${tokenStageLabel}`,
+        `focused object: ${focusLabel}`,
+        `focus category: ${focusCategory}`,
+        `active block: ${activeBlockId}`,
+        `animation state: ${isPlaying ? 'playing' : 'paused'}`,
+        `animation speed: ${speed.toFixed(1)}x`,
+        `animation progress: ${(progress * 100).toFixed(1)}%`,
+        `tensor shapes: ${showShapes ? 'shown' : 'hidden'}`,
+        'visible layers: tensor shapes, formulas, hover tooltips, residual-boundary readout',
+        'evidence loop: predict -> observe -> ground -> carry',
+      ],
+    })
+  }, [
+    activeBlockId,
+    activeVariant,
+    activeVariantPreset,
+    actualShapeLabel,
+    conceptId,
+    focusCategory,
+    focusLabel,
+    isPlaying,
+    progress,
+    revealVisible,
+    shapePrediction,
+    shapePredictionCorrect,
+    shapePredictionLabel,
+    showShapes,
+    speed,
+    tokenStageLabel,
+  ])
 
   return (
     <div ref={containerRef} style={styles.root}>
@@ -1929,11 +2178,98 @@ export default function TransformerMasterDiagram() {
         </div>
       </div>
 
+      <section
+        style={styles.predictionPanel}
+        aria-live="polite"
+        data-child-demo-gate="architecture-residual-shape"
+      >
+        <div style={styles.predictionCopy}>
+          <span style={styles.predictionEyebrow}>prediction checkpoint</span>
+          <strong style={styles.predictionTitle}>
+            Which shape invariant makes transformer blocks stackable?
+          </strong>
+          <p style={styles.predictionText}>
+            The diagram shows where sublayers sit. Predict what attention and the feed-forward
+            sublayer must hand back to the residual stream before revealing shapes and formulas.
+          </p>
+        </div>
+        <div style={styles.predictionChoices} role="group" aria-label="Residual shape prediction">
+          {RESIDUAL_SHAPE_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={shapePrediction === option.id}
+              onClick={() => chooseShapePrediction(option.id)}
+              title="Choose this residual-shape prediction"
+              style={{
+                ...styles.predictionChoice,
+                ...(shapePrediction === option.id ? styles.predictionChoiceSelected : {}),
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div style={styles.predictionEvidenceStrip} aria-label="Residual shape evidence loop">
+          {architectureEvidenceSteps.map((step, index) => (
+            <article
+              key={step.step}
+              style={{
+                ...styles.predictionEvidenceStep,
+                ...(index === architectureActiveEvidenceIndex ? styles.predictionEvidenceStepActive : {}),
+              }}
+            >
+              <span style={styles.predictionEvidenceStepIndex}>{step.step}</span>
+              <strong style={styles.predictionEvidenceStepTitle}>{step.label}</strong>
+              <p style={styles.predictionEvidenceStepText}>{step.detail}</p>
+            </article>
+          ))}
+        </div>
+        <div style={styles.predictionActions}>
+          <button
+            type="button"
+            disabled={shapePrediction === null || revealVisible}
+            onClick={revealResidualShape}
+            style={{
+              ...styles.revealShapeButton,
+              ...(shapePrediction === null || revealVisible ? styles.disabledButton : {}),
+            }}
+          >
+            Reveal residual shape
+          </button>
+          {revealVisible ? (
+            <button type="button" onClick={() => resetReveal()} style={styles.resetShapeButton}>
+              Reset reveal
+            </button>
+          ) : null}
+          {revealVisible ? (
+            <span style={shapePredictionCorrect ? styles.predictionResultOk : styles.predictionResultMiss}>
+              {shapePredictionCorrect ? 'Prediction matched.' : `Prediction missed. Actual: ${actualShapeLabel}.`}
+            </span>
+          ) : null}
+        </div>
+      </section>
+
+      {revealVisible ? (
+        <div style={styles.residualReadout}>
+          <strong>Residual-shape reveal:</strong> Both attention and the FFN return to{' '}
+          <span>T × d_model</span> at the block boundary. Attention internally forms{' '}
+          <span>h × T × T</span> weights, and the FFN internally expands to{' '}
+          <span>T × d_ff</span>, but residual addition is legal only when the sublayer output
+          matches the stream shape.
+        </div>
+      ) : (
+        <div style={styles.lockedReadout}>
+          Tensor shapes, formulas, hover equations, and measured architecture state are locked until reveal.
+        </div>
+      )}
+
       {/* Architecture Variant Presets */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
         {ARCHITECTURE_PRESETS.map((preset) => (
           <button
             key={preset.id}
+            type="button"
             onClick={() => handleVariantSelect(preset.id)}
             style={{
               padding: '0.35rem 0.7rem',
@@ -1950,7 +2286,7 @@ export default function TransformerMasterDiagram() {
               alignItems: 'center',
               gap: '0.35rem',
             }}
-            title={preset.description}
+            title={revealVisible ? preset.description : 'Variant details locked until reveal'}
           >
             <span>{preset.emoji}</span>
             <span>{preset.name}</span>
@@ -1958,7 +2294,10 @@ export default function TransformerMasterDiagram() {
         ))}
         <div style={{ marginLeft: 'auto' }}>
           <button
+            type="button"
+            disabled={!revealVisible}
             onClick={() => {
+              if (!revealVisible) return
               setGameMode(!gameMode)
               if (gameMode) resetGame()
             }}
@@ -1966,25 +2305,27 @@ export default function TransformerMasterDiagram() {
               padding: '0.35rem 0.7rem',
               borderRadius: '999px',
               border: gameMode ? '2px solid #22c55e' : '1px solid rgba(34,197,94,0.4)',
-              background: gameMode
+              background: !revealVisible
+                ? 'rgba(15,23,42,0.45)'
+                : gameMode
                 ? 'linear-gradient(135deg, rgba(34,197,94,0.25), rgba(16,185,129,0.15))'
                 : 'rgba(15,23,42,0.8)',
-              color: gameMode ? '#e5e7eb' : '#9ca3af',
+              color: !revealVisible ? '#6b7280' : gameMode ? '#e5e7eb' : '#9ca3af',
               fontSize: '0.78rem',
-              cursor: 'pointer',
+              cursor: revealVisible ? 'pointer' : 'not-allowed',
               display: 'flex',
               alignItems: 'center',
               gap: '0.35rem',
             }}
           >
             <span>{gameMode ? '🎮' : '🎯'}</span>
-            <span>{gameMode ? 'Exit Challenge' : 'Try Architecture Quiz'}</span>
+            <span>{gameMode ? 'Exit Challenge' : revealVisible ? 'Try Architecture Quiz' : 'Quiz locked'}</span>
           </button>
         </div>
       </div>
 
       {/* Gamification Panel */}
-      {gameMode && (
+      {revealVisible && gameMode && (
         <div style={{
           padding: '0.75rem',
           borderRadius: '0.75rem',
@@ -2009,6 +2350,7 @@ export default function TransformerMasterDiagram() {
                 {ARCHITECTURE_CHALLENGES.map((challenge) => (
                   <button
                     key={challenge.name}
+                    type="button"
                     onClick={() => startChallenge(challenge)}
                     style={{
                       padding: '0.3rem 0.6rem',
@@ -2067,6 +2409,7 @@ export default function TransformerMasterDiagram() {
                 {ARCHITECTURE_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
+                    type="button"
                     onClick={() => submitPrediction(preset.id)}
                     style={{
                       padding: '0.4rem 0.7rem',
@@ -2120,9 +2463,10 @@ export default function TransformerMasterDiagram() {
                 )}
               </div>
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-                The diagram above now shows the {ARCHITECTURE_PRESETS.find(p => p.id === selectedChallenge.answer)?.name} architecture.
+                The answer is {ARCHITECTURE_PRESETS.find(p => p.id === selectedChallenge.answer)?.name}. Use the presets above if you want to inspect that architecture after this quiz.
               </p>
               <button
+                type="button"
                 onClick={() => setGamePhase('setup')}
                 style={{
                   padding: '0.35rem 0.7rem',
@@ -2146,17 +2490,17 @@ export default function TransformerMasterDiagram() {
         style={{
           padding: '0.6rem 0.9rem',
           borderRadius: '0.5rem',
-          background: `linear-gradient(135deg, ${currentInsight.color}22, ${currentInsight.color}08)`,
-          border: `1px solid ${currentInsight.color}55`,
+          background: `linear-gradient(135deg, ${visibleInsight.color}22, ${visibleInsight.color}08)`,
+          border: `1px solid ${visibleInsight.color}55`,
           marginBottom: '0.75rem',
           display: 'flex',
           alignItems: 'flex-start',
           gap: '0.5rem',
         }}
       >
-        <span style={{ fontSize: '1.1rem' }}>{currentInsight.emoji}</span>
+        <span style={{ fontSize: '1.1rem' }}>{visibleInsight.emoji}</span>
         <p style={{ margin: 0, fontSize: '0.8rem', color: '#e5e7eb', lineHeight: 1.4 }}>
-          {currentInsight.text}
+          {visibleInsight.text}
         </p>
       </div>
 
@@ -2191,13 +2535,14 @@ export default function TransformerMasterDiagram() {
           <label style={styles.toggleLabel}>
             <input
               type="checkbox"
-              checked={showShapes}
+              checked={revealVisible && showShapes}
+              disabled={!revealVisible}
               onChange={(e) => setShowShapes(e.target.checked)}
               style={{ marginRight: 6 }}
             />
-            Show tensor shapes
+            {revealVisible ? 'Show tensor shapes' : 'Tensor shapes locked'}
           </label>
-          <div style={styles.stageLabel}>{tokenStageLabel}</div>
+          <div style={styles.stageLabel}>{visibleTokenStageLabel}</div>
         </div>
       </div>
 
@@ -2448,7 +2793,7 @@ export default function TransformerMasterDiagram() {
                   >
                     {block.label}
                   </text>
-                  {showShapes && block.shapeLabel && (
+                  {revealVisible && showShapes && block.shapeLabel && (
                     <text
                       x={block.x + block.width / 2}
                       y={block.y + block.height - 10}
@@ -2580,6 +2925,166 @@ const styles: Record<string, CSSProperties> = {
   },
   legendLabel: {
     color: COLORS.textMuted,
+  },
+  predictionPanel: {
+    display: 'grid',
+    gap: '0.75rem',
+    padding: '0.85rem',
+    marginBottom: '0.8rem',
+    borderRadius: 16,
+    background: 'linear-gradient(135deg, rgba(139,92,246,0.16), rgba(20,184,166,0.06))',
+    border: '1px solid rgba(139,92,246,0.35)',
+  },
+  predictionCopy: {
+    display: 'grid',
+    gap: '0.25rem',
+  },
+  predictionEyebrow: {
+    color: '#c4b5fd',
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+  },
+  predictionTitle: {
+    color: COLORS.textMain,
+    fontSize: 15,
+  },
+  predictionText: {
+    margin: 0,
+    color: COLORS.textMuted,
+    fontSize: 12,
+    lineHeight: 1.45,
+  },
+  predictionChoices: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))',
+    gap: '0.5rem',
+  },
+  predictionChoice: {
+    minHeight: 44,
+    padding: '0.45rem 0.65rem',
+    borderRadius: 12,
+    border: '1px solid rgba(148,163,184,0.35)',
+    background: 'rgba(15,23,42,0.72)',
+    color: COLORS.textMain,
+    fontSize: 12,
+    textAlign: 'left',
+    cursor: 'pointer',
+  },
+  predictionChoiceSelected: {
+    border: '1px solid rgba(196,181,253,0.9)',
+    background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(20,184,166,0.1))',
+  },
+  predictionEvidenceStrip: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))',
+    gap: '0.5rem',
+    padding: '0.55rem',
+    borderRadius: 8,
+    border: '1px solid rgba(148,163,184,0.18)',
+    background:
+      'linear-gradient(rgba(148,163,184,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.045) 1px, transparent 1px), #0f172a',
+    backgroundSize: '22px 22px',
+  },
+  predictionEvidenceStep: {
+    display: 'grid',
+    alignContent: 'start',
+    gap: '0.2rem',
+    minHeight: 104,
+    padding: '0.58rem',
+    borderRadius: 8,
+    border: '1px solid rgba(148,163,184,0.18)',
+    background: 'rgba(15,23,42,0.86)',
+  },
+  predictionEvidenceStepActive: {
+    border: '1px solid rgba(96,165,250,0.76)',
+    background: 'rgba(37,99,235,0.24)',
+  },
+  predictionEvidenceStepIndex: {
+    color: '#93c5fd',
+    fontSize: 10,
+    fontFamily:
+      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  },
+  predictionEvidenceStepTitle: {
+    color: '#f8fafc',
+    fontSize: 13,
+    lineHeight: 1.18,
+    overflowWrap: 'anywhere',
+  },
+  predictionEvidenceStepText: {
+    margin: 0,
+    color: '#cbd5e1',
+    fontSize: 11,
+    lineHeight: 1.35,
+    overflowWrap: 'anywhere',
+  },
+  predictionActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: '0.55rem',
+  },
+  revealShapeButton: {
+    padding: '0.45rem 0.85rem',
+    borderRadius: 999,
+    border: '1px solid rgba(196,181,253,0.7)',
+    background: 'rgba(139,92,246,0.22)',
+    color: COLORS.textMain,
+    cursor: 'pointer',
+    fontSize: 12,
+  },
+  resetShapeButton: {
+    padding: '0.45rem 0.85rem',
+    borderRadius: 999,
+    border: `1px solid ${COLORS.borderSoft}`,
+    background: 'transparent',
+    color: COLORS.textMuted,
+    cursor: 'pointer',
+    fontSize: 12,
+  },
+  disabledButton: {
+    opacity: 0.55,
+    cursor: 'not-allowed',
+  },
+  predictionResultOk: {
+    color: '#22c55e',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  predictionResultMiss: {
+    color: '#f59e0b',
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  residualReadout: {
+    marginBottom: '0.8rem',
+    padding: '0.75rem 0.85rem',
+    borderRadius: 14,
+    border: '1px solid rgba(34,197,94,0.36)',
+    background: 'rgba(34,197,94,0.1)',
+    color: COLORS.textMain,
+    fontSize: 12,
+    lineHeight: 1.5,
+  },
+  lockedReadout: {
+    marginBottom: '0.8rem',
+    padding: '0.7rem 0.85rem',
+    borderRadius: 14,
+    border: '1px solid rgba(148,163,184,0.25)',
+    background: 'rgba(15,23,42,0.55)',
+    color: COLORS.textMuted,
+    fontSize: 12,
+  },
+  lockedPanel: {
+    marginTop: '0.75rem',
+    padding: '0.75rem',
+    borderRadius: 12,
+    border: '1px dashed rgba(148,163,184,0.35)',
+    background: 'rgba(15,23,42,0.72)',
+    color: COLORS.textMuted,
+    fontSize: 12,
   },
   controlsRow: {
     display: 'flex',

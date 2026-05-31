@@ -1,0 +1,42 @@
+Project: Continuous Function, a Next.js Pages Router + TypeScript learning atlas.
+
+We are reviewing the fix for the `linear-algebra/vector-spaces` prediction-first span-collapse reveal.
+
+Prior Oracle review returned `no-publish` for one blocking correctness issue:
+
+- `classifySpan([1, 0], [1, 0.01])` is mathematically non-collinear, so it should be a near-collapse with span dimension 2.
+- The previous implementation used a collapsed threshold below normalized area 0.02, so it could report a nonzero determinant pair as `collapsed` with `span dimension: 1`.
+
+Fix applied:
+
+- Replaced the collapsed threshold with `COLLINEAR_AREA_EPS = 1e-6`.
+- `collapsed` now means effective zero vector or normalized area <= collinearity epsilon.
+- Nonzero near-collinear pairs below the near threshold now return `near` with `dimension: 2`.
+- Updated collapsed prediction copy to: "The generators are scalar multiples, or one/both are effectively zero."
+- Added transparent radius-18 SVG hit targets for u/v drag handles.
+- Added tests:
+  - `classifySpan([1, 0], [1, 0.01]).outcome === 'near'`
+  - `classifySpan([1, 0], [1, 0.01]).dimension === 2`
+  - `classifySpan([1, 0], [2, 0]).outcome === 'collapsed'`
+  - `classifySpan([1, 0], [2, 0]).dimension === 1`
+  - changing coefficient `a` after reveal preserves the reveal and re-emits updated `w`/demo state.
+
+Validation already run:
+
+- `npm test -- VectorSpacesViz --runInBand` passed 6 tests. Known styled-jsx jsdom warning remains.
+
+Please review only this fix and return:
+
+- `publish` if the previous blocker is resolved and no new blocker exists.
+- `no-publish` if any blocker remains.
+
+Classify findings as blocking correctness, blocking pedagogy, blocking UI/mobile/accessibility, important improvement, optional polish, or out of scope.
+
+Please specifically check whether:
+
+1. The classifier now avoids the determinant/dimension contradiction.
+2. The tests catch the Oracle-identified near-collinear regression.
+3. The transparent hit targets create any SVG/pointer issue.
+4. Any pre-reveal leak or stale-state issue was introduced by the fix.
+
+Keep the response narrow.

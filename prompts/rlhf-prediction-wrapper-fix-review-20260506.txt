@@ -1,0 +1,23 @@
+Project: Continuous Function, a Next.js/TypeScript concept atlas for deep-learning mathematics. We are retrofitting published concept routes with prediction-first reveal states and compact demo-state emission.
+
+Current slice: RLHF route prediction-first wrapper.
+
+First Oracle review verdict: no-publish until one local blocker was fixed. The blocker was visible pre-reveal copy leakage in `content/domains/alignment/concepts/rlhf/viz.tsx`: phrases such as "probability transformation", "anchor strength", and "shift invariance" narrowed the distractors before the learner committed.
+
+Fix applied:
+- Replaced the pre-reveal paragraph with neutral update-rule copy.
+- Replaced the gated lab placeholder with "Commit to an update shape first; the lab controls stay hidden until reveal."
+- Shortened route-state/ARIA labels away from probability-shaping.
+- Moved live announcements off the whole prediction panel and kept them on the result panel.
+- Made the correct post-reveal response source-precise with `exp(r_model / beta)` and beta/KL-reference anchoring.
+
+Local verification after the fix:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+- `npx jest lib/contentLoader.test.ts --selectProjects unit --runInBand`
+- `CF_STATIC_EXPORT=0 npm run build`
+- Fresh `next start -p 3030` route fetch for `/domains/alignment/rlhf/`: status 200, source claim/math/demo anchors present, no KaTeX error.
+- Fresh headless Chrome desktop 1280 and mobile 390 checks scoped to the prediction widget: no expected-response leak, no Oracle-flagged copy leak, lab hidden before reveal, reveal enabled only after a prediction, lab visible after reveal, gate hidden after reveal, no KaTeX error, no body horizontal overflow.
+
+Please review only whether the prior no-publish blocker is resolved and whether this patch introduced any new publish-blocking issue. If acceptable, say publish. If blocked, return the smallest exact edit.

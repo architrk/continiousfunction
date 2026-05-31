@@ -1,0 +1,34 @@
+You are reviewing the next small implementation slice for Continuous Function, a static-exported Next.js Pages Router + TypeScript learning platform for deep learning and mathematics.
+
+Current product goal:
+- Make serious learning feel joyful, deep, rigorous, visual, and worth returning to.
+- Keep using GPT Pro/Oracle as a second mind for pedagogy, math, demo design, and UI/UX.
+- Continue the `flagship-demo-shell-rollout`: legacy high-value demos should fit the shared `VizShell` notebook/lab surface without card-in-card nesting.
+
+What is already done:
+- Speculative Decoding was the first Oracle-scoped slice.
+- It now uses `VizStageAdapter`, has `chrome="notebook"` for filesystem concept pages, preserves legacy `/foundations` behavior, emits demo state, uses mechanism-first prediction copy, and has accepted-prefix semantics after an Oracle implementation review.
+
+Next candidate:
+- Sparse Autoencoders (`content/domains/representation-learning/concepts/sparse-autoencoders/` and `components/foundations/SparseAutoencoderViz.tsx`).
+- It is published and important for mechanistic interpretability.
+- It already has a reconstruction-sparsity frontier, SAE type controls, presets, and a prediction challenge.
+- It still contains legacy/game copy, emoji-heavy labels, inline dark styles, and no shared adapter/chrome mode.
+
+I need a narrow patch plan for Sparse Autoencoders only.
+
+Please return:
+1. Whether Sparse Autoencoders is the right next rollout target now, or whether MoE/Diffusion/Loss Landscapes should jump ahead.
+2. The smallest useful patch plan if Sparse Autoencoders is next.
+3. Specific copy/interaction changes needed so the demo is prediction-oriented and rigorous rather than gamified.
+4. Any math/pedagogy blockers in the current toy, especially around claims like "Gated SAE dominates L1 everywhere" or "OpenAI GPT-4 operating point."
+5. What to preserve for legacy `/foundations` behavior.
+6. Local validation checks.
+
+Constraints:
+- Keep this to one coding pass.
+- Do not rewrite the whole SAE visualization.
+- Do not add backend/account/live AI.
+- Preserve static export compatibility.
+- Avoid card-inside-card design. `VizShell` owns the visible demo shell; `VizStageAdapter` should remain only a layout adapter.
+- Prefer concrete patch recommendations over broad product ideas.

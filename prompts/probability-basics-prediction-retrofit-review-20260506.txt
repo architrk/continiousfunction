@@ -1,0 +1,39 @@
+You are reviewing a narrow Continuous Function learning-platform slice for publish/no-publish.
+
+Project context:
+- Continuous Function is a Next.js/React learning atlas for deep learning math and mechanisms.
+- The product direction is prediction-first, mechanism-first concept learning: learners should commit to a causal/mathematical prediction before a visualization reveals the measured result.
+- The shared `emitDemoState` event lets a demo carry compact measured values into the concept page's demo checkpoint, saved local route snapshot, research-room prompt, and future account-backed learner memory.
+- This slice must stay repo-only and static-export-safe. It must not introduce auth, database calls, API routes, protected pages, live collaboration, or dynamic atlas reads.
+
+Slice under review:
+- Concept: `probability/probability-basics`
+- Goal: retrofit the existing finite Bayes/conditioning visualizer with a concept-specific prediction reveal.
+- Learner should see the prior, likelihoods, and observed outcome; predict whether conditioning should decrease, preserve, or increase belief in coin B; then reveal the joint cells, evidence denominator, posterior, and posterior movement.
+- The implementation should hide evidence `P(O)`, joint numerator `P(B and O)`, posterior `P(B|O)`, joint cell values, and posterior bar width before reveal.
+- After reveal, it should emit compact measured state for observation, prior, likelihoods, evidence, joint numerator, posterior, posterior delta, and prediction correctness.
+
+Please review for:
+1. Publish/no-publish verdict.
+2. Any pre-reveal leakage of the answer through copy, preset labels, aria text, table cells, metrics, SVG labels, posterior bar geometry, MDX article text, or emitted state.
+3. Mathematical correctness of the finite conditioning values: prior, likelihoods, joint table, evidence, `P(B and O)`, and posterior `P(B|O)`.
+4. Whether the prediction classification (`decrease`, `steady`, `increase`) with a 0.04 posterior-delta threshold is pedagogically fair and not misleading over the slider domain.
+5. Whether the emitted demo state is compact and useful for grounded AI/learner-memory handoff.
+6. Any UX/accessibility/responsiveness issue serious enough to block publish.
+7. Whether TODO/audit wording accurately marks this as one narrow completed slice without claiming the whole P0 is done.
+
+Commands/checks already run locally:
+- `npm test -- ProbabilityBasicsViz --runInBand` passed. It has the existing styled-jsx React warning seen across this repo.
+- `npm run validate-content` passed.
+- `npm run typecheck` passed.
+- Headless Chrome route checks at 1440px and 390px passed:
+  - before reveal: posterior hidden;
+  - before reveal: no `P(B) moves from 0.080 to 0.183`, no evidence `P(H)=0.394`, no posterior `0.183`;
+  - after clicking `B gets more likely` and `Reveal conditioning`: correct feedback, evidence, and posterior are visible;
+  - document overflow is zero before and after reveal on desktop and mobile.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed. The build sees an unrelated untracked iCloud duplicate `pages/pillars/index 2.tsx` as `/pillars/index 2`; that file is intentionally not part of this slice and must not be reviewed as a staged change.
+
+Return:
+- Start with `publish` or `no-publish`.
+- If no-publish, list blockers with exact file/path references and concrete fixes.
+- If publish, still list any non-blocking improvements separately.

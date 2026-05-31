@@ -1,0 +1,11 @@
+{
+  "version": "cf-claim-evidence-review-queue-v1",
+  "evidenceReviewVersion": "cf-claim-evidence-review-v1",
+  "summary": {
+    "totalStructuredClaimChecks": 51,
+    "substantiveReviewedClaimChecks": 51,
+    "reviewPendingClaimChecks": 0,
+    "publishedReviewPendingClaimChecks": 0
+  },
+  "items": []
+}

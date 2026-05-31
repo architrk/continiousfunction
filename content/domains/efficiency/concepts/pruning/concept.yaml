@@ -8,20 +8,56 @@ importance: important
 prerequisites:
   - efficiency
   - weight-initialization
-leads_to: []
-related:
+leads_to:
   - quantization
+related:
+  - knowledge-distillation
 tags:
   - efficiency
   - pruning
   - sparsity
-has_visualization: false
-has_interactive_demo: false
+has_visualization: true
+has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
-short_description: "Reduce parameter count by zeroing or removing weights. Unstructured sparsity needs specialized kernels; structured pruning removes entire heads/neurons for real speedups."
+sources:
+  - id: han-2015-deep-compression
+    kind: paper
+    title: "Deep Compression: Compressing Deep Neural Networks with Pruning, Trained Quantization and Huffman Coding"
+    authors: "Han, Mao, and Dally"
+    year: 2015
+    url: "https://arxiv.org/abs/1510.00149"
+    note: "Grounds magnitude-threshold connection pruning, retraining, sparse storage, and sparse-kernel batch-1 speed/energy benchmarks in the Deep Compression pipeline."
+  - id: li-2016-pruning-filters
+    kind: paper
+    title: "Pruning Filters for Efficient ConvNets"
+    authors: "Hao Li, Asim Kadav, Igor Durdanovic, Hanan Samet, and Hans Peter Graf"
+    year: 2016
+    url: "https://arxiv.org/abs/1608.08710"
+    note: "Grounds structured/filter pruning as removing whole filters and feature maps, avoiding irregular sparse connectivity, and mapping to standard dense BLAS operations."
+claim_checks:
+  - id: magnitude-mask-storage-vs-speed
+    status: source-checked
+    claim: "Pruning can be taught as applying a sparsity mask, often with a magnitude threshold: unstructured zeros can compress storage but do not automatically speed dense kernels, while structured filter/channel removal changes tensor shape and can map to dense-kernel acceleration."
+    source_ids:
+      - han-2015-deep-compression
+      - li-2016-pruning-filters
+    support: "Han et al. prune small-weight connections below a threshold, retrain remaining sparse connections, store them as CSR/CSC, and benchmark sparse matrix-vector kernels. Li et al. show filter pruning removes whole filters/feature maps, avoids sparse connectivity, and works with dense BLAS. The page math/code/demo instantiate this contrast."
+    caveat: "This checks the pruning-mask and deployment-distinction lesson, not exact compression ratios, full retraining schedules, measured speedups, modern pruning methods, sparse-kernel performance on current hardware, or accuracy preservation guarantees."
+    object_refs:
+      - "#source-span-han-2015-deep-compression"
+      - "#source-span-li-2016-pruning-filters"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Oracle PASS: Han supports thresholded unstructured connection pruning, masks, CSR/CSC sparse storage, and sparse-kernel benchmarking; Li supports filter/feature-map removal that avoids irregular sparsity and maps to smaller dense BLAS operations. Scope excludes exact ratios, schedules, modern hardware, universal speedups, and accuracy guarantees."
+short_description: "Reduce parameter count by zeroing or removing weights. Unstructured sparsity needs sparse kernels for speed; structured pruning removes whole channels/heads to shrink dense tensor shapes."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 16
-

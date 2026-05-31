@@ -1,0 +1,81 @@
+---
+title: "Gradient Clipping & Explosion Prevention"
+---
+
+## Intuition
+
+Most batches are boring. A few are not.
+
+On those bad batches, the gradient can spike because activations, logits, or long chains of Jacobians produce an unusually large backpropagated signal. If you apply that gradient naively, one step can throw the model far away from the regime where training had been stable.
+
+Gradient clipping is a simple guardrail:
+
+- let normal gradients pass untouched,
+- when a gradient is too large, scale it back before taking the optimizer step.
+
+The point is not to "fix" the optimization problem permanently. The point is to stop rare outliers from destroying the run.
+
+Norm clipping is usually the right mental model: keep the **direction** of the gradient, but cap its **magnitude**.
+
+## Math
+
+Let $g \in \mathbb{R}^d$ be the gradient and let $c > 0$ be the clipping threshold.
+
+Global norm clipping defines
+
+$$
+\tilde g =
+\begin{cases}
+g & \text{if } \lVert g \rVert_2 \le c, \\\\
+\frac{c}{\lVert g \rVert_2} g & \text{if } \lVert g \rVert_2 > c.
+\end{cases}
+$$
+
+Equivalently,
+
+$$
+\tilde g = \min\left(1, \frac{c}{\lVert g \rVert_2}\right) g.
+$$
+
+If your optimizer step is $\Delta \theta = -\eta \tilde g$, then whenever clipping activates,
+
+$$
+\lVert \Delta \theta \rVert_2 = \eta c.
+$$
+
+So clipping puts a hard cap on the update size.
+
+Why can gradients explode in the first place? In a deep network, gradients are products of Jacobians:
+
+$$
+\frac{\partial L}{\partial h^{(1)}} =
+\frac{\partial L}{\partial h^{(L)}}
+\prod_{\ell=2}^{L}
+\frac{\partial h^{(\ell)}}{\partial h^{(\ell-1)}}.
+$$
+
+If those Jacobians repeatedly amplify norms, backpropagated signals can grow exponentially with depth or sequence length.
+
+## Code
+
+```python
+import numpy as np
+
+g = np.array([6.0, 8.0, 0.0])  # norm = 10
+c = 5.0
+lr = 1e-2
+
+scale = min(1.0, c / np.linalg.norm(g))
+g_clip = scale * g
+
+print("raw grad norm    :", np.linalg.norm(g))
+print("clipped grad norm:", np.linalg.norm(g_clip))
+print("raw step norm    :", np.linalg.norm(lr * g))
+print("clipped step norm:", np.linalg.norm(lr * g_clip))
+```
+
+This keeps the update direction the same but limits the step size to `lr * c`.
+
+## Interactive Demo
+
+No interactive demo yet for this concept. A good next step would be a training-run monitor showing gradient spikes over time and how different clipping thresholds change the resulting update sizes.

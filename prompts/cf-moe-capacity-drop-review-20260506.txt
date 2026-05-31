@@ -1,0 +1,38 @@
+Project: Continuous Function, a Next.js/React learning platform for mechanism-first deep learning and mathematics concepts.
+
+Current goal: improve the Mixture-of-Experts concept route with a bounded, prediction-first notebook slice. The learner should reason about what happens after top-k routing when expert capacity is finite.
+
+Implemented slice: mixture-of-experts-capacity-drop-reveal.
+
+Files changed:
+- components/foundations/MoERoutingViz.tsx
+- components/foundations/MoERoutingViz.test.tsx
+- content/domains/efficiency/concepts/mixture-of-experts/viz.tsx
+- content/domains/efficiency/concepts/mixture-of-experts/content.mdx
+
+Design intent:
+- Keep legacy MoERoutingViz behavior unchanged when chrome !== "notebook".
+- In notebook mode, replace the old route-level top-k prediction with a deterministic batch puzzle:
+  - visible before reveal: batch preset, topK=2, capacity per expert, token order, candidate expert choices, empty expert slots, prediction choices.
+  - hidden before reveal: served assignments, dropped/overflowed assignments, final expert loads, overflow experts, correctness, measured demo state.
+  - after reveal: show slot fills, overflowed token-expert assignments, correctness, utilization, and compact demo-state values.
+- Correct mechanism: top-k routing chooses candidate experts, but per-expert capacity decides which candidate assignments actually run.
+
+Validation already run:
+- npm test -- MoERoutingViz --runInBand: passed, 5 tests. Only a known styled-jsx React/Jest warning about the jsx attribute appeared.
+- npm run typecheck: passed.
+- npm run validate-content: passed with 0 warnings and 0 errors.
+
+Please review for PUBLISH or NO-PUBLISH.
+
+Review questions:
+1. Does the implementation satisfy the intended invariant without leaking answer-bearing capacity outcomes before reveal?
+2. Is the capacity/drop algorithm pedagogically correct and deterministic enough for this route?
+3. Are the demo-state lifecycle and reset behavior safe enough for the shared AI companion checkpoint?
+4. Does notebook mode remain visually coherent and accessible on desktop/mobile?
+5. Are there any exact blockers in code, tests, copy, or content that should be fixed before full validation and commit?
+
+Please be strict. Return:
+- status: PUBLISH or NO-PUBLISH
+- exact blockers, with file/line-level descriptions when possible
+- optional non-blocking improvements separately

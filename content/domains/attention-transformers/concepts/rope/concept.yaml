@@ -23,8 +23,35 @@ has_visualization: true
 has_interactive_demo: true
 has_code_example: true
 math_level: undergraduate
+sources:
+  - id: su-2021-roformer
+    kind: paper
+    title: "RoFormer: Enhanced Transformer with Rotary Position Embedding"
+    authors: "Su et al."
+    year: 2021
+    url: "https://arxiv.org/pdf/2104.09864v5"
+    note: "Primary RoPE source. Sections 3.1-3.2 derive position-dependent rotations for q/k and show the query-key inner product uses the relative rotary product R_{Theta,n-m}."
+claim_checks:
+  - id: rotary-relative-position-dot-product
+    status: source-checked
+    claim: "RoPE encodes absolute token positions by rotating query and key vectors, so their dot product can depend on relative position through the phase difference between positions."
+    evidence_review:
+      state: substantive-reviewed
+      reviewed_at: "2026-05-07"
+      reviewer: "codex+oracle"
+      summary: "Checked RoFormer abstract/introduction and Sec. 3.1-3.2: RoPE uses position-dependent rotations for q/k, the 2D complex form has phase gap m-n, and the general self-attention score contains R_{Theta,n-m}. Local math/code/demo witness the toy relative-angle mechanism."
+    source_ids:
+      - su-2021-roformer
+    support: "Su et al. state that RoPE encodes absolute position with a rotation matrix and incorporates explicit relative-position dependency in self-attention; Sec. 3.1 frames the q-k inner product as a function of embeddings plus m-n, and Sec. 3.2 derives q/k rotations whose dot product contains R_{Theta,n-m}."
+    caveat: "Checks only RoPE's rotary q/k attention-score mechanism; not RoPE scaling, arbitrary long-context extrapolation, YaRN/LongRoPE, KV-cache behavior, or production model performance."
+    object_refs:
+      - "#source-span-su-2021-roformer"
+      - "#math-object-1"
+      - "#math-object-2"
+      - "#code-witness-1"
+      - "#interactive-demo"
 short_description: "A positional encoding that rotates queries and keys so attention depends on relative position via phase differences."
 author: codex
 created: "2026-02-16"
-updated: "2026-02-16"
+updated: "2026-05-07"
 estimated_read_time: 14

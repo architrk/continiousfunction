@@ -1,0 +1,27 @@
+Project: Continuous Function, a static-export Next.js learning platform. This concept is intentionally `status: review`, not published.
+
+I implemented a new scaling concept after your scope review:
+
+- `content/domains/scaling/concepts/pretraining-data-mixtures/concept.yaml`
+- `content/domains/scaling/concepts/pretraining-data-mixtures/content.mdx`
+- `content/domains/scaling/concepts/pretraining-data-mixtures/viz.tsx`
+- `components/foundations/PretrainingDataMixturesViz.tsx`
+- `data/visualizationMappings.ts`
+- `components/foundations/index.ts`
+
+Validation already run:
+- `npm run validate-content` passed with 0 warnings and 0 errors.
+- `npm run typecheck` passed.
+- The Python code witness from the page executed and its asserts passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build` passed. It showed existing non-blocking `<img>` lint warnings and KaTeX strict-mode warnings during static rendering.
+
+Question for GPT Pro:
+Please do a focused implementation review. I do not need broad new ideas. Check whether this review-status concept faithfully implements the scope:
+
+1. Math correctness and symbol hygiene: is `Q_t`, retention, mixture weighting, repetition pressure, validation loss, and contamination described accurately enough for a review-status educational page?
+2. Demo-math equivalence: does the React toy actually compute the same objects the page claims: retained source distributions, normalized weights after filtering, effective token distribution, losses, contamination, diversity, and repetition pressure?
+3. Overclaim scan: find any wording that implies toy unigram results predict real LLM performance, that "quality" is objective truth, that dedup is always good, or that late curriculum is guaranteed to help.
+4. Pedagogy: is the page narrow enough, or did it drift into a literature survey?
+5. Publish blockers: list blocking correctness issues, blocking pedagogy issues, important improvements, optional polish, and what can wait.
+
+If you recommend concrete text or code changes, keep them surgical and name exact files/sections.

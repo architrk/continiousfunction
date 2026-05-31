@@ -61,25 +61,36 @@ continiousfunction/
 │       └── muon.mdx                # MDX: Muon optimizer
 │
 ├── components/
-│   ├── Layout.tsx                  # Global layout (header, footer, SEO)
-│   ├── FoundationsGraph.tsx        # D3 force-directed concept map
-│   ├── ExplorableLayout.tsx        # Two-column scroll-sync layout
-│   ├── ExplorableSection.tsx       # Scroll-triggered section wrapper
-│   ├── GradientDescentPlayground.tsx # Interactive 1D optimizer demo
-│   ├── MuonConceptualDemo.tsx      # Muon Newton-Schulz visualization
-│   ├── PhasePortrait2D.tsx         # Reusable 2D vector field viz
-│   ├── TimeSeriesPlot.tsx          # Reusable time series chart
-│   ├── KernelHeatmap.tsx           # Reusable heatmap
-│   ├── StateTimeline.tsx           # Reusable state evolution viz
-│   │
+│   ├── app/                        # Global app shell
+│   │   └── Layout.tsx              # Header, footer, baseline SEO
+│   ├── shared/                     # Generic cross-feature utilities
+│   │   └── ErrorBoundary.tsx
+│   ├── explorable/                 # Scroll-synced explorable article primitives
+│   │   ├── ExplorableLayout.tsx
+│   │   └── ExplorableSection.tsx
+│   ├── charts/                     # Reusable low-level canvas/SVG chart primitives
+│   │   ├── PhasePortrait2D.tsx
+│   │   ├── TimeSeriesPlot.tsx
+│   │   ├── KernelHeatmap.tsx
+│   │   └── StateTimeline.tsx
+│   ├── graphs/                     # D3 graph visualizations
+│   │   ├── FoundationsGraph.tsx
+│   │   ├── KnowledgeGraph.tsx
+│   │   └── ForceGraph.tsx
 │   ├── foundations/                # Concept-specific visualizations (one file per viz)
 │   │   ├── index.ts                # Barrel export + viz mapping re-export
+│   │   ├── GradientDescentPlayground.tsx
+│   │   ├── MuonConceptualDemo.tsx
 │   │   ├── CrossEntropyViz.tsx
 │   │   ├── AttentionGeometryViz.tsx
 │   │   ├── TokenizationViz.tsx
 │   │   └── ... (see folder for full list)
-│   │
-│   └── visualizations/             # Pillar-specific visualizations
+│   ├── home/                       # Homepage-only sections
+│   ├── site/                       # Shared site panels and chrome
+│   ├── concepts/                   # Domain concept page composition
+│   ├── editorial/                  # Notebook/editorial layouts
+│   ├── viz/                        # Shared visualization framing
+│   └── visualizations/             # Older pillar-specific visualizations
 │       ├── sequence/               # Transformers, SSMs, Mamba
 │       ├── optimization/           # Loss landscapes, optimizers
 │       ├── generative/             # Diffusion, flow matching
@@ -309,7 +320,7 @@ User scrolls through /pillars/optimization
 | `data/foundationsData.ts` | Single source of truth for 100 concepts | ~1500 |
 | `data/visualizationMappings.ts` | Maps concept ID → viz component names | ~45 |
 | `pages/foundations/[id].tsx` | Dynamic concept page with KaTeX + viz | ~720 |
-| `components/FoundationsGraph.tsx` | D3 force-directed concept map | ~350 |
+| `components/graphs/FoundationsGraph.tsx` | D3 force-directed concept map | ~350 |
 | `lib/mathObjects.ts` | Types, MATH_COLORS, safeNumber, lerp, etc. | ~190 |
 | `styles/globals.css` | CSS variables, explorable layout styles | ~1650 |
 | `next.config.mjs` | MDX + rehype plugins + static export | ~22 |

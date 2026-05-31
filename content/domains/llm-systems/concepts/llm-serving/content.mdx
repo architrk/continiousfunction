@@ -21,33 +21,40 @@ The practical goal is not raw throughput. It's **goodput**: how many requests yo
 
 Let $T_{out}$ be the number of generated tokens. A simple but useful decomposition is:
 
-$$\\text{Latency} \\approx \\underbrace{\\text{TTFT}}_{\\text{time to first token}} + (T_{out}-1)\\cdot\\underbrace{\\text{TPOT}}_{\\text{time per output token}}.$$
+$$
+\text{Latency} \approx \underbrace{\text{TTFT}}_{\text{time to first token}} + (T_{out}-1)\cdot\underbrace{\text{TPOT}}_{\text{time per output token}}.
+$$
 
-- TTFT is usually dominated by **prefill**.
-- TPOT is usually dominated by **decode** (and KV cache reads).
-
-### Goodput (what production systems optimize)
-
-If you have SLO thresholds $S_{TTFT}, S_{TPOT}$, a common objective is:
-
-$$\\text{Goodput} = \\text{Throughput} \\times \\Pr\\!\\left(\\text{TTFT} \\le S_{TTFT} \\wedge \\text{TPOT} \\le S_{TPOT}\\right).$$
-
-This captures the reality that "fast on average" is not good enough if tail latency violates SLOs.
+- In this serving mental model, TTFT often tracks **prefill**.
+- TPOT often tracks **decode** (and KV cache reads).
 
 ### KV cache memory scaling (why long prompts hurt)
 
 Across a batch of $B$ sequences and $L$ layers, storing keys and values for $T$ tokens costs roughly:
 
-$$\\mathrm{Mem}_{KV} \\approx B\\cdot L\\cdot T\\cdot H_{kv}\\cdot d_{head}\\cdot 2 \\cdot \\mathrm{bytes}.$$
+$$
+\mathrm{Mem}_{KV} \approx B\cdot L\cdot T\cdot H_{kv}\cdot d_{head}\cdot 2 \cdot \mathrm{bytes}.
+$$
 
 The factor of 2 is for storing both $K$ and $V$.
+
+### Goodput (a serving SLO mental model)
+
+If you have SLO thresholds $S_{TTFT}, S_{TPOT}$, a common objective is:
+
+$$
+\text{Goodput} = \text{Throughput} \times \Pr\!\left(\text{TTFT} \le S_{TTFT} \wedge \text{TPOT} \le S_{TPOT}\right).
+$$
+
+This captures the reality that "fast on average" is not good enough if tail latency violates SLOs.
 
 ### Paging / fragmentation waste
 
 If KV memory is allocated in blocks/pages of size $P$ (tokens per block), then for a sequence length $T$:
 
-$$\\text{allocated}(T) = \\left\\lceil \\frac{T}{P} \\right\\rceil P,\\qquad
-\\text{waste}(T) = \\text{allocated}(T) - T.$$
+$$
+\text{allocated}(T) = \left\lceil \frac{T}{P} \right\rceil P,\qquad \text{waste}(T) = \text{allocated}(T) - T.
+$$
 
 Block-based allocators (PagedAttention-style) make growth predictable and reduce fragmentation under continuous batching.
 
@@ -74,7 +81,6 @@ for T in [2000, 8192, 20000]:
 
 ## Interactive Demo
 
-Use the demo to explore TTFT vs TPOT tradeoffs, how batching affects goodput, and why KV cache bandwidth dominates decode latency.
+Use the demo to explore TTFT vs TPOT tradeoffs, how batching affects goodput, and how repeated KV cache reads shape decode latency in this toy lab.
 
 {/* viz.tsx component renders here if it exists */}
-

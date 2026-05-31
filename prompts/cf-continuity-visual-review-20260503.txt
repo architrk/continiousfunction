@@ -1,0 +1,55 @@
+You are reviewing Continuous Function, a Next.js static-export learning platform that aims to become a joyful, rigorous, deep research-learning atlas.
+
+Current product direction:
+- The learner should move from a paper clue to one concept route, one prerequisite repair, one equation object, one toy lab, and one sharper question.
+- The site should be fun and visual, but never decorative at the cost of pedagogy.
+- Every learner-facing route must carry the learner's current question forward.
+- We are intentionally not building accounts, billing, saved paths, private rooms, or full discussion yet.
+
+This prompt is a post-patch review of the first continuity slice:
+1. `/paper-map` now creates a localStorage route snapshot and shows a "Continue this paper" card.
+2. "Continue in graph" stores the snapshot and routes to `/graph/?route=kv-cache&from=paper-map#learning-route`.
+3. `/graph` reads the snapshot/query, preselects the KV-cache route, and shows a "Continuing Your Mapped Paper" banner.
+4. `/paths/attention-serving` reads `focus=kv-cache` and/or the snapshot, defaults to Efficient Attention + KV cache memory, and shows a carried paper question plus a prediction prompt.
+5. I generated four bitmap design assets and wired them into the home, mapper, graph, and attention-serving surfaces.
+
+Generated visual assets now in `public/images/editorial/product-loop/`:
+- `paper-to-understanding-loop.jpg`: dark/tactile editorial table, paper dissolving into concept cards, a glass equation cube, and a lab surface. Used on the homepage hero.
+- `paper-mapper-handoff.jpg`: bright paper-to-equation-to-lab visual with strong negative space. Used as `/paper-map` hero and ambient image.
+- `learning-route-continuity.jpg`: dark concept-graph tabletop with one highlighted thread across nodes. Used as `/graph` hero and ambient image.
+- `kv-memory-lab.jpg`: physical systems-lab image with token/head blocks, fewer KV shelves, memory meter, and warning indicator. Used as the attention-serving hero background.
+
+Important screenshot observations from Chrome CDP:
+- `/paper-map/` mobile now shows the generated mapper hero below the first viewport; no overflow.
+- After the anchor fix, clicking "Continue in graph" lands at `/graph/?route=kv-cache&from=paper-map#learning-route`; the carried banner is visible on mobile, the snapshot is `kv-cache`, and no overflow occurs.
+- `/graph/` desktop shows the graph route hero image and a caption card. The carried route banner appears below the hero when directly opened with the query/hash.
+- `/paths/attention-serving/` mobile shows the generated KV lab image in the hero; the carried question banner appears in the module with KV cache memory active and Efficient Attention active.
+
+Verification already performed:
+- `npm run validate-content`: passed, 0 warnings/errors.
+- `npm run typecheck`: passed.
+- `CF_NEXT_BUILD_CPUS=1 npm run build`: passed.
+- Chrome CDP checks against static preview `http://127.0.0.1:3005`:
+  - `/paper-map/` has one `.continue-card`, no horizontal overflow, image loaded.
+  - clicking Continue in graph navigates to `/graph/?route=kv-cache&from=paper-map#learning-route`, stores `cf:last-learning-route`, and the carried banner is visible.
+  - `/graph/?route=kv-cache&from=paper-map` preselects the KV-cache route, shows banner, no overflow, image loaded.
+  - `/paths/attention-serving/?focus=kv-cache&from=paper-map` shows carried question and prediction prompt, active equation is KV cache memory, active stage is Efficient Attention, no overflow, image loaded.
+  - no browser console warnings/errors in sampled routes.
+
+Your task:
+Give a rigorous GPT Pro review of this patch as if you are the product/design/learning-quality reviewer. Do not generate broad new product ideas. Focus on whether this slice now feels like one continuous study session and whether the visual direction improves comprehension.
+
+Please return:
+1. Ranked findings: bugs, UX regressions, confusing copy, mobile layout risks, overpromises, image/design issues, or missed learner handoffs.
+2. A concrete patch plan with the smallest next changes only.
+3. Whether any generated asset should be replaced, recropped, dimmed, or used differently.
+4. Whether the current localStorage snapshot shape is enough for this static MVP or has any correctness/privacy risks.
+5. A short "do not do next" list to prevent overbuilding.
+
+Important constraints:
+- Keep changes inside `Repos/continiousfunction`.
+- Keep the route static-export safe.
+- Prefer learner-facing language over product-internal language.
+- Mark live now, local preview, and not-live-yet states honestly.
+- Do not recommend building accounts, Stripe, private rooms, or full discussion next.
+- Do not recommend adding more concept categories until this continuity loop feels excellent.

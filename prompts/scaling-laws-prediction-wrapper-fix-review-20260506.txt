@@ -1,0 +1,30 @@
+Project: Continuous Function, a Next.js/TypeScript concept atlas for deep-learning mathematics.
+
+Current slice: `/domains/scaling/scaling-laws/` prediction-first wrapper.
+
+First Oracle review verdict: not publish until three blockers were fixed:
+1. Pre-reveal copy leaked the Emergence answer through "measurement check", "measured curve", and "measurement caveat".
+2. Loss Scaling and Emergence child components were bound to the wrong tabs.
+3. `ScalingLawsViz` had literal-emergence wording that overclaimed sudden abilities instead of framing thresholded metrics as a toy display effect.
+
+Fixes applied:
+- Route metrics are now `prediction`, `commitment`, `lab reveal`.
+- Both tab questions are neutral: "Which mechanism best explains this view?"
+- Pre-reveal body copy says only: "Choose the mechanism before any interactive controls are mounted."
+- Notes now say the reveal stays inside source-checked scope and is not proof of intelligence, universal exponents, or literal discontinuous abilities.
+- Loss Scaling now mounts `NeuralScalingViz`, the Chinchilla/compute-optimal lab.
+- Emergence now mounts `ScalingLawsViz`, the thresholded-metric lab.
+- Emergence note now says thresholded smooth curves can look abrupt, not like phase transitions.
+- `ScalingLawsViz` copy was softened from literal emergence/phase-transition language to thresholded-metric/toy-cutoff language.
+- Kept route-level `emitDemoState`; first review explicitly said child-component emission is not a blocker for this bounded retrofit.
+
+Local verification after the fixes:
+- `git diff --check`
+- `npm run validate-content`
+- `npx tsc --noEmit --incremental false --pretty false`
+- `npx jest lib/contentLoader.test.ts --selectProjects unit --runInBand`
+- `CF_STATIC_EXPORT=0 npm run build`
+- Fresh `next start -p 3030` route fetch for `/domains/scaling/scaling-laws/`: status 200, source claim/math/demo anchors present, no KaTeX error.
+- Fresh headless Chrome checks for Loss Scaling and Emergence on desktop 1280 and mobile 390: child labs hidden before reveal, neutral metrics visible, no expected explanation leak, no literal-emergence leak, reveal enabled only after a choice, correct child lab mounted after reveal, no literal-emergence overclaim after reveal, no KaTeX error, and no body horizontal overflow.
+
+Please review only whether the prior blockers are resolved and whether the fix introduced a new publish-blocking issue. Return `publish` if acceptable; otherwise give the smallest exact edit.

@@ -1,0 +1,59 @@
+Project: Continuous Function, a Next.js/TypeScript learning atlas for deep learning math. We are running a review-gated claim-evidence workflow. A claim should only be marked `evidence_review.state: substantive-reviewed` after checking that the listed sources and local witnesses substantively support the exact wording, and after adding a bounded review summary/caveat.
+
+Current task: review the next pending claim check.
+
+Concept:
+- Domain: attention-transformers
+- Concept ID: rope
+- Title: Rotary Position Embeddings (RoPE)
+
+Exact claim:
+"RoPE encodes absolute token positions by rotating query and key vectors, so their dot product can depend on relative position through the phase difference between positions."
+
+Current source:
+- su-2021-roformer: Su et al. 2021, "RoFormer: Enhanced Transformer with Rotary Position Embedding"
+- Current URL in concept.yaml is the arXiv abstract URL, not a direct PDF.
+
+Primary-source evidence I extracted:
+- RoFormer abstract: RoPE encodes absolute position with a rotation matrix and incorporates explicit relative-position dependency in the self-attention formulation.
+- RoFormer introduction repeats that RoPE encodes absolute position with a rotation matrix while incorporating explicit relative-position dependency in self-attention.
+- RoFormer Section 3.1 frames the desired query-key inner product as a function of the word embeddings and the relative position m - n, so position enters the inner product in relative form.
+- RoFormer Section 3.2.1 gives the 2D complex/rotation case: query and key encodings multiply by position-dependent rotations, and the resulting function uses the difference m - n in the exponent.
+- RoFormer Section 3.2.2 generalizes to the rotary matrix. Applying RoPE to self-attention gives q_m^T k_n as a product involving R_{Theta,n-m}, with R_{Theta,n-m} = R_{Theta,m}^T R_{Theta,n}.
+- RoFormer says RoPE naturally incorporates relative-position information through a rotation-matrix product.
+
+Local witness refs in the claim:
+- #source-span-su-2021-roformer
+- #math-object-1
+- #math-object-2
+- #code-witness-1
+- #interactive-demo
+
+Important local witness concern:
+- `lib/conceptObjectSpans.ts` currently caps exported math objects at 2.
+- In `content.mdx`, `#math-object-1` is the 2D rotation matrix R(theta).
+- `#math-object-2` is the rotated query/key definition.
+- The dot-product equation `q_p^T R(theta_p)^T R(theta_q) k_q = q_p^T R(theta_q - theta_p) k_q` is the third display equation and is not exposed as an object ref because of the cap.
+- The current claim explicitly mentions the dot product depending on relative position, so this may require a small content ordering/combination fix, object_ref removal, or a different metadata fix.
+
+Attached files:
+- content/domains/attention-transformers/concepts/rope/concept.yaml
+- content/domains/attention-transformers/concepts/rope/content.mdx
+- content/domains/attention-transformers/concepts/rope/viz.tsx
+- lib/conceptObjectSpans.ts
+- content/_generated/claim-evidence-review-queue.json
+
+Please answer as a strict reviewer, not a brainstormer:
+1. Does the listed source plus local witnesses substantively support the exact claim?
+2. Are any parts too broad or under-caveated? Pay special attention to "absolute token positions", "rotating query and key vectors", "dot product can depend on relative position", and whether "phase difference" is acceptable as a teaching phrase grounded by the rotation math.
+3. Should the source URL be switched from the arXiv abstract page to a direct versioned PDF URL?
+4. How should the local witness mismatch be fixed? Prefer the smallest honest fix. Options include combining/reordering the math section so the relative-position dot-product identity becomes `#math-object-2`, removing math refs that do not witness the dot-product claim, or changing the extractor cap only if that is truly justified.
+5. If approved after the smallest fix, provide the exact YAML patch shape for `claim_checks[0].evidence_review`, and any revised source note/support/caveat/object_refs wording. Keep `evidence_review.summary` under 520 characters and `caveat` under 280 characters.
+6. If not approved, give the smallest local fixes needed before approval.
+
+Constraints:
+- Do not propose broad page redesigns.
+- Do not validate RoPE scaling, arbitrary long-context extrapolation, YaRN/LongRoPE, or production model behavior.
+- Treat the interactive demo and NumPy code as toy teaching witnesses, not proof of real model behavior.
+- Prefer source-precise wording over marketing wording.
+- Use reviewer value `codex+oracle` and date `2026-05-07` if approved.

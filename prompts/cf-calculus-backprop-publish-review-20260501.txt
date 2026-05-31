@@ -1,0 +1,45 @@
+You are Oracle/GPT Pro performing a strict full publish/no-publish review for Continuous Function.
+
+Project context:
+- Continuous Function is a slow-growth mathematical atlas for modern AI: concepts should become intuitive, precise, visual, executable, and connected.
+- The page contract is Intuition -> Math -> Code -> Interactive Demo.
+- `status: published` should mean a serious reader can trust the page.
+- Use `content/_agent/CONCEPT_QUALITY_BAR.md` as the quality standard.
+- Oracle is advisory; Codex will verify and patch locally.
+
+Current review target:
+- Cluster: calculus-to-backprop bridge.
+- Concepts:
+  - `gradient-descent` in optimization.
+  - `computation-graphs` in calculus.
+  - `reverse-mode-autodiff` in calculus.
+  - `backpropagation` in calculus.
+- Intended current status: keep as `review` unless your verdict says one or more can safely publish after small fixes.
+- Reader: mathematically curious ML learner who knows derivatives and basic vectors but may not yet see how chain rule becomes neural network training.
+
+Recent work already done:
+- Seeded all four bridge pages.
+- Ran an earlier Oracle math/code audit and applied blocking fixes around notation, shapes, scalar loss, VJP accumulation, gradient descent assumptions, and batch scope.
+- Added a backpropagation demo with forward pass, reverse cotangent pass, one gradient update, a large-learning-rate failure regime, and a saturated-tanh preset.
+- Verified with local checks:
+  - `npm run validate-content`: 0 warnings, 0 errors.
+  - `npm run typecheck`: passes.
+  - `npm run build`: passes.
+  - Browser/CDP checks: backpropagation route renders on desktop and true 390px mobile; desktop uses the full SVG graph; mobile uses a readable four-step flow; document/body scrollWidth equals viewport.
+
+Your task:
+Review the attached concept YAML, MDX, demo, UI shell, validator, prior Oracle audit, and TODO state. Be strict and concrete.
+
+Return:
+1. Cluster verdict: publish, publish after fixes, keep in review, or demote to draft.
+2. Per-concept verdicts for `gradient-descent`, `computation-graphs`, `reverse-mode-autodiff`, and `backpropagation`.
+3. Blocking correctness issues.
+4. Blocking pedagogy issues.
+5. Important improvements needed before publishing.
+6. Optional polish that should not block.
+7. Out-of-scope ideas to ignore for now so the project does not expand too fast.
+8. Graph/link audit: prerequisites, leads_to, related, and whether the route derivatives -> chain rule -> computation graphs -> reverse-mode -> backprop -> optimization is honest and minimal.
+9. Demo audit: whether the backprop demo teaches one central claim, whether desktop/mobile variants are pedagogically acceptable, and whether any labels/controls imply wrong math.
+10. Exact patch-style edits for the highest-impact fixes when possible.
+
+Please prioritize the few highest-impact changes. Do not provide a broad idea dump.

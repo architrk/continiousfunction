@@ -1,0 +1,140 @@
+---
+title: "Grouped-Query Attention: Sharing KV Heads"
+---
+
+## Intuition
+
+Canonical sources: Shazeer, ["Fast Transformer Decoding: One Write-Head is All You Need"](https://arxiv.org/abs/1911.02150), Ainslie et al., ["GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints"](https://arxiv.org/abs/2305.13245), Touvron et al., ["Llama 2: Open Foundation and Fine-Tuned Chat Models"](https://arxiv.org/abs/2307.09288), and Meta, ["The Llama 3 Herd of Models"](https://arxiv.org/abs/2407.21783).
+
+In standard multi-head attention, every query head has its own key head and value head. That is expressive, but during autoregressive decoding it means every layer stores a key vector and a value vector for every head at every previous token.
+
+Grouped-query attention changes one invariant: keep many query heads, but use fewer key/value heads. Several query heads share the same cached keys and values. Multi-query attention is the extreme case where all query heads share one KV head.
+
+This is not the same as making attention sparse or approximate. Each query head still attends over the full context. The saving comes from storing and reading fewer cached KV channels during decoding.
+
+## Math
+
+Let a transformer layer have
+
+$$
+H_q
+$$
+
+query heads and
+
+$$
+H_{kv}
+$$
+
+key/value heads. Assume $H_q$ is divisible by $H_{kv}$ and define the group size
+
+$$
+r = \frac{H_q}{H_{kv}}.
+$$
+
+For query head $h$, the shared KV head index is
+
+$$
+g(h)=\left\lfloor \frac{h}{r} \right\rfloor.
+$$
+
+The attention output for head $h$ is
+
+$$
+o_h =
+\mathrm{softmax}\!\left(
+\frac{Q_hK_{g(h)}^\top}{\sqrt{d_{head}}}
+\right)V_{g(h)}.
+$$
+
+For one decoded token, $Q_h$ is a query vector with shape $[d_{head}]$.
+The cached $K_{g(h)}$ and $V_{g(h)}$ tensors have shape $[T, d_{head}]$ for
+the selected shared KV head. GQA changes which cached KV channel a query head
+reads; it does not remove context positions from the softmax.
+
+The three common cases are:
+
+- Multi-head attention: $H_{kv}=H_q$, so $r=1$.
+- Grouped-query attention: $1 < H_{kv} < H_q$, so a group of query heads shares each KV head.
+- Multi-query attention: $H_{kv}=1$, so every query head shares the same KV head.
+
+During decoding, the KV cache for a batch of $B$ sequences, $L$ layers, context length $T$, head dimension $d_{head}$, and element width $b$ bytes is approximately
+
+$$
+\mathrm{Mem}_{KV}
+\approx
+B\cdot L\cdot T\cdot H_{kv}\cdot d_{head}\cdot 2\cdot b.
+$$
+
+The factor of 2 stores both keys and values. Compared with multi-head attention, the KV-cache ratio is therefore
+
+$$
+\frac{\mathrm{Mem}_{GQA}}{\mathrm{Mem}_{MHA}}
+=
+\frac{H_{kv}}{H_q},
+$$
+
+and the reduction factor is
+
+$$
+\frac{H_q}{H_{kv}}.
+$$
+
+That ratio is the core invariant. If a model keeps $H_q=32$ query heads but uses $H_{kv}=8$ KV heads, the decoding KV cache is one quarter of full multi-head attention for the same batch, layers, context length, head dimension, and dtype.
+
+## Code
+
+This witness checks the head-sharing map and the KV-cache memory ratio. It deliberately ignores model-quality questions and focuses only on the structural invariant.
+
+```python
+def architecture(h_q, h_kv):
+    if h_kv == h_q:
+        return "MHA"
+    if h_kv == 1:
+        return "MQA"
+    return "GQA"
+
+def kv_head_for_query(q_head, h_q, h_kv):
+    assert h_q % h_kv == 0
+    group_size = h_q // h_kv
+    return q_head // group_size
+
+def kv_cache_gb(tokens, layers, h_kv, d_head, batch=1, bytes_per_elem=2):
+    elements = batch * layers * tokens * h_kv * d_head * 2
+    return elements * bytes_per_elem / 1e9
+
+h_q = 32
+h_kv = 8
+tokens = 128_000
+layers = 32
+d_head = 128
+selected_q = 9
+
+group_size = h_q // h_kv
+selected_kv = kv_head_for_query(selected_q, h_q, h_kv)
+gqa_cache = kv_cache_gb(tokens, layers, h_kv, d_head)
+mha_cache = kv_cache_gb(tokens, layers, h_q, d_head)
+ratio = gqa_cache / mha_cache
+
+assert architecture(h_q, h_kv) == "GQA"
+assert group_size == 4
+assert selected_kv == 2
+assert ratio == h_kv / h_q
+
+print({
+    "architecture": architecture(h_q, h_kv),
+    "group_size": group_size,
+    "selected_mapping": f"Q{selected_q} -> KV{selected_kv}",
+    "kv_cache_gb": round(gqa_cache, 2),
+    "ratio_vs_mha": ratio,
+    "reduction_factor": h_q / h_kv,
+})
+```
+
+The same arithmetic classifies MHA and MQA. Set $H_{kv}=H_q$ and the group size becomes 1; set $H_{kv}=1$ and the group size becomes all query heads.
+
+## Interactive Demo
+
+Use the demo to vary $H_q$, $H_{kv}$, context length, and head dimension. Before reveal, the exact sharing group, selected Q-to-KV mapping, cache size, and ratio are hidden.
+
+Commit two predictions: the number of query heads per KV head, and the KV-cache fraction relative to MHA. Reveal checks both predictions and then shows the architecture class, selected mapping, cache GB, ratio, and memory reduction factor.

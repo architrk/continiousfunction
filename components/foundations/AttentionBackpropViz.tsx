@@ -1,76 +1,37 @@
 'use client'
 
-import React, { useMemo, useState, useCallback, useEffect } from 'react'
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
+import { clearDemoState, emitDemoState } from '../../lib/demoState'
 import { MATH_COLORS } from '../../lib/mathObjects'
 
 type Mode = 'forward' | 'backward'
 
-// === Gamification Types ===
-type GamePhase = 'setup' | 'countdown' | 'revealed'
-type GradientPrediction = 'wq' | 'wk' | 'wv' | 'softmax' | null
-
-interface GradientChallenge {
-  name: string
-  scenarioId: ScenarioId
-  question: string
-  answer: GradientPrediction
-  explanation: string
-}
-
-const GRADIENT_CHALLENGES: GradientChallenge[] = [
-  {
-    name: '🎲 Loud Keys',
-    scenarioId: 'largeK',
-    question: 'When keys K are large, which weight matrix gets the BIGGEST gradient update?',
-    answer: 'wq',
-    explanation: 'Counterintuitive! ∂L/∂Q = (∂L/∂S)K/√d_k. Large K amplifies the gradient flowing into Q, so W_Q gets bigger updates than W_K. The gradient "crosses over" through the QKᵀ interaction.',
-  },
-  {
-    name: '🎲 Loud Queries',
-    scenarioId: 'largeQ',
-    question: 'When queries Q are large, which weight matrix receives larger gradients?',
-    answer: 'wk',
-    explanation: 'Mirror effect! ∂L/∂K = (∂L/∂S)ᵀQ/√d_k. Large Q amplifies key gradients, so W_K learns more than W_Q. This Q↔K gradient symmetry is crucial for attention training dynamics.',
-  },
-  {
-    name: '🎲 Saturated Softmax',
-    scenarioId: 'softmaxSaturation',
-    question: 'When attention is peaky (one token dominates), where do gradients get blocked?',
-    answer: 'softmax',
-    explanation: 'Vanishing gradients! The softmax Jacobian J = diag(a) − aaᵀ shrinks when attention concentrates. With a ≈ [1, 0, 0, ...], J becomes nearly zero. This is the "softmax saturation" problem.',
-  },
-  {
-    name: '🎲 Loud Values',
-    scenarioId: 'largeV',
-    question: 'When value vectors V are large, what learns the most?',
-    answer: 'softmax',
-    explanation: 'Attention weights learn! ∂L/∂A = (∂L/∂O)Vᵀ. Large V means big gradients flow into A, which propagate through softmax to Q and K. The "what to attend to" circuit (Q/K) adapts to large values.',
-  },
-]
-
-function getGradientFeedback(
-  prediction: GradientPrediction,
-  challenge: GradientChallenge
-): string {
-  if (!prediction) return ''
-
-  const isCorrect = prediction === challenge.answer
-  const names: Record<string, string> = {
-    wq: 'W_Q (query weights)',
-    wk: 'W_K (key weights)',
-    wv: 'W_V (value weights)',
-    softmax: 'Softmax/Attention',
-  }
-
-  if (isCorrect) {
-    return `✅ Correct! ${challenge.explanation}`
-  }
-
-  return `❌ Not quite. You chose ${names[prediction]}, but the answer is ${names[challenge.answer!]}.\n\n${challenge.explanation}`
+type AttentionBackpropExplorerProps = {
+  conceptId?: string
 }
 
 // Scenario presets that create distinct gradient signatures (per Oracle's gamification design)
 type ScenarioId = 'baseline' | 'largeK' | 'largeQ' | 'softmaxSaturation' | 'uniformAttention' | 'largeV'
+type GradientCreditPrediction = 'wq' | 'wk' | 'wv' | 'softmax'
+
+const GRADIENT_CREDIT_ACTUAL: GradientCreditPrediction = 'wq'
+const GRADIENT_CREDIT_OPTIONS: Array<{
+  id: GradientCreditPrediction
+  label: string
+  description: string
+}> = [
+  { id: 'wq', label: 'W_Q', description: 'Query weights' },
+  { id: 'wk', label: 'W_K', description: 'Key weights' },
+  { id: 'wv', label: 'W_V', description: 'Value weights' },
+  { id: 'softmax', label: 'Softmax gate', description: 'Attention normalization' },
+]
+
+const GRADIENT_CREDIT_LABELS: Record<GradientCreditPrediction, string> = {
+  wq: 'W_Q',
+  wk: 'W_K',
+  wv: 'W_V',
+  softmax: 'softmax gate',
+}
 
 interface ScenarioPreset {
   id: ScenarioId
@@ -94,7 +55,7 @@ const SCENARIO_PRESETS: ScenarioPreset[] = [
     name: 'Loud Keys',
     emoji: '🔑',
     description: 'Large K → W_Q gets bigger updates (counterintuitive!)',
-    multipliers: { 'q-scores': 1.4, 'x-q': 1.3, 'wq-q': 1.5, 'scores-a': 1.2 },
+    multipliers: { 'q-scores': 1.2, 'x-q': 1.3, 'wq-q': 1.5, 'scores-a': 0.85 },
   },
   {
     id: 'largeQ',
@@ -444,62 +405,40 @@ function splitLabel(label: string): string[] {
   return label.split('\n')
 }
 
-export default function AttentionBackpropExplorer() {
+export default function AttentionBackpropExplorer({ conceptId = 'attention-transformers' }: AttentionBackpropExplorerProps) {
   const [mode, setMode] = useState<Mode>('backward')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [activeScenario, setActiveScenario] = useState<ScenarioId>('baseline')
+  const [prediction, setPrediction] = useState<GradientCreditPrediction | null>(null)
+  const [revealed, setRevealed] = useState(false)
+  const conceptIdRef = useRef(conceptId)
+  const conceptChanged = conceptIdRef.current !== conceptId
+  const revealVisible = revealed && !conceptChanged
+  const activeScenario: ScenarioId = 'largeK'
 
-  // === Gamification State ===
-  const [gameMode, setGameMode] = useState(false)
-  const [gamePhase, setGamePhase] = useState<GamePhase>('setup')
-  const [selectedChallenge, setSelectedChallenge] = useState<GradientChallenge | null>(null)
-  const [prediction, setPrediction] = useState<GradientPrediction>(null)
-  const [countdown, setCountdown] = useState(0)
-  const [score, setScore] = useState(0)
-  const [completedChallenges, setCompletedChallenges] = useState<Set<string>>(new Set())
+  const resetReveal = useCallback((clearPrediction = true) => {
+    if (clearPrediction) setPrediction(null)
+    setRevealed(false)
+    clearDemoState(conceptId)
+  }, [conceptId])
 
-  // Start a challenge
-  const startChallenge = useCallback((challenge: GradientChallenge) => {
-    setSelectedChallenge(challenge)
-    setPrediction(null)
-    setActiveScenario(challenge.scenarioId)
-    setMode('backward') // Always show backward pass for gradient challenges
-    setGamePhase('countdown')
-    setCountdown(8) // 8 seconds to think
-  }, [])
-
-  // Submit prediction
-  const submitPrediction = useCallback((pred: GradientPrediction) => {
-    if (gamePhase !== 'countdown' || !selectedChallenge) return
-    setPrediction(pred)
-    setGamePhase('revealed')
-    if (pred === selectedChallenge.answer && !completedChallenges.has(selectedChallenge.name)) {
-      setScore((s) => s + 1)
-      setCompletedChallenges((prev) => new Set([...prev, selectedChallenge.name]))
+  const choosePrediction = useCallback((nextPrediction: GradientCreditPrediction) => {
+    setPrediction(nextPrediction)
+    if (revealed) {
+      setRevealed(false)
+      clearDemoState(conceptId)
     }
-  }, [gamePhase, selectedChallenge, completedChallenges])
+  }, [conceptId, revealed])
 
-  // Reset game
-  const resetGame = useCallback(() => {
-    setGamePhase('setup')
-    setSelectedChallenge(null)
-    setPrediction(null)
-    setScore(0)
-    setCompletedChallenges(new Set())
-  }, [])
+  const revealGradientCredit = useCallback(() => {
+    if (!prediction) return
+    setMode('backward')
+    setRevealed(true)
+  }, [prediction])
 
-  // Countdown timer
-  useEffect(() => {
-    if (gamePhase !== 'countdown' || countdown <= 0) return
-    const timer = setTimeout(() => {
-      if (countdown === 1) {
-        setGamePhase('revealed')
-      } else {
-        setCountdown((c) => c - 1)
-      }
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [gamePhase, countdown])
+  const changeMode = useCallback((nextMode: Mode) => {
+    setMode(nextMode)
+    resetReveal()
+  }, [resetReveal])
 
   // Apply scenario multipliers to connections
   const connections = useMemo(() => {
@@ -521,14 +460,127 @@ export default function AttentionBackpropExplorer() {
   )
 
   // Dynamic insight based on scenario and mode
-  const currentInsight = useMemo(() => {
+  const measuredInsight = useMemo(() => {
     return getAttentionBackpropInsight(activeScenario, mode, connections)
   }, [activeScenario, mode, connections])
+  const visibleInsight = revealVisible
+    ? measuredInsight
+    : {
+        emoji: '🔎',
+        color: '#8b5cf6',
+        text:
+          'Key-scale stress: K vectors are larger; Q, V, and the loss seed are held fixed. Use the QKᵀ formulas to predict which backward-credit path is amplified.',
+      }
 
-  // Handle preset selection
-  const handlePreset = useCallback((scenarioId: ScenarioId) => {
-    setActiveScenario(scenarioId)
-  }, [])
+  const dominantConnection = useMemo(
+    () =>
+      connections.reduce(
+        (best, conn) => (conn.backwardMag > best.backwardMag ? conn : best),
+        connections[0]
+      ),
+    [connections]
+  )
+  const wqMag = connections.find((conn) => conn.id === 'wq-q')?.backwardMag ?? 0
+  const wkMag = connections.find((conn) => conn.id === 'wk-k')?.backwardMag ?? 0
+  const wvMag = connections.find((conn) => conn.id === 'wv-v')?.backwardMag ?? 0
+  const softmaxMag = connections.find((conn) => conn.id === 'scores-a')?.backwardMag ?? 0
+  const attentionToOutputMag = connections.find((conn) => conn.id === 'a-o')?.backwardMag ?? 0
+  const valueToOutputMag = connections.find((conn) => conn.id === 'v-o')?.backwardMag ?? 0
+  const dominantParam = useMemo(
+    () =>
+      [
+        { id: 'W_Q', magnitude: wqMag },
+        { id: 'W_K', magnitude: wkMag },
+        { id: 'W_V', magnitude: wvMag },
+      ].reduce((best, item) => (item.magnitude > best.magnitude ? item : best)),
+    [wkMag, wqMag, wvMag]
+  )
+  const predictionCorrect = prediction !== null && prediction === GRADIENT_CREDIT_ACTUAL
+  const actualLabel = GRADIENT_CREDIT_LABELS[GRADIENT_CREDIT_ACTUAL]
+  const predictionLabel = prediction ? GRADIENT_CREDIT_LABELS[prediction] : 'none'
+  const parameterCreditPath = connections.find((conn) => conn.id === 'wq-q') ?? dominantConnection
+  const gradientEvidenceSteps = [
+    {
+      title: 'Predict',
+      detail:
+        prediction === null
+          ? 'Commit to the hidden parameter that receives the most credit.'
+          : `Committed to ${predictionLabel}.`,
+    },
+    {
+      title: 'Observe',
+      detail: revealVisible
+        ? `Measured winner: ${actualLabel}.`
+        : 'Gradient magnitudes stay neutral until reveal.',
+    },
+    {
+      title: 'Ground',
+      detail: revealVisible
+        ? 'dL/dQ = (dL/dS)K explains the W_Q crossover.'
+        : 'Use the visible backward formulas before revealing.',
+    },
+    {
+      title: 'Carry',
+      detail: revealVisible
+        ? `${predictionCorrect ? 'Matched' : 'Missed'}; carry W_Q, W_K, W_V, and softmax gate.`
+        : 'Research Room receives the compact gradient evidence.',
+    },
+  ]
+  const gradientActiveEvidenceIndex = revealVisible ? 3 : 0
+
+  useEffect(() => {
+    conceptIdRef.current = conceptId
+    setPrediction(null)
+    setRevealed(false)
+    clearDemoState(conceptId)
+    return () => clearDemoState(conceptId)
+  }, [conceptId])
+
+  useEffect(() => {
+    if (!revealVisible || prediction === null) return
+
+    emitDemoState({
+      conceptId,
+      label: 'Attention backprop gradient-credit reveal',
+      summary: `Key-scale stress in backward mode: learner predicted ${predictionLabel}; strongest hidden parameter credit is ${actualLabel}; prediction ${predictionCorrect ? 'matched' : 'missed'}.`,
+      values: [
+        'slice: attention-backprop-prediction-first-gradient-credit-reveal',
+        'scenario: Key-scale stress (largeK)',
+        'mode: backward',
+        'held fixed: Q scale, V scale, loss seed',
+        `prediction: ${predictionLabel}`,
+        `actual strongest credit: ${actualLabel}`,
+        `prediction correct: ${predictionCorrect ? 'yes' : 'no'}`,
+        `dominant parameter update: ${dominantParam.id} at ${(dominantParam.magnitude * 100).toFixed(0)}%`,
+        `parameter credit path: ${parameterCreditPath.id} (${parameterCreditPath.from}->${parameterCreditPath.to}) at ${(parameterCreditPath.backwardMag * 100).toFixed(0)}%`,
+        `W_Q gradient magnitude: ${(wqMag * 100).toFixed(0)}%`,
+        `W_K gradient magnitude: ${(wkMag * 100).toFixed(0)}%`,
+        `W_V gradient magnitude: ${(wvMag * 100).toFixed(0)}%`,
+        `softmax Jacobian gradient gate: ${(softmaxMag * 100).toFixed(0)}%`,
+        `attention-to-output gradient: ${(attentionToOutputMag * 100).toFixed(0)}%`,
+        `value-to-output gradient: ${(valueToOutputMag * 100).toFixed(0)}%`,
+        'formula witness: dL/dQ = (dL/dS)K / sqrt(d_k)',
+        'invariant: Large K amplifies dL/dQ, so W_Q receives the strongest parameter-gradient norm.',
+        'visible layers: gradient edge magnitudes, parameter norm readout, correctness copy',
+        'evidence loop: predict -> observe -> ground -> carry',
+      ],
+    })
+  }, [
+    attentionToOutputMag,
+    actualLabel,
+    conceptId,
+    dominantParam,
+    parameterCreditPath,
+    prediction,
+    predictionCorrect,
+    predictionLabel,
+    revealVisible,
+    softmaxMag,
+    valueToOutputMag,
+    wkMag,
+    wqMag,
+    wvMag,
+  ])
 
   const softmaxRegion = useMemo(() => {
     const scores = getNode('Scores')
@@ -551,47 +603,23 @@ export default function AttentionBackpropExplorer() {
         <div>
           <h2>Backpropagation Through an Attention Layer</h2>
           <p className="muted">
-            Toggle forward vs backward pass. Thicker, brighter links carry larger
-            activations/gradients. Watch how the softmax Jacobian couples
-            everything together.
+            Inspect the topology and formulas first. Gradient magnitudes stay
+            neutral until you commit to where the key-scale stress sends credit.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button
-            onClick={() => {
-              setGameMode(!gameMode)
-              if (gameMode) resetGame()
-            }}
-            style={{
-              padding: '0.35rem 0.7rem',
-              borderRadius: '999px',
-              border: gameMode ? '2px solid #22c55e' : '1px solid rgba(34,197,94,0.4)',
-              background: gameMode
-                ? 'linear-gradient(135deg, rgba(34,197,94,0.25), rgba(16,185,129,0.15))'
-                : 'rgba(15,23,42,0.8)',
-              color: gameMode ? '#e5e7eb' : '#9ca3af',
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
-          >
-            <span>{gameMode ? '🎮' : '🎯'}</span>
-            <span>{gameMode ? 'Exit Challenge' : 'Try Gradient Quiz'}</span>
-          </button>
           <div className="mode-toggle" aria-label="Select visualization mode">
             <button
               type="button"
               className={mode === 'forward' ? 'active' : ''}
-              onClick={() => setMode('forward')}
+              onClick={() => changeMode('forward')}
             >
               Forward pass
             </button>
             <button
               type="button"
               className={mode === 'backward' ? 'active' : ''}
-              onClick={() => setMode('backward')}
+              onClick={() => changeMode('backward')}
             >
               Backward pass
             </button>
@@ -599,205 +627,105 @@ export default function AttentionBackpropExplorer() {
         </div>
       </div>
 
-      {/* Gamification Panel */}
-      {gameMode && (
-        <div style={{
-          padding: '0.75rem',
-          borderRadius: '0.75rem',
-          background: 'linear-gradient(135deg, rgba(34,197,94,0.12), rgba(16,185,129,0.06))',
-          border: '1px solid rgba(34,197,94,0.4)',
-          marginBottom: '0.75rem',
-        }}>
-          {gamePhase === 'setup' && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#e5e7eb' }}>
-                  🎯 Gradient Flow Prediction Challenge
-                </h3>
-                <span style={{ fontSize: '0.75rem', color: '#22c55e' }}>
-                  Score: {score}/{GRADIENT_CHALLENGES.length}
-                </span>
+      <section className="credit-panel" aria-live="polite" data-child-demo-gate="attention-backprop-gradient-credit">
+        <div className="credit-copy">
+          <span>prediction checkpoint</span>
+          <strong>When keys are scaled up, where does hidden backward credit land?</strong>
+          <p>
+            Key-scale stress: K vectors are larger; Q, V, and the loss seed are held fixed. Use the
+            QKᵀ gradient formulas before revealing the measured gradient-credit path.
+          </p>
+        </div>
+        <div className="credit-choices" role="group" aria-label="Gradient credit prediction">
+          {GRADIENT_CREDIT_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={prediction === option.id}
+              className={prediction === option.id ? 'selected' : ''}
+              onClick={() => choosePrediction(option.id)}
+              title={option.description}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="credit-evidence-strip" aria-label="Attention backprop evidence loop">
+          {gradientEvidenceSteps.map((step, index) => (
+            <div
+              key={step.title}
+              className={`credit-evidence-step ${index === gradientActiveEvidenceIndex ? 'active' : ''}`}
+            >
+              <div className="credit-evidence-title">
+                <span>{index + 1}</span>
+                <strong>{step.title}</strong>
               </div>
-              <p style={{ margin: '0 0 0.6rem', fontSize: '0.78rem', color: '#9ca3af' }}>
-                Can you predict where gradients flow in attention? The answers are often counterintuitive!
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                {GRADIENT_CHALLENGES.map((challenge) => (
-                  <button
-                    key={challenge.name}
-                    onClick={() => startChallenge(challenge)}
-                    style={{
-                      padding: '0.3rem 0.6rem',
-                      borderRadius: '999px',
-                      border: completedChallenges.has(challenge.name)
-                        ? '1px solid rgba(34,197,94,0.6)'
-                        : '1px solid rgba(148,163,184,0.3)',
-                      background: completedChallenges.has(challenge.name)
-                        ? 'rgba(34,197,94,0.15)'
-                        : 'rgba(15,23,42,0.7)',
-                      color: completedChallenges.has(challenge.name) ? '#22c55e' : '#e5e7eb',
-                      fontSize: '0.75rem',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {completedChallenges.has(challenge.name) ? '✓ ' : ''}{challenge.name}
-                  </button>
-                ))}
-              </div>
-            </>
+              <p>{step.detail}</p>
+            </div>
+          ))}
+        </div>
+        <div className="credit-actions">
+          <button
+            type="button"
+            className="reveal-credit"
+            disabled={prediction === null || revealVisible}
+            onClick={revealGradientCredit}
+          >
+            Reveal gradient credit
+          </button>
+          {revealVisible && (
+            <button type="button" className="reset-credit" onClick={() => resetReveal()}>
+              Reset reveal
+            </button>
           )}
-
-          {gamePhase === 'countdown' && selectedChallenge && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#e5e7eb' }}>
-                  {selectedChallenge.name}
-                </h3>
-                <span style={{
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  color: countdown <= 3 ? '#ef4444' : '#f59e0b',
-                }}>
-                  ⏱️ {countdown}s
-                </span>
-              </div>
-              <div style={{
-                padding: '0.6rem',
-                borderRadius: '0.5rem',
-                background: 'rgba(15,23,42,0.6)',
-                border: '1px solid rgba(148,163,184,0.2)',
-                marginBottom: '0.6rem',
-              }}>
-                <p style={{ margin: 0, fontSize: '0.82rem', color: '#e5e7eb', lineHeight: 1.5 }}>
-                  {selectedChallenge.question}
-                </p>
-                <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: '#9ca3af', fontStyle: 'italic' }}>
-                  💡 Look at the gradient flows in the diagram. Thicker = larger gradients.
-                </p>
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                {[
-                  { id: 'wq' as GradientPrediction, label: 'W_Q', desc: 'Query weights' },
-                  { id: 'wk' as GradientPrediction, label: 'W_K', desc: 'Key weights' },
-                  { id: 'wv' as GradientPrediction, label: 'W_V', desc: 'Value weights' },
-                  { id: 'softmax' as GradientPrediction, label: 'Softmax', desc: 'Attention mechanism' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => submitPrediction(opt.id)}
-                    style={{
-                      padding: '0.4rem 0.7rem',
-                      borderRadius: '999px',
-                      border: '1px solid rgba(245,158,11,0.5)',
-                      background: 'rgba(245,158,11,0.12)',
-                      color: '#e5e7eb',
-                      fontSize: '0.78rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                    }}
-                    title={opt.desc}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {gamePhase === 'revealed' && selectedChallenge && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#e5e7eb' }}>
-                  {selectedChallenge.name} — Result
-                </h3>
-                <span style={{ fontSize: '0.75rem', color: '#22c55e' }}>
-                  Score: {score}/{GRADIENT_CHALLENGES.length}
-                </span>
-              </div>
-              <div style={{
-                padding: '0.6rem',
-                borderRadius: '0.5rem',
-                background: prediction === selectedChallenge.answer
-                  ? 'rgba(34,197,94,0.15)'
-                  : 'rgba(239,68,68,0.15)',
-                border: `1px solid ${prediction === selectedChallenge.answer ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)'}`,
-                marginBottom: '0.6rem',
-              }}>
-                <p style={{ margin: 0, fontSize: '0.82rem', color: '#e5e7eb', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                  {getGradientFeedback(prediction, selectedChallenge)}
-                </p>
-                {!prediction && (
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#f59e0b' }}>
-                    ⏰ Time's up! The answer is {selectedChallenge.answer === 'wq' ? 'W_Q' : selectedChallenge.answer === 'wk' ? 'W_K' : selectedChallenge.answer === 'wv' ? 'W_V' : 'Softmax'}.
-                    <br /><br />{selectedChallenge.explanation}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setGamePhase('setup')}
-                style={{
-                  padding: '0.35rem 0.7rem',
-                  borderRadius: '999px',
-                  border: '1px solid rgba(34,197,94,0.5)',
-                  background: 'rgba(34,197,94,0.15)',
-                  color: '#22c55e',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                ← Try Another Challenge
-              </button>
-            </>
+          {revealVisible && (
+            <span className={predictionCorrect ? 'credit-result correct' : 'credit-result missed'}>
+              {predictionCorrect ? 'Prediction matched.' : `Prediction missed. Actual: ${actualLabel}.`}
+            </span>
           )}
         </div>
-      )}
-
-      {/* Scenario Presets */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-        {SCENARIO_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            onClick={() => handlePreset(preset.id)}
-            style={{
-              padding: '0.35rem 0.7rem',
-              borderRadius: '999px',
-              border: activeScenario === preset.id ? '2px solid #a855f7' : '1px solid rgba(148,163,184,0.4)',
-              background: activeScenario === preset.id
-                ? 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(99,102,241,0.15))'
-                : 'rgba(15,23,42,0.8)',
-              color: activeScenario === preset.id ? '#e5e7eb' : '#9ca3af',
-              fontSize: '0.78rem',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-            }}
-            title={preset.description}
-          >
-            <span>{preset.emoji}</span>
-            <span>{preset.name}</span>
-          </button>
-        ))}
-      </div>
+      </section>
 
       {/* Dynamic Insight Box */}
       <div
         style={{
           padding: '0.6rem 0.9rem',
           borderRadius: '0.5rem',
-          background: `linear-gradient(135deg, ${currentInsight.color}22, ${currentInsight.color}08)`,
-          border: `1px solid ${currentInsight.color}55`,
+          background: `linear-gradient(135deg, ${visibleInsight.color}22, ${visibleInsight.color}08)`,
+          border: `1px solid ${visibleInsight.color}55`,
           marginBottom: '0.75rem',
           display: 'flex',
           alignItems: 'flex-start',
           gap: '0.5rem',
         }}
       >
-        <span style={{ fontSize: '1.1rem' }}>{currentInsight.emoji}</span>
+        <span style={{ fontSize: '1.1rem' }}>{visibleInsight.emoji}</span>
         <p style={{ margin: 0, fontSize: '0.8rem', color: '#e5e7eb', lineHeight: 1.4 }}>
-          {currentInsight.text}
+          {visibleInsight.text}
         </p>
+      </div>
+
+      {revealVisible ? (
+        <div className="credit-readout">
+          <strong>Revealed gradient credit:</strong> {actualLabel} receives the strongest hidden parameter update.{' '}
+          <span>W_Q gradient magnitude: {(wqMag * 100).toFixed(0)}%. </span>
+          <span>W_K gradient magnitude: {(wkMag * 100).toFixed(0)}%. </span>
+          <span>W_V gradient magnitude: {(wvMag * 100).toFixed(0)}%. </span>
+          <span>Softmax Jacobian gradient gate: {(softmaxMag * 100).toFixed(0)}%.</span>
+        </div>
+      ) : (
+        <div className="credit-readout locked">
+          Measured credit, edge strength, and correctness are locked until reveal.
+        </div>
+      )}
+
+      <div className="formula-witness" aria-label="Accessible gradient formulas">
+        <strong>Reason with the backward formulas:</strong>
+        <code>dL/dQ = (dL/dS)K / sqrt(d_k)</code>
+        <code>dL/dK = (dL/dS)^T Q / sqrt(d_k)</code>
+        <code>dL/dW_Q = X^T(dL/dQ)</code>
+        <code>dL/dW_K = X^T(dL/dK)</code>
+        <code>dL/dW_V = X^T(dL/dV)</code>
       </div>
 
       <div className="attention-layout">
@@ -856,7 +784,7 @@ export default function AttentionBackpropExplorer() {
               width={softmaxRegion.width}
               height={softmaxRegion.height}
               fill="url(#softmax-glow)"
-              opacity={mode === 'backward' ? 0.45 : 0.35}
+              opacity={revealVisible ? (mode === 'backward' ? 0.45 : 0.35) : 0.12}
               rx={18}
             />
             <rect
@@ -899,8 +827,9 @@ export default function AttentionBackpropExplorer() {
                 mode === 'forward' ? getNode(conn.to) : getNode(conn.from)
 
               const isSoftmaxEdge = conn.id === 'scores-a'
-              const magnitude =
+              const rawMagnitude =
                 mode === 'forward' ? conn.forwardMag : conn.backwardMag
+              const magnitude = revealVisible ? rawMagnitude : 0.58
               const color = mode === 'forward' ? forwardColor : backwardColor
 
               const strokeWidth = 1.2 + 3.2 * magnitude
@@ -932,7 +861,7 @@ export default function AttentionBackpropExplorer() {
                       ? 'edge-forward'
                       : 'edge-backward',
                     hoveredId === conn.id ? 'edge-hovered' : '',
-                    isSoftmaxEdge ? 'edge-softmax' : '',
+                    revealVisible && isSoftmaxEdge ? 'edge-softmax' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
@@ -1131,7 +1060,9 @@ export default function AttentionBackpropExplorer() {
       <style jsx>{`
         .attention-backprop-card {
           background: transparent;
-          padding: 1.5rem;
+          box-sizing: border-box;
+          width: 100%;
+          padding: clamp(0.65rem, 3vw, 1.5rem);
         }
 
         .attention-header {
@@ -1149,6 +1080,235 @@ export default function AttentionBackpropExplorer() {
 
         .attention-header .muted {
           max-width: 38rem;
+        }
+
+        .credit-panel {
+          margin-bottom: 0.75rem;
+          padding: 0.9rem;
+          border-radius: 0.75rem;
+          background: linear-gradient(135deg, #fffaf0, #f8f4ea);
+          border: 1px solid #d6c7ad;
+          box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+        }
+
+        .credit-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .credit-copy span {
+          color: #7c2d12;
+          font-size: 0.68rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .credit-copy strong {
+          color: #1f2937;
+          font-size: 0.95rem;
+        }
+
+        .credit-copy p {
+          margin: 0;
+          color: #4b5563;
+          font-size: 0.82rem;
+          line-height: 1.45;
+        }
+
+        .credit-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .credit-choices {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .credit-choices button,
+        .reveal-credit,
+        .reset-credit {
+          border-radius: 999px;
+          cursor: pointer;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+
+        .credit-choices button {
+          padding: 0.4rem 0.75rem;
+          border: 1px solid #d6c7ad;
+          background: #fffaf0;
+          color: #1f2937;
+        }
+
+        .credit-choices button.selected {
+          border: 2px solid #7c3aed;
+          background: #ede9fe;
+          color: #5b21b6;
+        }
+
+        .credit-evidence-strip {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+          padding: 0.6rem;
+          border-radius: 0.65rem;
+          background: #0f172a;
+          border: 1px solid #334155;
+        }
+
+        .credit-evidence-step {
+          min-height: 82px;
+          padding: 0.6rem;
+          border-radius: 0.55rem;
+          background: #111827;
+          border: 1px solid #1f2937;
+          color: #d1d5db;
+        }
+
+        .credit-evidence-step.active {
+          background: #fff7ed;
+          border-color: #f59e0b;
+          color: #1f2937;
+        }
+
+        .credit-evidence-title {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          margin-bottom: 0.35rem;
+        }
+
+        .credit-evidence-title span {
+          width: 1.35rem;
+          height: 1.35rem;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #334155;
+          color: #f8fafc;
+          font-size: 0.72rem;
+          font-weight: 800;
+          flex: 0 0 auto;
+        }
+
+        .credit-evidence-step.active .credit-evidence-title span {
+          background: #f59e0b;
+          color: #111827;
+        }
+
+        .credit-evidence-title strong {
+          color: #f8fafc;
+          font-size: 0.78rem;
+        }
+
+        .credit-evidence-step.active .credit-evidence-title strong {
+          color: #111827;
+        }
+
+        .credit-evidence-step p {
+          margin: 0;
+          color: #cbd5e1;
+          font-size: 0.74rem;
+          line-height: 1.35;
+        }
+
+        .credit-evidence-step.active p {
+          color: #374151;
+        }
+
+        .reveal-credit {
+          padding: 0.45rem 0.95rem;
+          border: none;
+          background: linear-gradient(90deg, #f59e0b, #fbbf24);
+          color: #111827;
+        }
+
+        .reveal-credit:disabled {
+          background: rgba(75, 85, 99, 0.55);
+          color: #6b7280;
+          cursor: not-allowed;
+        }
+
+        .reset-credit {
+          padding: 0.45rem 0.8rem;
+          border: 1px solid rgba(148, 163, 184, 0.45);
+          background: rgba(15, 23, 42, 0.7);
+          color: #d1d5db;
+        }
+
+        .credit-result {
+          padding: 0.42rem 0.7rem;
+          border-radius: 0.5rem;
+          font-size: 0.82rem;
+          font-weight: 700;
+        }
+
+        .credit-result.correct {
+          color: #bbf7d0;
+          background: rgba(34, 197, 94, 0.16);
+          border: 1px solid rgba(34, 197, 94, 0.42);
+        }
+
+        .credit-result.missed {
+          color: #fed7aa;
+          background: rgba(251, 146, 60, 0.14);
+          border: 1px solid rgba(251, 146, 60, 0.36);
+        }
+
+        .credit-readout {
+          margin-bottom: 0.85rem;
+          padding: 0.75rem 0.9rem;
+          border-radius: 0.75rem;
+          background: rgba(15, 23, 42, 0.82);
+          border: 1px solid rgba(31, 41, 55, 0.9);
+          color: #d1d5db;
+          font-size: 0.82rem;
+          line-height: 1.55;
+        }
+
+        .credit-readout.locked {
+          color: #9ca3af;
+        }
+
+        .formula-witness {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+          gap: 0.45rem;
+          margin-bottom: 0.9rem;
+          padding: 0.75rem 0.9rem;
+          border-radius: 0.75rem;
+          background: rgba(2, 6, 23, 0.7);
+          border: 1px solid rgba(55, 65, 81, 0.8);
+          color: #cbd5e1;
+          font-size: 0.78rem;
+        }
+
+        .formula-witness strong {
+          grid-column: 1 / -1;
+          color: #e5e7eb;
+          font-size: 0.82rem;
+        }
+
+        .formula-witness code {
+          display: block;
+          padding: 0.35rem 0.45rem;
+          border-radius: 0.45rem;
+          background: rgba(15, 23, 42, 0.86);
+          border: 1px solid rgba(31, 41, 55, 0.9);
+          color: #bfdbfe;
+          font-size: 0.74rem;
+          white-space: normal;
+          overflow-wrap: anywhere;
         }
 
         .mode-toggle {
@@ -1347,6 +1507,35 @@ export default function AttentionBackpropExplorer() {
         @media (max-width: 1024px) {
           .attention-layout {
             grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .attention-backprop-card {
+            padding: 1rem;
+          }
+
+          .attention-header {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .attention-header > div:last-child {
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+            align-items: stretch !important;
+          }
+
+          .mode-toggle {
+            display: flex;
+            width: 100%;
+          }
+
+          .mode-toggle button {
+            flex: 1 1 0;
+            padding-inline: 0.45rem;
+            text-align: center;
           }
         }
       `}</style>

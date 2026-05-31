@@ -1,0 +1,56 @@
+You are GPT Pro acting as a senior frontend/product designer reviewing the first implementation slice for Continuous Function.
+
+Do not say "I will." Answer now with a concrete build spec.
+
+We asked you why the live app feels inferior to the generated image boards. Your prior recommendation:
+- Make Efficient Attention the flagship Living Notebook Lab proof.
+- Add a shared lab grammar around the concept notebook.
+- First viewport should show route spine, one dominant selected object, prediction/manipulation instrument, evidence ledger, invariant, and next move.
+- Avoid adding more decorative cards or generated imagery.
+
+Current implementation context:
+- Next.js Pages Router + TypeScript.
+- Concept notebook page already has selected objects, role lenses, Predict/Code/Ask, object room, source cards, and demo checkpoint.
+- The current problem is composition: too many panels and text blocks, not enough spatial continuity or one-current-object dominance.
+- Existing components include ConceptNotebookPage, SelectedObjectBar, ObjectRoomPanel, DemoPredictionCheckpoint, ObservationLedgerCard, WitnessTriad, RouteStateStrip-like global continuity, and Paper Mapper route memory.
+
+Answer these questions concretely:
+
+1. Which exact Efficient Attention object should dominate the first slice: KV-cache memory equation, GQA sharing equation, FlashAttention IO claim, or misconception object? Pick one and justify.
+2. What exact prediction should the learner commit before reveal?
+3. Which controls should be visible in the first instrument: sequence length, layers, KV heads, query heads, d_head, precision, batch, or implementation choice?
+4. What measurement should change visibly after manipulation?
+5. What invariant should be named and preserved?
+6. What source/evidence should be pinned beside the object?
+7. What should the first viewport layout be at desktop?
+8. What should mobile order be at 390px?
+9. Which existing component should be modified first rather than creating a large new shell?
+10. What should be removed/demoted from the first viewport?
+11. What data shape/props should the shared "LivingLoopDock" or equivalent receive?
+12. How should role lenses change the prompt without moving the object?
+13. How should the ObservationLedgerCard appear immediately after reveal?
+14. How should ObjectRoomPanel be visually tied to the selected equation?
+15. What exact screenshot/browser checks prove the slice worked?
+
+Output format:
+
+## Anchor Object
+One decision.
+
+## First Viewport Layout
+Desktop and mobile.
+
+## Interaction Contract
+Prediction -> Manipulation -> Evidence -> Invariant -> Next Move.
+
+## Component Plan
+File/component-level changes. Include which existing components to touch first.
+
+## Visual Treatment
+Specific colors/spacing/typography/control treatment.
+
+## Acceptance Checks
+10 exact checks.
+
+## Risks
+5 risks and mitigations.

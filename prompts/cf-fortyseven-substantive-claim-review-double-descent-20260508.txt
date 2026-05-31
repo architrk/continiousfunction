@@ -1,0 +1,55 @@
+Project: Continuous Function, a static-exported Next.js + TypeScript learning atlas for the mathematics behind modern deep learning. We are doing claim-evidence review. A claim may be marked `substantive-reviewed` only when the cited sources and local route witnesses actually support the bounded claim. Source IDs and object refs are review targets, not proof.
+
+Target concept:
+- `content/domains/scaling/concepts/double-descent`
+
+Target claim:
+`scaling/double-descent#double-descent-interpolation-empirical-pattern`
+
+Current claim text:
+"Double descent is an empirical test-error pattern: error may peak near the interpolation threshold, then decline again in larger overparameterized models; Nakkiran et al. show model-wise, epoch-wise, and sample-count variants."
+
+Current metadata:
+- status: `source-checked`
+- source_ids: `belkin-2018-bias-variance`, `nakkiran-2019-deep-double-descent`
+- object_refs: `#source-span-belkin-2018-bias-variance`, `#source-span-nakkiran-2019-deep-double-descent`, `#interactive-demo`
+- caveat: empirical and conditional; not a guarantee for every model, dataset, optimizer, training length, or regularization choice; does not certify grokking, broad optimizer implicit bias, minimum-norm linear theory, or that overparameterization always improves test error.
+
+Prior Oracle note from 2026-05-05 said this claim was safe as a narrow `source-checked` claim, but explicitly said not to include `#math-object-1`, `#math-object-2`, or `#code-witness-1` at that time. It also warned not to certify grokking, broad optimizer implicit bias, minimum-norm linear theory, or guaranteed overparameterized improvement.
+
+Primary source evidence gathered for this deeper review:
+
+Belkin et al. 2018/2019, "Reconciling modern machine learning practice and the bias-variance trade-off":
+- arXiv abstract says the double-descent curve subsumes the U-shaped bias-variance curve and shows that increasing model capacity beyond interpolation can improve performance.
+- The paper describes the double-descent risk curve as the classical U-shaped regime plus a modern interpolating regime separated by the interpolation threshold, with predictors to the right having zero training risk.
+- It says learned predictors at the interpolation threshold typically have high risk, while increasing function-class capacity beyond that point leads to decreasing risk.
+- It also gives empirical evidence across random features, neural networks, forests, boosting, and synthetic examples, while noting regularization, early stopping, and sampling can mask the interpolation peak.
+
+Nakkiran et al. 2019, "Deep Double Descent: Where Bigger Models and More Data Hurt":
+- arXiv abstract says modern deep-learning tasks exhibit double descent where increasing model size first worsens then improves performance.
+- The same abstract says double descent also appears as a function of training epochs.
+- It further says their effective-model-complexity view identifies regimes where increasing train samples can hurt test performance.
+- Source text describes the transition: test error decreases, then increases around the interpolation threshold where the model/training procedure just barely reaches near-zero train error, then undergoes a second descent.
+- Source text separately discusses model-wise double descent, epoch-wise double descent, and sample-size non-monotonicity / sample-wise regimes.
+
+Local route and witnesses:
+- `content.mdx` defines the intuition as: error initially falls, can spike near interpolation threshold, then can fall again past that.
+- `content.mdx` math/code are a finite minimum-norm linear-regression teaching witness. The current code holds one synthetic task family fixed across capacities, uses OLS for `d < n`, minimum-norm interpolation for `d >= n`, averages 20 seeds, and prints a sharp test-MSE spike at `d = n`. One run produced:
+  - d=10 test_mse 1.161
+  - d=30 test_mse 1.5
+  - d=60 test_mse 3.202
+  - d=80 test_mse 160.65
+  - d=100 test_mse 3.55
+  - d=150 test_mse 1.323
+  - d=300 test_mse 0.788
+- `viz.tsx` is a prediction-first route wrapper. It has a Double Descent tab whose invariant is the sourced interpolation spike / second descent pattern, and a separate Grokking tab explicitly labeled as related, not definitional.
+- The local demo is synthetic/pedagogical, not empirical source evidence. It may witness the pattern qualitatively, but it cannot prove the Nakkiran model-wise / epoch-wise / sample-count claims.
+
+What I need from you:
+1. Decide whether the exact claim can now be marked `substantive-reviewed`.
+2. Check whether Belkin + Nakkiran substantively support the exact source-side claim and caveat.
+3. Check whether `#interactive-demo` should remain in object refs, or whether it should be removed because it is a synthetic teaching demo and includes a separate grokking tab.
+4. Check whether `#math-object-1`, `#math-object-2`, or `#code-witness-1` should now be added, or whether they should remain outside because this review should not certify minimum-norm linear theory.
+5. If PASS, provide a validator-safe `evidence_review.summary` under 520 chars and any caveat/support wording improvements. If BLOCK, list the smallest patch required.
+
+Return a clear verdict: PASS or BLOCK. Be strict and source-bounded.
