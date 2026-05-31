@@ -1,0 +1,25 @@
+You are reviewing Continuous Function, a Next.js learning platform for the mathematics behind modern deep learning.
+
+North star:
+- Make modern AI math operable for serious learners, researchers, engineers, and ambitious students.
+- The core learning loop should feel like: selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move.
+- Every feature should support Intuition -> Math -> Code -> Interactive Demo without turning the product into passive reading or decorative UI.
+
+Current implementation direction:
+- The site now has a reusable LivingNotebookLabShell for object-attached learning workbenches.
+- PaperConceptMapper uses it for a paper-clue-to-route cockpit.
+- EfficientAttentionLivingLabPanel uses it for a KV-cache memory workbench.
+- I am wiring EfficientAttentionLivingLabPanel into browser-local learner route memory (`cf:last-learning-route`) so a learner can save and later restore the selected object, prediction, evidence, invariant, and next move.
+
+Please critique this specific integration:
+1. What is the highest-impact way to make this saved workbench observation useful pedagogically across the whole product, not just this page?
+2. What should the saved observation contain so an AI tutor, object room, or next concept page can use it without hallucinating context?
+3. What UX copy or state transitions would make save/restore feel like learner memory rather than a generic bookmark?
+4. What failure modes should I guard against in localStorage route memory?
+5. Name only the top 5 implementation improvements. Be concrete and prioritize.
+
+Constraints:
+- Static-exported Next.js Pages Router app.
+- Current persistence is browser-local route memory, not account-backed memory yet.
+- Avoid broad rewrites. The next patch should be small, high-signal, and validatable.
+- The UI should feel like a cohesive Living Notebook Lab: atlas + notebook + lab surface.

@@ -7,7 +7,11 @@ import PracticeShell from '../practice/PracticeShell'
 import LearningRouteContinuityBanner from '../product/LearningRouteContinuityBanner'
 import VizShell from '../viz/VizShell'
 import ConceptNotebookRail from './ConceptNotebookRail'
-import EfficientAttentionLivingLabPanel from './EfficientAttentionLivingLabPanel'
+import EfficientAttentionLivingLabPanel, {
+  efficientAttentionWorkbenchLabId,
+  efficientAttentionWorkbenchLabVersion,
+  type EfficientAttentionWorkbenchObservation,
+} from './EfficientAttentionLivingLabPanel'
 import ConceptMechanismStoryboard from './ConceptMechanismStoryboard'
 import ConceptVisualInquiryPanel, { type ConceptVisualInquiryReveal } from './ConceptVisualInquiryPanel'
 import ConceptSection from './ConceptSection'
@@ -2605,6 +2609,114 @@ export default function ConceptNotebookPage({
     }
   }
 
+  const rememberEfficientAttentionWorkbenchObservation = (observation: EfficientAttentionWorkbenchObservation) => {
+    const selectedItem = efficientAttentionKvCacheRoomItem(discussionItems) ?? selectedObjectFlowItem ?? discussionItems[0]
+    if (!selectedItem) return false
+
+    const previousSnapshot = getSavedLearningRouteSnapshot()
+    if (isInspectingSavedRouteHistory(previousSnapshot, concept.id, conceptHref)) return false
+
+    const selectedObject = routeSourceObjectFromDiscussionItem(selectedItem)
+    const now = new Date().toISOString()
+    const snapshot = conceptNotebookSnapshot({
+      concept,
+      domainTitle,
+      conceptHref,
+      sectionOverview,
+      prerequisites,
+      leadsTo,
+      related,
+      nextLearning,
+      selectedItem,
+      selectedObject,
+      discussionItems,
+    })
+    const observationValue = `${observation.predictionLabel}: ${observation.memoryLabel}, ${observation.reduction.toFixed(1)}x reduction vs MHA`
+    const nextSnapshot: LearningRouteSnapshot = {
+      ...snapshot,
+      currentQuestion: snapshotString(observation.roleQuestion, 220),
+      currentObject: {
+        ...selectedObject,
+        role: snapshotString(`${observation.roleLabel} lens: ${observation.predictionLabel}`, 140),
+        status: 'workbench observation carried',
+        sourceDetail: snapshotString(
+          `g=${observation.groupSize}, H_kv=${observation.kvHeads}, ${observation.memoryLabel}`,
+          160
+        ),
+      },
+      routeProgress: {
+        ...snapshot.routeProgress!,
+        checkpoints: [
+          ...(snapshot.routeProgress?.checkpoints ?? []).filter(
+            (checkpoint) => checkpoint.id !== 'efficient-attention-workbench'
+          ),
+          {
+            id: 'efficient-attention-workbench',
+            label: 'Efficient Attention workbench',
+            status: 'saved',
+            detail: snapshotString(observationValue, 180),
+            updatedAt: now,
+          },
+        ],
+        resolvedObjectIds: selectedObject.discussionAnchorId ? [selectedObject.discussionAnchorId] : [],
+        updatedAt: now,
+      },
+      lastObservation: {
+        label: 'Efficient attention workbench',
+        value: snapshotString(observationValue, 160),
+        detail: snapshotString(
+          `labId=${efficientAttentionWorkbenchLabId}; labVersion=${efficientAttentionWorkbenchLabVersion}; predictionId=${observation.predictionId}; ${observation.evidence} ${observation.invariant}`,
+          360
+        ),
+        nextQuestion: snapshotString(observation.nextMove, 220),
+        source: 'kv-memory-lab',
+        updatedAt: now,
+        kind: 'formula-comparison',
+        changed: {
+          symbol: 'H_kv',
+          from: observation.queryHeads,
+          to: observation.kvHeads,
+        },
+        heldFixed: [
+          { symbol: 'B', value: observation.batch },
+          { symbol: 'L', value: observation.layers },
+          { symbol: 'T', value: observation.sequenceLength },
+          { symbol: 'H_q', value: observation.queryHeads },
+          { symbol: 'd', value: observation.headDim },
+          { symbol: 's', value: observation.valueBytes },
+        ],
+        result: {
+          before: observation.mhaMemoryGb,
+          after: observation.memoryGb,
+          ratio: observation.reduction,
+          unit: 'GB-decimal',
+        },
+        caveat: 'Memory witness only; model quality still needs a separate experiment.',
+        labState: {
+          context: observation.sequenceLength,
+          layers: observation.layers,
+          queryHeads: observation.queryHeads,
+          kvHeads: observation.kvHeads,
+          dHead: observation.headDim,
+          batch: observation.batch,
+          bytes: observation.valueBytes,
+        },
+      },
+    }
+    const activatedSnapshot = preserveActivatedRouteTrail(nextSnapshot, previousSnapshot, conceptHref)
+    const saved = saveLearningRouteSnapshot(
+      preserveResolvedRouteHistory(activatedSnapshot, previousSnapshot, concept.id, conceptHref)
+    )
+
+    if (saved) {
+      setSelectedObjectAnchorId(selectedItem.anchor.id)
+      setSavedObjectAnchorId(selectedItem.anchor.id)
+      lastRememberedObjectAnchorIdRef.current = selectedItem.anchor.id
+    }
+
+    return saved
+  }
+
   const selectedObjectOptions: SelectedObjectOption[] = objectFlowItems.map((item) => ({
     id: item.anchor.id,
     label: snapshotString(item.anchor.title, 72, 'Concept object'),
@@ -2860,7 +2972,10 @@ export default function ConceptNotebookPage({
           {objectFlowPanel}
 
           {concept.id === 'efficient-attention' ? (
-            <EfficientAttentionLivingLabPanel />
+            <EfficientAttentionLivingLabPanel
+              savedRouteSnapshot={routeSnapshot}
+              onSaveObservation={rememberEfficientAttentionWorkbenchObservation}
+            />
           ) : null}
 
           {concept.id === 'efficient-attention' && selectedObjectFlowItem ? (

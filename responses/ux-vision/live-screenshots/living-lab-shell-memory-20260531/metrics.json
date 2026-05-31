@@ -1,0 +1,34 @@
+{
+  "desktopMetrics": {
+    "url": "http://127.0.0.1:3000/domains/attention-transformers/efficient-attention/#efficient-attention-living-lab",
+    "horizontalOverflow": false,
+    "shellPresent": true,
+    "carriedButtonVisible": true,
+    "mappingId": "concept:efficient-attention",
+    "currentObjectType": "equation",
+    "currentObjectKey": "equation:attention-transformers/efficient-attention#math-object-2",
+    "currentObjectStatus": "workbench observation carried",
+    "lastObservationLabel": "Efficient attention workbench",
+    "lastObservationSource": "kv-memory-lab",
+    "lastObservationValue": "It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA",
+    "lastObservationHasLabId": true,
+    "labState": {
+      "context": 32768,
+      "layers": 32,
+      "queryHeads": 32,
+      "kvHeads": 8,
+      "dHead": 128,
+      "batch": 1,
+      "bytes": 2
+    },
+    "checkpointIds": [
+      "efficient-attention-workbench"
+    ]
+  },
+  "mobileMetrics": {
+    "horizontalOverflow": false,
+    "carriedButtonVisible": true,
+    "shellWidth": 332.96875,
+    "viewportWidth": 390
+  }
+}

@@ -4738,4 +4738,105 @@ describe('ConceptNotebookPage object flow bar', () => {
     const objectFlowBar = screen.getByLabelText('Object-attached flow')
     expect(within(objectFlowBar).queryByText('2/2 sections ready')).not.toBeInTheDocument()
   })
+
+  it('saves the Efficient Attention workbench as a validated route-memory observation', async () => {
+    render(
+      <ConceptNotebookPage
+        domainTitle="Attention Transformers"
+        concept={{
+          id: 'efficient-attention',
+          title: 'Efficient Attention',
+          domain: 'attention-transformers',
+          slug: 'efficient-attention',
+          difficulty: 4,
+          status: 'published',
+          importance: 'critical',
+          short_description: 'Grouped-query attention reduces KV-cache memory by storing fewer K/V heads.',
+          tags: ['attention', 'transformers', 'inference'],
+          sources: [
+            {
+              id: 'ainslie-2023-gqa',
+              title: 'GQA',
+              kind: 'paper',
+              year: 2023,
+              note: 'Grouped-query attention reduces stored key/value heads.',
+            },
+          ],
+        }}
+        sections={{
+          intuitionHtml: '<p>Share stored K/V heads while keeping query heads visible.</p>',
+          mathHtml: '<p>KV memory equation lives here.</p>',
+          codeHtml: '<p>KV cache code witness lives here.</p>',
+          demoHtml: '<p>Demo notes.</p>',
+        }}
+        objectSpans={[
+          {
+            kind: 'equation',
+            domId: 'math-object-1',
+            snippet: 'H_kv = H_q / g',
+          },
+          {
+            kind: 'equation',
+            domId: 'math-object-2',
+            snippet: 'M_KV = B * L * T * 2 * H_kv * d * s',
+          },
+          {
+            kind: 'code-witness',
+            domId: 'code-witness-1',
+            snippet: 'cache_bytes = batch * layers * T * 2 * kv_heads * d_head * bytes',
+          },
+        ]}
+        prerequisites={[]}
+        leadsTo={[
+          {
+            id: 'long-context',
+            title: 'Long Context Engineering',
+            href: '/domains/attention-transformers/long-context/',
+          },
+        ]}
+        related={[]}
+        prevInDomain={null}
+        nextInDomain={null}
+        Viz={() => <div>viz</div>}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Sharing-factor drop/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Carry observation' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Observation carried' })).toBeInTheDocument()
+    })
+
+    const snapshot = getSavedLearningRouteSnapshot()
+
+    expect(snapshot?.mappingId).toBe('concept:efficient-attention')
+    expect(snapshot?.currentObject?.type).toBe('equation')
+    expect(snapshot?.currentObject?.objectKey).toBe(
+      'equation:attention-transformers/efficient-attention#math-object-2'
+    )
+    expect(snapshot?.currentObject?.status).toBe('workbench observation carried')
+    expect(snapshot?.lastObservation?.label).toBe('Efficient attention workbench')
+    expect(snapshot?.lastObservation?.source).toBe('kv-memory-lab')
+    expect(snapshot?.lastObservation?.detail).toContain('predictionId=quarter')
+    expect(snapshot?.lastObservation?.labState).toEqual(
+      expect.objectContaining({
+        context: 32768,
+        layers: 32,
+        queryHeads: 32,
+        kvHeads: 8,
+        dHead: 128,
+        batch: 1,
+        bytes: 2,
+      })
+    )
+    expect(snapshot?.routeProgress?.checkpoints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'efficient-attention-workbench',
+          status: 'saved',
+        }),
+      ])
+    )
+  })
 })

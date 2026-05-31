@@ -1,17 +1,20 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import LivingNotebookLabShell, {
   type LivingNotebookLabAction,
   type LivingNotebookLabPrediction,
   type LivingNotebookLabStep,
 } from '../product/LivingNotebookLabShell'
+import type { LearningRouteSnapshot } from '@/lib/learningRouteSnapshot'
 
 const queryHeads = 32
 const layers = 32
 const batch = 1
 const headDim = 128
+export const efficientAttentionWorkbenchLabId = 'efficient-attention-kv-cache-workbench'
+export const efficientAttentionWorkbenchLabVersion = '2026-05-31'
 
 const sequenceOptions = [
-  { label: '1k', value: 1024 },
+  { label: '2k', value: 2048 },
   { label: '8k', value: 8192 },
   { label: '32k', value: 32768 },
   { label: '128k', value: 131072 },
@@ -33,8 +36,8 @@ const predictionChoices = [
   },
   {
     id: 'quarter',
-    label: 'It drops to about one quarter',
-    detail: 'Only 8 K/V heads are stored instead of 32.',
+    label: 'It drops by the sharing factor',
+    detail: 'Only H_q / g K/V heads are stored instead of all query heads.',
   },
   {
     id: 'little',
@@ -77,6 +80,34 @@ const roleOptions = [
 
 type RoleOptionId = (typeof roleOptions)[number]['id']
 
+export type EfficientAttentionWorkbenchObservation = {
+  predictionId: string
+  predictionLabel: string
+  roleLabel: string
+  roleQuestion: string
+  sequenceLength: number
+  groupSize: number
+  valueBytes: number
+  queryHeads: number
+  kvHeads: number
+  layers: number
+  batch: number
+  headDim: number
+  memoryGb: number
+  mhaMemoryGb: number
+  reduction: number
+  pressure: number
+  memoryLabel: string
+  invariant: string
+  evidence: string
+  nextMove: string
+}
+
+type EfficientAttentionLivingLabPanelProps = {
+  savedRouteSnapshot?: LearningRouteSnapshot | null
+  onSaveObservation?: (observation: EfficientAttentionWorkbenchObservation) => boolean | void
+}
+
 function gbFor(sequenceLength: number, kvHeads: number, valueBytes: number) {
   const bytes = batch * layers * sequenceLength * 2 * kvHeads * headDim * valueBytes
   return bytes / 1_000_000_000
@@ -92,25 +123,79 @@ function sequenceLabel(value: number) {
   return sequenceOptions.find((option) => option.value === value)?.label ?? `${value}`
 }
 
-export default function EfficientAttentionLivingLabPanel() {
+export default function EfficientAttentionLivingLabPanel({
+  savedRouteSnapshot,
+  onSaveObservation,
+}: EfficientAttentionLivingLabPanelProps) {
   const [sequenceLength, setSequenceLength] = useState(32768)
   const [groupSize, setGroupSize] = useState(4)
   const [valueBytes, setValueBytes] = useState(2)
   const [prediction, setPrediction] = useState('')
   const [revealed, setRevealed] = useState(false)
   const [role, setRole] = useState<RoleOptionId>('learner')
+  const [routeSaveStatus, setRouteSaveStatus] = useState<
+    'idle' | 'needs-prediction' | 'revealed-unsaved' | 'carried' | 'dirty' | 'restored' | 'restore-mismatch' | 'error'
+  >('idle')
 
   const kvHeads = Math.max(1, queryHeads / groupSize)
   const memoryGb = gbFor(sequenceLength, kvHeads, valueBytes)
   const mhaMemoryGb = gbFor(sequenceLength, queryHeads, valueBytes)
   const reduction = mhaMemoryGb / memoryGb
   const pressure = Math.max(6, Math.round((kvHeads / queryHeads) * 100))
-  const predictionCorrect = prediction === 'quarter'
+  const expectedPrediction = groupSize === 1 ? 'same' : 'quarter'
+  const predictionCorrect = prediction === expectedPrediction
   const activeRole = roleOptions.find((option) => option.id === role) ?? roleOptions[0]
   const activePredictionChoice = predictionChoices.find((choice) => choice.id === prediction)
   const predictionResult = revealed
     ? `${predictionCorrect ? 'Correct.' : 'Model repair.'} With g = ${groupSize}, H_kv changes from ${queryHeads} to ${kvHeads}, so the KV cache becomes ${reduction.toFixed(1)}x smaller at the same sequence length.`
     : 'Commit a prediction to reveal the measured memory.'
+  const invariant =
+    'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.'
+  const evidence = `g = ${groupSize} gives H_kv = ${kvHeads}, ${formatGb(memoryGb)} cache at ${sequenceLabel(sequenceLength)}, and ${reduction.toFixed(1)}x reduction vs ordinary MHA.`
+
+  useEffect(() => {
+    const observation = savedRouteSnapshot?.lastObservation
+    const labState = observation?.labState
+    if (
+      savedRouteSnapshot?.mappingId !== 'concept:efficient-attention' ||
+      observation?.label !== 'Efficient attention workbench' ||
+      observation.source !== 'kv-memory-lab' ||
+      !labState ||
+      !observation.detail?.includes(`labId=${efficientAttentionWorkbenchLabId}`) ||
+      !observation.detail?.includes(`labVersion=${efficientAttentionWorkbenchLabVersion}`)
+    ) {
+      if (observation?.label === 'Efficient attention workbench') {
+        setRouteSaveStatus('restore-mismatch')
+      }
+      return
+    }
+
+    const savedGroupSize = queryHeads / labState.kvHeads
+    if (groupOptions.some((option) => option.value === savedGroupSize)) {
+      setGroupSize(savedGroupSize)
+    }
+    if (sequenceOptions.some((option) => option.value === labState.context)) {
+      setSequenceLength(labState.context)
+    }
+    if (labState.bytes === 1 || labState.bytes === 2) {
+      setValueBytes(labState.bytes)
+    }
+
+    const savedPredictionId = observation.detail?.match(/predictionId=([a-z-]+)/)?.[1]
+    if (savedPredictionId && predictionChoices.some((choice) => choice.id === savedPredictionId)) {
+      setPrediction(savedPredictionId)
+    }
+    setRevealed(true)
+    setRouteSaveStatus('restored')
+  }, [savedRouteSnapshot])
+
+  function markRouteObservationDirty() {
+    setRouteSaveStatus((status) => {
+      if (status === 'carried' || status === 'restored') return 'dirty'
+      if (status === 'error' || status === 'needs-prediction' || status === 'restore-mismatch') return status
+      return revealed ? 'revealed-unsaved' : 'idle'
+    })
+  }
 
   const labPredictions: LivingNotebookLabPrediction[] = [
     {
@@ -121,8 +206,8 @@ export default function EfficientAttentionLivingLabPanel() {
     },
     {
       id: 'quarter',
-      label: 'Quarter cache',
-      claim: 'Only 8 K/V heads are stored instead of 32, so memory should fall to about one quarter.',
+      label: 'Sharing-factor drop',
+      claim: 'Only H_q / g K/V heads are stored, so memory should shrink by the grouping factor.',
       accent: '#1f6f78',
     },
     {
@@ -186,13 +271,31 @@ export default function EfficientAttentionLivingLabPanel() {
 
   const labActions: LivingNotebookLabAction[] = [
     {
+      id: 'save-observation',
+      label:
+        routeSaveStatus === 'carried' || routeSaveStatus === 'restored'
+          ? 'Observation carried'
+          : routeSaveStatus === 'dirty'
+            ? 'Update carried observation'
+          : routeSaveStatus === 'needs-prediction'
+            ? 'Reveal first'
+          : routeSaveStatus === 'error'
+            ? 'Save failed'
+              : routeSaveStatus === 'restore-mismatch'
+                ? 'Start fresh observation'
+                : 'Carry observation',
+      onClick: saveWorkbenchObservation,
+      variant: revealed ? 'primary' : 'secondary',
+    },
+    {
       id: 'reveal-measurement',
       label: revealed ? 'Measurement revealed' : 'Reveal measurement',
       onClick: () => {
         if (!prediction) setPrediction('quarter')
         setRevealed(true)
+        setRouteSaveStatus('revealed-unsaved')
       },
-      variant: 'primary',
+      variant: revealed ? 'secondary' : 'primary',
     },
     {
       id: 'open-full-demo',
@@ -226,6 +329,40 @@ export default function EfficientAttentionLivingLabPanel() {
   function commitPrediction(choiceId: string) {
     setPrediction(choiceId)
     setRevealed(true)
+    setRouteSaveStatus('revealed-unsaved')
+  }
+
+  function saveWorkbenchObservation() {
+    if (!onSaveObservation) return
+    const selectedPrediction = predictionChoices.find((choice) => choice.id === prediction)
+    if (!revealed || !selectedPrediction) {
+      setRouteSaveStatus('needs-prediction')
+      return
+    }
+
+    const saved = onSaveObservation({
+      predictionId: selectedPrediction.id,
+      predictionLabel: selectedPrediction.label,
+      roleLabel: activeRole.label,
+      roleQuestion: activeRole.frame,
+      sequenceLength,
+      groupSize,
+      valueBytes,
+      queryHeads,
+      kvHeads,
+      layers,
+      batch,
+      headDim,
+      memoryGb,
+      mhaMemoryGb,
+      reduction,
+      pressure,
+      memoryLabel: formatGb(memoryGb),
+      invariant,
+      evidence,
+      nextMove: activeRole.next,
+    })
+    setRouteSaveStatus(saved === false ? 'error' : 'carried')
   }
 
   return (
@@ -240,13 +377,28 @@ export default function EfficientAttentionLivingLabPanel() {
         lensLabel: `${activeRole.label} lens`,
       }}
       steps={labSteps}
-      predictionPrompt="If 32 query heads share K/V heads in groups of 4, what happens to KV-cache memory compared with ordinary multi-head attention?"
+      predictionPrompt={`If ${queryHeads} query heads share K/V heads in groups of ${groupSize}, what happens to KV-cache memory compared with ordinary multi-head attention?`}
       predictions={labPredictions}
       activePredictionId={prediction || undefined}
       onSelectPrediction={commitPrediction}
       invariant={{
-        title: 'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
-        detail: predictionResult,
+        title: invariant,
+        detail:
+          routeSaveStatus === 'carried'
+            ? `${predictionResult} Carried into your route.`
+            : routeSaveStatus === 'restored'
+              ? `${predictionResult} Restored local lab note from your route.`
+              : routeSaveStatus === 'dirty'
+                ? `${predictionResult} This lab state changed since the carried observation.`
+                : routeSaveStatus === 'revealed-unsaved'
+                  ? `${predictionResult} Carry this observation to keep the route connected.`
+            : routeSaveStatus === 'needs-prediction'
+              ? `${predictionResult} Commit a prediction before saving this route observation.`
+              : routeSaveStatus === 'error'
+                ? `${predictionResult} Save failed in this browser.`
+                : routeSaveStatus === 'restore-mismatch'
+                  ? `${predictionResult} A saved note exists, but this lab version changed. Start fresh before carrying it.`
+                  : predictionResult,
         accent: revealed ? '#1f6f78' : '#d7a741',
       }}
       actions={labActions}
@@ -265,7 +417,10 @@ export default function EfficientAttentionLivingLabPanel() {
                 type="button"
                 className={role === option.id ? 'active' : undefined}
                 aria-pressed={role === option.id}
-                onClick={() => setRole(option.id)}
+                onClick={() => {
+                  setRole(option.id)
+                  markRouteObservationDirty()
+                }}
               >
                 {option.label}
               </button>
@@ -294,7 +449,13 @@ export default function EfficientAttentionLivingLabPanel() {
           <div className="efficient-controls" aria-label="Manipulation bench">
             <label>
               <span>Sequence length T</span>
-              <select value={sequenceLength} onChange={(event) => setSequenceLength(Number(event.target.value))}>
+              <select
+                value={sequenceLength}
+                onChange={(event) => {
+                  setSequenceLength(Number(event.target.value))
+                  markRouteObservationDirty()
+                }}
+              >
                 {sequenceOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -312,7 +473,10 @@ export default function EfficientAttentionLivingLabPanel() {
                     key={option.value}
                     className={groupSize === option.value ? 'active' : undefined}
                     aria-pressed={groupSize === option.value}
-                    onClick={() => setGroupSize(option.value)}
+                    onClick={() => {
+                      setGroupSize(option.value)
+                      markRouteObservationDirty()
+                    }}
                   >
                     {option.label}
                   </button>
@@ -327,7 +491,10 @@ export default function EfficientAttentionLivingLabPanel() {
                   type="button"
                   className={valueBytes === 2 ? 'active' : undefined}
                   aria-pressed={valueBytes === 2}
-                  onClick={() => setValueBytes(2)}
+                  onClick={() => {
+                    setValueBytes(2)
+                    markRouteObservationDirty()
+                  }}
                 >
                   FP16/BF16
                 </button>
@@ -335,7 +502,10 @@ export default function EfficientAttentionLivingLabPanel() {
                   type="button"
                   className={valueBytes === 1 ? 'active' : undefined}
                   aria-pressed={valueBytes === 1}
-                  onClick={() => setValueBytes(1)}
+                  onClick={() => {
+                    setValueBytes(1)
+                    markRouteObservationDirty()
+                  }}
                 >
                   INT8 cache
                 </button>
@@ -390,7 +560,13 @@ export default function EfficientAttentionLivingLabPanel() {
           </article>
           {revealed ? (
             <article className="observation-card">
-              <span>Observation ledger</span>
+              <span>
+                {routeSaveStatus === 'carried' || routeSaveStatus === 'restored'
+                  ? 'Observation ledger carried'
+                  : routeSaveStatus === 'dirty'
+                    ? 'Observation ledger changed'
+                    : 'Observation ledger'}
+              </span>
               <p>What changed: g = {groupSize} gives H_kv = {kvHeads}.</p>
               <p>What stayed true: memory changes linearly with H_kv.</p>
               <p>Next: raise T to 128k and check whether the {reduction.toFixed(1)}x ratio survives.</p>

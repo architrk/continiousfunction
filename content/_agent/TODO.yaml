@@ -1,5 +1,9 @@
-current_focus: "Next: connect the LivingNotebookLabShell workbench contract to saved learner memory so selected object, prediction, evidence, invariant, and next move persist across sessions."
+current_focus: "Next: make saved LivingNotebookLabShell observations show up as first-class study-memory objects and then connect that route-memory shape to account-backed learner memory."
 last_completed:
+  - concept: efficient-attention-living-lab-route-memory
+    date: 2026-05-31
+    action: connected
+    notes: "Connected Efficient Attention's LivingNotebookLabShell workbench to browser-local learner route memory. The workbench now saves the exact KV-cache equation object, committed prediction, manipulated T/g/s state, measured evidence, invariant, caveat, labState, checkpoint, and next move through the validated LearningRouteSnapshot API, restores the saved state after reload, and feeds the carried observation into the Research Reading Room handoff. Browser QA and Chrome/Playwright evidence in responses/ux-vision/live-screenshots/living-lab-shell-memory-20260531/ confirmed desktop/mobile no horizontal overflow, saved button restore, exact equation object key, kv-memory-lab source, and valid labState."
   - concept: efficient-attention-living-lab-shell-migration
     date: 2026-05-31
     action: connected
@@ -2673,6 +2677,16 @@ queue:
     description: "Done: Efficient Attention's first-viewport Living Lab panel now uses LivingNotebookLabShell while preserving the KV-cache equation as selected object, T/g/s controls, query/KV lane witness, memory/evidence measurements, prediction choices, invariant, observation ledger, and next move. Visual QA evidence is in responses/ux-vision/live-screenshots/living-lab-shell-20260531/."
     priority: P0
     status: done
+  - action: build_feature
+    id: efficient-attention-living-lab-route-memory
+    description: "Done: Efficient Attention's LivingNotebookLabShell workbench now saves and restores a validated browser-local LearningRouteSnapshot observation for the KV-cache equation. The saved packet includes currentObject, predictionId, evidence, invariant, caveat, labState, route checkpoint, and next move, then rehydrates the workbench and Research Reading Room after reload. Evidence: responses/ux-vision/live-screenshots/living-lab-shell-memory-20260531/."
+    priority: P0
+    status: done
+  - action: build_feature
+    id: study-memory-workbench-observation-surface
+    description: "Make /me Study Memory treat saved LivingNotebookLabShell observations as first-class study objects: show selected object, prediction, manipulated variables, evidence, invariant, caveat, next move, and source boundary rather than only generic route snapshot fields."
+    priority: P0
+    status: pending
   - action: build_feature
     id: paper-mapper-image-board-grade-cockpit
     description: "Done: Paper Mapper now starts with a Question-to-Invariant cockpit where a paper clue becomes a selected object, role-lens question, committed prediction, evidence boundary, saved invariant observation, AI handoff packet, lab witness, and next route. GPT Pro/Oracle north-star critique is saved at responses/cf-north-star-goal-refinement-20260531.md; desktop cockpit and real 390px mobile visual QA passed."

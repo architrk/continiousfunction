@@ -365,6 +365,150 @@ describe('learning route snapshot validation', () => {
     expect(snapshot?.lastObservation?.detail).toContain('Current interactive demo state:')
   })
 
+  it('accepts efficient-attention workbench formula observations with validated KV lab state', () => {
+    const saved = saveLearningRouteSnapshot(
+      baseSnapshot({
+        source: 'concept-notebook',
+        paperTitle: 'Concept notebook: Efficient Attention',
+        inputKind: 'concept notebook',
+        mappingId: 'concept:efficient-attention',
+        currentObject: {
+          type: 'equation',
+          id: 'math-object-2',
+          objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+          discussionAnchorId: 'equation/concept-notebook/attention-transformers/efficient-attention/math/equation-2',
+          title: 'Efficient Attention equation 2',
+          href: '/domains/attention-transformers/efficient-attention/#math-object-2',
+          role: 'Learner lens: It drops by the sharing factor',
+          status: 'workbench observation carried',
+        },
+        routeProgress: {
+          version: 'cf-route-progress-v1',
+          stageReadiness: [
+            {
+              stageId: 'math',
+              label: 'Math',
+              status: 'ready',
+              updatedAt: '2026-05-31T00:00:00.000Z',
+            },
+          ],
+          checkpoints: [
+            {
+              id: 'efficient-attention-workbench',
+              label: 'Efficient Attention workbench',
+              status: 'saved',
+              detail: 'It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA',
+              updatedAt: '2026-05-31T00:00:00.000Z',
+            },
+          ],
+          resolvedObjectIds: [
+            'equation/concept-notebook/attention-transformers/efficient-attention/math/equation-2',
+          ],
+          updatedAt: '2026-05-31T00:00:00.000Z',
+        },
+        lastObservation: {
+          label: 'Efficient attention workbench',
+          value: 'It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA',
+          detail:
+            'labId=efficient-attention-kv-cache-workbench; labVersion=2026-05-31; predictionId=quarter; g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA.',
+          nextQuestion: 'Move g from 1 to 4, then say why the ratio changes before reading the invariant.',
+          source: 'kv-memory-lab',
+          updatedAt: '2026-05-31T00:00:00.000Z',
+          kind: 'formula-comparison',
+          changed: {
+            symbol: 'H_kv',
+            from: 32,
+            to: 8,
+          },
+          heldFixed: [
+            { symbol: 'B', value: 1 },
+            { symbol: 'L', value: 32 },
+            { symbol: 'T', value: 32768 },
+            { symbol: 'H_q', value: 32 },
+            { symbol: 'd', value: 128 },
+            { symbol: 's', value: 2 },
+          ],
+          result: {
+          before: 17.179869184,
+          after: 4.294967296,
+            ratio: 4,
+            unit: 'GB-decimal',
+          },
+          caveat: 'Memory witness only; model quality still needs a separate experiment.',
+          labState: {
+            context: 32768,
+            layers: 32,
+            queryHeads: 32,
+            kvHeads: 8,
+            dHead: 128,
+            batch: 1,
+            bytes: 2,
+          },
+        },
+      })
+    )
+
+    expect(saved).toBe(true)
+
+    const snapshot = getSavedLearningRouteSnapshot()
+
+    expect(snapshot?.mappingId).toBe('concept:efficient-attention')
+    expect(snapshot?.lastObservation?.label).toBe('Efficient attention workbench')
+    expect(snapshot?.lastObservation?.source).toBe('kv-memory-lab')
+    expect(snapshot?.lastObservation?.labState?.context).toBe(32768)
+    expect(snapshot?.routeProgress?.checkpoints?.[0]).toEqual(
+      expect.objectContaining({
+        id: 'efficient-attention-workbench',
+        status: 'saved',
+      })
+    )
+  })
+
+  it('rejects efficient-attention workbench observations outside the KV lab context grid', () => {
+    const invalid = saveLearningRouteSnapshot(
+      baseSnapshot({
+        source: 'concept-notebook',
+        paperTitle: 'Concept notebook: Efficient Attention',
+        inputKind: 'concept notebook',
+        mappingId: 'concept:efficient-attention',
+        lastObservation: {
+          label: 'Efficient attention workbench',
+          value: 'Invalid 1k context should not persist',
+          detail: 'predictionId=quarter; invalid context.',
+          nextQuestion: 'Try a supported context length.',
+          source: 'kv-memory-lab',
+          updatedAt: '2026-05-31T00:00:00.000Z',
+          kind: 'formula-comparison',
+          changed: {
+            symbol: 'H_kv',
+            from: 32,
+            to: 8,
+          },
+          heldFixed: [{ symbol: 'T', value: 1024 }],
+          result: {
+            before: 1,
+            after: 0.25,
+            ratio: 4,
+            unit: 'GB-decimal',
+          },
+          caveat: 'Invalid context smoke test.',
+          labState: {
+            context: 1024,
+            layers: 32,
+            queryHeads: 32,
+            kvHeads: 8,
+            dHead: 128,
+            batch: 1,
+            bytes: 2,
+          },
+        },
+      })
+    )
+
+    expect(invalid).toBe(false)
+    expect(getSavedLearningRouteSnapshot()).toBeNull()
+  })
+
   it('rejects unsafe hrefs inside graph state and source objects', () => {
     writeRawSnapshot(
       store,
