@@ -1,5 +1,9 @@
-current_focus: "Next: connect account-backed learner memory persistence and exact workbench resume links."
+current_focus: "Next: connect Clerk app-owned user mirroring before live learner-memory writes."
 last_completed:
+  - concept: account-memory-persistence-handoff
+    date: 2026-05-31
+    action: connected
+    notes: "Used GPT Pro/Oracle to audit the next account-backed memory slice and followed its recommendation to add deterministic persistence semantics before any live Neon/Drizzle runtime. Account-memory imports now produce a not-executed persistence handoff with route_snapshot_dedupe_key, snapshot_content_hash, observation_dedupe_key, measured_state_hash, optional workbench_state_hash, explicit route/observation conflict targets, and an observation dependency on the future route snapshot id. /me now labels the ready state as a Persistence handoff, and the observation write plan attaches formula-workbench observations to the exact equation object rather than the broader current concept. Browser QA evidence: responses/ux-vision/live-screenshots/account-memory-persistence-handoff-20260531/. Oracle critique: responses/cf-account-backed-memory-next-slice-oracle-20260531.md."
   - concept: study-memory-workbench-resume-action
     date: 2026-05-31
     action: connected
@@ -2730,7 +2734,7 @@ queue:
     status: done
   - action: build_feature
     id: account-backed-learner-memory-path
-    description: "Partially advanced: /me now previews how the browser-local LearningRouteSnapshot will become account memory, including route snapshot and observation write plans plus blockers; exact equation/code/claim/demo/source objects now derive durable route anchors. POST /api/me/learning-route-snapshots now validates the snapshot server-side and prepares DB-shaped inserts behind an app-owned user requirement, returning persisted=false until the backend is connected. The account-memory auth boundary now distinguishes missing sessions, Clerk sessions needing app-owned users.id mirroring, invalid dev owner UUIDs, and valid dev app-owned users without ever using Clerk IDs as learner-memory owners. Remaining: Clerk provider/middleware, protected profile/dashboard route, Clerk webhook/app-owned user mirroring, Neon/Drizzle runtime client, authorization helpers, and real account-gated saved route observation writes before community or billing."
+    description: "Partially advanced: /me now previews how the browser-local LearningRouteSnapshot will become account memory, including route snapshot and observation write plans plus blockers; exact equation/code/claim/demo/source objects now derive durable route anchors. POST /api/me/learning-route-snapshots validates the snapshot server-side, requires an app-owned user before write preparation, and now returns a not-executed deterministic persistence handoff with route/observation dedupe keys, content hashes, future conflict targets, exact observation attachment, and snapshot-id dependency semantics while keeping persisted=false. The account-memory auth boundary distinguishes missing sessions, Clerk sessions needing app-owned users.id mirroring, invalid dev owner UUIDs, and valid dev app-owned users without ever using Clerk IDs as learner-memory owners. Remaining: Clerk provider/middleware, protected profile/dashboard route, Clerk webhook/app-owned user mirroring, Neon/Drizzle runtime client, authorization helpers, and real account-gated saved route observation writes before community or billing."
     priority: P0
     status: pending
   - action: build_feature

@@ -74,7 +74,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse<ApiRes
         ? {
             ...resultForResponse,
             reason:
-              'The route snapshot is DB-shaped and write-ready, but the live Clerk/Neon persistence adapter is not connected yet.',
+              'The route snapshot has a deterministic persistence handoff, but the live Clerk/Neon persistence adapter is not connected yet.',
           }
         : resultForResponse,
   })

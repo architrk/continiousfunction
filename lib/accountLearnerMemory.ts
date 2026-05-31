@@ -207,7 +207,8 @@ function progressCounts(snapshot: LearningRouteSnapshot): AccountLearnerMemoryPr
 function writePlanForSnapshot(
   snapshot: LearningRouteSnapshot,
   routeObjectKey: ContentObjectKey | null,
-  currentObjectKey: ContentObjectKey | undefined
+  currentObjectKey: ContentObjectKey | undefined,
+  observationObjectKey: ContentObjectKey | undefined
 ): AccountLearnerMemoryWritePlan[] {
   const plan: AccountLearnerMemoryWritePlan[] = [
     {
@@ -215,7 +216,7 @@ function writePlanForSnapshot(
       label: 'Save route snapshot',
       objectKey: routeObjectKey ?? undefined,
       detail: routeObjectKey
-        ? 'DB-shaped preview for a private learning_route_snapshots row once signed-in account memory is enabled.'
+        ? 'Persistence-handoff preview for a private learning_route_snapshots row once signed-in account memory is enabled.'
         : 'Needs a durable route object key before it can become account memory.',
       ready: routeObjectKey !== null,
     },
@@ -225,11 +226,11 @@ function writePlanForSnapshot(
     plan.push({
       table: 'learning_observations',
       label: 'Attach last observation',
-      objectKey: currentObjectKey,
-      detail: currentObjectKey
-        ? 'DB-shaped preview for a learning_observations row attached to the current content object.'
-        : 'Needs the selected object to carry a content object key.',
-      ready: currentObjectKey !== undefined,
+      objectKey: observationObjectKey,
+      detail: observationObjectKey
+        ? 'Persistence-handoff preview for a learning_observations row attached to the exact observed object.'
+        : 'Needs the selected or observed workbench object to carry a content object key.',
+      ready: observationObjectKey !== undefined,
     })
   }
 
@@ -262,6 +263,10 @@ export function buildAccountLearnerMemoryPreview(snapshot: LearningRouteSnapshot
 
   const routeObjectKey = routeObjectKeyFromLearningRouteSnapshot(snapshot)
   const currentObjectKey = isContentObjectKey(snapshot.currentObject?.objectKey) ? snapshot.currentObject.objectKey : undefined
+  const workbenchEquationObjectKey = isContentObjectKey(snapshot.lastObservation?.workbench?.equationObject.objectKey)
+    ? snapshot.lastObservation.workbench.equationObject.objectKey
+    : undefined
+  const observationObjectKey = workbenchEquationObjectKey ?? currentObjectKey
   const blockers: AccountLearnerMemoryBlocker[] = []
 
   if (!routeObjectKey) {
@@ -280,11 +285,11 @@ export function buildAccountLearnerMemoryPreview(snapshot: LearningRouteSnapshot
     })
   }
 
-  if (snapshot.lastObservation && !currentObjectKey) {
+  if (snapshot.lastObservation && !observationObjectKey) {
     blockers.push({
       id: 'missing-observation-object-key',
       label: 'Observation cannot attach yet',
-      detail: 'The last observation can only become durable if it attaches to an equation, concept, demo, code witness, claim, source, or route object key.',
+      detail: 'The last observation can only become durable if it attaches to an exact equation, concept, demo, code witness, claim, source, or route object key.',
     })
   }
 
@@ -298,7 +303,7 @@ export function buildAccountLearnerMemoryPreview(snapshot: LearningRouteSnapshot
     lastObservation: snapshot.lastObservation,
     workbenchObservation: workbenchObservationSummary(snapshot),
     counts: progressCounts(snapshot),
-    writePlan: writePlanForSnapshot(snapshot, routeObjectKey, currentObjectKey),
+    writePlan: writePlanForSnapshot(snapshot, routeObjectKey, currentObjectKey, observationObjectKey),
     blockers,
     nextServerContract: 'POST /api/me/learning-route-snapshots',
   }

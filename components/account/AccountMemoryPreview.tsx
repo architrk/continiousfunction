@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { buildAccountLearnerMemoryPreview } from '@/lib/accountLearnerMemory'
 import type { AccountLearnerMemoryImportResult } from '@/lib/accountLearnerMemoryServer'
+import type { AccountLearnerMemoryPersistenceHandoff } from '@/lib/accountLearnerMemoryPersistenceHandoff'
 import {
   buildAdaptiveLearningLoopPacket,
   type AdaptiveLearningLoopPacket,
@@ -25,7 +26,7 @@ type AdaptiveCheckState =
 function statusLabel(status: ReturnType<typeof buildAccountLearnerMemoryPreview>['status']) {
   switch (status) {
     case 'ready':
-      return 'DB-shaped preview'
+      return 'Persistence handoff'
     case 'blocked':
       return 'Needs identity repair'
     case 'empty':
@@ -64,13 +65,22 @@ function resultLabel(result: NonNullable<ReturnType<typeof buildAccountLearnerMe
   return `${formatObservationNumber(result.before)} -> ${formatObservationNumber(result.after)} ${unit}, ${formatObservationNumber(result.ratio)}x ${direction}`
 }
 
-function serverCheckMessage(result: AccountLearnerMemoryImportResult) {
+type AccountMemoryServerCheckResponse = {
+  result?: AccountLearnerMemoryImportResult
+  persisted?: false
+  serverMode?: 'contract-only'
+  persistenceHandoff?: AccountLearnerMemoryPersistenceHandoff
+}
+
+function serverCheckMessage(response: Required<Pick<AccountMemoryServerCheckResponse, 'result'>> & AccountMemoryServerCheckResponse) {
+  const { result } = response
+
   switch (result.status) {
     case 'write-ready':
       if (result.workbenchRestore) {
-        return `${result.reason ?? 'Server prepared route, observation, and restorable workbench state. Live persistence is still gated.'} Workbench restore state is included.`
+        return `${result.reason ?? 'Server prepared a deterministic persistence handoff for route, observation, and restorable workbench state. Live persistence is still gated.'} Workbench restore state is included.`
       }
-      return result.reason ?? 'Server prepared a DB-shaped packet. Live persistence is still gated.'
+      return result.reason ?? 'Server prepared a deterministic persistence handoff. Live persistence is still gated.'
     case 'auth-required':
       if (result.workbenchRestore) {
         return `${result.reason ?? 'Server validated a restorable workbench packet. A signed-in app user is the next missing piece.'} Workbench restore state is included.`
@@ -185,7 +195,7 @@ export default function AccountMemoryPreview() {
         },
         body: JSON.stringify({ snapshot }),
       })
-      const body = (await response.json()) as { result?: AccountLearnerMemoryImportResult }
+      const body = (await response.json()) as AccountMemoryServerCheckResponse
 
       if (!body.result) {
         setServerCheck({
@@ -198,7 +208,12 @@ export default function AccountMemoryPreview() {
       setServerCheck({
         status: 'done',
         resultStatus: body.result.status,
-        message: serverCheckMessage(body.result),
+        message: serverCheckMessage({
+          result: body.result,
+          persisted: body.persisted,
+          serverMode: body.serverMode,
+          persistenceHandoff: body.result.persistenceHandoff,
+        }),
       })
     } catch {
       setServerCheck({

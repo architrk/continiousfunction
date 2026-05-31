@@ -1,0 +1,32 @@
+{
+  "desktop": {
+    "href": "http://127.0.0.1:3000/me/",
+    "statusLabel": "Persistence handoff",
+    "resumeLinks": 1,
+    "workbenchCards": 1,
+    "observationPlanObject": "equation:attention-transformers/efficient-attention#math-object-2",
+    "overflowX": 0,
+    "bodyWidth": 1440,
+    "viewportWidth": 1440,
+    "contractText": [
+      "Check adaptive loopThe adaptive loop has not checked this local snapshot yet.",
+      "Check server contractNo app-owned user session is available for account memory yet. Workbench restore state is included."
+    ],
+    "buttonsAtLeast44": true
+  },
+  "mobile": {
+    "href": "http://127.0.0.1:3000/me/",
+    "statusLabel": "Persistence handoff",
+    "resumeLinks": 1,
+    "workbenchCards": 1,
+    "observationPlanObject": "equation:attention-transformers/efficient-attention#math-object-2",
+    "overflowX": 0,
+    "bodyWidth": 390,
+    "viewportWidth": 390,
+    "contractText": [
+      "Check adaptive loopThe adaptive loop has not checked this local snapshot yet.",
+      "Check server contractNo app-owned user session is available for account memory yet. Workbench restore state is included."
+    ],
+    "buttonsAtLeast44": true
+  }
+}

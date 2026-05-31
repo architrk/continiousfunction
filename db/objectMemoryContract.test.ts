@@ -55,12 +55,19 @@ describe('object memory SQL contract', () => {
 
   it('requires route snapshots to keep a route object anchor', () => {
     expect(tableBlock('learning_route_snapshots')).toContain('"route_object_key" text NOT NULL')
+    expect(tableBlock('learning_route_snapshots')).toContain('"route_snapshot_dedupe_key" text NOT NULL')
+    expect(tableBlock('learning_route_snapshots')).toContain('"snapshot_content_hash" text NOT NULL')
     expect(tableBlock('learning_route_snapshots')).toContain("like 'route:%'")
     expect(migration).toContain('CREATE INDEX "learning_route_snapshots_route_object_idx"')
+    expect(migration).toContain('CREATE UNIQUE INDEX "learning_route_snapshots_owner_dedupe_unique"')
     expect(migration).toContain('learning_route_snapshots_route_object_key_content_object_refs_object_key_fk')
   })
 
   it('keeps workbench restore state explicit on durable learning observations', () => {
+    expect(tableBlock('learning_observations')).toContain('"observation_dedupe_key" text NOT NULL')
+    expect(tableBlock('learning_observations')).toContain('"measured_state_hash" text NOT NULL')
+    expect(tableBlock('learning_observations')).toContain('"workbench_state_hash" text')
+    expect(migration).toContain('CREATE UNIQUE INDEX "learning_observations_owner_dedupe_unique"')
     expect(tableBlock('learning_observations')).toContain('"workbench_state" jsonb')
     expect(tableBlock('learning_observations')).toContain('learning_observations_workbench_state_size')
     expect(tableBlock('learning_observations')).toContain('"measured_state" jsonb')

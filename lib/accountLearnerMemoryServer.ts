@@ -11,6 +11,10 @@ import {
   learningRouteSnapshotToObservationInsert,
   learningRouteSnapshotToSnapshotInsert,
 } from '../db/objectMemoryMappers'
+import {
+  buildAccountLearnerMemoryPersistenceHandoff,
+  type AccountLearnerMemoryPersistenceHandoff,
+} from './accountLearnerMemoryPersistenceHandoff'
 import type {
   LearningObservationInsert,
   LearningObservationWorkbenchState,
@@ -33,6 +37,7 @@ export type AccountLearnerMemoryImportResult = {
   preview: AccountLearnerMemoryPreview
   reason?: string
   workbenchRestore?: LearningObservationWorkbenchState | null
+  persistenceHandoff?: AccountLearnerMemoryPersistenceHandoff
   inserts?: {
     routeSnapshot: LearningRouteSnapshotInsert
     observation?: LearningObservationInsert
@@ -105,7 +110,7 @@ export function prepareAccountLearnerMemoryImport(
     ? learningRouteSnapshotToObservationInsert(snapshot, ownership)
     : undefined
 
-  return {
+  const writeReadyResult: AccountLearnerMemoryImportResult = {
     version: accountLearnerMemoryImportVersion,
     status: 'write-ready',
     persisted: false,
@@ -115,5 +120,10 @@ export function prepareAccountLearnerMemoryImport(
       routeSnapshot,
       observation,
     },
+  }
+
+  return {
+    ...writeReadyResult,
+    persistenceHandoff: buildAccountLearnerMemoryPersistenceHandoff(writeReadyResult),
   }
 }

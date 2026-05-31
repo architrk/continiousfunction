@@ -1157,6 +1157,30 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "observation_dedupe_key": {
+          "name": "observation_dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "measured_state_hash": {
+          "name": "measured_state_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workbench_state_hash": {
+          "name": "workbench_state_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "route_snapshot_dedupe_key": {
+          "name": "route_snapshot_dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -1213,6 +1237,27 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "learning_observations_owner_dedupe_unique": {
+          "name": "learning_observations_owner_dedupe_unique",
+          "columns": [
+            {
+              "expression": "owner_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "observation_dedupe_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1291,6 +1336,18 @@
         "learning_observations_label_not_empty": {
           "name": "learning_observations_label_not_empty",
           "value": "length(\"learning_observations\".\"label\") between 1 and 120"
+        },
+        "learning_observations_dedupe_key_not_empty": {
+          "name": "learning_observations_dedupe_key_not_empty",
+          "value": "length(\"learning_observations\".\"observation_dedupe_key\") between 1 and 120"
+        },
+        "learning_observations_measured_hash_shape": {
+          "name": "learning_observations_measured_hash_shape",
+          "value": "\"learning_observations\".\"measured_state_hash\" ~ '^sha256_v1_[a-f0-9]{64}$'"
+        },
+        "learning_observations_workbench_hash_shape": {
+          "name": "learning_observations_workbench_hash_shape",
+          "value": "\"learning_observations\".\"workbench_state_hash\" is null or \"learning_observations\".\"workbench_state_hash\" ~ '^sha256_v1_[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false
@@ -1435,6 +1492,18 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "route_snapshot_dedupe_key": {
+          "name": "route_snapshot_dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_content_hash": {
+          "name": "snapshot_content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -1524,6 +1593,27 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "learning_route_snapshots_owner_dedupe_unique": {
+          "name": "learning_route_snapshots_owner_dedupe_unique",
+          "columns": [
+            {
+              "expression": "owner_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_snapshot_dedupe_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1607,6 +1697,14 @@
         "learning_route_snapshots_mapping_not_empty": {
           "name": "learning_route_snapshots_mapping_not_empty",
           "value": "length(\"learning_route_snapshots\".\"mapping_id\") between 1 and 80"
+        },
+        "learning_route_snapshots_dedupe_key_not_empty": {
+          "name": "learning_route_snapshots_dedupe_key_not_empty",
+          "value": "length(\"learning_route_snapshots\".\"route_snapshot_dedupe_key\") between 1 and 120"
+        },
+        "learning_route_snapshots_content_hash_shape": {
+          "name": "learning_route_snapshots_content_hash_shape",
+          "value": "\"learning_route_snapshots\".\"snapshot_content_hash\" ~ '^sha256_v1_[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false

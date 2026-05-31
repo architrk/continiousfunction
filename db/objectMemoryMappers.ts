@@ -16,6 +16,13 @@ import { routeObjectKeyFromContentObjectKey } from '../lib/learningRouteObjectKe
 import type { LearningRouteSnapshot, LearningRouteSourceObject } from '../lib/learningRouteSnapshot'
 import { projectLearningRouteWorkbenchRestoreState } from '../lib/workbenchRestoreProjection'
 import {
+  accountLearnerObservationDedupeKey,
+  accountLearnerObservationMeasuredStateHash,
+  accountLearnerRouteSnapshotContentHash,
+  accountLearnerRouteSnapshotDedupeKey,
+  accountLearnerWorkbenchStateHash,
+} from '../lib/accountLearnerMemoryImportKeys'
+import {
   maxEvidenceLocatorJsonChars,
   maxMeasuredStateJsonChars,
   maxRouteSnapshotJsonChars,
@@ -154,11 +161,14 @@ export function learningRouteSnapshotToSnapshotInsert(
     assertObjectKey(currentObjectKey, 'snapshot.currentObject.objectKey')
   }
   const routeObjectKey = resolveRouteObjectKey(snapshot, options.routeObjectKey)
+  const routeSnapshotDedupeKey = accountLearnerRouteSnapshotDedupeKey(snapshot, routeObjectKey)
 
   return {
     ownerUserId: ownership.ownerUserId,
     organizationId: ownership.organizationId ?? null,
     visibility: normalizeVisibility(ownership.visibility),
+    routeSnapshotDedupeKey,
+    snapshotContentHash: accountLearnerRouteSnapshotContentHash(snapshot),
     source: snapshot.source,
     mappingId: snapshot.mappingId,
     paperTitle: snapshot.paperTitle,
@@ -215,10 +225,22 @@ export function learningRouteSnapshotToObservationInsert(
   assertObjectKey(objectKey, 'learning observation objectKey')
   assertJsonSize(snapshot.lastObservation, maxMeasuredStateJsonChars, 'learning observation measuredState')
   const workbenchState = learningRouteSnapshotToWorkbenchState(snapshot)
+  const routeObjectKey = resolveRouteObjectKey(snapshot)
+  const routeSnapshotDedupeKey = accountLearnerRouteSnapshotDedupeKey(snapshot, routeObjectKey)
+  const observationDedupeKey = accountLearnerObservationDedupeKey({
+    routeSnapshotDedupeKey,
+    objectKey,
+    observation: snapshot.lastObservation,
+    workbenchState,
+  })
 
   return {
     ownerUserId: ownership.ownerUserId,
     organizationId: ownership.organizationId ?? null,
+    observationDedupeKey,
+    measuredStateHash: accountLearnerObservationMeasuredStateHash(snapshot.lastObservation),
+    workbenchStateHash: accountLearnerWorkbenchStateHash(workbenchState),
+    routeSnapshotDedupeKey,
     snapshotId: options.snapshotId ?? null,
     objectKey,
     observationSource: snapshot.lastObservation.source,

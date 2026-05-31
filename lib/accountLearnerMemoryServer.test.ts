@@ -174,8 +174,14 @@ describe('account learner memory server import', () => {
     expect(result.status).toBe('write-ready')
     expect(result.persisted).toBe(false)
     expect(result.inserts?.routeSnapshot.ownerUserId).toBe(ownerUserId)
+    expect(result.inserts?.routeSnapshot.routeSnapshotDedupeKey).toMatch(/^lrs_v1_[a-f0-9]{64}$/)
     expect(result.inserts?.routeSnapshot.routeObjectKey).toBe('route:domains/attention-transformers/efficient-attention')
+    expect(result.inserts?.observation?.observationDedupeKey).toMatch(/^lob_v1_[a-f0-9]{64}$/)
     expect(result.inserts?.observation?.objectKey).toBe('equation:attention-transformers/efficient-attention#math-object-2')
+    expect(result.persistenceHandoff?.routeSnapshot.conflictTarget).toEqual([
+      'owner_user_id',
+      'route_snapshot_dedupe_key',
+    ])
   })
 
   it('keeps a typed workbench restore packet explicit before and after auth', () => {
@@ -205,6 +211,17 @@ describe('account learner memory server import', () => {
     expect(writeReady.status).toBe('write-ready')
     expect(writeReady.inserts?.observation?.objectKey).toBe('equation:attention-transformers/efficient-attention#math-object-2')
     expect(writeReady.inserts?.observation?.workbenchState).toEqual(writeReady.workbenchRestore)
+    expect(writeReady.persistenceHandoff?.observation?.attachment).toEqual({
+      objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+      resolution: 'typed-workbench-equation-object',
+      currentObjectKey: 'concept:attention-transformers/efficient-attention',
+      workbenchEquationObjectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+    })
+    expect(writeReady.persistenceHandoff?.observation?.dependsOn).toEqual({
+      table: 'learning_route_snapshots',
+      dedupeKey: writeReady.inserts?.routeSnapshot.routeSnapshotDedupeKey,
+      snapshotIdResolution: 'resolve-after-route-snapshot-upsert',
+    })
     expect(writeReady.inserts?.observation?.measuredState?.workbench?.committedPrediction.text).toContain(
       'KV sharing cuts the cache'
     )

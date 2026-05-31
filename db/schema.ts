@@ -160,6 +160,8 @@ export const learningRouteSnapshots = pgTable(
     ownerUserId: ownedVisibilityColumns.ownerUserId.references(() => users.id, { onDelete: 'cascade' }),
     organizationId: ownedVisibilityColumns.organizationId.references(() => organizations.id, { onDelete: 'set null' }),
     visibility: ownedVisibilityColumns.visibility,
+    routeSnapshotDedupeKey: text('route_snapshot_dedupe_key').notNull(),
+    snapshotContentHash: text('snapshot_content_hash').notNull(),
     source: text('source').notNull(),
     mappingId: text('mapping_id').notNull(),
     paperTitle: text('paper_title').notNull(),
@@ -184,12 +186,15 @@ export const learningRouteSnapshots = pgTable(
     index('learning_route_snapshots_route_object_idx').on(table.routeObjectKey),
     index('learning_route_snapshots_current_object_idx').on(table.currentObjectKey),
     index('learning_route_snapshots_source_idx').on(table.source),
+    uniqueIndex('learning_route_snapshots_owner_dedupe_unique').on(table.ownerUserId, table.routeSnapshotDedupeKey),
     check('learning_route_snapshots_owner_required', sql`${table.ownerUserId} is not null`),
     check('learning_route_snapshots_route_object_required', sql`${table.routeObjectKey} is not null`),
     check('learning_route_snapshots_route_object_shape', sql`${table.routeObjectKey} like 'route:%'`),
     check('learning_route_snapshots_visibility_org_required', sql`${table.visibility} = 'private' or ${table.organizationId} is not null`),
     check('learning_route_snapshots_snapshot_json_size', sql`octet_length(${table.snapshotJson}::text) <= 24000`),
     check('learning_route_snapshots_mapping_not_empty', sql`length(${table.mappingId}) between 1 and 80`),
+    check('learning_route_snapshots_dedupe_key_not_empty', sql`length(${table.routeSnapshotDedupeKey}) between 1 and 120`),
+    check('learning_route_snapshots_content_hash_shape', sql`${table.snapshotContentHash} ~ '^sha256_v1_[a-f0-9]{64}$'`),
   ]
 )
 
@@ -199,6 +204,10 @@ export const learningObservations = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     ownerUserId: uuid('owner_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     organizationId: uuid('organization_id').references(() => organizations.id, { onDelete: 'set null' }),
+    observationDedupeKey: text('observation_dedupe_key').notNull(),
+    measuredStateHash: text('measured_state_hash').notNull(),
+    workbenchStateHash: text('workbench_state_hash'),
+    routeSnapshotDedupeKey: text('route_snapshot_dedupe_key'),
     snapshotId: uuid('snapshot_id').references(() => learningRouteSnapshots.id, { onDelete: 'set null' }),
     objectKey: text('object_key').$type<ContentObjectKey>().notNull().references(() => contentObjectRefs.objectKey, { onDelete: 'restrict' }),
     observationSource: text('observation_source').notNull(),
@@ -216,10 +225,14 @@ export const learningObservations = pgTable(
     index('learning_observations_owner_created_idx').on(table.ownerUserId, table.createdAt),
     index('learning_observations_object_created_idx').on(table.objectKey, table.createdAt),
     index('learning_observations_snapshot_idx').on(table.snapshotId),
+    uniqueIndex('learning_observations_owner_dedupe_unique').on(table.ownerUserId, table.observationDedupeKey),
     check('learning_observations_object_required', sql`${table.objectKey} is not null`),
     check('learning_observations_workbench_state_size', sql`${table.workbenchState} is null or octet_length(${table.workbenchState}::text) <= 8000`),
     check('learning_observations_measured_state_size', sql`${table.measuredState} is null or octet_length(${table.measuredState}::text) <= 8000`),
     check('learning_observations_label_not_empty', sql`length(${table.label}) between 1 and 120`),
+    check('learning_observations_dedupe_key_not_empty', sql`length(${table.observationDedupeKey}) between 1 and 120`),
+    check('learning_observations_measured_hash_shape', sql`${table.measuredStateHash} ~ '^sha256_v1_[a-f0-9]{64}$'`),
+    check('learning_observations_workbench_hash_shape', sql`${table.workbenchStateHash} is null or ${table.workbenchStateHash} ~ '^sha256_v1_[a-f0-9]{64}$'`),
   ]
 )
 

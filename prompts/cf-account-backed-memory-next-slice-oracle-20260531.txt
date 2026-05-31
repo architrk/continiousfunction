@@ -1,0 +1,27 @@
+We are working on Continuous Function, a Next.js learning platform whose north star is:
+
+selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move
+
+The current flagship flow already saves an exact browser-local LearningRouteSnapshot from a LivingNotebookLabShell workbench. The saved lastObservation can now include a strict typed formula-workbench payload. The server import planner can validate the snapshot, derive DB-shaped learning_route_snapshots and learning_observations inserts, and project a strict workbench_state restore packet. It still returns persisted=false because real Clerk/Neon persistence is not wired.
+
+I need a focused critique before implementing the next slice.
+
+Question:
+What is the smallest high-impact next implementation step toward account-backed learner memory that improves correctness and future persistence readiness, without pretending durable writes exist and without prematurely importing Clerk/Neon/Drizzle runtime clients into the contract-only API?
+
+Evaluate these likely options:
+1. Add a pure persistence handoff object that separates validated import plan from eventual write execution.
+2. Add an idempotency/dedupe key for route snapshots and observations so repeated saves will upsert safely later.
+3. Add a local/dev-only write readiness adapter around CF_DEV_ACCOUNT_MEMORY_OWNER_ID.
+4. Start wiring Drizzle runtime client and update validator.
+5. Improve the /me UI copy only.
+
+Please answer with:
+- recommended next slice
+- why it is the right level of abstraction now
+- exact contract fields that should exist
+- tests that should be added
+- what not to do yet
+- any risks that could corrupt learner memory later
+
+Be opinionated and concrete. Prioritize learner-memory correctness, exact object attachment, resumability, and keeping trust boundaries honest.

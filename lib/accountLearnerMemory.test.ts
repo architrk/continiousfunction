@@ -237,6 +237,9 @@ describe('account learner memory preview', () => {
     expect(preview.workbenchObservation?.changed).toEqual({ symbol: 'H_kv', from: 32, to: 8 })
     expect(preview.workbenchObservation?.heldFixed).toHaveLength(6)
     expect(preview.workbenchObservation?.labState?.kvHeads).toBe(8)
+    expect(preview.writePlan.find((item) => item.table === 'learning_observations')?.objectKey).toBe(
+      'equation:attention-transformers/efficient-attention#math-object-2'
+    )
   })
 
   it('does not promote ordinary prediction checkpoints even when they contain formula-like facts', () => {

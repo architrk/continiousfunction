@@ -94,6 +94,8 @@ export type ContentObjectRefInsert = {
 }
 
 export type LearningRouteSnapshotInsert = ObjectMemoryOwnership & {
+  routeSnapshotDedupeKey: string
+  snapshotContentHash: string
   source: LearningRouteSnapshot['source']
   mappingId: string
   paperTitle: string
@@ -116,6 +118,10 @@ export type LearningObservationWorkbenchState = AccountWorkbenchRestoreState
 export type LearningObservationInsert = {
   ownerUserId: string
   organizationId?: string | null
+  observationDedupeKey: string
+  measuredStateHash: string
+  workbenchStateHash?: string | null
+  routeSnapshotDedupeKey?: string | null
   snapshotId?: string | null
   objectKey: ContentObjectKey
   observationSource: NonNullable<LearningRouteSnapshot['lastObservation']>['source']

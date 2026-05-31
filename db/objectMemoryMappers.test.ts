@@ -146,6 +146,8 @@ describe('object memory mappers', () => {
 
     expect(insert.ownerUserId).toBe(ownerUserId)
     expect(insert.visibility).toBe('private')
+    expect(insert.routeSnapshotDedupeKey).toMatch(/^lrs_v1_[a-f0-9]{64}$/)
+    expect(insert.snapshotContentHash).toMatch(/^sha256_v1_[a-f0-9]{64}$/)
     expect(insert.routeObjectKey).toBe('route:domains/optimization/adam')
     expect(insert.currentObjectKey).toBe('concept:optimization/adam')
     expect(insert.snapshotJson.currentObject?.href).toBe('/domains/optimization/adam')
@@ -173,6 +175,9 @@ describe('object memory mappers', () => {
     const insert = learningRouteSnapshotToObservationInsert(sampleSnapshot(), { ownerUserId })
 
     expect(insert.ownerUserId).toBe(ownerUserId)
+    expect(insert.observationDedupeKey).toMatch(/^lob_v1_[a-f0-9]{64}$/)
+    expect(insert.measuredStateHash).toMatch(/^sha256_v1_[a-f0-9]{64}$/)
+    expect(insert.routeSnapshotDedupeKey).toMatch(/^lrs_v1_[a-f0-9]{64}$/)
     expect(insert.objectKey).toBe('concept:optimization/adam')
     expect(insert.observationSource).toBe('prediction-checkpoint')
     expect(insert.observationKind).toBe('route-state')

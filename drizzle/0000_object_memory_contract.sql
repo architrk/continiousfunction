@@ -104,6 +104,10 @@ CREATE TABLE "learning_observations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_user_id" uuid NOT NULL,
 	"organization_id" uuid,
+	"observation_dedupe_key" text NOT NULL,
+	"measured_state_hash" text NOT NULL,
+	"workbench_state_hash" text,
+	"route_snapshot_dedupe_key" text,
 	"snapshot_id" uuid,
 	"object_key" text NOT NULL,
 	"observation_source" text NOT NULL,
@@ -120,7 +124,10 @@ CREATE TABLE "learning_observations" (
 	CONSTRAINT "learning_observations_object_required" CHECK ("learning_observations"."object_key" is not null),
 	CONSTRAINT "learning_observations_workbench_state_size" CHECK ("learning_observations"."workbench_state" is null or octet_length("learning_observations"."workbench_state"::text) <= 8000),
 	CONSTRAINT "learning_observations_measured_state_size" CHECK ("learning_observations"."measured_state" is null or octet_length("learning_observations"."measured_state"::text) <= 8000),
-	CONSTRAINT "learning_observations_label_not_empty" CHECK (length("learning_observations"."label") between 1 and 120)
+	CONSTRAINT "learning_observations_label_not_empty" CHECK (length("learning_observations"."label") between 1 and 120),
+	CONSTRAINT "learning_observations_dedupe_key_not_empty" CHECK (length("learning_observations"."observation_dedupe_key") between 1 and 120),
+	CONSTRAINT "learning_observations_measured_hash_shape" CHECK ("learning_observations"."measured_state_hash" ~ '^sha256_v1_[a-f0-9]{64}$'),
+	CONSTRAINT "learning_observations_workbench_hash_shape" CHECK ("learning_observations"."workbench_state_hash" is null or "learning_observations"."workbench_state_hash" ~ '^sha256_v1_[a-f0-9]{64}$')
 );
 --> statement-breakpoint
 CREATE TABLE "learning_route_snapshots" (
@@ -128,6 +135,8 @@ CREATE TABLE "learning_route_snapshots" (
 	"owner_user_id" uuid NOT NULL,
 	"organization_id" uuid,
 	"visibility" "visibility" DEFAULT 'private' NOT NULL,
+	"route_snapshot_dedupe_key" text NOT NULL,
+	"snapshot_content_hash" text NOT NULL,
 	"source" text NOT NULL,
 	"mapping_id" text NOT NULL,
 	"paper_title" text NOT NULL,
@@ -151,7 +160,9 @@ CREATE TABLE "learning_route_snapshots" (
 	CONSTRAINT "learning_route_snapshots_route_object_shape" CHECK ("learning_route_snapshots"."route_object_key" like 'route:%'),
 	CONSTRAINT "learning_route_snapshots_visibility_org_required" CHECK ("learning_route_snapshots"."visibility" = 'private' or "learning_route_snapshots"."organization_id" is not null),
 	CONSTRAINT "learning_route_snapshots_snapshot_json_size" CHECK (octet_length("learning_route_snapshots"."snapshot_json"::text) <= 24000),
-	CONSTRAINT "learning_route_snapshots_mapping_not_empty" CHECK (length("learning_route_snapshots"."mapping_id") between 1 and 80)
+	CONSTRAINT "learning_route_snapshots_mapping_not_empty" CHECK (length("learning_route_snapshots"."mapping_id") between 1 and 80),
+	CONSTRAINT "learning_route_snapshots_dedupe_key_not_empty" CHECK (length("learning_route_snapshots"."route_snapshot_dedupe_key") between 1 and 120),
+	CONSTRAINT "learning_route_snapshots_content_hash_shape" CHECK ("learning_route_snapshots"."snapshot_content_hash" ~ '^sha256_v1_[a-f0-9]{64}$')
 );
 --> statement-breakpoint
 CREATE TABLE "memberships" (
@@ -334,11 +345,13 @@ CREATE INDEX "evidence_refs_ai_run_idx" ON "evidence_refs" USING btree ("ai_run_
 CREATE INDEX "learning_observations_owner_created_idx" ON "learning_observations" USING btree ("owner_user_id","created_at");--> statement-breakpoint
 CREATE INDEX "learning_observations_object_created_idx" ON "learning_observations" USING btree ("object_key","created_at");--> statement-breakpoint
 CREATE INDEX "learning_observations_snapshot_idx" ON "learning_observations" USING btree ("snapshot_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "learning_observations_owner_dedupe_unique" ON "learning_observations" USING btree ("owner_user_id","observation_dedupe_key");--> statement-breakpoint
 CREATE INDEX "learning_route_snapshots_owner_updated_idx" ON "learning_route_snapshots" USING btree ("owner_user_id","updated_at");--> statement-breakpoint
 CREATE INDEX "learning_route_snapshots_org_updated_idx" ON "learning_route_snapshots" USING btree ("organization_id","updated_at");--> statement-breakpoint
 CREATE INDEX "learning_route_snapshots_route_object_idx" ON "learning_route_snapshots" USING btree ("route_object_key");--> statement-breakpoint
 CREATE INDEX "learning_route_snapshots_current_object_idx" ON "learning_route_snapshots" USING btree ("current_object_key");--> statement-breakpoint
 CREATE INDEX "learning_route_snapshots_source_idx" ON "learning_route_snapshots" USING btree ("source");--> statement-breakpoint
+CREATE UNIQUE INDEX "learning_route_snapshots_owner_dedupe_unique" ON "learning_route_snapshots" USING btree ("owner_user_id","route_snapshot_dedupe_key");--> statement-breakpoint
 CREATE UNIQUE INDEX "memberships_user_organization_unique" ON "memberships" USING btree ("user_id","organization_id");--> statement-breakpoint
 CREATE INDEX "memberships_organization_role_idx" ON "memberships" USING btree ("organization_id","role");--> statement-breakpoint
 CREATE UNIQUE INDEX "organizations_clerk_org_id_unique" ON "organizations" USING btree ("clerk_org_id");--> statement-breakpoint

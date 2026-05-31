@@ -122,6 +122,10 @@
     'CREATE UNIQUE INDEX "webhook_events_provider_event_unique"',
     '"object_key" text PRIMARY KEY NOT NULL',
     '"route_object_key" text NOT NULL',
+    '"route_snapshot_dedupe_key" text NOT NULL',
+    '"snapshot_content_hash" text NOT NULL',
+    '"observation_dedupe_key" text NOT NULL',
+    '"measured_state_hash" text NOT NULL',
     '"object_key" text NOT NULL',
     '"content_object_refs_key_shape" CHECK',
     "object_key\" !~ '://'",
@@ -136,14 +140,21 @@
     'evidence_refs_source_object_shape',
     'evidence_refs_source_span_shape',
     'learning_route_snapshots_snapshot_json_size',
+    'learning_route_snapshots_dedupe_key_not_empty',
+    'learning_route_snapshots_content_hash_shape',
     '"workbench_state" jsonb',
     'learning_observations_workbench_state_size',
+    'learning_observations_dedupe_key_not_empty',
+    'learning_observations_measured_hash_shape',
+    'learning_observations_workbench_hash_shape',
     'learning_observations_measured_state_size',
     'evidence_refs_locator_size',
     'document_spans_bbox_size',
     'CREATE INDEX "learning_route_snapshots_current_object_idx"',
     'CREATE INDEX "learning_route_snapshots_route_object_idx"',
+    'CREATE UNIQUE INDEX "learning_route_snapshots_owner_dedupe_unique"',
     'CREATE INDEX "learning_observations_object_created_idx"',
+    'CREATE UNIQUE INDEX "learning_observations_owner_dedupe_unique"',
     'CREATE INDEX "research_notes_object_updated_idx"',
     'CREATE INDEX "research_threads_object_updated_idx"',
     'CREATE INDEX "evidence_refs_source_span_idx"',
@@ -195,7 +206,7 @@
     }
   }
 
-  validateContractOnlyApiRoutes()
+  validateAccountMemoryRuntimeBoundary()
 
   const manifestIssues = validateManifestSeedability(manifest)
   for (const message of manifestIssues) {
@@ -212,6 +223,8 @@
     'Postgres stores',
     'object_key',
     'no database client',
+    'contract-only API responses',
+    'dev-owner path',
     'DATABASE_URL_UNPOOLED',
   ]) {
     if (!readme.includes(phrase)) {
@@ -229,8 +242,30 @@
     return end >= 0 ? rest.slice(0, end) : rest
   }
 
-  function validateContractOnlyApiRoutes() {
+  function validateAccountMemoryRuntimeBoundary() {
     const apiRoot = path.join(process.cwd(), 'pages/api')
+    const handoffPath = 'lib/accountLearnerMemoryPersistenceHandoff.ts'
+
+    for (const forbiddenRuntimeFile of ['lib/objectMemoryDb.server.ts', 'lib/accountLearnerMemoryPersistence.server.ts']) {
+      if (exists(forbiddenRuntimeFile)) {
+        error('PREMATURE_RUNTIME_SURFACE', `${forbiddenRuntimeFile} must not exist before live Neon/Drizzle execution is connected`, forbiddenRuntimeFile)
+      }
+    }
+
+    if (!exists(handoffPath)) {
+      error('PERSISTENCE_HANDOFF_BOUNDARY', `${handoffPath} must define the not-executed account-memory persistence handoff`, handoffPath)
+    } else {
+      const handoffSource = read(handoffPath)
+      for (const expected of ['persisted: false', 'not-executed', 'route_snapshot_dedupe_key', 'observation_dedupe_key']) {
+        if (!handoffSource.includes(expected)) {
+          error('PERSISTENCE_HANDOFF_BOUNDARY', `${handoffPath} must include ${expected}`, handoffPath)
+        }
+      }
+      if (/drizzle|@neondatabase|DATABASE_URL|NEXT_PUBLIC_DATABASE_URL|CLERK_SECRET_KEY|@clerk/.test(handoffSource)) {
+        error('PERSISTENCE_HANDOFF_BOUNDARY', `${handoffPath} must not wire runtime persistence or auth clients`, handoffPath)
+      }
+    }
+
     if (!fs.existsSync(apiRoot)) return
 
     const allowedApiRoutes = new Set([
@@ -255,11 +290,15 @@
       }
 
       const routeSource = read(routePath)
-      if (!routeSource.includes('persisted: false') || !routeSource.includes("serverMode: 'contract-only'")) {
-        error('CONTRACT_ONLY_API_ROUTE', `${routePath} must remain contract-only and non-persistent`, routePath)
+      if (routePath === 'pages/api/me/learning-route-snapshots.ts') {
+        if (!routeSource.includes("serverMode: 'contract-only'") || !routeSource.includes('persisted: false')) {
+          error('ACCOUNT_MEMORY_API_BOUNDARY', `${routePath} must expose an honest contract-only persisted=false mode`, routePath)
+        }
+      } else if (!routeSource.includes('persisted: false') || !routeSource.includes("serverMode: 'contract-only'")) {
+        error('ACCOUNT_MEMORY_API_BOUNDARY', `${routePath} must remain contract-only and non-persistent`, routePath)
       }
       if (/drizzle\(|DATABASE_URL|CLERK_SECRET_KEY|@clerk/.test(routeSource)) {
-        error('CONTRACT_ONLY_API_ROUTE', `${routePath} must not directly wire Clerk, DATABASE_URL, or a Drizzle client yet`, routePath)
+        error('ACCOUNT_MEMORY_API_BOUNDARY', `${routePath} must not directly wire Clerk, DATABASE_URL, or a Drizzle client`, routePath)
       }
     }
   }
