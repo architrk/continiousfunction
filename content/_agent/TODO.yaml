@@ -1,5 +1,9 @@
-current_focus: "Next: turn Paper Mapper's first viewport into the same image-board-grade paper-to-atlas cockpit, then extract the reusable Living Notebook Lab shell contract."
+current_focus: "Next: extract the reusable Living Notebook Lab shell contract from the Efficient Attention proof slice and Paper Mapper question-to-invariant cockpit."
 last_completed:
+  - concept: paper-mapper-question-to-invariant-cockpit
+    date: 2026-05-31
+    action: connected
+    notes: "Used GPT Pro/Oracle to refine the north star into the Question-to-Invariant loop: Question -> Object -> Prediction -> Evidence -> Invariant -> Next Move. Implemented the first Paper Mapper cockpit slice with selected paper object, role lens, prediction gate, evidence boundary, invariant save, AI handoff packet, and route-memory lastObservation. Tightened shared mobile NotebookLayout hero title sizing after visual QA exposed a narrow-viewport paper-map hero overflow. Validation passed: typecheck and validate-content. Visual QA passed on desktop cockpit and real 390px mobile via Chrome/CDP with scrollWidth equal to viewport."
   - concept: concept-notebook-platform-hero-cockpit
     date: 2026-05-24
     action: connected
@@ -2658,9 +2662,9 @@ queue:
     status: pending
   - action: build_feature
     id: paper-mapper-image-board-grade-cockpit
-    description: "Upgrade Paper Mapper's first viewport so a paper clue visibly becomes source span, equation/claim object, prerequisite repair, demo/code witness, AI/review lane, saved observation, and next route. Match the Living Notebook Lab cockpit grammar proven on concept notebooks without making a generic form-plus-panels page."
+    description: "Done: Paper Mapper now starts with a Question-to-Invariant cockpit where a paper clue becomes a selected object, role-lens question, committed prediction, evidence boundary, saved invariant observation, AI handoff packet, lab witness, and next route. GPT Pro/Oracle north-star critique is saved at responses/cf-north-star-goal-refinement-20260531.md; desktop cockpit and real 390px mobile visual QA passed."
     priority: P0
-    status: pending
+    status: done
   - action: build_feature
     id: ai-companion-object-room-context
     description: "Done: selected object-room context now flows into AI handoff packets. Efficient Attention exposes a grounded AI handoff with selected object context, source boundary, distilled room cards, next experiment, and a non-canonical boundary; Paper Mapper passes the active paper object/lens context into Research Reading Room prompts. Evidence: responses/ux-vision/live-screenshots/object-room-ai-handoff-20260522/."
