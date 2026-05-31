@@ -1,0 +1,30 @@
+{
+  "desktop": {
+    "viewportWidth": 1440,
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflowX": 0,
+    "shellCount": 1,
+    "shellWidth": 873,
+    "stepCount": 7,
+    "predictionCount": 4,
+    "roleButtonCount": 4,
+    "measurementText": "4KV heads2.15 GBcache at 32k8.0xreduction vs MHA13%bandwidth pressure",
+    "observationText": "Observation ledgerWhat changed: g = 8 gives H_kv = 4.What stayed true: memory changes linearly with H_kv.Next: raise T to 128k and check whether the 8.0x ratio survives.",
+    "minActionHeight": 44
+  },
+  "mobile-390": {
+    "viewportWidth": 390,
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "overflowX": 0,
+    "shellCount": 1,
+    "shellWidth": 333,
+    "stepCount": 7,
+    "predictionCount": 4,
+    "roleButtonCount": 4,
+    "measurementText": "4KV heads2.15 GBcache at 32k8.0xreduction vs MHA13%bandwidth pressure",
+    "observationText": "Observation ledgerWhat changed: g = 8 gives H_kv = 4.What stayed true: memory changes linearly with H_kv.Next: raise T to 128k and check whether the 8.0x ratio survives.",
+    "minActionHeight": 44
+  }
+}

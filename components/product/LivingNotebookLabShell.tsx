@@ -45,7 +45,7 @@ type LivingNotebookLabShellProps = {
   steps: LivingNotebookLabStep[]
   predictionPrompt: string
   predictions: LivingNotebookLabPrediction[]
-  activePredictionId: string
+  activePredictionId?: string
   invariant: LivingNotebookLabInvariant
   actions: LivingNotebookLabAction[]
   onSelectPrediction: (predictionId: string) => void
@@ -67,7 +67,8 @@ export default function LivingNotebookLabShell({
   onSelectPrediction,
   children,
 }: LivingNotebookLabShellProps) {
-  const activePrediction = predictions.find((prediction) => prediction.id === activePredictionId) ?? predictions[0]
+  const selectedPrediction = predictions.find((prediction) => prediction.id === activePredictionId)
+  const activePrediction = selectedPrediction ?? predictions[0]
   const activeAccent = invariant.accent ?? activePrediction?.accent ?? '#1f6f78'
 
   return (
@@ -113,9 +114,9 @@ export default function LivingNotebookLabShell({
               <button
                 key={prediction.id}
                 type="button"
-                className={prediction.id === activePrediction?.id ? 'active' : ''}
+                className={prediction.id === activePredictionId ? 'active' : ''}
                 style={{ '--shell-accent': prediction.accent ?? '#1f6f78' } as CSSProperties}
-                aria-pressed={prediction.id === activePrediction?.id}
+                aria-pressed={prediction.id === activePredictionId}
                 onClick={() => onSelectPrediction(prediction.id)}
               >
                 <span>{prediction.label}</span>
@@ -163,6 +164,7 @@ export default function LivingNotebookLabShell({
           gap: 0.9rem;
           min-width: 0;
           padding: 1rem;
+          scroll-margin-top: 9rem;
           border-radius: 24px;
           border: 1px solid rgba(27, 36, 48, 0.09);
           background:
@@ -260,7 +262,7 @@ export default function LivingNotebookLabShell({
 
         .shell-loop {
           display: grid;
-          grid-template-columns: repeat(6, minmax(0, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(9.25rem, 1fr));
           gap: 0.5rem;
           min-width: 0;
         }
@@ -389,7 +391,7 @@ export default function LivingNotebookLabShell({
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-height: 42px;
+          min-height: 44px;
           max-width: 100%;
           padding: 0.58rem 0.82rem;
           border-radius: 999px;

@@ -1,5 +1,9 @@
-current_focus: "Next: migrate the Efficient Attention first-viewport lab onto the reusable LivingNotebookLabShell contract so concept pages and Paper Mapper share the same workbench grammar."
+current_focus: "Next: connect the LivingNotebookLabShell workbench contract to saved learner memory so selected object, prediction, evidence, invariant, and next move persist across sessions."
 last_completed:
+  - concept: efficient-attention-living-lab-shell-migration
+    date: 2026-05-31
+    action: connected
+    notes: "Migrated the Efficient Attention first-viewport Living Lab panel onto components/product/LivingNotebookLabShell.tsx. The concept page now shares the same selected-object workbench contract as Paper Mapper while preserving the KV-cache equation, role lenses, T/g/s controls, query/KV lane witness, measurement strip, prediction reveal, invariant, observation ledger, and next move. Visual QA at desktop and 390px mobile confirmed one shell, seven workbench steps, four predictions, four role lenses, revealed g=8 measurement state, no horizontal overflow, and minimum 44px action targets."
   - concept: living-notebook-lab-shell-contract
     date: 2026-05-31
     action: connected
@@ -2666,9 +2670,9 @@ queue:
     status: done
   - action: build_feature
     id: efficient-attention-living-lab-shell-migration
-    description: "Migrate the Efficient Attention first-viewport Living Lab panel onto LivingNotebookLabShell without losing the KV-cache equation as selected object, T/g/s controls, memory/evidence measurements, prediction choices, invariant, observation ledger, and next move. This proves the shell works for concept-page quantitative labs as well as Paper Mapper."
+    description: "Done: Efficient Attention's first-viewport Living Lab panel now uses LivingNotebookLabShell while preserving the KV-cache equation as selected object, T/g/s controls, query/KV lane witness, memory/evidence measurements, prediction choices, invariant, observation ledger, and next move. Visual QA evidence is in responses/ux-vision/live-screenshots/living-lab-shell-20260531/."
     priority: P0
-    status: pending
+    status: done
   - action: build_feature
     id: paper-mapper-image-board-grade-cockpit
     description: "Done: Paper Mapper now starts with a Question-to-Invariant cockpit where a paper clue becomes a selected object, role-lens question, committed prediction, evidence boundary, saved invariant observation, AI handoff packet, lab witness, and next route. GPT Pro/Oracle north-star critique is saved at responses/cf-north-star-goal-refinement-20260531.md; desktop cockpit and real 390px mobile visual QA passed."
