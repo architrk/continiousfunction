@@ -10,7 +10,11 @@ The site should not merely explain topics. It should create moments of understan
 
 ## Whole-Site North Star
 
-Continuous Function should become the learning operating system for frontier AI understanding.
+Continuous Function should make modern AI math operable.
+
+Every important object should become something the learner can work on, not merely read about:
+
+**selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move**
 
 A serious learner should be able to arrive with any important object from modern AI:
 
@@ -33,7 +37,7 @@ and leave with a durable, usable mental model:
 - source-grounded confidence about what is known, inferred, or uncertain
 - a remembered next step that can continue across pages and sessions
 
-The north star is not "make Paper Mapper good" or "make one concept page good." The north star is that every major surface of the site participates in one coherent learner journey:
+The north star is not "make Paper Mapper good" or "make one concept page good." The north star is that every major surface of the site participates in one coherent mathematical workbench:
 
 **Bring confusion -> select the object -> repair prerequisites -> predict -> manipulate -> inspect evidence -> name the invariant -> carry it into the next object.**
 
@@ -47,7 +51,7 @@ The product wins when the learner can say:
 
 Continuous Function is a mathematical atlas and research-learning environment for modern AI.
 
-The core product is not page count, animation count, or broad coverage. The core product is durable mechanistic understanding: helping a learner start from a modern paper, equation, architecture, or model behavior and find a clear path to understanding it.
+The core product is not page count, animation count, or broad coverage. The core product is durable mechanistic understanding: helping a learner start from a modern paper, equation, architecture, or model behavior and turn it into a usable invariant.
 
 The website should be judged as an integrated system:
 
@@ -59,6 +63,8 @@ The website should be judged as an integrated system:
 - Improvement loop: repeated learner friction should become non-canonical improvement proposals for the content and interface.
 
 Every new feature should strengthen at least one part of this system and connect cleanly to the rest.
+
+The core unit of the product is not the page. The core unit is the selected learning object with its question, prerequisites, representations, prediction, evidence, invariant, and next move.
 
 ## Learning Contract
 
@@ -77,6 +83,20 @@ The best page helps the learner answer:
 - What code witnesses the same idea?
 - What should I predict before seeing the answer?
 - What should I learn next?
+
+## Common Work Needs
+
+Across the site, optimize for these working needs:
+
+- Object clarity: the learner should always know the exact paper span, equation, claim, architecture, behavior, code witness, demo state, or misconception under inspection.
+- Prerequisite repair without derailment: missing structure should become a compact bridge, not an open-ended detour.
+- Symbol and shape grounding: equations need nearby symbol meanings, tensor shapes, assumptions, and failure cases.
+- Representation alignment: intuition, math, code, demo, source, and graph position should point to the same object.
+- Prediction before reveal: the learner should expose a model before the page shows the mechanism.
+- Evidence over reassurance: feedback should show what changed, what stayed true, and why.
+- Continuity across surfaces: search, graph, concepts, papers, paths, memory, and AI handoff should preserve current question, selected object, evidence, invariant, and next move.
+- Trust boundaries: distinguish what the source says, what the page derives, what the demo observes, what is inferred, and what remains uncertain.
+- Low-friction return: a returning session should answer what the learner was trying to understand and what the next useful move is.
 
 ## Experience Standard
 
@@ -103,6 +123,20 @@ The site is moving toward the north star when these journeys work end to end:
 6. AI to grounded help: ask about the selected object and get help constrained by the page, source boundary, prior observation, and current route.
 
 A page-level improvement that does not make one of these journeys clearer, more rigorous, more memorable, or easier to continue is lower priority.
+
+## Workbench Contract
+
+Every major surface should gradually converge on a shared workbench contract:
+
+- Route state: where the learner is and what question is active.
+- Selected object: stable id, kind, title, current question, and next action.
+- Prerequisite dock: compact reasons for repair, skim, or continue-with-caveat choices.
+- Witness alignment: intuition, equation, code, demo, and source evidence tied to the object.
+- Prediction checkpoint: prompt, committed prediction, reveal state, measured or derived result.
+- Evidence ledger: source, derivation, demo observation, code witness, inference, and caveat entries with confidence labels.
+- Invariant save: the smallest useful observation to preserve.
+- Next move dock: one to three actions that continue the same object route.
+- Object-attached AI packet: selected object, source boundary, prediction, evidence, invariant, and requested help mode.
 
 ## Research Discussion And AI
 

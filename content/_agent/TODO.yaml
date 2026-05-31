@@ -1,5 +1,9 @@
-current_focus: "Next: extract the reusable Living Notebook Lab shell contract from the Efficient Attention proof slice and Paper Mapper question-to-invariant cockpit."
+current_focus: "Next: migrate the Efficient Attention first-viewport lab onto the reusable LivingNotebookLabShell contract so concept pages and Paper Mapper share the same workbench grammar."
 last_completed:
+  - concept: living-notebook-lab-shell-contract
+    date: 2026-05-31
+    action: connected
+    notes: "Used GPT Pro/Oracle to sharpen the whole-site north star into making modern AI math operable: selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move. Extracted components/product/LivingNotebookLabShell.tsx as a reusable selected-object workbench and migrated Paper Mapper's Question-to-Invariant cockpit onto it while preserving saved invariant, lab witness, route continuation, and AI handoff actions. Updated PRODUCT_NORTH_STAR.md and DESIGN_LANGUAGE.md so future surfaces converge on the same workbench contract."
   - concept: paper-mapper-question-to-invariant-cockpit
     date: 2026-05-31
     action: connected
@@ -2657,7 +2661,12 @@ queue:
     status: done
   - action: build_feature
     id: living-notebook-lab-shell-contract
-    description: "Extract a reusable LivingNotebookLabShell prop contract from the Efficient Attention proof slice: route spine, selected object, role lenses, prediction/manipulation bench, evidence rail, invariant, observation ledger, and next move. Keep the extraction small and prove it on either Paper Mapper's paper-to-object transformation or the Attention Path reference route."
+    description: "Done: extracted components/product/LivingNotebookLabShell.tsx as a reusable selected-object workbench contract and proved it on Paper Mapper's paper-to-object transformation. The shell carries route spine, selected object, prediction gate, evidence/invariant, next actions, and object-attached AI handoff affordances. GPT Pro/Oracle critique is saved at responses/cf-whole-site-working-learner-north-star-20260531.md."
+    priority: P0
+    status: done
+  - action: build_feature
+    id: efficient-attention-living-lab-shell-migration
+    description: "Migrate the Efficient Attention first-viewport Living Lab panel onto LivingNotebookLabShell without losing the KV-cache equation as selected object, T/g/s controls, memory/evidence measurements, prediction choices, invariant, observation ledger, and next move. This proves the shell works for concept-page quantitative labs as well as Paper Mapper."
     priority: P0
     status: pending
   - action: build_feature

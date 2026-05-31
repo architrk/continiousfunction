@@ -15,6 +15,10 @@ import {
   buildPaperMapperGatewayRequest,
 } from '@/lib/paperIngestion'
 import ResearchReadingRoom from '@/components/discussion/ResearchReadingRoom'
+import LivingNotebookLabShell, {
+  type LivingNotebookLabAction,
+  type LivingNotebookLabStep,
+} from './LivingNotebookLabShell'
 import {
   buildDiscussionAnchor,
   buildDiscussionPlaceholder,
@@ -1288,33 +1292,39 @@ export default function PaperConceptMapper() {
   const labActionLabel = mapping.lab.status === 'live' ? 'Try' : 'Planned lab'
   const labSummary = mapping.lab.status === 'live' ? mapping.labSpec : `Lab question to carry: ${mapping.labSpec}`
   const carriedObservation = carrySavedObservation ? savedRouteSnapshot?.lastObservation : undefined
-  const cockpitSteps = [
+  const cockpitSteps: LivingNotebookLabStep[] = [
     {
+      key: 'question',
       label: 'Question',
       value: activePaperLens.question,
       detail: mapping.currentQuestion,
     },
     {
+      key: 'object',
       label: 'Object',
       value: activePaperObject.title,
       detail: activePaperObject.typeLabel,
     },
     {
+      key: 'prediction',
       label: 'Prediction',
       value: activePrediction.claim,
       detail: activePrediction.label,
     },
     {
+      key: 'evidence',
       label: 'Evidence',
       value: activePrediction.evidence,
       detail: groundingStatus,
     },
     {
+      key: 'invariant',
       label: 'Invariant',
       value: activePrediction.invariant,
       detail: 'Save this as the route memory.',
     },
     {
+      key: 'next',
       label: 'Next',
       value: activePrediction.nextMove,
       detail: nextRepair,
@@ -1590,6 +1600,41 @@ export default function PaperConceptMapper() {
     }
   }
 
+  const cockpitActions: LivingNotebookLabAction[] = [
+    {
+      id: 'save-invariant',
+      label: saveInvariantLabel,
+      onClick: saveCurrentRoute,
+      variant: 'primary',
+    },
+    ...(mapping.lab.status === 'live' && mapping.lab.href
+      ? [
+          {
+            id: 'open-lab',
+            label: 'Open lab witness',
+            href: mapping.lab.href,
+            onClick: saveCurrentRoute,
+          } satisfies LivingNotebookLabAction,
+        ]
+      : []),
+    {
+      id: 'continue-route',
+      label: 'Continue route',
+      href: primaryRouteHref,
+      onClick: saveCurrentRoute,
+    },
+    {
+      id: 'copy-ai-handoff',
+      label:
+        handoffCopyStatus === 'copied'
+          ? 'Copied AI handoff'
+          : handoffCopyStatus === 'error'
+            ? 'Copy failed'
+            : 'Copy AI handoff',
+      onClick: () => void copyAiHandoffPacket(),
+    },
+  ]
+
   const runIngestion = async () => {
     setRouteSaveStatus('idle')
     setCarrySavedObservation(false)
@@ -1698,96 +1743,32 @@ export default function PaperConceptMapper() {
 
   return (
     <section id="paper-mapper-tool" className="mapper-tool" aria-label="Paper-to-concept mapper">
-      <section
-        className="paper-cockpit"
-        aria-labelledby="paper-cockpit-title"
-        data-paper-cockpit="question-to-invariant"
-      >
-        <div className="paper-cockpit-header">
-          <div>
-            <p className="eyebrow">Question To Invariant</p>
-            <h2 id="paper-cockpit-title">Turn one paper clue into a tested route.</h2>
-            <p>
-              Pick the object, commit the prediction, name the evidence boundary, and save the invariant before
-              continuing into the lab or graph.
-            </p>
-          </div>
-
-          <div className="cockpit-object-badge" aria-label="Selected paper object">
-            <span>{activePaperObject.typeLabel}</span>
-            <strong>{activePaperObject.title}</strong>
-            <em>{activePaperLens.role} lens</em>
-          </div>
-        </div>
-
-        <div className="cockpit-loop" aria-label="Paper learning loop">
-          {cockpitSteps.map((step, index) => (
-            <article key={step.label}>
-              <span>{index + 1}</span>
-              <strong>{step.label}</strong>
-              <p>{step.value}</p>
-              <em>{step.detail}</em>
-            </article>
-          ))}
-        </div>
-
-        <div className="prediction-cockpit-grid">
-          <div className="prediction-gate" aria-label="Commit a paper prediction">
-            <div>
-              <p className="eyebrow">Prediction Gate</p>
-              <h3>What should change if this paper mechanism is real?</h3>
-            </div>
-            <div className="prediction-option-list">
-              {paperPredictionOptions.map((prediction) => (
-                <button
-                  key={prediction.id}
-                  type="button"
-                  className={prediction.id === activePrediction.id ? 'active' : ''}
-                  style={{ '--prediction-accent': prediction.accent } as CSSProperties}
-                  aria-pressed={prediction.id === activePrediction.id}
-                  onClick={() => {
-                    setActivePredictionId(prediction.id)
-                    setRouteSaveStatus('idle')
-                    setHandoffCopyStatus('idle')
-                  }}
-                >
-                  <span>{prediction.label}</span>
-                  <strong>{prediction.claim}</strong>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <article
-            className="cockpit-invariant-card"
-            style={{ '--prediction-accent': activePrediction.accent } as CSSProperties}
-          >
-            <span>Invariant To Carry</span>
-            <strong>{activePrediction.invariant}</strong>
-            <p>{activePrediction.evidence}</p>
-            <div className="cockpit-actions">
-              <button type="button" onClick={saveCurrentRoute}>
-                {saveInvariantLabel}
-              </button>
-              {mapping.lab.status === 'live' && mapping.lab.href ? (
-                <Link href={mapping.lab.href} onClick={saveCurrentRoute}>
-                  Open lab witness
-                </Link>
-              ) : null}
-              <Link href={primaryRouteHref} onClick={saveCurrentRoute}>
-                Continue route
-              </Link>
-              <button type="button" onClick={() => void copyAiHandoffPacket()}>
-                {handoffCopyStatus === 'copied'
-                  ? 'Copied AI handoff'
-                  : handoffCopyStatus === 'error'
-                    ? 'Copy failed'
-                    : 'Copy AI handoff'}
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
+      <LivingNotebookLabShell
+        id="paper-mapper-workbench"
+        eyebrow="Question To Invariant"
+        title="Turn one paper clue into a tested route."
+        intro="Pick the object, commit the prediction, name the evidence boundary, and save the invariant before continuing into the lab or graph."
+        selectedObject={{
+          typeLabel: activePaperObject.typeLabel,
+          title: activePaperObject.title,
+          lensLabel: `${activePaperLens.role} lens`,
+        }}
+        steps={cockpitSteps}
+        predictionPrompt="What should change if this paper mechanism is real?"
+        predictions={paperPredictionOptions}
+        activePredictionId={activePrediction.id}
+        onSelectPrediction={(predictionId) => {
+          setActivePredictionId(predictionId)
+          setRouteSaveStatus('idle')
+          setHandoffCopyStatus('idle')
+        }}
+        invariant={{
+          title: activePrediction.invariant,
+          detail: activePrediction.evidence,
+          accent: activePrediction.accent,
+        }}
+        actions={cockpitActions}
+      />
 
       {savedRouteSnapshot?.lastObservation ? (
         <section
@@ -2372,7 +2353,6 @@ export default function PaperConceptMapper() {
 
         .input-pane,
         .output-pane,
-        .paper-cockpit,
         .ingestion-card,
         .paper-object-lens-panel,
         .continue-card,
@@ -2389,6 +2369,10 @@ export default function PaperConceptMapper() {
           box-shadow: 0 16px 34px rgba(27, 36, 48, 0.05);
         }
 
+        :global(#paper-mapper-workbench) {
+          grid-column: 1 / -1;
+        }
+
         .input-pane,
         .output-pane {
           display: grid;
@@ -2396,235 +2380,6 @@ export default function PaperConceptMapper() {
           gap: 1rem;
           padding: 1rem;
           border-radius: 24px;
-        }
-
-        .paper-cockpit {
-          display: grid;
-          grid-column: 1 / -1;
-          gap: 0.9rem;
-          min-width: 0;
-          padding: 1rem;
-          border-radius: 24px;
-          background:
-            linear-gradient(135deg, rgba(231, 248, 244, 0.86), rgba(255, 251, 245, 0.92) 48%, rgba(255, 244, 238, 0.76)),
-            rgba(255, 251, 245, 0.9);
-        }
-
-        .paper-cockpit-header {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.35fr);
-          gap: 0.85rem;
-          align-items: stretch;
-          min-width: 0;
-        }
-
-        .paper-cockpit-header p:not(.eyebrow) {
-          margin: 0.62rem 0 0;
-          color: #455361;
-          line-height: 1.62;
-        }
-
-        .cockpit-object-badge {
-          display: grid;
-          align-content: center;
-          gap: 0.35rem;
-          min-width: 0;
-          padding: 0.8rem;
-          border-radius: 18px;
-          border: 1px solid rgba(31, 111, 120, 0.16);
-          background: rgba(255, 251, 245, 0.84);
-        }
-
-        .cockpit-object-badge span,
-        .cockpit-object-badge em,
-        .cockpit-loop span,
-        .cockpit-loop em,
-        .cockpit-invariant-card > span,
-        .prediction-option-list span {
-          font-family: var(--font-mono);
-          font-size: 0.64rem;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-        }
-
-        .cockpit-object-badge span,
-        .cockpit-loop span,
-        .cockpit-invariant-card > span,
-        .prediction-option-list span {
-          color: #1f6f78;
-        }
-
-        .cockpit-object-badge strong {
-          color: #151d27;
-          line-height: 1.25;
-          overflow-wrap: anywhere;
-        }
-
-        .cockpit-object-badge em {
-          color: #c24a2d;
-          font-style: normal;
-        }
-
-        .cockpit-loop {
-          display: grid;
-          grid-template-columns: repeat(6, minmax(0, 1fr));
-          gap: 0.5rem;
-          min-width: 0;
-        }
-
-        .cockpit-loop article {
-          display: grid;
-          align-content: start;
-          gap: 0.32rem;
-          min-width: 0;
-          min-height: 148px;
-          padding: 0.68rem;
-          border-radius: 16px;
-          border: 1px solid rgba(27, 36, 48, 0.08);
-          background: rgba(255, 251, 245, 0.82);
-        }
-
-        .cockpit-loop strong {
-          color: #151d27;
-          line-height: 1.25;
-        }
-
-        .cockpit-loop p {
-          display: -webkit-box;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 4;
-          margin: 0;
-          overflow: hidden;
-          color: #455361;
-          font-size: 0.84rem;
-          line-height: 1.42;
-          overflow-wrap: anywhere;
-        }
-
-        .cockpit-loop em {
-          display: -webkit-box;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 2;
-          margin-top: auto;
-          overflow: hidden;
-          color: #6a5660;
-          font-style: normal;
-          line-height: 1.32;
-          text-transform: none;
-          letter-spacing: 0;
-          overflow-wrap: anywhere;
-        }
-
-        .prediction-cockpit-grid {
-          display: grid;
-          grid-template-columns: minmax(0, 1.05fr) minmax(18rem, 0.85fr);
-          gap: 0.75rem;
-          min-width: 0;
-        }
-
-        .prediction-gate,
-        .cockpit-invariant-card {
-          display: grid;
-          align-content: start;
-          gap: 0.65rem;
-          min-width: 0;
-          padding: 0.85rem;
-          border-radius: 18px;
-          border: 1px solid rgba(27, 36, 48, 0.08);
-          background: rgba(255, 251, 245, 0.82);
-        }
-
-        .prediction-gate h3,
-        .cockpit-invariant-card strong {
-          margin: 0;
-          color: #151d27;
-          line-height: 1.16;
-        }
-
-        .prediction-option-list {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 0.5rem;
-          min-width: 0;
-        }
-
-        .prediction-option-list button {
-          display: grid;
-          gap: 0.35rem;
-          min-width: 0;
-          min-height: 128px;
-          padding: 0.68rem;
-          border-radius: 15px;
-          border-color: color-mix(in srgb, var(--prediction-accent) 20%, rgba(27, 36, 48, 0.1));
-          background:
-            linear-gradient(180deg, color-mix(in srgb, var(--prediction-accent) 11%, transparent), transparent 78%),
-            rgba(255, 251, 245, 0.88);
-          text-align: left;
-        }
-
-        .prediction-option-list button.active,
-        .prediction-option-list button:hover {
-          border-color: color-mix(in srgb, var(--prediction-accent) 54%, rgba(27, 36, 48, 0.1));
-          background:
-            linear-gradient(180deg, color-mix(in srgb, var(--prediction-accent) 18%, transparent), transparent 76%),
-            rgba(255, 251, 245, 0.94);
-        }
-
-        .prediction-option-list strong {
-          color: #24313e;
-          font-size: 0.86rem;
-          line-height: 1.38;
-          overflow-wrap: anywhere;
-        }
-
-        .cockpit-invariant-card {
-          border-color: color-mix(in srgb, var(--prediction-accent) 28%, rgba(27, 36, 48, 0.08));
-          border-left: 4px solid var(--prediction-accent);
-        }
-
-        .cockpit-invariant-card p {
-          margin: 0;
-          color: #455361;
-          line-height: 1.55;
-          overflow-wrap: anywhere;
-        }
-
-        .cockpit-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-        }
-
-        .cockpit-actions :global(a),
-        .cockpit-actions button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 42px;
-          max-width: 100%;
-          padding: 0.58rem 0.82rem;
-          border-radius: 999px;
-          border: 1px solid rgba(27, 36, 48, 0.1);
-          background: #1b2430;
-          color: #fbf4e8;
-          font: inherit;
-          font-weight: 760;
-          line-height: 1.15;
-          text-align: center;
-          text-decoration: none;
-        }
-
-        .cockpit-actions :global(a),
-        .cockpit-actions button:nth-of-type(2) {
-          background: rgba(255, 251, 245, 0.9);
-          color: #1b2430;
-        }
-
-        .cockpit-actions :global(a:hover),
-        .cockpit-actions button:hover {
-          border-color: rgba(31, 111, 120, 0.28);
-          background: #1f6f78;
-          color: #fbf4e8;
         }
 
         .paper-object-lens-panel {
@@ -3710,8 +3465,6 @@ export default function PaperConceptMapper() {
 
         @media (max-width: 1120px) {
           .mapper-tool,
-          .paper-cockpit-header,
-          .prediction-cockpit-grid,
           .source-grounding-grid,
           .equation-object-layout,
           .paper-lens-layout,
@@ -3719,10 +3472,6 @@ export default function PaperConceptMapper() {
           .detail-grid,
           .lab-discussion-grid {
             grid-template-columns: 1fr;
-          }
-
-          .cockpit-loop {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
 
           .paper-route-bridge {
@@ -3738,26 +3487,6 @@ export default function PaperConceptMapper() {
           .paper-route-bridge {
             padding: 0.82rem;
             border-radius: 19px;
-          }
-
-          .paper-cockpit {
-            padding: 0.9rem;
-            border-radius: 20px;
-          }
-
-          .cockpit-loop,
-          .prediction-option-list {
-            grid-template-columns: 1fr;
-          }
-
-          .cockpit-loop article {
-            min-height: 0;
-          }
-
-          .cockpit-actions,
-          .cockpit-actions :global(a),
-          .cockpit-actions button {
-            width: 100%;
           }
 
           .input-pane,

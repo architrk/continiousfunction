@@ -1,0 +1,36 @@
+You are GPT Pro acting as product, pedagogy, and UX critic for Continuous Function.
+
+Context:
+Continuous Function is a Next.js static-exported learning site for the mathematics behind modern deep learning and frontier AI. It already has concept notebooks, domains, search, graph, Paper Mapper, route memory, object-attached research rooms, prediction-first demos, and a Living Notebook Lab design language.
+
+User intent, paraphrased:
+Design the whole product for people doing serious mathematical and machine-learning work, and for people trying to become capable of that work. Do not turn that into explicit marketing labels or audience name-dropping. Extract the common needs across these users and make the website math-oriented, rigorous, and extremely easy to work in.
+
+Current product north star:
+Continuous Function should turn any serious AI learning object into a connected path from confusion to usable mechanistic understanding: source-grounded, mathematically precise, prediction-first, interactive, remembered, and continuously improvable.
+
+Current loop:
+Bring confusion -> select the object -> repair prerequisites -> predict -> manipulate -> inspect evidence -> name the invariant -> carry it into the next object.
+
+Relevant current queue:
+- living-notebook-lab-shell-contract is the next P0: extract a reusable shell contract from Efficient Attention and Paper Mapper.
+- account-backed learner memory is pending.
+- adaptive learning and community-roadmap contracts exist but are not fully persisted.
+- Paper Mapper and Efficient Attention have strong first slices; the whole-site experience still needs to become a coherent work environment.
+
+Files included inline:
+- PRODUCT_NORTH_STAR.md
+- DESIGN_LANGUAGE.md
+- HIGH_SIGNAL_AI_LEARNING_PLATFORM_ROADMAP.md
+
+Please answer with:
+
+1. A sharper whole-site north star, phrased without explicit audience labels, that captures the common needs of mathematically serious learners/builders/researchers.
+2. The 6-10 common user needs the product should optimize for across the whole site.
+3. The product principles that follow from those needs.
+4. What the site must make effortless in daily use.
+5. The first concrete implementation goal for Codex now. It should be repo-realistic, not a vague strategy document.
+6. Acceptance criteria for that implementation goal.
+7. What not to do.
+
+Be specific and opinionated. Avoid broad idea dumps. Prefer a buildable north-star slice that strengthens the whole website as a working mathematical learning environment.

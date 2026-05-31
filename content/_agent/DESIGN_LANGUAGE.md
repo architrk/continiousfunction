@@ -29,6 +29,8 @@ This loop is the design language. It should be visible in layout, color, typogra
 
 The learner should never be asked to decode the product before they can decode the idea.
 
+The loop should now be treated as a shared workbench contract, not just a visual motif. Major surfaces should reuse the same object-state spine where possible: selected object, active question, prerequisite repair, prediction, manipulation, evidence, invariant save, next move, and object-attached AI context.
+
 ## Research Anchors
 
 Use these as design influences, not slogans.
@@ -175,6 +177,7 @@ Repo-native visuals should be used for:
 The recurring component families should become the recognizable product character:
 
 - **RouteStateStrip**: continuity and current question.
+- **LivingNotebookLabShell**: the reusable mathematical workbench shell for selected object, prediction, evidence, invariant, and next moves.
 - **SelectedObjectBar**: one live mathematical object.
 - **PredictionCheckpoint**: commit before reveal.
 - **ObservationLedgerCard**: memory of useful evidence.

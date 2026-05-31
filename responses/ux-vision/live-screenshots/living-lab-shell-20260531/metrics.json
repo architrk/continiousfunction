@@ -1,0 +1,104 @@
+{
+  "desktop": {
+    "viewportWidth": 1440,
+    "clientWidth": 1440,
+    "scrollWidth": 1440,
+    "overflowX": 0,
+    "shellCount": 1,
+    "shellWidth": 1282,
+    "shellTop": 0,
+    "stepCount": 6,
+    "predictionCount": 3,
+    "actionCount": 7,
+    "minActionHeight": 42,
+    "headingBefore": "none",
+    "actionSizes": [
+      {
+        "text": "Token memory growsIf cached tokens increase whil",
+        "width": 213,
+        "height": 142
+      },
+      {
+        "text": "Head sharing saves memoryIf a method reduces KV ",
+        "width": 213,
+        "height": 142
+      },
+      {
+        "text": "Quality needs a witnessA memory saving is not au",
+        "width": 213,
+        "height": 142
+      },
+      {
+        "text": "Save invariant",
+        "width": 139,
+        "height": 42
+      },
+      {
+        "text": "Open lab witness",
+        "width": 163,
+        "height": 42
+      },
+      {
+        "text": "Continue route",
+        "width": 145,
+        "height": 42
+      },
+      {
+        "text": "Copy AI handoff",
+        "width": 155,
+        "height": 42
+      }
+    ]
+  },
+  "mobile-390": {
+    "viewportWidth": 390,
+    "clientWidth": 390,
+    "scrollWidth": 390,
+    "overflowX": 0,
+    "shellCount": 1,
+    "shellWidth": 318,
+    "shellTop": 0,
+    "stepCount": 6,
+    "predictionCount": 3,
+    "actionCount": 7,
+    "minActionHeight": 42,
+    "headingBefore": "none",
+    "actionSizes": [
+      {
+        "text": "Token memory growsIf cached tokens increase whil",
+        "width": 258,
+        "height": 128
+      },
+      {
+        "text": "Head sharing saves memoryIf a method reduces KV ",
+        "width": 258,
+        "height": 128
+      },
+      {
+        "text": "Quality needs a witnessA memory saving is not au",
+        "width": 258,
+        "height": 128
+      },
+      {
+        "text": "Save invariant",
+        "width": 255,
+        "height": 42
+      },
+      {
+        "text": "Open lab witness",
+        "width": 255,
+        "height": 42
+      },
+      {
+        "text": "Continue route",
+        "width": 255,
+        "height": 42
+      },
+      {
+        "text": "Copy AI handoff",
+        "width": 255,
+        "height": 42
+      }
+    ]
+  }
+}
