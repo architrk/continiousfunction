@@ -1,0 +1,22 @@
+You are reviewing Continuous Function, a Living Notebook Lab for modern AI math.
+
+North star:
+selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move.
+
+Current slice:
+The Efficient Attention LivingNotebookLabShell can save a browser-local LearningRouteSnapshot after a learner manipulates the KV-cache memory lab. That snapshot now contains an exact equation object, committed prediction, changed variable, held-fixed variables, result, caveat, labState, labId/labVersion, and next move.
+
+I am adding the next step on /me Study Memory:
+- promote a saved formula/lab observation into a first-class Workbench memory card
+- show selected object, prediction, evidence, invariant, changed variable, held-fixed variables, source/lab boundary, caveat, and next move
+- keep it honest as a browser-local preview before account-backed learner memory exists
+
+Please critique this slice as a product/pedagogy reviewer.
+
+Answer with:
+1. The highest-impact correctness or pedagogy risk, if any.
+2. Whether the card makes the learner's prior experiment recoverable enough to continue from.
+3. The one improvement you would make next, not a broad list.
+4. Any specific UI copy or field boundary that should change before commit.
+
+Be concrete and terse. Assume code is TypeScript/Next.js Pages Router.

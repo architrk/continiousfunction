@@ -1,0 +1,36 @@
+{
+  "desktopMetrics": {
+    "url": "http://127.0.0.1:3000/me/",
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false,
+    "workbenchCards": 1,
+    "leaksInternalUnit": false,
+    "hasLearnerUnit": true,
+    "hasPrediction": true,
+    "hasEvidence": true,
+    "hasInvariant": true,
+    "hasChangedVariable": true,
+    "hasLabBoundary": true,
+    "hasBrowserBoundary": true,
+    "cardWidth": 489.484375,
+    "cardHeight": 759.5
+  },
+  "mobileMetrics": {
+    "url": "http://127.0.0.1:3000/me/",
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "horizontalOverflow": false,
+    "workbenchCards": 1,
+    "leaksInternalUnit": false,
+    "hasLearnerUnit": true,
+    "hasPrediction": true,
+    "hasEvidence": true,
+    "hasInvariant": true,
+    "hasChangedVariable": true,
+    "hasLabBoundary": true,
+    "hasBrowserBoundary": true,
+    "cardWidth": 298,
+    "cardHeight": 1209.265625
+  }
+}

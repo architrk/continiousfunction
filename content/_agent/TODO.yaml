@@ -1,5 +1,9 @@
-current_focus: "Next: make saved LivingNotebookLabShell observations show up as first-class study-memory objects and then connect that route-memory shape to account-backed learner memory."
+current_focus: "Next: promote workbench observations from prose-parsed route memory into a typed workbench payload, then connect that typed shape to account-backed learner memory."
 last_completed:
+  - concept: study-memory-workbench-observation-surface
+    date: 2026-05-31
+    action: connected
+    notes: "Made /me Study Memory render saved LivingNotebookLabShell formula observations as first-class Workbench memory previews. The preview now shows the selected object, committed prediction before reveal, observed lab evidence, changed and fixed variables, invariant to reuse, next move, caveat, browser-local/source/lab/version/account-boundary chips, and DB-shaped write plan copy without overclaiming persistence. GPT Pro/Oracle critique is saved at responses/cf-study-memory-workbench-observation-oracle-20260531.md; visual QA evidence is in responses/ux-vision/live-screenshots/study-memory-workbench-observation-20260531/."
   - concept: efficient-attention-living-lab-route-memory
     date: 2026-05-31
     action: connected
@@ -2684,7 +2688,12 @@ queue:
     status: done
   - action: build_feature
     id: study-memory-workbench-observation-surface
-    description: "Make /me Study Memory treat saved LivingNotebookLabShell observations as first-class study objects: show selected object, prediction, manipulated variables, evidence, invariant, caveat, next move, and source boundary rather than only generic route snapshot fields."
+    description: "Done: /me Study Memory now treats saved LivingNotebookLabShell formula observations as first-class Workbench memory previews. It shows selected object, committed prediction before reveal, observed lab evidence, changed and fixed variables, invariant to reuse, next move, caveat, browser-local/source/lab/version/account-boundary chips, and DB-shaped write plan copy. Evidence: responses/cf-study-memory-workbench-observation-oracle-20260531.md and responses/ux-vision/live-screenshots/study-memory-workbench-observation-20260531/."
+    priority: P0
+    status: done
+  - action: build_feature
+    id: typed-workbench-observation-payload
+    description: "Replace prose-parsed workbench metadata in LearningRouteSnapshot.lastObservation with a typed workbench payload carrying equation object, committed prediction, evidence, invariant, changed/fixed variables, result, caveat, lab id/version/state, and restore target. Then render /me from that payload instead of parsing detail/value strings."
     priority: P0
     status: pending
   - action: build_feature

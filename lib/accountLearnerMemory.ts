@@ -20,6 +20,26 @@ export type AccountLearnerMemoryWritePlan = {
   ready: boolean
 }
 
+export type AccountLearnerMemoryWorkbenchObservation = {
+  label: string
+  source: NonNullable<LearningRouteSnapshot['lastObservation']>['source']
+  objectTitle?: string
+  objectType?: LearningRouteSourceObject['type']
+  objectKey?: ContentObjectKey
+  predictionId?: string
+  predictionLabel?: string
+  evidence: string
+  invariant?: string
+  nextMove?: string
+  changed?: NonNullable<LearningRouteSnapshot['lastObservation']>['changed']
+  heldFixed: NonNullable<NonNullable<LearningRouteSnapshot['lastObservation']>['heldFixed']>
+  result?: NonNullable<LearningRouteSnapshot['lastObservation']>['result']
+  caveat?: string
+  labId?: string
+  labVersion?: string
+  labState?: NonNullable<LearningRouteSnapshot['lastObservation']>['labState']
+}
+
 export type AccountLearnerMemoryPreview = {
   version: typeof accountLearnerMemoryPreviewVersion
   status: AccountLearnerMemoryStatus
@@ -33,6 +53,7 @@ export type AccountLearnerMemoryPreview = {
   }
   currentQuestion?: string
   lastObservation?: NonNullable<LearningRouteSnapshot['lastObservation']>
+  workbenchObservation?: AccountLearnerMemoryWorkbenchObservation
   counts: {
     routeSteps: number
     sourceObjects: number
@@ -57,6 +78,71 @@ function currentObjectSummary(snapshot: LearningRouteSnapshot): AccountLearnerMe
     type: object.type,
     href: object.href,
     objectKey: isContentObjectKey(object.objectKey) ? object.objectKey : undefined,
+  }
+}
+
+function detailMetadataValue(detail: string | undefined, key: string) {
+  const match = detail?.match(new RegExp(`(?:^|;\\s*)${key}=([^;]+)`))
+  return match?.[1]?.trim()
+}
+
+function stripDetailMetadata(detail: string | undefined) {
+  return detail?.replace(/^(?:[a-zA-Z]+=[^;]+;\s*)+/, '').trim()
+}
+
+function invariantFromObservationDetail(detail: string | undefined) {
+  const stripped = stripDetailMetadata(detail)
+  if (!stripped) return undefined
+
+  const fixedIndex = stripped.indexOf('For fixed ')
+  if (fixedIndex < 0) return undefined
+
+  const endIndex = stripped.indexOf('.', fixedIndex)
+  return endIndex >= 0 ? stripped.slice(fixedIndex, endIndex + 1).trim() : stripped.slice(fixedIndex).trim()
+}
+
+function evidenceFromObservation(
+  observation: NonNullable<LearningRouteSnapshot['lastObservation']>
+) {
+  const stripped = stripDetailMetadata(observation.detail)
+  const invariant = invariantFromObservationDetail(observation.detail)
+  if (!stripped) return observation.value
+  if (!invariant) return stripped
+
+  const evidence = stripped.replace(invariant, '').trim()
+  return evidence || observation.value
+}
+
+function predictionLabelFromObservationValue(value: string) {
+  const [candidate] = value.split(':')
+  return candidate?.trim() || undefined
+}
+
+function workbenchObservationSummary(snapshot: LearningRouteSnapshot): AccountLearnerMemoryWorkbenchObservation | undefined {
+  const observation = snapshot.lastObservation
+  if (!observation) return undefined
+  if (observation.kind !== 'formula-comparison') return undefined
+
+  const objectKey = isContentObjectKey(snapshot.currentObject?.objectKey) ? snapshot.currentObject.objectKey : undefined
+
+  return {
+    label: observation.label,
+    source: observation.source,
+    objectTitle: snapshot.currentObject?.title,
+    objectType: snapshot.currentObject?.type,
+    objectKey,
+    predictionId: detailMetadataValue(observation.detail, 'predictionId'),
+    predictionLabel: predictionLabelFromObservationValue(observation.value),
+    evidence: evidenceFromObservation(observation),
+    invariant: invariantFromObservationDetail(observation.detail),
+    nextMove: observation.nextQuestion,
+    changed: observation.changed,
+    heldFixed: observation.heldFixed ?? [],
+    result: observation.result,
+    caveat: observation.caveat,
+    labId: detailMetadataValue(observation.detail, 'labId'),
+    labVersion: detailMetadataValue(observation.detail, 'labVersion'),
+    labState: observation.labState,
   }
 }
 
@@ -86,7 +172,7 @@ function writePlanForSnapshot(
       label: 'Save route snapshot',
       objectKey: routeObjectKey ?? undefined,
       detail: routeObjectKey
-        ? 'Ready for a private learning_route_snapshots row owned by the signed-in learner.'
+        ? 'DB-shaped preview for a private learning_route_snapshots row once signed-in account memory is enabled.'
         : 'Needs a durable route object key before it can become account memory.',
       ready: routeObjectKey !== null,
     },
@@ -98,7 +184,7 @@ function writePlanForSnapshot(
       label: 'Attach last observation',
       objectKey: currentObjectKey,
       detail: currentObjectKey
-        ? 'Ready for a learning_observations row attached to the current content object.'
+        ? 'DB-shaped preview for a learning_observations row attached to the current content object.'
         : 'Needs the selected object to carry a content object key.',
       ready: currentObjectKey !== undefined,
     })
@@ -167,6 +253,7 @@ export function buildAccountLearnerMemoryPreview(snapshot: LearningRouteSnapshot
     currentObject: currentObjectSummary(snapshot),
     currentQuestion: snapshot.currentQuestion,
     lastObservation: snapshot.lastObservation,
+    workbenchObservation: workbenchObservationSummary(snapshot),
     counts: progressCounts(snapshot),
     writePlan: writePlanForSnapshot(snapshot, routeObjectKey, currentObjectKey),
     blockers,

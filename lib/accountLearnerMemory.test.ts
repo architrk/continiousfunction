@@ -48,6 +48,51 @@ function sampleSnapshot(overrides: Partial<LearningRouteSnapshot> = {}): Learnin
   }
 }
 
+function efficientAttentionWorkbenchObservation(
+  overrides: Partial<NonNullable<LearningRouteSnapshot['lastObservation']>> = {}
+): NonNullable<LearningRouteSnapshot['lastObservation']> {
+  return {
+    label: 'Efficient attention workbench',
+    value: 'It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA',
+    detail:
+      'labId=efficient-attention-kv-cache-workbench; labVersion=2026-05-31; predictionId=quarter; g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA. For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+    nextQuestion: 'Move g from 1 to 4, then say why the ratio changes before reading the invariant.',
+    source: 'kv-memory-lab',
+    updatedAt: '2026-05-31T00:00:00.000Z',
+    kind: 'formula-comparison',
+    changed: {
+      symbol: 'H_kv',
+      from: 32,
+      to: 8,
+    },
+    heldFixed: [
+      { symbol: 'B', value: 1 },
+      { symbol: 'L', value: 32 },
+      { symbol: 'T', value: 32768 },
+      { symbol: 'H_q', value: 32 },
+      { symbol: 'd', value: 128 },
+      { symbol: 's', value: 2 },
+    ],
+    result: {
+      before: 17.179869184,
+      after: 4.294967296,
+      ratio: 4,
+      unit: 'GB-decimal',
+    },
+    caveat: 'Memory witness only; model quality still needs a separate experiment.',
+    labState: {
+      context: 32768,
+      layers: 32,
+      queryHeads: 32,
+      kvHeads: 8,
+      dHead: 128,
+      batch: 1,
+      bytes: 2,
+    },
+    ...overrides,
+  }
+}
+
 describe('account learner memory preview', () => {
   it('explains the empty state without inventing durable memory', () => {
     const preview = buildAccountLearnerMemoryPreview(null)
@@ -104,5 +149,77 @@ describe('account learner memory preview', () => {
     expect(preview.status).toBe('ready')
     expect(preview.writePlan).toHaveLength(1)
     expect(preview.writePlan[0].table).toBe('learning_route_snapshots')
+  })
+
+  it('promotes formula workbench observations into first-class study memory summaries', () => {
+    const preview = buildAccountLearnerMemoryPreview(
+      sampleSnapshot({
+        currentObject: {
+          type: 'equation',
+          objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+          title: 'Efficient Attention equation 2',
+          href: '/domains/attention-transformers/efficient-attention/#math-object-2',
+          status: 'workbench observation carried',
+        },
+        lastObservation: efficientAttentionWorkbenchObservation(),
+      })
+    )
+
+    expect(preview.workbenchObservation).toEqual(
+      expect.objectContaining({
+        label: 'Efficient attention workbench',
+        source: 'kv-memory-lab',
+        objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+        predictionId: 'quarter',
+        predictionLabel: 'It drops by the sharing factor',
+        invariant:
+          'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+        caveat: 'Memory witness only; model quality still needs a separate experiment.',
+        labId: 'efficient-attention-kv-cache-workbench',
+        labVersion: '2026-05-31',
+      })
+    )
+    expect(preview.workbenchObservation?.changed).toEqual({ symbol: 'H_kv', from: 32, to: 8 })
+    expect(preview.workbenchObservation?.heldFixed).toHaveLength(6)
+    expect(preview.workbenchObservation?.labState?.kvHeads).toBe(8)
+  })
+
+  it('does not promote ordinary prediction checkpoints even when they contain formula-like facts', () => {
+    const preview = buildAccountLearnerMemoryPreview(
+      sampleSnapshot({
+        lastObservation: {
+          ...efficientAttentionWorkbenchObservation({
+            kind: undefined,
+            label: 'Prediction checkpoint',
+            source: 'prediction-checkpoint',
+          }),
+        },
+      })
+    )
+
+    expect(preview.lastObservation?.label).toBe('Prediction checkpoint')
+    expect(preview.workbenchObservation).toBeUndefined()
+  })
+
+  it('keeps formula observations useful when detail metadata is missing', () => {
+    const preview = buildAccountLearnerMemoryPreview(
+      sampleSnapshot({
+        lastObservation: efficientAttentionWorkbenchObservation({
+          detail:
+            'g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA. For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+        }),
+      })
+    )
+
+    expect(preview.workbenchObservation).toEqual(
+      expect.objectContaining({
+        evidence: 'g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA.',
+        invariant:
+          'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+        predictionId: undefined,
+        labId: undefined,
+        labVersion: undefined,
+      })
+    )
   })
 })

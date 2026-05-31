@@ -25,7 +25,7 @@ type AdaptiveCheckState =
 function statusLabel(status: ReturnType<typeof buildAccountLearnerMemoryPreview>['status']) {
   switch (status) {
     case 'ready':
-      return 'Ready for account memory'
+      return 'DB-shaped preview'
     case 'blocked':
       return 'Needs identity repair'
     case 'empty':
@@ -40,6 +40,28 @@ function tableLabel(table: string) {
 
 function sourceLabel(source: string) {
   return source.replaceAll('-', ' ')
+}
+
+function formatObservationNumber(value: number) {
+  if (value >= 100) return String(Math.round(value))
+  if (value >= 10) return value.toFixed(1)
+  return value.toFixed(2)
+}
+
+function observationUnitLabel(
+  unit: NonNullable<NonNullable<ReturnType<typeof buildAccountLearnerMemoryPreview>['workbenchObservation']>['result']>['unit']
+) {
+  if (unit === 'GB-decimal') return 'GB'
+  return unit
+}
+
+function resultLabel(result: NonNullable<ReturnType<typeof buildAccountLearnerMemoryPreview>['workbenchObservation']>['result']) {
+  if (!result) return null
+
+  const unit = observationUnitLabel(result.unit)
+  const direction = result.after < result.before ? 'reduction' : result.after > result.before ? 'increase' : 'same'
+
+  return `${formatObservationNumber(result.before)} -> ${formatObservationNumber(result.after)} ${unit}, ${formatObservationNumber(result.ratio)}x ${direction}`
 }
 
 function serverCheckMessage(result: AccountLearnerMemoryImportResult) {
@@ -103,6 +125,8 @@ export default function AccountMemoryPreview() {
     () => buildAdaptiveLearningLoopPacket({ routeSnapshot: snapshot, signals: adaptiveSignals }),
     [snapshot, adaptiveSignals]
   )
+  const workbenchObservation = preview.workbenchObservation
+  const workbenchResultLabel = resultLabel(workbenchObservation?.result)
   const snapshotIdentity = `${snapshot?.createdAt ?? 'empty'}:${snapshot?.currentObject?.objectKey ?? 'none'}:${snapshot?.lastObservation?.updatedAt ?? 'none'}`
   const [serverCheck, setServerCheck] = useState<ServerCheckState>({
     status: 'idle',
@@ -222,10 +246,10 @@ export default function AccountMemoryPreview() {
       <section className="memory-hero" aria-labelledby="account-memory-title">
         <div className="memory-hero-copy">
           <p className="memory-kicker">Personal study space</p>
-          <h1 id="account-memory-title">Carry the thread across sessions.</h1>
+          <h1 id="account-memory-title">Preview the thread this browser can carry.</h1>
           <p>
-            The north star is simple: every question, object, prediction, source check, and next repair should become a
-            durable learning trail once the learner signs in.
+            The north star is simple: every question, object, prediction, source check, and next repair should become
+            portable account memory once sign-in persistence is connected.
           </p>
         </div>
         <div className={`memory-status-card ${preview.status}`}>
@@ -239,7 +263,7 @@ export default function AccountMemoryPreview() {
         <div className="memory-panel primary">
           <div className="panel-heading">
             <p className="memory-kicker">Import plan</p>
-            <h2>What the account write will preserve</h2>
+            <h2>What would be written after sign-in</h2>
           </div>
           {preview.writePlan.length > 0 ? (
             <div className="write-plan">
@@ -296,10 +320,68 @@ export default function AccountMemoryPreview() {
 
         <div className="memory-panel observation-panel">
           <div className="panel-heading">
-            <p className="memory-kicker">Last observation</p>
-            <h2>{preview.lastObservation?.label ?? 'Observation not saved yet'}</h2>
+            <p className="memory-kicker">{workbenchObservation ? 'Workbench memory preview' : 'Last observation'}</p>
+            <h2>{workbenchObservation?.label ?? preview.lastObservation?.label ?? 'Observation not saved yet'}</h2>
           </div>
-          {preview.lastObservation ? (
+          {workbenchObservation ? (
+            <div className="workbench-memory-card" data-workbench-observation="true">
+              <div className="workbench-object">
+                <span>{workbenchObservation.objectType ? sourceLabel(workbenchObservation.objectType) : 'Selected object'}</span>
+                <strong>{workbenchObservation.objectTitle ?? preview.currentObject?.title ?? 'Saved workbench object'}</strong>
+                {workbenchObservation.objectKey ? <code>{workbenchObservation.objectKey}</code> : null}
+              </div>
+
+              <div className="workbench-memory-grid">
+                <article>
+                  <span>Committed prediction before reveal</span>
+                  <strong>{workbenchObservation.predictionLabel ?? preview.lastObservation?.value}</strong>
+                  {workbenchObservation.predictionId ? <em>{workbenchObservation.predictionId}</em> : null}
+                </article>
+                <article>
+                  <span>Observed lab evidence</span>
+                  <strong>{workbenchObservation.evidence}</strong>
+                  {workbenchResultLabel ? <em>{workbenchResultLabel}</em> : null}
+                </article>
+                {workbenchObservation.invariant ? (
+                  <article>
+                    <span>Invariant to reuse</span>
+                    <strong>{workbenchObservation.invariant}</strong>
+                  </article>
+                ) : null}
+                {workbenchObservation.nextMove ? (
+                  <article>
+                    <span>Next move</span>
+                    <strong>{workbenchObservation.nextMove}</strong>
+                  </article>
+                ) : null}
+              </div>
+
+              {workbenchObservation.changed || workbenchObservation.heldFixed.length > 0 ? (
+                <div className="workbench-variable-strip" aria-label="Workbench variables">
+                  {workbenchObservation.changed ? (
+                    <span className="changed-variable">
+                      changed {workbenchObservation.changed.symbol}: {workbenchObservation.changed.from} {'->'} {workbenchObservation.changed.to}
+                    </span>
+                  ) : null}
+                  {workbenchObservation.heldFixed.map((item) => (
+                    <span key={`${item.symbol}-${item.value}`}>
+                      fixed {item.symbol} = {item.value}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="workbench-boundary">
+                <span>browser-local preview</span>
+                {snapshot?.groundingStatus ? <span>{sourceLabel(snapshot.groundingStatus)}</span> : null}
+                <span>{sourceLabel(workbenchObservation.source)}</span>
+                {workbenchObservation.labId ? <span>{workbenchObservation.labId}</span> : null}
+                {workbenchObservation.labVersion ? <span>v{workbenchObservation.labVersion}</span> : null}
+                <span>not account-backed</span>
+              </div>
+              {workbenchObservation.caveat ? <p className="workbench-caveat">{workbenchObservation.caveat}</p> : null}
+            </div>
+          ) : preview.lastObservation ? (
             <div className="observation-card">
               <strong>{preview.lastObservation.value}</strong>
               {preview.lastObservation.detail ? <p>{preview.lastObservation.detail}</p> : null}
@@ -648,6 +730,123 @@ export default function AccountMemoryPreview() {
           background: linear-gradient(135deg, rgba(215, 177, 95, 0.18), rgba(31, 111, 120, 0.1));
         }
 
+        .workbench-memory-card {
+          display: grid;
+          gap: 0.8rem;
+          border: 1px solid rgba(31, 111, 120, 0.16);
+          border-radius: 14px;
+          padding: 0.95rem;
+          background:
+            linear-gradient(135deg, rgba(31, 111, 120, 0.12), rgba(255, 251, 245, 0.78)),
+            rgba(255, 251, 245, 0.88);
+        }
+
+        .workbench-object {
+          display: grid;
+          gap: 0.38rem;
+          border-bottom: 1px solid var(--memory-line);
+          padding-bottom: 0.75rem;
+        }
+
+        .workbench-object span,
+        .workbench-memory-grid span,
+        .workbench-boundary span {
+          color: var(--memory-teal);
+          font-size: 0.7rem;
+          font-weight: 850;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+        }
+
+        .workbench-object strong {
+          line-height: 1.25;
+        }
+
+        .workbench-object code {
+          width: fit-content;
+          max-width: 100%;
+          overflow-wrap: anywhere;
+          border-radius: 8px;
+          padding: 0.32rem 0.45rem;
+          color: #17324a;
+          background: rgba(31, 75, 153, 0.08);
+          font-size: 0.76rem;
+        }
+
+        .workbench-memory-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.58rem;
+        }
+
+        .workbench-memory-grid article {
+          display: grid;
+          align-content: start;
+          gap: 0.38rem;
+          min-width: 0;
+          border: 1px solid var(--memory-line);
+          border-radius: 10px;
+          padding: 0.72rem;
+          background: rgba(255, 251, 245, 0.7);
+        }
+
+        .workbench-memory-grid strong {
+          overflow-wrap: anywhere;
+          font-size: 0.94rem;
+          line-height: 1.35;
+        }
+
+        .workbench-memory-grid em {
+          color: var(--memory-muted);
+          font-family: var(--font-mono);
+          font-size: 0.72rem;
+          font-style: normal;
+          line-height: 1.35;
+        }
+
+        .workbench-variable-strip,
+        .workbench-boundary {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.4rem;
+        }
+
+        .workbench-variable-strip span {
+          max-width: 100%;
+          border: 1px solid rgba(31, 75, 153, 0.14);
+          border-radius: 999px;
+          padding: 0.34rem 0.52rem;
+          color: #29425e;
+          background: rgba(255, 251, 245, 0.72);
+          font-size: 0.76rem;
+          font-weight: 750;
+          line-height: 1.2;
+          overflow-wrap: anywhere;
+        }
+
+        .workbench-variable-strip .changed-variable {
+          border-color: rgba(215, 177, 95, 0.36);
+          color: #6b4b12;
+          background: rgba(215, 177, 95, 0.16);
+        }
+
+        .workbench-boundary span {
+          max-width: 100%;
+          border: 1px solid rgba(31, 111, 120, 0.16);
+          border-radius: 999px;
+          padding: 0.3rem 0.5rem;
+          background: rgba(31, 111, 120, 0.08);
+          overflow-wrap: anywhere;
+        }
+
+        .workbench-caveat {
+          margin: 0;
+          border-left: 4px solid var(--memory-rust);
+          padding-left: 0.62rem;
+          color: var(--memory-muted);
+          line-height: 1.45;
+        }
+
         .observation-card strong {
           font-size: 1.05rem;
           line-height: 1.35;
@@ -880,6 +1079,10 @@ export default function AccountMemoryPreview() {
           }
 
           .metric-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .workbench-memory-grid {
             grid-template-columns: 1fr;
           }
         }
