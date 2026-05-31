@@ -4819,6 +4819,26 @@ describe('ConceptNotebookPage object flow bar', () => {
     expect(snapshot?.lastObservation?.label).toBe('Efficient attention workbench')
     expect(snapshot?.lastObservation?.source).toBe('kv-memory-lab')
     expect(snapshot?.lastObservation?.detail).toContain('predictionId=quarter')
+    expect(snapshot?.lastObservation?.workbench).toEqual(
+      expect.objectContaining({
+        type: 'formula-workbench',
+        equationObject: expect.objectContaining({
+          objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+        }),
+        committedPrediction: expect.objectContaining({
+          id: 'quarter',
+          label: 'It drops by the sharing factor',
+        }),
+        lab: expect.objectContaining({
+          id: 'efficient-attention-kv-cache-workbench',
+          version: '2026-05-31',
+          state: expect.objectContaining({
+            context: 32768,
+            kvHeads: 8,
+          }),
+        }),
+      })
+    )
     expect(snapshot?.lastObservation?.labState).toEqual(
       expect.objectContaining({
         context: 32768,

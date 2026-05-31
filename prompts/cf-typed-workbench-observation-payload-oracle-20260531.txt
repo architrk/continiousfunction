@@ -1,0 +1,30 @@
+Continuous Function north star:
+selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move.
+
+Current migration:
+The Efficient Attention LivingNotebookLabShell previously saved formula/lab observation metadata by encoding labId, labVersion, predictionId, evidence, and invariant inside lastObservation.detail. /me Study Memory and the Efficient Attention restore path parsed that prose.
+
+I am migrating this to an additive typed payload:
+- LearningRouteSnapshot.lastObservation.workbench?: formula-workbench
+- typed equation object
+- committed prediction
+- evidence
+- invariant
+- changed/held-fixed variables
+- result
+- caveat
+- lab id/version/state/restoreHref
+
+Compatibility constraints:
+- Keep legacy detail, changed, heldFixed, result, caveat, and labState mirrors for existing renderers and old snapshots.
+- Validator must accept old snapshots and new typed snapshots.
+- Consumers should read typed first and fall back to legacy detail parsing.
+- Do not break /paths/attention-serving legacy lab restore.
+
+Please review the approach in the attached files. Answer with:
+1. Any schema risk that would cause local snapshots to be dropped or account-memory writes to bloat.
+2. Any field that is missing for future restore/account persistence.
+3. Whether /me Study Memory should render from typed payload as implemented.
+4. The one fix you would make before commit, if any.
+
+Be terse and concrete.

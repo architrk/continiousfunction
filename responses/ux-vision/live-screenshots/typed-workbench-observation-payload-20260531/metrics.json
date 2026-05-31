@@ -1,0 +1,25 @@
+{
+  "savedHasTypedWorkbench": true,
+  "savedPredictionId": "quarter",
+  "savedLabId": "efficient-attention-kv-cache-workbench",
+  "savedLabVersion": "2026-05-31",
+  "savedLegacyDetailHasPrediction": true,
+  "savedLegacyLabState": {
+    "context": 32768,
+    "layers": 32,
+    "queryHeads": 32,
+    "kvHeads": 8,
+    "dHead": 128,
+    "batch": 1,
+    "bytes": 2
+  },
+  "memoryCardUsesTypedEvidence": true,
+  "memoryCardLeaksInternalUnit": false,
+  "metrics": {
+    "url": "http://127.0.0.1:3000/me/",
+    "scrollWidth": 1440,
+    "clientWidth": 1440,
+    "horizontalOverflow": false,
+    "workbenchCards": 1
+  }
+}

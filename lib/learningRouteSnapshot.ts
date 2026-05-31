@@ -82,6 +82,62 @@ export type LearningRouteProgress = {
   updatedAt: string
 }
 
+export type LearningRouteObservationChanged = {
+  symbol: string
+  from: number
+  to: number
+}
+
+export type LearningRouteObservationHeldFixed = Array<{
+  symbol: string
+  value: string | number
+}>
+
+export type LearningRouteObservationResult = {
+  before: number
+  after: number
+  ratio: number
+  unit: 'GB-decimal' | 'GiB'
+}
+
+export type LearningRouteKvLabState = {
+  context: number
+  layers: number
+  queryHeads: number
+  kvHeads: number
+  dHead: number
+  batch: number
+  bytes: number
+}
+
+export type LearningRouteWorkbenchPayload = {
+  type: 'formula-workbench'
+  equationObject: {
+    label: string
+    equation?: string
+    objectKey?: ContentObjectKey
+    href?: string
+  }
+  committedPrediction: {
+    id: string
+    label: string
+    text?: string
+  }
+  evidence: string
+  invariant: string
+  nextMove: string
+  changed: LearningRouteObservationChanged
+  heldFixed: LearningRouteObservationHeldFixed
+  result: LearningRouteObservationResult
+  caveat: string
+  lab: {
+    id: string
+    version: string
+    state: LearningRouteKvLabState
+    restoreHref?: string
+  }
+}
+
 export type LearningRouteSnapshot = {
   version: 'cf-route-snapshot-v1'
   source: 'paper-map' | 'graph' | 'attention-serving' | 'concept-notebook'
@@ -119,31 +175,12 @@ export type LearningRouteSnapshot = {
     source: 'kv-memory-lab' | 'prediction-checkpoint' | 'learning-route'
     updatedAt: string
     kind?: 'formula-comparison'
-    changed?: {
-      symbol: string
-      from: number
-      to: number
-    }
-    heldFixed?: Array<{
-      symbol: string
-      value: string | number
-    }>
-    result?: {
-      before: number
-      after: number
-      ratio: number
-      unit: 'GB-decimal' | 'GiB'
-    }
+    changed?: LearningRouteObservationChanged
+    heldFixed?: LearningRouteObservationHeldFixed
+    result?: LearningRouteObservationResult
     caveat?: string
-    labState?: {
-      context: number
-      layers: number
-      queryHeads: number
-      kvHeads: number
-      dHead: number
-      batch: number
-      bytes: number
-    }
+    labState?: LearningRouteKvLabState
+    workbench?: LearningRouteWorkbenchPayload
   }
   groundingStatus?: 'local-preview' | 'source-check-error' | 'source-checked' | 'metadata-resolved'
   createdAt: string
@@ -277,6 +314,65 @@ function isKvLabState(value: unknown): value is NonNullable<NonNullable<Learning
     isIntegerStep(candidate.dHead, 64, 256, 32) &&
     isIntegerStep(candidate.batch, 1, 32) &&
     (candidate.bytes === 1 || candidate.bytes === 2 || candidate.bytes === 4)
+  )
+}
+
+function isWorkbenchEquationObject(value: unknown): value is LearningRouteWorkbenchPayload['equationObject'] {
+  if (!value || typeof value !== 'object') return false
+
+  const candidate = value as Partial<LearningRouteWorkbenchPayload['equationObject']>
+  return (
+    isBoundedString(candidate.label, 180) &&
+    isOptionalBoundedString(candidate.equation, 500) &&
+    (candidate.objectKey === undefined || isContentObjectKey(candidate.objectKey)) &&
+    isOptionalInternalHref(candidate.href)
+  )
+}
+
+function isWorkbenchCommittedPrediction(value: unknown): value is LearningRouteWorkbenchPayload['committedPrediction'] {
+  if (!value || typeof value !== 'object') return false
+
+  const candidate = value as Partial<LearningRouteWorkbenchPayload['committedPrediction']>
+  return (
+    isBoundedString(candidate.id, 80) &&
+    isBoundedString(candidate.label, 140) &&
+    isOptionalBoundedString(candidate.text, 180)
+  )
+}
+
+function isWorkbenchLab(value: unknown): value is LearningRouteWorkbenchPayload['lab'] {
+  if (!value || typeof value !== 'object') return false
+
+  const candidate = value as Partial<LearningRouteWorkbenchPayload['lab']>
+  return (
+    isBoundedString(candidate.id, 120) &&
+    isBoundedString(candidate.version, 40) &&
+    isKvLabState(candidate.state) &&
+    isOptionalInternalHref(candidate.restoreHref)
+  )
+}
+
+function isWorkbenchPayload(value: unknown): value is LearningRouteWorkbenchPayload | undefined {
+  if (value === undefined) return true
+  if (!value || typeof value !== 'object') return false
+
+  const candidate = value as Partial<LearningRouteWorkbenchPayload>
+  return (
+    candidate.type === 'formula-workbench' &&
+    isWorkbenchEquationObject(candidate.equationObject) &&
+    isWorkbenchCommittedPrediction(candidate.committedPrediction) &&
+    isBoundedString(candidate.evidence, 280) &&
+    isBoundedString(candidate.invariant, 320) &&
+    isBoundedString(candidate.nextMove, 220) &&
+    candidate.changed !== undefined &&
+    isChanged(candidate.changed) &&
+    Array.isArray(candidate.heldFixed) &&
+    candidate.heldFixed.length > 0 &&
+    isHeldFixed(candidate.heldFixed) &&
+    candidate.result !== undefined &&
+    isObservationResult(candidate.result) &&
+    isBoundedString(candidate.caveat, 180) &&
+    isWorkbenchLab(candidate.lab)
   )
 }
 
@@ -511,6 +607,7 @@ function isLastObservation(value: unknown): value is LearningRouteSnapshot['last
     isHeldFixed(candidate.heldFixed) &&
     isObservationResult(candidate.result) &&
     isOptionalBoundedString(candidate.caveat, 180) &&
+    isWorkbenchPayload(candidate.workbench) &&
     hasFormulaStructure &&
     (candidate.labState === undefined || isKvLabState(candidate.labState))
   )

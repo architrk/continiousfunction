@@ -26,8 +26,11 @@ export type AccountLearnerMemoryWorkbenchObservation = {
   objectTitle?: string
   objectType?: LearningRouteSourceObject['type']
   objectKey?: ContentObjectKey
+  objectHref?: string
+  equation?: string
   predictionId?: string
   predictionLabel?: string
+  predictionText?: string
   evidence: string
   invariant?: string
   nextMove?: string
@@ -37,6 +40,7 @@ export type AccountLearnerMemoryWorkbenchObservation = {
   caveat?: string
   labId?: string
   labVersion?: string
+  restoreHref?: string
   labState?: NonNullable<LearningRouteSnapshot['lastObservation']>['labState']
 }
 
@@ -118,9 +122,51 @@ function predictionLabelFromObservationValue(value: string) {
   return candidate?.trim() || undefined
 }
 
+function typedWorkbenchObservationSummary(
+  snapshot: LearningRouteSnapshot,
+  observation: NonNullable<LearningRouteSnapshot['lastObservation']>
+): AccountLearnerMemoryWorkbenchObservation | undefined {
+  const workbench = observation.workbench
+  if (!workbench) return undefined
+
+  const objectKey = isContentObjectKey(workbench.equationObject.objectKey)
+    ? workbench.equationObject.objectKey
+    : isContentObjectKey(snapshot.currentObject?.objectKey)
+      ? snapshot.currentObject.objectKey
+      : undefined
+
+  return {
+    label: observation.label,
+    source: observation.source,
+    objectTitle: workbench.equationObject.label,
+    objectType: 'equation',
+    objectKey,
+    objectHref: workbench.equationObject.href,
+    equation: workbench.equationObject.equation,
+    predictionId: workbench.committedPrediction.id,
+    predictionLabel: workbench.committedPrediction.label,
+    predictionText: workbench.committedPrediction.text,
+    evidence: workbench.evidence,
+    invariant: workbench.invariant,
+    nextMove: workbench.nextMove,
+    changed: workbench.changed,
+    heldFixed: workbench.heldFixed,
+    result: workbench.result,
+    caveat: workbench.caveat,
+    labId: workbench.lab.id,
+    labVersion: workbench.lab.version,
+    restoreHref: workbench.lab.restoreHref,
+    labState: workbench.lab.state,
+  }
+}
+
 function workbenchObservationSummary(snapshot: LearningRouteSnapshot): AccountLearnerMemoryWorkbenchObservation | undefined {
   const observation = snapshot.lastObservation
   if (!observation) return undefined
+
+  const typedWorkbench = typedWorkbenchObservationSummary(snapshot, observation)
+  if (typedWorkbench) return typedWorkbench
+
   if (observation.kind !== 'formula-comparison') return undefined
 
   const objectKey = isContentObjectKey(snapshot.currentObject?.objectKey) ? snapshot.currentObject.objectKey : undefined

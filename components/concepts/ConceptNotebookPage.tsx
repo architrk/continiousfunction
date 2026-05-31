@@ -2632,6 +2632,35 @@ export default function ConceptNotebookPage({
       discussionItems,
     })
     const observationValue = `${observation.predictionLabel}: ${observation.memoryLabel}, ${observation.reduction.toFixed(1)}x reduction vs MHA`
+    const changed = {
+      symbol: 'H_kv',
+      from: observation.queryHeads,
+      to: observation.kvHeads,
+    }
+    const heldFixed = [
+      { symbol: 'B', value: observation.batch },
+      { symbol: 'L', value: observation.layers },
+      { symbol: 'T', value: observation.sequenceLength },
+      { symbol: 'H_q', value: observation.queryHeads },
+      { symbol: 'd', value: observation.headDim },
+      { symbol: 's', value: observation.valueBytes },
+    ]
+    const result = {
+      before: observation.mhaMemoryGb,
+      after: observation.memoryGb,
+      ratio: observation.reduction,
+      unit: 'GB-decimal' as const,
+    }
+    const caveat = 'Memory witness only; model quality still needs a separate experiment.'
+    const labState = {
+      context: observation.sequenceLength,
+      layers: observation.layers,
+      queryHeads: observation.queryHeads,
+      kvHeads: observation.kvHeads,
+      dHead: observation.headDim,
+      batch: observation.batch,
+      bytes: observation.valueBytes,
+    }
     const nextSnapshot: LearningRouteSnapshot = {
       ...snapshot,
       currentQuestion: snapshotString(observation.roleQuestion, 220),
@@ -2672,34 +2701,37 @@ export default function ConceptNotebookPage({
         source: 'kv-memory-lab',
         updatedAt: now,
         kind: 'formula-comparison',
-        changed: {
-          symbol: 'H_kv',
-          from: observation.queryHeads,
-          to: observation.kvHeads,
-        },
-        heldFixed: [
-          { symbol: 'B', value: observation.batch },
-          { symbol: 'L', value: observation.layers },
-          { symbol: 'T', value: observation.sequenceLength },
-          { symbol: 'H_q', value: observation.queryHeads },
-          { symbol: 'd', value: observation.headDim },
-          { symbol: 's', value: observation.valueBytes },
-        ],
-        result: {
-          before: observation.mhaMemoryGb,
-          after: observation.memoryGb,
-          ratio: observation.reduction,
-          unit: 'GB-decimal',
-        },
-        caveat: 'Memory witness only; model quality still needs a separate experiment.',
-        labState: {
-          context: observation.sequenceLength,
-          layers: observation.layers,
-          queryHeads: observation.queryHeads,
-          kvHeads: observation.kvHeads,
-          dHead: observation.headDim,
-          batch: observation.batch,
-          bytes: observation.valueBytes,
+        changed,
+        heldFixed,
+        result,
+        caveat,
+        labState,
+        workbench: {
+          type: 'formula-workbench',
+          equationObject: {
+            label: snapshotString(selectedObject.title, 180),
+            equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+            objectKey: selectedObject.objectKey,
+            href: selectedObject.href,
+          },
+          committedPrediction: {
+            id: observation.predictionId,
+            label: snapshotString(observation.predictionLabel, 140),
+            text: snapshotString(observationValue, 180),
+          },
+          evidence: snapshotString(observation.evidence, 280),
+          invariant: snapshotString(observation.invariant, 320),
+          nextMove: snapshotString(observation.nextMove, 220),
+          changed,
+          heldFixed,
+          result,
+          caveat,
+          lab: {
+            id: efficientAttentionWorkbenchLabId,
+            version: efficientAttentionWorkbenchLabVersion,
+            state: labState,
+            restoreHref: selectedObject.href ?? conceptHref,
+          },
         },
       },
     }

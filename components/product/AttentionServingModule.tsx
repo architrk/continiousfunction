@@ -1360,7 +1360,7 @@ export default function AttentionServingModule() {
       setActiveStage('efficient-attention')
       setActiveEquation('kv')
 
-      const labState = snapshot?.lastObservation?.labState
+      const labState = snapshot?.lastObservation?.workbench?.lab.state ?? snapshot?.lastObservation?.labState
       if (labState) {
         setContext(labState.context)
         setLayers(labState.layers)
@@ -1446,6 +1446,34 @@ export default function AttentionServingModule() {
     const reduction = Math.round((1 - sharedMemory / mhaMemory) * 100)
     const precision = bytesOptions.find((option) => option.value === bytes)?.label ?? `${bytes} bytes/scalar`
     const caveat = 'Formula estimate only; excludes allocator, paged-cache, metadata, scheduler, and layout overhead.'
+    const changed = {
+      symbol: 'H_kv',
+      from: queryHeads,
+      to: targetKvHeads,
+    }
+    const heldFixed = [
+      { symbol: 'B', value: batch },
+      { symbol: 'T', value: context },
+      { symbol: 'N_layers', value: layers },
+      { symbol: 'd_head', value: dHead },
+      { symbol: 'precision', value: precision },
+    ]
+    const result = {
+      before: mhaMemory,
+      after: sharedMemory,
+      ratio,
+      unit: 'GB-decimal' as const,
+    }
+    const labState = {
+      context,
+      layers,
+      queryHeads,
+      kvHeads: targetKvHeads,
+      dHead,
+      batch,
+      bytes,
+    }
+    const evidence = `Changed H_kv only; held fixed B=${batch}, T=${context.toLocaleString()}, N_layers=${layers}, d_head=${dHead}, precision=${precision}. Result: ${reduction}% less KV cache in decimal GB.`
     const draftSnapshot: LearningRouteSnapshot = {
       ...baseSnapshot,
       labStatus: 'live',
@@ -1454,38 +1482,40 @@ export default function AttentionServingModule() {
       lastObservation: {
         label: 'KV checkpoint',
         value: `H_kv ${queryHeads} -> ${targetKvHeads}: ${formatGb(mhaMemory)} -> ${formatGb(sharedMemory)}, ${ratio.toFixed(1)}x smaller`,
-        detail: `Changed H_kv only; held fixed B=${batch}, T=${context.toLocaleString()}, N_layers=${layers}, d_head=${dHead}, precision=${precision}. Result: ${reduction}% less KV cache in decimal GB.`,
+        detail: evidence,
         nextQuestion: 'Quality risk to test: does shared K/V hurt long-context retrieval or head-specific behavior?',
         source: 'prediction-checkpoint',
         updatedAt: new Date().toISOString(),
         kind: 'formula-comparison',
-        changed: {
-          symbol: 'H_kv',
-          from: queryHeads,
-          to: targetKvHeads,
-        },
-        heldFixed: [
-          { symbol: 'B', value: batch },
-          { symbol: 'T', value: context },
-          { symbol: 'N_layers', value: layers },
-          { symbol: 'd_head', value: dHead },
-          { symbol: 'precision', value: precision },
-        ],
-        result: {
-          before: mhaMemory,
-          after: sharedMemory,
-          ratio,
-          unit: 'GB-decimal',
-        },
+        changed,
+        heldFixed,
+        result,
         caveat,
-        labState: {
-          context,
-          layers,
-          queryHeads,
-          kvHeads: targetKvHeads,
-          dHead,
-          batch,
-          bytes,
+        labState,
+        workbench: {
+          type: 'formula-workbench',
+          equationObject: {
+            label: 'KV-cache memory equation',
+            equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+          },
+          committedPrediction: {
+            id: 'h-kv',
+            label: 'Changing H_kv changes KV-cache memory',
+            text: `H_kv ${queryHeads} -> ${targetKvHeads}: ${formatGb(mhaMemory)} -> ${formatGb(sharedMemory)}, ${ratio.toFixed(1)}x smaller`,
+          },
+          evidence,
+          invariant: 'For fixed batch, layers, context, head dimension, and precision, KV-cache memory scales linearly with stored K/V heads.',
+          nextMove: 'Quality risk to test: does shared K/V hurt long-context retrieval or head-specific behavior?',
+          changed,
+          heldFixed,
+          result,
+          caveat,
+          lab: {
+            id: 'attention-serving-kv-memory-lab',
+            version: '2026-05-31',
+            state: labState,
+            restoreHref: '/paths/attention-serving/?focus=kv-cache#kv-cache-lab',
+          },
         },
       },
     }

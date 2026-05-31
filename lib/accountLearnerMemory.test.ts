@@ -89,6 +89,58 @@ function efficientAttentionWorkbenchObservation(
       batch: 1,
       bytes: 2,
     },
+    workbench: {
+      type: 'formula-workbench',
+      equationObject: {
+        label: 'Efficient Attention equation 2',
+        equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+        objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+        href: '/domains/attention-transformers/efficient-attention/#math-object-2',
+      },
+      committedPrediction: {
+        id: 'quarter',
+        label: 'It drops by the sharing factor',
+        text: 'It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA',
+      },
+      evidence: 'g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA.',
+      invariant:
+        'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+      nextMove: 'Move g from 1 to 4, then say why the ratio changes before reading the invariant.',
+      changed: {
+        symbol: 'H_kv',
+        from: 32,
+        to: 8,
+      },
+      heldFixed: [
+        { symbol: 'B', value: 1 },
+        { symbol: 'L', value: 32 },
+        { symbol: 'T', value: 32768 },
+        { symbol: 'H_q', value: 32 },
+        { symbol: 'd', value: 128 },
+        { symbol: 's', value: 2 },
+      ],
+      result: {
+        before: 17.179869184,
+        after: 4.294967296,
+        ratio: 4,
+        unit: 'GB-decimal',
+      },
+      caveat: 'Memory witness only; model quality still needs a separate experiment.',
+      lab: {
+        id: 'efficient-attention-kv-cache-workbench',
+        version: '2026-05-31',
+        restoreHref: '/domains/attention-transformers/efficient-attention/#math-object-2',
+        state: {
+          context: 32768,
+          layers: 32,
+          queryHeads: 32,
+          kvHeads: 8,
+          dHead: 128,
+          batch: 1,
+          bytes: 2,
+        },
+      },
+    },
     ...overrides,
   }
 }
@@ -177,6 +229,9 @@ describe('account learner memory preview', () => {
         caveat: 'Memory witness only; model quality still needs a separate experiment.',
         labId: 'efficient-attention-kv-cache-workbench',
         labVersion: '2026-05-31',
+        restoreHref: '/domains/attention-transformers/efficient-attention/#math-object-2',
+        equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+        predictionText: 'It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA',
       })
     )
     expect(preview.workbenchObservation?.changed).toEqual({ symbol: 'H_kv', from: 32, to: 8 })
@@ -192,6 +247,7 @@ describe('account learner memory preview', () => {
             kind: undefined,
             label: 'Prediction checkpoint',
             source: 'prediction-checkpoint',
+            workbench: undefined,
           }),
         },
       })
@@ -207,6 +263,7 @@ describe('account learner memory preview', () => {
         lastObservation: efficientAttentionWorkbenchObservation({
           detail:
             'g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA. For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+          workbench: undefined,
         }),
       })
     )
@@ -219,6 +276,30 @@ describe('account learner memory preview', () => {
         predictionId: undefined,
         labId: undefined,
         labVersion: undefined,
+      })
+    )
+  })
+
+  it('prefers typed workbench payloads even when prose metadata and legacy kind are absent', () => {
+    const preview = buildAccountLearnerMemoryPreview(
+      sampleSnapshot({
+        lastObservation: efficientAttentionWorkbenchObservation({
+          detail: 'Legacy human note without metadata transport.',
+          kind: undefined,
+        }),
+      })
+    )
+
+    expect(preview.workbenchObservation).toEqual(
+      expect.objectContaining({
+        objectTitle: 'Efficient Attention equation 2',
+        predictionId: 'quarter',
+        predictionLabel: 'It drops by the sharing factor',
+        evidence: 'g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA.',
+        invariant:
+          'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+        labId: 'efficient-attention-kv-cache-workbench',
+        labVersion: '2026-05-31',
       })
     )
   })

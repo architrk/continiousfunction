@@ -444,6 +444,58 @@ describe('learning route snapshot validation', () => {
             batch: 1,
             bytes: 2,
           },
+          workbench: {
+            type: 'formula-workbench',
+            equationObject: {
+              label: 'Efficient Attention equation 2',
+              equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+              objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+              href: '/domains/attention-transformers/efficient-attention/#math-object-2',
+            },
+            committedPrediction: {
+              id: 'quarter',
+              label: 'It drops by the sharing factor',
+              text: 'It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA',
+            },
+            evidence: 'g = 4 gives H_kv = 8, 4.29 GB cache at 32k, and 4.0x reduction vs ordinary MHA.',
+            invariant:
+              'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads, not query heads.',
+            nextMove: 'Move g from 1 to 4, then say why the ratio changes before reading the invariant.',
+            changed: {
+              symbol: 'H_kv',
+              from: 32,
+              to: 8,
+            },
+            heldFixed: [
+              { symbol: 'B', value: 1 },
+              { symbol: 'L', value: 32 },
+              { symbol: 'T', value: 32768 },
+              { symbol: 'H_q', value: 32 },
+              { symbol: 'd', value: 128 },
+              { symbol: 's', value: 2 },
+            ],
+            result: {
+              before: 17.179869184,
+              after: 4.294967296,
+              ratio: 4,
+              unit: 'GB-decimal',
+            },
+            caveat: 'Memory witness only; model quality still needs a separate experiment.',
+            lab: {
+              id: 'efficient-attention-kv-cache-workbench',
+              version: '2026-05-31',
+              restoreHref: '/domains/attention-transformers/efficient-attention/#math-object-2',
+              state: {
+                context: 32768,
+                layers: 32,
+                queryHeads: 32,
+                kvHeads: 8,
+                dHead: 128,
+                batch: 1,
+                bytes: 2,
+              },
+            },
+          },
         },
       })
     )
@@ -456,6 +508,8 @@ describe('learning route snapshot validation', () => {
     expect(snapshot?.lastObservation?.label).toBe('Efficient attention workbench')
     expect(snapshot?.lastObservation?.source).toBe('kv-memory-lab')
     expect(snapshot?.lastObservation?.labState?.context).toBe(32768)
+    expect(snapshot?.lastObservation?.workbench?.committedPrediction.id).toBe('quarter')
+    expect(snapshot?.lastObservation?.workbench?.lab.id).toBe('efficient-attention-kv-cache-workbench')
     expect(snapshot?.routeProgress?.checkpoints?.[0]).toEqual(
       expect.objectContaining({
         id: 'efficient-attention-workbench',

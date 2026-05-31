@@ -155,14 +155,23 @@ export default function EfficientAttentionLivingLabPanel({
 
   useEffect(() => {
     const observation = savedRouteSnapshot?.lastObservation
-    const labState = observation?.labState
+    const workbench = observation?.workbench
+    const labState = workbench?.lab.state ?? observation?.labState
+    const matchesCurrentWorkbench = workbench
+      ? workbench.lab.id === efficientAttentionWorkbenchLabId &&
+        workbench.lab.version === efficientAttentionWorkbenchLabVersion
+      : Boolean(
+          observation?.detail?.includes(`labId=${efficientAttentionWorkbenchLabId}`) &&
+            observation.detail.includes(`labVersion=${efficientAttentionWorkbenchLabVersion}`)
+        )
+
     if (
       savedRouteSnapshot?.mappingId !== 'concept:efficient-attention' ||
+      !observation ||
       observation?.label !== 'Efficient attention workbench' ||
       observation.source !== 'kv-memory-lab' ||
       !labState ||
-      !observation.detail?.includes(`labId=${efficientAttentionWorkbenchLabId}`) ||
-      !observation.detail?.includes(`labVersion=${efficientAttentionWorkbenchLabVersion}`)
+      !matchesCurrentWorkbench
     ) {
       if (observation?.label === 'Efficient attention workbench') {
         setRouteSaveStatus('restore-mismatch')
@@ -181,7 +190,7 @@ export default function EfficientAttentionLivingLabPanel({
       setValueBytes(labState.bytes)
     }
 
-    const savedPredictionId = observation.detail?.match(/predictionId=([a-z-]+)/)?.[1]
+    const savedPredictionId = workbench?.committedPrediction.id ?? observation.detail?.match(/predictionId=([a-z-]+)/)?.[1]
     if (savedPredictionId && predictionChoices.some((choice) => choice.id === savedPredictionId)) {
       setPrediction(savedPredictionId)
     }

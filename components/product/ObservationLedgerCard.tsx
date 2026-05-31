@@ -122,11 +122,16 @@ export default function ObservationLedgerCard({
   const heldFixed = heldFixedSummary(observation)
   const result = resultSummary(observation)
   const hasFormulaDetails = observation.kind === 'formula-comparison' && (changed || heldFixed || result)
+  const workbench = observation.workbench
   const title = variant === 'detailed' ? observation.label : `${observation.label}: ${observation.value}`
   const detail =
-    variant === 'detailed'
-      ? [observation.value, observation.detail].filter(Boolean).join('. ')
-      : observation.detail ?? observation.nextQuestion ?? 'Observation saved in this browser.'
+    workbench && variant === 'detailed'
+      ? [observation.value, workbench.evidence, workbench.invariant].filter(Boolean).join(' ')
+      : workbench
+        ? workbench.evidence
+        : variant === 'detailed'
+          ? [observation.value, observation.detail].filter(Boolean).join('. ')
+          : observation.detail ?? observation.nextQuestion ?? 'Observation saved in this browser.'
 
   return (
     <aside

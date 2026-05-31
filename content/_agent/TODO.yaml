@@ -1,5 +1,9 @@
-current_focus: "Next: promote workbench observations from prose-parsed route memory into a typed workbench payload, then connect that typed shape to account-backed learner memory."
+current_focus: "Next: connect typed workbench observations to account-backed learner memory persistence and resume links."
 last_completed:
+  - concept: typed-workbench-observation-payload
+    date: 2026-05-31
+    action: connected
+    notes: "Replaced prose-parsed workbench metadata with an additive typed lastObservation.workbench payload for formula workbench observations while preserving legacy detail/changed/heldFixed/result/caveat/labState mirrors. Efficient Attention and the Attention Serving KV checkpoint now write typed equation object, committed prediction, evidence, invariant, manipulation variables, result, caveat, lab id/version/state, and restoreHref. /me Study Memory reads typed payloads first and falls back to legacy detail parsing, and the shared observation ledger avoids showing metadata transport as learner-facing evidence. GPT Pro/Oracle critique is saved at responses/cf-typed-workbench-observation-payload-oracle-20260531.md; browser QA evidence is in responses/ux-vision/live-screenshots/typed-workbench-observation-payload-20260531/."
   - concept: study-memory-workbench-observation-surface
     date: 2026-05-31
     action: connected
@@ -2693,7 +2697,12 @@ queue:
     status: done
   - action: build_feature
     id: typed-workbench-observation-payload
-    description: "Replace prose-parsed workbench metadata in LearningRouteSnapshot.lastObservation with a typed workbench payload carrying equation object, committed prediction, evidence, invariant, changed/fixed variables, result, caveat, lab id/version/state, and restore target. Then render /me from that payload instead of parsing detail/value strings."
+    description: "Done: LearningRouteSnapshot.lastObservation now accepts an additive typed formula-workbench payload carrying equation object, committed prediction, evidence, invariant, changed/fixed variables, result, caveat, lab id/version/state, and restoreHref. Efficient Attention and Attention Serving write the typed payload while preserving legacy mirrors; /me Study Memory reads typed first and falls back to legacy detail parsing; ObservationLedgerCard uses typed evidence/invariant instead of metadata prose when available. Evidence: responses/cf-typed-workbench-observation-payload-oracle-20260531.md and responses/ux-vision/live-screenshots/typed-workbench-observation-payload-20260531/."
+    priority: P0
+    status: done
+  - action: build_feature
+    id: account-memory-workbench-restore-projection
+    description: "Carry typed workbench payload fields through the account-memory projection and server contract explicitly: restoreHref, equationObject.href/equation, committedPrediction.text, lab id/version/state, and manipulation evidence should become durable enough to reopen the exact object/lab state after sign-in."
     priority: P0
     status: pending
   - action: build_feature
