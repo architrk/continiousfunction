@@ -67,8 +67,14 @@ function resultLabel(result: NonNullable<ReturnType<typeof buildAccountLearnerMe
 function serverCheckMessage(result: AccountLearnerMemoryImportResult) {
   switch (result.status) {
     case 'write-ready':
+      if (result.workbenchRestore) {
+        return `${result.reason ?? 'Server prepared route, observation, and restorable workbench state. Live persistence is still gated.'} Workbench restore state is included.`
+      }
       return result.reason ?? 'Server prepared a DB-shaped packet. Live persistence is still gated.'
     case 'auth-required':
+      if (result.workbenchRestore) {
+        return `${result.reason ?? 'Server validated a restorable workbench packet. A signed-in app user is the next missing piece.'} Workbench restore state is included.`
+      }
       return result.reason ?? 'Server reached. A signed-in app user is the next missing piece.'
     case 'blocked':
       return result.reason ?? 'Server blocked this snapshot until object identity is repaired.'

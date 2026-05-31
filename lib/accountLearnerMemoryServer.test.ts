@@ -33,6 +33,102 @@ function sampleSnapshot(overrides: Partial<LearningRouteSnapshot> = {}): Learnin
   }
 }
 
+function sampleWorkbenchObservation(
+  overrides: Partial<NonNullable<LearningRouteSnapshot['lastObservation']>> = {}
+): NonNullable<LearningRouteSnapshot['lastObservation']> {
+  return {
+    label: 'Efficient attention workbench',
+    value: 'KV sharing cut the cache by 4x',
+    detail:
+      'labId=efficient-attention-kv-cache-workbench; labVersion=2026-05-31; predictionId=quarter; g = 4 gives H_kv = 8.',
+    nextQuestion: 'Reopen the lab at this equation and test a longer context.',
+    source: 'kv-memory-lab',
+    updatedAt: '2026-05-31T00:00:00.000Z',
+    kind: 'formula-comparison',
+    changed: {
+      symbol: 'H_kv',
+      from: 32,
+      to: 8,
+    },
+    heldFixed: [
+      { symbol: 'B', value: 1 },
+      { symbol: 'L', value: 32 },
+      { symbol: 'T', value: 32768 },
+      { symbol: 'H_q', value: 32 },
+      { symbol: 'd', value: 128 },
+      { symbol: 's', value: 2 },
+    ],
+    result: {
+      before: 17.179869184,
+      after: 4.294967296,
+      ratio: 4,
+      unit: 'GB-decimal',
+    },
+    caveat: 'Memory witness only; model quality still needs a separate experiment.',
+    labState: {
+      context: 32768,
+      layers: 32,
+      queryHeads: 32,
+      kvHeads: 8,
+      dHead: 128,
+      batch: 1,
+      bytes: 2,
+    },
+    workbench: {
+      type: 'formula-workbench',
+      equationObject: {
+        label: 'Efficient Attention equation 2',
+        equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+        objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+        href: '/domains/attention-transformers/efficient-attention/#math-object-2',
+      },
+      committedPrediction: {
+        id: 'quarter',
+        label: 'It drops by the sharing factor',
+        text: 'KV sharing cuts the cache by exactly the sharing factor when the other terms stay fixed.',
+      },
+      evidence: 'g = 4 gives H_kv = 8 and a 4.0x cache reduction.',
+      invariant: 'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads.',
+      nextMove: 'Reopen the lab at this equation and test a longer context.',
+      changed: {
+        symbol: 'H_kv',
+        from: 32,
+        to: 8,
+      },
+      heldFixed: [
+        { symbol: 'B', value: 1 },
+        { symbol: 'L', value: 32 },
+        { symbol: 'T', value: 32768 },
+        { symbol: 'H_q', value: 32 },
+        { symbol: 'd', value: 128 },
+        { symbol: 's', value: 2 },
+      ],
+      result: {
+        before: 17.179869184,
+        after: 4.294967296,
+        ratio: 4,
+        unit: 'GB-decimal',
+      },
+      caveat: 'Memory witness only; model quality still needs a separate experiment.',
+      lab: {
+        id: 'efficient-attention-kv-cache-workbench',
+        version: '2026-05-31',
+        restoreHref: '/domains/attention-transformers/efficient-attention/#math-object-2',
+        state: {
+          context: 32768,
+          layers: 32,
+          queryHeads: 32,
+          kvHeads: 8,
+          dHead: 128,
+          batch: 1,
+          bytes: 2,
+        },
+      },
+    },
+    ...overrides,
+  }
+}
+
 describe('account learner memory server import', () => {
   it('rejects malformed payloads before auth or database work', () => {
     const result = prepareAccountLearnerMemoryImport({ version: 'wrong' })
@@ -80,5 +176,37 @@ describe('account learner memory server import', () => {
     expect(result.inserts?.routeSnapshot.ownerUserId).toBe(ownerUserId)
     expect(result.inserts?.routeSnapshot.routeObjectKey).toBe('route:domains/attention-transformers/efficient-attention')
     expect(result.inserts?.observation?.objectKey).toBe('equation:attention-transformers/efficient-attention#math-object-2')
+  })
+
+  it('keeps a typed workbench restore packet explicit before and after auth', () => {
+    const snapshot = sampleSnapshot({
+      currentObject: {
+        type: 'concept',
+        objectKey: 'concept:attention-transformers/efficient-attention',
+        title: 'Efficient Attention',
+        href: '/domains/attention-transformers/efficient-attention/',
+      },
+      lastObservation: sampleWorkbenchObservation(),
+    })
+
+    const authRequired = prepareAccountLearnerMemoryImport(snapshot)
+    expect(authRequired.status).toBe('auth-required')
+    expect(authRequired.workbenchRestore?.equationObject).toEqual({
+      label: 'Efficient Attention equation 2',
+      equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+      objectKey: 'equation:attention-transformers/efficient-attention#math-object-2',
+      href: '/domains/attention-transformers/efficient-attention/#math-object-2',
+    })
+    expect(authRequired.workbenchRestore?.committedPrediction.text).toContain('KV sharing cuts the cache')
+    expect(authRequired.workbenchRestore?.lab.restoreHref).toBe('/domains/attention-transformers/efficient-attention/#math-object-2')
+    expect(authRequired.workbenchRestore?.lab.state.kvHeads).toBe(8)
+
+    const writeReady = prepareAccountLearnerMemoryImport(snapshot, { ownerUserId })
+    expect(writeReady.status).toBe('write-ready')
+    expect(writeReady.inserts?.observation?.objectKey).toBe('equation:attention-transformers/efficient-attention#math-object-2')
+    expect(writeReady.inserts?.observation?.workbenchState).toEqual(writeReady.workbenchRestore)
+    expect(writeReady.inserts?.observation?.measuredState?.workbench?.committedPrediction.text).toContain(
+      'KV sharing cuts the cache'
+    )
   })
 })

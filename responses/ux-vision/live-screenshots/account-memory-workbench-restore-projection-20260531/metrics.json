@@ -1,0 +1,39 @@
+{
+  "url": "http://127.0.0.1:3000/me/",
+  "title": "Continuous Function — Study Memory",
+  "hasWorkbenchCard": true,
+  "hasRestoreIncludedMessage": true,
+  "hasInternalUnitLeak": false,
+  "scrollWidth": 1440,
+  "clientWidth": 1440,
+  "overflowX": 0,
+  "apiStatus": 401,
+  "apiResultStatus": "auth-required",
+  "apiHasWorkbenchRestore": true,
+  "apiRestoreHref": "/domains/attention-transformers/efficient-attention/#math-object-2",
+  "apiEquationObjectKey": "equation:attention-transformers/efficient-attention#math-object-2",
+  "apiPredictionText": "It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA",
+  "apiObservationObjectKey": null,
+  "mobile": {
+    "url": "http://127.0.0.1:3000/me/",
+    "hasWorkbenchCard": true,
+    "hasInternalUnitLeak": false,
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "overflowX": 0
+  },
+  "finalDesktop": {
+    "url": "http://127.0.0.1:3000/me/",
+    "title": "Continuous Function — Study Memory",
+    "hasWorkbenchCard": true,
+    "hasRestoreIncludedMessage": true,
+    "hasInternalUnitLeak": false,
+    "overflowX": 0,
+    "apiStatus": 401,
+    "apiResultStatus": "auth-required",
+    "apiHasWorkbenchRestore": true,
+    "apiRestoreHref": "/domains/attention-transformers/efficient-attention/#math-object-2",
+    "apiEquationObjectKey": "equation:attention-transformers/efficient-attention#math-object-2",
+    "apiPredictionText": "It drops by the sharing factor: 4.29 GB, 4.0x reduction vs MHA"
+  }
+}

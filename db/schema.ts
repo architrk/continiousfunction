@@ -20,6 +20,7 @@ import type { LearningRouteSnapshot, LearningRouteSourceObject } from '../lib/le
 import {
   aiRunStatuses,
   contentObjectOrigins,
+  type LearningObservationWorkbenchState,
   membershipRoles,
   threadStatuses,
   visibilityModes,
@@ -206,6 +207,7 @@ export const learningObservations = pgTable(
     value: text('value').notNull(),
     detail: text('detail'),
     nextQuestion: text('next_question'),
+    workbenchState: jsonb('workbench_state').$type<LearningObservationWorkbenchState>(),
     measuredState: jsonb('measured_state').$type<Record<string, unknown>>(),
     ...timestamps,
     ...optionalSoftDelete,
@@ -215,6 +217,7 @@ export const learningObservations = pgTable(
     index('learning_observations_object_created_idx').on(table.objectKey, table.createdAt),
     index('learning_observations_snapshot_idx').on(table.snapshotId),
     check('learning_observations_object_required', sql`${table.objectKey} is not null`),
+    check('learning_observations_workbench_state_size', sql`${table.workbenchState} is null or octet_length(${table.workbenchState}::text) <= 8000`),
     check('learning_observations_measured_state_size', sql`${table.measuredState} is null or octet_length(${table.measuredState}::text) <= 8000`),
     check('learning_observations_label_not_empty', sql`length(${table.label}) between 1 and 120`),
   ]

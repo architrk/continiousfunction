@@ -1,6 +1,7 @@
 import { isContentObjectKey, type ContentObjectKey } from './contentObjectKeys'
 import type { LearningRouteSnapshot, LearningRouteSourceObject } from './learningRouteSnapshot'
 import { routeObjectKeyFromLearningRouteSnapshot } from './learningRouteObjectKeys'
+import { projectLearningRouteWorkbenchRestoreState } from './workbenchRestoreProjection'
 
 export const accountLearnerMemoryPreviewVersion = 'cf-account-learner-memory-preview-v1' as const
 
@@ -128,35 +129,31 @@ function typedWorkbenchObservationSummary(
 ): AccountLearnerMemoryWorkbenchObservation | undefined {
   const workbench = observation.workbench
   if (!workbench) return undefined
-
-  const objectKey = isContentObjectKey(workbench.equationObject.objectKey)
-    ? workbench.equationObject.objectKey
-    : isContentObjectKey(snapshot.currentObject?.objectKey)
-      ? snapshot.currentObject.objectKey
-      : undefined
+  const restore = projectLearningRouteWorkbenchRestoreState(snapshot)
+  if (!restore) return undefined
 
   return {
     label: observation.label,
     source: observation.source,
-    objectTitle: workbench.equationObject.label,
+    objectTitle: restore.equationObject.label,
     objectType: 'equation',
-    objectKey,
-    objectHref: workbench.equationObject.href,
-    equation: workbench.equationObject.equation,
-    predictionId: workbench.committedPrediction.id,
-    predictionLabel: workbench.committedPrediction.label,
-    predictionText: workbench.committedPrediction.text,
-    evidence: workbench.evidence,
-    invariant: workbench.invariant,
-    nextMove: workbench.nextMove,
-    changed: workbench.changed,
-    heldFixed: workbench.heldFixed,
-    result: workbench.result,
-    caveat: workbench.caveat,
-    labId: workbench.lab.id,
-    labVersion: workbench.lab.version,
-    restoreHref: workbench.lab.restoreHref,
-    labState: workbench.lab.state,
+    objectKey: restore.equationObject.objectKey,
+    objectHref: restore.equationObject.href,
+    equation: restore.equationObject.equation,
+    predictionId: restore.committedPrediction.id,
+    predictionLabel: restore.committedPrediction.label,
+    predictionText: restore.committedPrediction.text,
+    evidence: restore.evidence,
+    invariant: restore.invariant,
+    nextMove: restore.nextMove,
+    changed: restore.changed,
+    heldFixed: restore.heldFixed,
+    result: restore.result,
+    caveat: restore.caveat,
+    labId: restore.lab.id,
+    labVersion: restore.lab.version,
+    restoreHref: restore.lab.restoreHref,
+    labState: restore.lab.state,
   }
 }
 

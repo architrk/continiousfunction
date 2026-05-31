@@ -112,11 +112,13 @@ CREATE TABLE "learning_observations" (
 	"value" text NOT NULL,
 	"detail" text,
 	"next_question" text,
+	"workbench_state" jsonb,
 	"measured_state" jsonb,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
 	CONSTRAINT "learning_observations_object_required" CHECK ("learning_observations"."object_key" is not null),
+	CONSTRAINT "learning_observations_workbench_state_size" CHECK ("learning_observations"."workbench_state" is null or octet_length("learning_observations"."workbench_state"::text) <= 8000),
 	CONSTRAINT "learning_observations_measured_state_size" CHECK ("learning_observations"."measured_state" is null or octet_length("learning_observations"."measured_state"::text) <= 8000),
 	CONSTRAINT "learning_observations_label_not_empty" CHECK (length("learning_observations"."label") between 1 and 120)
 );

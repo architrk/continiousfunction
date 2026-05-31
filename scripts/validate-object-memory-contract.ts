@@ -136,6 +136,8 @@
     'evidence_refs_source_object_shape',
     'evidence_refs_source_span_shape',
     'learning_route_snapshots_snapshot_json_size',
+    '"workbench_state" jsonb',
+    'learning_observations_workbench_state_size',
     'learning_observations_measured_state_size',
     'evidence_refs_locator_size',
     'document_spans_bbox_size',

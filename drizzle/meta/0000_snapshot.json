@@ -1126,6 +1126,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "workbench_state": {
+          "name": "workbench_state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "measured_state": {
           "name": "measured_state",
           "type": "jsonb",
@@ -1273,6 +1279,10 @@
         "learning_observations_object_required": {
           "name": "learning_observations_object_required",
           "value": "\"learning_observations\".\"object_key\" is not null"
+        },
+        "learning_observations_workbench_state_size": {
+          "name": "learning_observations_workbench_state_size",
+          "value": "\"learning_observations\".\"workbench_state\" is null or octet_length(\"learning_observations\".\"workbench_state\"::text) <= 8000"
         },
         "learning_observations_measured_state_size": {
           "name": "learning_observations_measured_state_size",

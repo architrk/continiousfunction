@@ -44,6 +44,102 @@ function sampleSnapshot(overrides: Partial<LearningRouteSnapshot> = {}): Learnin
   }
 }
 
+function sampleWorkbenchObservation(
+  overrides: Partial<NonNullable<LearningRouteSnapshot['lastObservation']>> = {}
+): NonNullable<LearningRouteSnapshot['lastObservation']> {
+  return {
+    label: 'Efficient attention workbench',
+    value: 'KV sharing cut the cache by 4x',
+    detail:
+      'labId=efficient-attention-kv-cache-workbench; labVersion=2026-05-31; predictionId=quarter; g = 4 gives H_kv = 8.',
+    nextQuestion: 'Restore the KV lab and explain the invariant before changing context length.',
+    source: 'kv-memory-lab',
+    updatedAt: '2026-05-31T00:00:00.000Z',
+    kind: 'formula-comparison',
+    changed: {
+      symbol: 'H_kv',
+      from: 32,
+      to: 8,
+    },
+    heldFixed: [
+      { symbol: 'B', value: 1 },
+      { symbol: 'L', value: 32 },
+      { symbol: 'T', value: 32768 },
+      { symbol: 'H_q', value: 32 },
+      { symbol: 'd', value: 128 },
+      { symbol: 's', value: 2 },
+    ],
+    result: {
+      before: 17.179869184,
+      after: 4.294967296,
+      ratio: 4,
+      unit: 'GB-decimal',
+    },
+    caveat: 'Memory witness only; model quality still needs a separate experiment.',
+    labState: {
+      context: 32768,
+      layers: 32,
+      queryHeads: 32,
+      kvHeads: 8,
+      dHead: 128,
+      batch: 1,
+      bytes: 2,
+    },
+    workbench: {
+      type: 'formula-workbench',
+      equationObject: {
+        label: 'KV cache memory equation',
+        equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+        objectKey: 'equation:optimization/adam#math-object-1',
+        href: '/domains/optimization/adam/#math-object-1',
+      },
+      committedPrediction: {
+        id: 'quarter',
+        label: 'It drops by the sharing factor',
+        text: 'KV sharing cuts the cache by exactly the sharing factor when the other terms stay fixed.',
+      },
+      evidence: 'g = 4 gives H_kv = 8 and a 4.0x cache reduction.',
+      invariant: 'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads.',
+      nextMove: 'Restore the KV lab and explain the invariant before changing context length.',
+      changed: {
+        symbol: 'H_kv',
+        from: 32,
+        to: 8,
+      },
+      heldFixed: [
+        { symbol: 'B', value: 1 },
+        { symbol: 'L', value: 32 },
+        { symbol: 'T', value: 32768 },
+        { symbol: 'H_q', value: 32 },
+        { symbol: 'd', value: 128 },
+        { symbol: 's', value: 2 },
+      ],
+      result: {
+        before: 17.179869184,
+        after: 4.294967296,
+        ratio: 4,
+        unit: 'GB-decimal',
+      },
+      caveat: 'Memory witness only; model quality still needs a separate experiment.',
+      lab: {
+        id: 'efficient-attention-kv-cache-workbench',
+        version: '2026-05-31',
+        restoreHref: '/domains/optimization/adam/#math-object-1',
+        state: {
+          context: 32768,
+          layers: 32,
+          queryHeads: 32,
+          kvHeads: 8,
+          dHead: 128,
+          batch: 1,
+          bytes: 2,
+        },
+      },
+    },
+    ...overrides,
+  }
+}
+
 describe('object memory mappers', () => {
   it('maps a concept-notebook snapshot to a DB-shaped route snapshot insert', () => {
     const insert = learningRouteSnapshotToSnapshotInsert(sampleSnapshot(), { ownerUserId })
@@ -81,6 +177,106 @@ describe('object memory mappers', () => {
     expect(insert.observationSource).toBe('prediction-checkpoint')
     expect(insert.observationKind).toBe('route-state')
     expect(insert.measuredState?.value).toContain('Bias correction')
+    expect(insert.workbenchState).toBeNull()
+  })
+
+  it('maps a typed workbench payload to an explicit restorable observation state', () => {
+    const insert = learningRouteSnapshotToObservationInsert(
+      sampleSnapshot({
+        lastObservation: sampleWorkbenchObservation(),
+      }),
+      { ownerUserId },
+      { objectKey: 'concept:optimization/adam' }
+    )
+
+    expect(insert.objectKey).toBe('equation:optimization/adam#math-object-1')
+    expect(insert.observationSource).toBe('kv-memory-lab')
+    expect(insert.observationKind).toBe('formula-comparison')
+    expect(insert.workbenchState).toEqual(
+      expect.objectContaining({
+        version: 'cf-learning-observation-workbench-state-v1',
+        evidence: 'g = 4 gives H_kv = 8 and a 4.0x cache reduction.',
+        invariant: 'For fixed B, L, T, d, and s, KV-cache memory scales linearly with stored K/V heads.',
+        nextMove: 'Restore the KV lab and explain the invariant before changing context length.',
+        caveat: 'Memory witness only; model quality still needs a separate experiment.',
+      })
+    )
+    expect(insert.workbenchState?.equationObject).toEqual({
+      label: 'KV cache memory equation',
+      equation: 'Mem_KV = B * L * T * H_kv * d_head * 2 * bytes',
+      objectKey: 'equation:optimization/adam#math-object-1',
+      href: '/domains/optimization/adam/#math-object-1',
+    })
+    expect(insert.workbenchState?.committedPrediction).toEqual({
+      id: 'quarter',
+      label: 'It drops by the sharing factor',
+      text: 'KV sharing cuts the cache by exactly the sharing factor when the other terms stay fixed.',
+    })
+    expect(insert.workbenchState?.lab).toEqual(
+      expect.objectContaining({
+        id: 'efficient-attention-kv-cache-workbench',
+        version: '2026-05-31',
+        restoreHref: '/domains/optimization/adam/#math-object-1',
+        state: expect.objectContaining({ kvHeads: 8, context: 32768 }),
+      })
+    )
+    expect(insert.workbenchState?.changed).toEqual({ symbol: 'H_kv', from: 32, to: 8 })
+    expect(insert.workbenchState?.heldFixed).toHaveLength(6)
+    expect(insert.workbenchState?.result).toEqual(
+      expect.objectContaining({
+        after: 4.294967296,
+        ratio: 4,
+        unit: 'GB-decimal',
+      })
+    )
+    expect(insert.measuredState?.workbench?.lab.restoreHref).toBe('/domains/optimization/adam/#math-object-1')
+  })
+
+  it('preserves incomplete typed workbench packets raw without projecting them as restorable state', () => {
+    const observation = sampleWorkbenchObservation()
+    const insert = learningRouteSnapshotToObservationInsert(
+      sampleSnapshot({
+        lastObservation: {
+          ...observation,
+          workbench: {
+            ...observation.workbench!,
+            equationObject: {
+              ...observation.workbench!.equationObject,
+              objectKey: undefined,
+            },
+          },
+        },
+      }),
+      { ownerUserId }
+    )
+
+    expect(insert.objectKey).toBe('concept:optimization/adam')
+    expect(insert.workbenchState).toBeNull()
+    expect(insert.measuredState?.workbench?.equationObject.objectKey).toBeUndefined()
+    expect(insert.measuredState?.workbench?.lab.restoreHref).toBe('/domains/optimization/adam/#math-object-1')
+  })
+
+  it('does not project external restore hrefs as restorable workbench state', () => {
+    const observation = sampleWorkbenchObservation()
+    const insert = learningRouteSnapshotToObservationInsert(
+      sampleSnapshot({
+        lastObservation: {
+          ...observation,
+          workbench: {
+            ...observation.workbench!,
+            lab: {
+              ...observation.workbench!.lab,
+              restoreHref: 'https://example.com/not-a-cf-restore',
+            },
+          },
+        },
+      }),
+      { ownerUserId }
+    )
+
+    expect(insert.objectKey).toBe('equation:optimization/adam#math-object-1')
+    expect(insert.workbenchState).toBeNull()
+    expect(insert.measuredState?.workbench?.lab.restoreHref).toBe('https://example.com/not-a-cf-restore')
   })
 
   it('rejects durable learner rows without app-owned user ids', () => {

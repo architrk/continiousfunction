@@ -1,0 +1,30 @@
+Continuous Function repo context:
+
+North star:
+Continuous Function should make modern AI math operable: selected object -> prerequisite gap -> prediction -> manipulation -> evidence -> invariant -> next move. The product is a connected atlas/notebook/lab for serious learners of the mathematics behind deep learning and frontier AI.
+
+Current implemented slice:
+- LearningRouteSnapshot.lastObservation now supports an additive typed `workbench` payload for formula workbench observations.
+- Efficient Attention and Attention Serving write typed equation object, committed prediction, evidence, invariant, changed/fixed variables, result, caveat, lab id/version/state, and restoreHref.
+- /me Study Memory reads typed payload first and renders the saved workbench observation.
+- Server import contract currently validates a cf-route-snapshot-v1 payload and returns DB-shaped inserts for `learning_route_snapshots` and `learning_observations`, with `persisted=false` until Clerk/Neon writes are connected.
+- The `learning_observations.measured_state` JSON currently preserves `lastObservation`, including `workbench`, but the API response does not explicitly name a restorable workbench packet.
+
+Active engineering goal:
+Carry typed workbench payload fields through the account-memory projection and server contract so future durable learner memory preserves:
+- lab.restoreHref
+- equationObject.href/equation/objectKey/label
+- committedPrediction.id/label/text
+- lab id/version/state
+- manipulation evidence/invariant/nextMove
+- changed/heldFixed/result/caveat
+
+Planned implementation:
+1. Add an explicit account-memory workbench restore projection type derived from `lastObservation.workbench`.
+2. Include that projection in the /me preview and in `prepareAccountLearnerMemoryImport` results, especially `auth-required` and `write-ready`.
+3. Keep the DB insert shape honest: no fake DB columns, but assert/test that `learning_observations.measuredState.workbench` contains the full typed packet.
+4. Prefer the typed workbench equation object key when creating a `learning_observations` insert, falling back to `currentObject.objectKey`.
+5. Add tests for exact restoreHref, equation, prediction text, lab state, and object key routing.
+
+Ask:
+Critique this implementation plan as a product/pedagogy/server-contract design. What are the highest-risk omissions or overclaims? What exact tests or field names would make the future account-memory restore path most robust without pretending persistence exists today?

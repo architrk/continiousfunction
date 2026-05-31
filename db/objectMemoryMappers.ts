@@ -14,14 +14,17 @@ import {
 } from '../lib/contentObjectManifest'
 import { routeObjectKeyFromContentObjectKey } from '../lib/learningRouteObjectKeys'
 import type { LearningRouteSnapshot, LearningRouteSourceObject } from '../lib/learningRouteSnapshot'
+import { projectLearningRouteWorkbenchRestoreState } from '../lib/workbenchRestoreProjection'
 import {
   maxEvidenceLocatorJsonChars,
   maxMeasuredStateJsonChars,
   maxRouteSnapshotJsonChars,
+  maxWorkbenchStateJsonChars,
   ObjectMemoryContractError,
   type ContentObjectRefInsert,
   type EvidenceRefCandidate,
   type LearningObservationInsert,
+  type LearningObservationWorkbenchState,
   type LearningRouteSnapshotInsert,
   type ObjectMemoryOwnership,
   type VisibilityMode,
@@ -208,9 +211,10 @@ export function learningRouteSnapshotToObservationInsert(
     throw new ObjectMemoryContractError('snapshot.lastObservation is required to create a learning_observations insert')
   }
 
-  const objectKey = options.objectKey ?? snapshot.currentObject?.objectKey
+  const objectKey = snapshot.lastObservation.workbench?.equationObject.objectKey ?? options.objectKey ?? snapshot.currentObject?.objectKey
   assertObjectKey(objectKey, 'learning observation objectKey')
   assertJsonSize(snapshot.lastObservation, maxMeasuredStateJsonChars, 'learning observation measuredState')
+  const workbenchState = learningRouteSnapshotToWorkbenchState(snapshot)
 
   return {
     ownerUserId: ownership.ownerUserId,
@@ -223,8 +227,16 @@ export function learningRouteSnapshotToObservationInsert(
     value: snapshot.lastObservation.value,
     detail: snapshot.lastObservation.detail ?? null,
     nextQuestion: snapshot.lastObservation.nextQuestion ?? null,
+    workbenchState,
     measuredState: snapshot.lastObservation,
   }
+}
+
+export function learningRouteSnapshotToWorkbenchState(snapshot: LearningRouteSnapshot): LearningObservationWorkbenchState | null {
+  const state = projectLearningRouteWorkbenchRestoreState(snapshot)
+  if (!state) return null
+  assertJsonSize(state, maxWorkbenchStateJsonChars, 'learning observation workbenchState')
+  return state
 }
 
 export function sourceObjectToEvidenceCandidate(

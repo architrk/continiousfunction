@@ -60,6 +60,12 @@ describe('object memory SQL contract', () => {
     expect(migration).toContain('learning_route_snapshots_route_object_key_content_object_refs_object_key_fk')
   })
 
+  it('keeps workbench restore state explicit on durable learning observations', () => {
+    expect(tableBlock('learning_observations')).toContain('"workbench_state" jsonb')
+    expect(tableBlock('learning_observations')).toContain('learning_observations_workbench_state_size')
+    expect(tableBlock('learning_observations')).toContain('"measured_state" jsonb')
+  })
+
   it('limits the schema slice to migration DDL, not runtime env or auth surfaces', () => {
     expect(migration).toContain('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
     expect(migration).not.toContain('DATABASE_URL')

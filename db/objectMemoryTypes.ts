@@ -1,6 +1,10 @@
 import type { ContentObjectKey, ContentObjectType } from '../lib/contentObjectKeys'
 import type { ContentObjectManifestObject } from '../lib/contentObjectManifest'
 import type { LearningRouteSnapshot, LearningRouteSourceObject } from '../lib/learningRouteSnapshot'
+import {
+  accountWorkbenchRestoreStateVersion,
+  type AccountWorkbenchRestoreState,
+} from '../lib/workbenchRestoreProjection'
 
 export const contentObjectOrigins = [
   'atlas-manifest',
@@ -59,9 +63,12 @@ export const ownerScopedMemoryTables = [
 
 export const maxRouteSnapshotJsonChars = 24000
 export const maxMeasuredStateJsonChars = 8000
+export const maxWorkbenchStateJsonChars = 8000
 export const maxEvidenceLocatorJsonChars = 8000
 export const maxAiRunJsonChars = 8000
 export const maxDocumentMetadataJsonChars = 8000
+
+export const learningObservationWorkbenchStateVersion = accountWorkbenchRestoreStateVersion
 
 export type ObjectMemoryOwnership = {
   ownerUserId: string
@@ -104,6 +111,8 @@ export type LearningRouteSnapshotInsert = ObjectMemoryOwnership & {
   snapshotJson: LearningRouteSnapshot
 }
 
+export type LearningObservationWorkbenchState = AccountWorkbenchRestoreState
+
 export type LearningObservationInsert = {
   ownerUserId: string
   organizationId?: string | null
@@ -115,6 +124,7 @@ export type LearningObservationInsert = {
   value: string
   detail?: string | null
   nextQuestion?: string | null
+  workbenchState?: LearningObservationWorkbenchState | null
   measuredState?: NonNullable<LearningRouteSnapshot['lastObservation']> | null
 }
 

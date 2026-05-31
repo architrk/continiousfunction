@@ -26,7 +26,7 @@ Identity and authorization fields stay relational:
 - `visibility`
 - `object_key`
 
-JSONB is allowed only for compact structured state that already exists as repo contracts: route snapshots, measured demo state, evidence locators, AI metadata, and document parser metadata.
+JSONB is allowed only for compact structured state that already exists as repo contracts: route snapshots, restorable workbench state, measured demo state, evidence locators, AI metadata, and document parser metadata.
 
 Uploaded documents and document spans are still inert metadata contracts. A durable uploaded paper must have a `paper:` object key, and durable extracted spans must have `source-span:` object keys before future upload/storage code can reference them.
 

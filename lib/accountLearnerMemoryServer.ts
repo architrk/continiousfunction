@@ -7,11 +7,13 @@ import {
   type LearningRouteSnapshot,
 } from './learningRouteSnapshot'
 import {
+  learningRouteSnapshotToWorkbenchState,
   learningRouteSnapshotToObservationInsert,
   learningRouteSnapshotToSnapshotInsert,
 } from '../db/objectMemoryMappers'
 import type {
   LearningObservationInsert,
+  LearningObservationWorkbenchState,
   LearningRouteSnapshotInsert,
   ObjectMemoryOwnership,
 } from '../db/objectMemoryTypes'
@@ -30,6 +32,7 @@ export type AccountLearnerMemoryImportResult = {
   persisted: false
   preview: AccountLearnerMemoryPreview
   reason?: string
+  workbenchRestore?: LearningObservationWorkbenchState | null
   inserts?: {
     routeSnapshot: LearningRouteSnapshotInsert
     observation?: LearningObservationInsert
@@ -73,6 +76,7 @@ export function prepareAccountLearnerMemoryImport(
 
   const snapshot: LearningRouteSnapshot = candidate
   const preview = buildAccountLearnerMemoryPreview(snapshot)
+  const workbenchRestore = learningRouteSnapshotToWorkbenchState(snapshot)
 
   if (preview.status !== 'ready') {
     return {
@@ -81,6 +85,7 @@ export function prepareAccountLearnerMemoryImport(
       persisted: false,
       preview,
       reason: preview.blockers[0]?.detail ?? 'The snapshot is not ready for durable account memory.',
+      workbenchRestore,
     }
   }
 
@@ -91,6 +96,7 @@ export function prepareAccountLearnerMemoryImport(
       persisted: false,
       preview,
       reason: 'A signed-in app user is required before account memory can be written.',
+      workbenchRestore,
     }
   }
 
@@ -104,6 +110,7 @@ export function prepareAccountLearnerMemoryImport(
     status: 'write-ready',
     persisted: false,
     preview,
+    workbenchRestore: observation?.workbenchState ?? workbenchRestore,
     inserts: {
       routeSnapshot,
       observation,

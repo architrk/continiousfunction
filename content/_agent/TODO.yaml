@@ -1,5 +1,9 @@
-current_focus: "Next: connect typed workbench observations to account-backed learner memory persistence and resume links."
+current_focus: "Next: connect account-backed learner memory persistence and exact workbench resume links."
 last_completed:
+  - concept: account-memory-workbench-restore-projection
+    date: 2026-05-31
+    action: connected
+    notes: "Carried typed workbench observations through the account-memory server contract as a strict, versioned restore projection. The DB contract now has learning_observations.workbench_state for fully restorable workbench packets while measured_state still preserves the raw lastObservation. The mapper routes observations to workbench.equationObject.objectKey before currentObject, with tests covering restoreHref, equation href/equation/objectKey, committed prediction text, lab id/version/state, evidence, changed/fixed variables, incomplete-packet raw preservation, and contract-only auth-required responses. GPT Pro/Oracle critique is saved at responses/cf-account-memory-workbench-restore-projection-oracle-20260531.md; browser QA evidence is in responses/ux-vision/live-screenshots/account-memory-workbench-restore-projection-20260531/."
   - concept: typed-workbench-observation-payload
     date: 2026-05-31
     action: connected
@@ -2702,9 +2706,9 @@ queue:
     status: done
   - action: build_feature
     id: account-memory-workbench-restore-projection
-    description: "Carry typed workbench payload fields through the account-memory projection and server contract explicitly: restoreHref, equationObject.href/equation, committedPrediction.text, lab id/version/state, and manipulation evidence should become durable enough to reopen the exact object/lab state after sign-in."
+    description: "Done: Typed workbench payloads now flow into a strict account-memory restore projection and DB-shaped learning_observations.workbench_state packet when the exact equation object key, equation, href, committed prediction text, lab restoreHref, lab id/version/state, evidence, invariant, changed/fixed variables, result, caveat, and next move are present. Incomplete typed packets are still preserved raw in measured_state without being labeled restorable. Evidence: responses/cf-account-memory-workbench-restore-projection-oracle-20260531.md and responses/ux-vision/live-screenshots/account-memory-workbench-restore-projection-20260531/."
     priority: P0
-    status: pending
+    status: done
   - action: build_feature
     id: paper-mapper-image-board-grade-cockpit
     description: "Done: Paper Mapper now starts with a Question-to-Invariant cockpit where a paper clue becomes a selected object, role-lens question, committed prediction, evidence boundary, saved invariant observation, AI handoff packet, lab witness, and next route. GPT Pro/Oracle north-star critique is saved at responses/cf-north-star-goal-refinement-20260531.md; desktop cockpit and real 390px mobile visual QA passed."
