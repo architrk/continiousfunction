@@ -8,11 +8,57 @@ It should become the premier one-stop destination for serious learners: a place 
 
 The site should not merely explain topics. It should create moments of understanding.
 
+## Whole-Site North Star
+
+Continuous Function should become the learning operating system for frontier AI understanding.
+
+A serious learner should be able to arrive with any important object from modern AI:
+
+- a paper
+- an equation
+- a model architecture
+- a training behavior
+- an inference-system tradeoff
+- a surprising model failure
+- a research claim
+- a concept they half-understand
+
+and leave with a durable, usable mental model:
+
+- the intuition for why the object matters
+- the prerequisite route needed to understand it
+- the symbols, shapes, assumptions, and invariants
+- a runnable code witness
+- an interactive experiment that makes the mechanism visible
+- source-grounded confidence about what is known, inferred, or uncertain
+- a remembered next step that can continue across pages and sessions
+
+The north star is not "make Paper Mapper good" or "make one concept page good." The north star is that every major surface of the site participates in one coherent learner journey:
+
+**Bring confusion -> select the object -> repair prerequisites -> predict -> manipulate -> inspect evidence -> name the invariant -> carry it into the next object.**
+
+Every page should feel like part of the same atlas/notebook/lab system. A learner should not feel they are browsing unrelated pages. They should feel they are moving through a connected research-learning environment that remembers what they are trying to understand and keeps turning confusion into tested understanding.
+
+The product wins when the learner can say:
+
+> "I came with something from frontier AI that felt opaque. The site helped me locate the object, repair what I was missing, test the mechanism, and leave with an invariant I can actually use."
+
 ## Product Identity
 
 Continuous Function is a mathematical atlas and research-learning environment for modern AI.
 
 The core product is not page count, animation count, or broad coverage. The core product is durable mechanistic understanding: helping a learner start from a modern paper, equation, architecture, or model behavior and find a clear path to understanding it.
+
+The website should be judged as an integrated system:
+
+- Public atlas: concepts, domains, paths, graph, search, papers, and pillar syntheses make the field navigable.
+- Personal notebook: saved routes, observations, predictions, and learner memory preserve continuity.
+- Lab bench: demos and code witnesses force predictions to meet measurable behavior.
+- Research room: papers, claims, equations, source spans, misconceptions, and open questions stay attached to the object being discussed.
+- AI companion: assistance is object-aware, source-aware, and skeptical, not a generic chat layer.
+- Improvement loop: repeated learner friction should become non-canonical improvement proposals for the content and interface.
+
+Every new feature should strengthen at least one part of this system and connect cleanly to the rest.
 
 ## Learning Contract
 
@@ -44,6 +90,19 @@ The experience should be:
 - useful for students, researchers, engineers, and ambitious self-learners
 
 Beauty is useful only when it makes the idea easier to think with. Interaction is useful only when it tests or reveals the mechanism.
+
+## Whole-Site Acceptance Test
+
+The site is moving toward the north star when these journeys work end to end:
+
+1. Paper to understanding: paste a paper clue, identify a source object, map prerequisites, inspect an equation, run a witness, save an invariant, and continue the route.
+2. Concept to mechanism: open a concept, select the central object, understand the intuition, derive the math, run matching code, manipulate the demo, and carry the observation forward.
+3. Search to route: search from confusion, receive not just results but repair actions, source objects, experiments, and the next route.
+4. Graph to plan: see why prerequisites are connected, choose a learning path, and preserve current object/state while moving.
+5. Memory to adaptation: return later and see the saved question, object, prediction, evidence, invariant, and recommended next move.
+6. AI to grounded help: ask about the selected object and get help constrained by the page, source boundary, prior observation, and current route.
+
+A page-level improvement that does not make one of these journeys clearer, more rigorous, more memorable, or easier to continue is lower priority.
 
 ## Research Discussion And AI
 
@@ -93,11 +152,12 @@ The AI should act like a careful research tutor: grounded, skeptical, source-awa
 When choosing work, prefer:
 
 1. Fixing wrong math, broken builds, broken routes, or misleading demos.
-2. Making one flagship learning path feel exceptional end to end.
-3. Deepening important concepts until they satisfy the learning contract.
-4. Connecting concepts into prerequisite paths and paper-to-concept routes.
-5. Improving object-attached research discussion and AI context.
-6. Adding new concepts only when they are load-bearing for a path or paper.
+2. Making the whole-site learner journey coherent across homepage, domains, concept notebooks, search, graph, paper mapper, paths, memory, and AI handoff.
+3. Making one flagship learning path feel exceptional end to end so the system has a proof slice.
+4. Deepening important concepts until they satisfy the learning contract.
+5. Connecting concepts into prerequisite paths and paper-to-concept routes.
+6. Improving object-attached research discussion and AI context.
+7. Adding new concepts only when they are load-bearing for a path or paper.
 
 Depth beats breadth until the flagship experience proves the product.
 
@@ -117,3 +177,7 @@ Do not let the site become:
 ## North Star
 
 Continuous Function should be the place serious learners go when they want frontier AI and deep learning math to finally make sense.
+
+More operationally:
+
+**Continuous Function should turn any serious AI learning object into a connected path from confusion to usable mechanistic understanding: source-grounded, mathematically precise, prediction-first, interactive, remembered, and continuously improvable.**
